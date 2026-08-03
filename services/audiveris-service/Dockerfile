@@ -24,7 +24,10 @@ RUN set -eux; \
     test -x /opt/audiveris/bin/Audiveris; \
     ln -s /opt/audiveris/bin/Audiveris /usr/bin/audiveris; \
     command -v audiveris; \
-    audiveris -version 2>&1 | grep -F "${AUDIVERIS_VERSION}"; \
+    if ! audiveris -version > /tmp/audiveris-version.txt 2>&1; then cat /tmp/audiveris-version.txt; exit 1; fi; \
+    cat /tmp/audiveris-version.txt; \
+    grep -F "${AUDIVERIS_VERSION}" /tmp/audiveris-version.txt; \
+    rm -f /tmp/audiveris-version.txt; \
     apt-get purge -y --auto-remove curl; \
     rm -rf /var/lib/apt/lists/*
 
