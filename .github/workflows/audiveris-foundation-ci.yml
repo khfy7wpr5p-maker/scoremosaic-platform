@@ -71,7 +71,7 @@ jobs:
 
           container_id="$(docker run --detach \
             --read-only \
-            --tmpfs /tmp/scoremosaic-audiveris:rw,noexec,nosuid,size=805306368,mode=0700 \
+            --tmpfs /tmp/scoremosaic-audiveris:rw,noexec,nosuid,size=805306368,mode=0700,uid=65532,gid=65532 \
             --cap-drop ALL \
             --security-opt no-new-privileges \
             --pids-limit 128 \
@@ -91,8 +91,13 @@ jobs:
             sleep 1
           done
 
-          test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
-          docker exec "$container_id" audiveris -version 2>&1 | grep -F "5.11.0"
+          actual_uid="$(docker exec "$container_id" python -c 'import os; print(os.getuid())')"
+          echo "container uid: ${actual_uid}"
+          test "$actual_uid" = "65532"
+
+          version_output="$(docker exec "$container_id" audiveris -version 2>&1)"
+          printf '%s\n' "$version_output"
+          grep -F "5.11.0" <<<"$version_output"
 
           docker exec -i "$container_id" python - <<'PY'
           import json
@@ -179,6 +184,8 @@ jobs:
           assert service["environment"]["SCOREMOSAIC_AUDIVERIS_VERSION"] == "5.11.0"
           assert any(
               "/tmp/scoremosaic-audiveris" in str(item)
+              and "uid=65532" in str(item)
+              and "gid=65532" in str(item)
               for item in service.get("tmpfs", [])
           )
           PY
