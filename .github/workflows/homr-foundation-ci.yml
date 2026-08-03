@@ -55,14 +55,12 @@ jobs:
           image="scoremosaic-homr-foundation:${GITHUB_SHA}"
           docker build --tag "$image" services/homr-service
 
-          container_id="$({
-            docker run --detach \
-              --read-only \
-              --tmpfs /tmp:rw,noexec,nosuid,size=16m \
-              --cap-drop ALL \
-              --security-opt no-new-privileges \
-              "$image"
-          })"
+          container_id="$(docker run --detach \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            "$image")"
           trap 'docker logs "$container_id" || true; docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
 
           for attempt in {1..20}; do
@@ -78,28 +76,32 @@ jobs:
 
           test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
 
-          docker exec "$container_id" python -c "
+          docker exec -i "$container_id" python - <<'PY'
           import json
           import urllib.request
-          payload = json.load(urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2))
-          assert payload['status'] == 'ok'
-          assert payload['engine']['installed'] is False
-          assert payload['conversionEnabled'] is False
-          "
 
-          docker exec "$container_id" python -c "
+          payload = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8080/health", timeout=2)
+          )
+          assert payload["status"] == "ok"
+          assert payload["engine"]["installed"] is False
+          assert payload["conversionEnabled"] is False
+          PY
+
+          docker exec -i "$container_id" python - <<'PY'
           import json
           import urllib.error
           import urllib.request
+
           try:
-              urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=2)
+              urllib.request.urlopen("http://127.0.0.1:8080/ready", timeout=2)
           except urllib.error.HTTPError as exc:
               assert exc.code == 503
               payload = json.load(exc)
-              assert payload['reason'] == 'homr_engine_not_installed'
+              assert payload["reason"] == "homr_engine_not_installed"
           else:
-              raise AssertionError('/ready unexpectedly returned success')
-          "
+              raise AssertionError("/ready unexpectedly returned success")
+          PY
 
       - name: Validate Compose configuration
         run: docker compose -f compose.yaml config > /dev/null
