@@ -129,7 +129,6 @@ class RuntimeTests(unittest.TestCase):
                     str(config.homr_command),
                     "--gpu",
                     "no",
-                    "--no-title",
                     str(image.resolve()),
                 ),
             )
