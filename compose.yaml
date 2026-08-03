@@ -61,6 +61,47 @@ services:
       retries: 3
       start_period: 3s
 
+  clarity-foundation:
+    profiles: ["clarity-foundation"]
+    build:
+      context: ./services/clarity-service
+      dockerfile: Dockerfile
+    environment:
+      SCOREMOSAIC_CLARITY_HOST: 0.0.0.0
+      SCOREMOSAIC_CLARITY_PORT: 8081
+      SCOREMOSAIC_CLARITY_LOG_LEVEL: INFO
+      SCOREMOSAIC_CLARITY_COMPUTE_MODE: disabled
+      SCOREMOSAIC_CLARITY_MAX_REQUEST_BYTES: 20971520
+      SCOREMOSAIC_CLARITY_MAX_PAGES: 40
+      SCOREMOSAIC_CLARITY_MAX_IMAGE_PIXELS: 80000000
+      SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS: 180
+      SCOREMOSAIC_CLARITY_WORKSPACE_ROOT: /tmp/scoremosaic-clarity
+    expose:
+      - "8081"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: "no"
+    stop_grace_period: 5s
+    networks:
+      - omr-internal
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=2).read()
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+
 networks:
   omr-internal:
     internal: true
