@@ -49,6 +49,7 @@ RUN set -eux; \
 
 WORKDIR /app
 COPY src/ ./src/
+COPY THIRD_PARTY_NOTICES.md /usr/share/doc/scoremosaic-audiveris/THIRD_PARTY_NOTICES.md
 
 USER 65532:65532
 EXPOSE 8082
