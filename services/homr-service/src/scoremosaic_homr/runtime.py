@@ -165,7 +165,7 @@ def probe_runtime(
         version = version_reader("homr")
     except metadata.PackageNotFoundError:
         return RuntimeProbe(False, "homr_package_unavailable", None, 0)
-    except Exception as exc:  # defensive isolation around package metadata
+    except Exception as exc:
         return RuntimeProbe(
             False,
             "homr_package_probe_failed",
@@ -268,7 +268,6 @@ def build_transcription_command(
         str(config.homr_command),
         "--gpu",
         "no",
-        "--no-title",
         str(safe_input),
     )
 
