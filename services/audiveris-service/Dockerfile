@@ -13,7 +13,7 @@ LABEL org.opencontainers.image.title="ScoreMosaic Audiveris adapter" \
 RUN set -eux; \
     test "$(dpkg --print-architecture)" = "amd64"; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates curl python3-minimal python-is-python3 shared-mime-info; \
+    apt-get install -y --no-install-recommends ca-certificates curl libgtk-3-0t64 python3-minimal python-is-python3 shared-mime-info; \
     mkdir -p /usr/share/applications /usr/share/desktop-directories /usr/share/mime/packages; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 4 --retry-all-errors \
       --output "/tmp/${AUDIVERIS_DEB_NAME}" \
