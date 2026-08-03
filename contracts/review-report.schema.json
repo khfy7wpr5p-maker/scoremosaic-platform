@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/review-report.schema.json",
+  "title": "ScoreMosaic Review Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportId",
+    "jobId",
+    "createdAt",
+    "status",
+    "summary",
+    "issues"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "reportId": {
+      "type": "string",
+      "pattern": "^report_[A-Za-z0-9_-]{8,80}$"
+    },
+    "jobId": {
+      "type": "string",
+      "pattern": "^job_[A-Za-z0-9_-]{8,80}$"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": ["needs_review", "under_review", "corrected", "approved", "rejected"]
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/issue"
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "blocking", "error", "warning", "info", "pending"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "blocking": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 },
+        "warning": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issueId",
+        "category",
+        "severity",
+        "title",
+        "description",
+        "location",
+        "evidence",
+        "decision"
+      ],
+      "properties": {
+        "issueId": {
+          "type": "string",
+          "pattern": "^issue_[A-Za-z0-9_-]{6,80}$"
+        },
+        "category": {
+          "enum": [
+            "measure",
+            "time_signature",
+            "pitch",
+            "rhythm",
+            "rest",
+            "chord",
+            "voice",
+            "staff",
+            "tie",
+            "tuplet",
+            "timing_structure",
+            "tab",
+            "string_fret",
+            "musicxml_structure",
+            "other"
+          ]
+        },
+        "severity": {
+          "enum": ["info", "warning", "error", "blocking"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "recommendation": {
+          "oneOf": [
+            { "$ref": "#/$defs/recommendation" },
+            { "type": "null" }
+          ]
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "measure": {
+          "type": ["string", "null"],
+          "maxLength": 40
+        },
+        "partId": {
+          "type": ["string", "null"],
+          "maxLength": 100
+        },
+        "staff": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "voice": {
+          "type": ["string", "null"],
+          "maxLength": 40
+        },
+        "eventIndex": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "sourceRegionRef": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceType", "sourceId", "observedValue"],
+      "properties": {
+        "sourceType": {
+          "enum": ["engine", "validator", "teacher", "source_image"]
+        },
+        "sourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "engine": {
+          "type": ["string", "null"],
+          "enum": ["homr", "clarity", "audiveris", null]
+        },
+        "engineVersion": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "observedValue": {},
+        "confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "artifactRef": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "reason"],
+      "properties": {
+        "action": {
+          "enum": ["select_candidate", "edit_value", "inspect_source", "leave_unresolved"]
+        },
+        "suggestedValue": {},
+        "confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": ["pending", "accepted", "rejected", "edited", "waived", "unresolved"]
+        },
+        "selectedValue": {},
+        "note": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "decidedBy": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "decidedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

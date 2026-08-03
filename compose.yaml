@@ -1,0 +1,25 @@
+name: scoremosaic
+
+# Phase 0 contains no OMR engine containers.
+# This tools-only service validates that the JSON contract files are syntactically valid.
+services:
+  contract-check:
+    image: python:3.12-alpine
+    profiles: ["tools"]
+    working_dir: /workspace
+    network_mode: none
+    read_only: true
+    volumes:
+      - ./:/workspace:ro
+    command:
+      - python
+      - -c
+      - |
+        import json
+        import pathlib
+
+        files = sorted(pathlib.Path('/workspace/contracts').glob('*.json'))
+        assert files, 'No contract files found.'
+        for path in files:
+            json.loads(path.read_text(encoding='utf-8'))
+            print(f'valid JSON: {path.name}')
