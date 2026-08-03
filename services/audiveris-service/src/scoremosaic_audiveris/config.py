@@ -1,4 +1,4 @@
-"""Environment-backed configuration for the Audiveris service foundation."""
+"""Environment-backed configuration for the private Audiveris adapter."""
 
 from __future__ import annotations
 
@@ -6,10 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 import os
+import re
 
 
 class ConfigError(ValueError):
     """Raised when service configuration is invalid."""
+
+
+_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +22,9 @@ class ServiceConfig:
     port: int
     log_level: str
     runtime_mode: str
+    audiveris_command: Path
+    audiveris_version: str
+    probe_timeout_seconds: int
     max_request_bytes: int
     max_pages: int
     max_image_pixels: int
@@ -44,7 +51,7 @@ def _read_int(
 
 
 def load_config(environ: Mapping[str, str] | None = None) -> ServiceConfig:
-    """Load bounded non-secret configuration without enabling Audiveris."""
+    """Load bounded configuration without enabling an upload API."""
 
     values = os.environ if environ is None else environ
 
@@ -63,10 +70,22 @@ def load_config(environ: Mapping[str, str] | None = None) -> ServiceConfig:
     runtime_mode = values.get(
         "SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE", "disabled"
     ).strip().lower()
-    if runtime_mode != "disabled":
+    if runtime_mode not in {"disabled", "audiveris"}:
         raise ConfigError(
-            "SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE must remain disabled in the foundation"
+            "SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE must be disabled or audiveris"
         )
+
+    command = Path(
+        values.get("SCOREMOSAIC_AUDIVERIS_COMMAND", "/usr/bin/audiveris")
+    )
+    if not command.is_absolute():
+        raise ConfigError("SCOREMOSAIC_AUDIVERIS_COMMAND must be absolute")
+
+    audiveris_version = values.get(
+        "SCOREMOSAIC_AUDIVERIS_VERSION", "5.11.0"
+    ).strip()
+    if not _VERSION_RE.fullmatch(audiveris_version):
+        raise ConfigError("SCOREMOSAIC_AUDIVERIS_VERSION is invalid")
 
     workspace_root = Path(
         values.get(
@@ -74,8 +93,10 @@ def load_config(environ: Mapping[str, str] | None = None) -> ServiceConfig:
             "/tmp/scoremosaic-audiveris",
         )
     )
-    if not workspace_root.is_absolute():
-        raise ConfigError("SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT must be absolute")
+    if not workspace_root.is_absolute() or workspace_root == Path("/"):
+        raise ConfigError(
+            "SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT must be an absolute non-root path"
+        )
 
     return ServiceConfig(
         host=host,
@@ -88,6 +109,15 @@ def load_config(environ: Mapping[str, str] | None = None) -> ServiceConfig:
         ),
         log_level=log_level,
         runtime_mode=runtime_mode,
+        audiveris_command=command,
+        audiveris_version=audiveris_version,
+        probe_timeout_seconds=_read_int(
+            values,
+            "SCOREMOSAIC_AUDIVERIS_PROBE_TIMEOUT_SECONDS",
+            20,
+            minimum=1,
+            maximum=120,
+        ),
         max_request_bytes=_read_int(
             values,
             "SCOREMOSAIC_AUDIVERIS_MAX_REQUEST_BYTES",
@@ -112,8 +142,8 @@ def load_config(environ: Mapping[str, str] | None = None) -> ServiceConfig:
         request_timeout_seconds=_read_int(
             values,
             "SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS",
-            300,
-            minimum=1,
+            600,
+            minimum=30,
             maximum=1800,
         ),
         workspace_root=workspace_root,
