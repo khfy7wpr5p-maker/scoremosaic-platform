@@ -105,7 +105,7 @@ jobs:
           echo "container uid: ${actual_uid}"
           test "$actual_uid" = "65532"
 
-          docker exec -i "$container_id" python - <<'PY'
+          docker exec -i "$container_id" python - <<'PY' | tee /tmp/audiveris-readiness-diagnostic.txt
           import json
           import urllib.request
 
@@ -140,6 +140,15 @@ jobs:
           assert ready["reason"] == "ready"
           assert ready["engine"]["version"] == "5.11.0"
           PY
+
+      - name: Upload readiness diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiveris-readiness-diagnostic
+          path: /tmp/audiveris-readiness-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
 
       - name: Run real generated-score transcription
         shell: bash
