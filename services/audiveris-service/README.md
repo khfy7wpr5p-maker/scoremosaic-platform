@@ -2,74 +2,85 @@
 
 ## Current status
 
-This branch contains a health-only Audiveris adapter foundation. Audiveris, a Java runtime, file upload, PDF/image decoding, OMR processing, `.omr` project generation, MusicXML export, artifact storage, and job execution are deliberately not installed or enabled.
+This service now contains a real, private Audiveris runtime while keeping every user-facing conversion route disabled.
 
-Implemented now:
+Implemented:
 
-- Python 3.12 standard-library service with no runtime dependencies
-- `GET /health` reporting process health while clearly declaring that Audiveris and Java execution are disabled
-- `GET /ready` returning HTTP 503 until real engine integration is complete
-- declared future gateway input capability for PDF, JPEG (`.jpg`/`.jpeg`), and PNG
-- upload and conversion flags fixed to `false`
-- runtime mode fixed to `disabled`
-- bounded environment configuration, including future request, page, image-pixel, and timeout limits
-- non-root container user
-- read-only container filesystem with a small temporary filesystem
+- official Audiveris `5.11.0` Ubuntu 24.04 package
+- release asset pinned by filename, version, and SHA-256
+- bundled Java runtime supplied by the official Audiveris installer
+- `GET /health` for process and installed-runtime metadata
+- `GET /ready` that runs the bounded `audiveris -version` command and requires the exact pinned version
+- fixed internal batch command for PDF, JPG/JPEG, and PNG smoke conversion
+- server-controlled command arguments and workspace paths
+- path containment and symbolic-link rejection
+- bounded probe and transcription timeouts
+- non-root UID/GID `65532:65532`
+- read-only root filesystem with a dedicated temporary workspace
 - dropped Linux capabilities and `no-new-privileges`
-- private Compose network with no published host port
-- unit, image, health, readiness, non-root, format-capability, and Compose checks in GitHub Actions
+- private Compose and Coolify network placement with no published host port
+- generated score fixture used only for CI conversion verification
 
-## Security boundary
+Still disabled:
 
-The service is private infrastructure. It must not receive browser traffic directly and must not be assigned a public domain. `compose.yaml` uses only `expose`, not `ports`, and attaches the service to the internal OMR network.
+- HTTP file upload
+- job creation and queueing
+- Gateway orchestration
+- persistent source or output storage
+- public domain or browser access
+- Ensemble comparison
+- teacher approval, editor, and note tracking
 
-The current service does not accept files or MusicXML. The declared formats are a future gateway contract only. During real integration, the gateway must validate and normalize PDF, JPEG, and PNG before invoking Audiveris. Native compatibility and conversion behavior must be tested against the pinned Audiveris revision rather than assumed.
+## Pinned upstream package
 
-No filename, path, callback URL, engine output, Java option, `.omr` project, MusicXML file, or client-provided identifier is trusted.
+| Field | Value |
+|---|---|
+| Audiveris version | `5.11.0` |
+| Release asset | `Audiveris-5.11.0-ubuntu24.04-x86_64.deb` |
+| SHA-256 | `f20113aaa33b3149ec8d6a09b2a7963360e65fafd92d69389987a85bbc3ec7a3` |
+| Architecture | `amd64` / `x86_64` |
+| License | AGPL-3.0 |
 
-## Current endpoints
+See `THIRD_PARTY_NOTICES.md`. The Docker build fails if the downloaded package checksum does not match.
+
+## Endpoints
 
 ```text
-GET /health  -> 200; process is running, engine and Java execution are disabled
-GET /ready   -> 503; upload and conversion are unavailable
+GET /health -> 200 when the Python adapter process is running
+GET /ready  -> 200 only when the pinned Audiveris command executes successfully
 ```
 
-All other paths return 404. Non-GET methods return 405.
+All non-GET methods return 405. Unknown paths return 404. Upload and conversion capability flags remain `false` because no HTTP conversion API exists.
 
-The health payload declares:
+## Internal command boundary
 
-```json
-{
-  "acceptedInputFormats": [
-    "application/pdf",
-    "image/jpeg",
-    "image/png"
-  ],
-  "runtimeMode": "disabled",
-  "uploadEnabled": false,
-  "conversionEnabled": false
-}
+The private helper builds only this form of command:
+
+```text
+audiveris -batch -transcribe -export -save -swap -output <server-output> -- <server-input>
 ```
 
-`.jpg` and `.jpeg` are represented by the same MIME type: `image/jpeg`.
+Callers cannot add Audiveris switches. Input and output paths must remain inside `SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT`. Symbolic-link inputs and unsupported suffixes are rejected.
 
 ## Configuration
 
-| Variable | Default | Allowed boundary |
+| Variable | Default | Boundary |
 |---|---:|---|
-| `SCOREMOSAIC_AUDIVERIS_HOST` | `127.0.0.1` | loopback or wildcard bind addresses only |
+| `SCOREMOSAIC_AUDIVERIS_HOST` | `127.0.0.1` | loopback or wildcard bind only |
 | `SCOREMOSAIC_AUDIVERIS_PORT` | `8082` | 1024–65535 |
-| `SCOREMOSAIC_AUDIVERIS_LOG_LEVEL` | `INFO` | DEBUG, INFO, WARNING, ERROR, CRITICAL |
-| `SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE` | `disabled` | must remain `disabled` in this foundation |
-| `SCOREMOSAIC_AUDIVERIS_MAX_REQUEST_BYTES` | `20971520` | 1 KiB–100 MiB |
-| `SCOREMOSAIC_AUDIVERIS_MAX_PAGES` | `40` | 1–200 |
-| `SCOREMOSAIC_AUDIVERIS_MAX_IMAGE_PIXELS` | `80000000` | 1–200 megapixels |
-| `SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS` | `300` | 1–1800 seconds |
-| `SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT` | `/tmp/scoremosaic-audiveris` | absolute path only |
+| `SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE` | `disabled` | `disabled` or `audiveris` |
+| `SCOREMOSAIC_AUDIVERIS_COMMAND` | `/usr/bin/audiveris` | absolute path |
+| `SCOREMOSAIC_AUDIVERIS_VERSION` | `5.11.0` | validated version token |
+| `SCOREMOSAIC_AUDIVERIS_PROBE_TIMEOUT_SECONDS` | `20` | 1–120 |
+| `SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS` | `600` | 30–1800 |
+| `SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT` | `/tmp/scoremosaic-audiveris` | absolute non-root path |
+| `SCOREMOSAIC_AUDIVERIS_MAX_REQUEST_BYTES` | `20971520` | reserved for later Gateway validation |
+| `SCOREMOSAIC_AUDIVERIS_MAX_PAGES` | `40` | reserved for later Gateway validation |
+| `SCOREMOSAIC_AUDIVERIS_MAX_IMAGE_PIXELS` | `80000000` | reserved for later Gateway validation |
 
-These request, page, pixel, timeout, and workspace settings are reserved for later gateway-controlled job execution. They do not enable upload, Java execution, or OMR conversion.
+The container sets runtime mode to `audiveris`; local unit tests default to `disabled` and use injected fake command results.
 
-## Local checks
+## Verification
 
 From the repository root:
 
@@ -78,31 +89,25 @@ python -m compileall -q services/audiveris-service/src
 python -m unittest discover -s services/audiveris-service/tests -v
 ```
 
-Docker is intentionally tested by GitHub Actions and later by Coolify staging rather than inside the current Codespaces container.
+GitHub Actions additionally:
 
-## Planned internal contract
+1. builds the verified Audiveris image,
+2. checks non-root and read-only operation,
+3. verifies `/health` and `/ready`,
+4. renders the generated SVG score to PNG,
+5. performs a real batch transcription,
+6. requires a generated `.mxl` artifact,
+7. validates private Compose boundaries.
 
-Real integration may add these private capabilities only after security gates exist:
+## Security and licensing gates before upload is enabled
 
-```text
-POST   /internal/jobs
-GET    /internal/jobs/{runId}
-GET    /internal/jobs/{runId}/artifacts
-POST   /internal/jobs/{runId}/cancel
-DELETE /internal/jobs/{runId}
-```
-
-## Acceptance gate before real Audiveris integration
-
-- pinned Audiveris source or release revision and verified distribution checksum
-- pinned compatible Java runtime and dependency inventory
-- license and source provenance records
-- authenticated service-to-service access
-- secure PDF/JPEG/PNG validation using magic bytes and decoded-content limits
-- EXIF orientation handling and metadata stripping for camera images
-- server-generated job, workspace, `.omr`, and artifact paths
-- strict Java process arguments with no client-controlled command-line options
-- CPU, memory, process, timeout, cancellation, cleanup, and restart recovery controls
-- immutable candidate artifacts with hashes and engine/runtime metadata
-- safe `.omr` and MusicXML handling before downstream use
-- no automatic teacher approval or publication
+- finish existing PDF and XML security stages in the main application
+- authenticate Gateway-to-engine traffic
+- validate magic bytes, decoded dimensions, page count, and file size
+- normalize EXIF orientation and remove camera metadata
+- isolate one server-generated workspace per run
+- enforce CPU, memory, timeout, cancellation, and cleanup controls
+- retain immutable input/output hashes and runtime metadata
+- review generated MusicXML before downstream parsing
+- complete AGPL source-availability and notice procedures before public network use
+- never mark an OMR result as teacher-approved automatically
