@@ -163,9 +163,9 @@ jobs:
             docker exec "$container_id" mkdir -p \
               /tmp/scoremosaic-audiveris/smoke/input \
               /tmp/scoremosaic-audiveris/smoke/output
-            docker cp \
-              /tmp/scoremosaic-audiveris-smoke.png \
-              "$container_id:/tmp/scoremosaic-audiveris/smoke/input/score.png"
+            docker exec -i "$container_id" sh -c \
+              'cat > /tmp/scoremosaic-audiveris/smoke/input/score.png' \
+              < /tmp/scoremosaic-audiveris-smoke.png
             docker exec "$container_id" ls -l \
               /tmp/scoremosaic-audiveris/smoke/input/score.png
 
