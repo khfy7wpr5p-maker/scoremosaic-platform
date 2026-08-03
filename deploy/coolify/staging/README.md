@@ -32,10 +32,10 @@ The HOMR image installs the pinned PyPI package `homr==0.7.0`, exact CPU depende
 The private helper invokes only this server-defined command:
 
 ```text
-homr --gpu no --no-title <server-controlled-image-path>
+homr --gpu no <server-controlled-image-path>
 ```
 
-Title/OCR processing is disabled, client-controlled HOMR options are rejected, and only JPG/JPEG or PNG images inside the temporary workspace are eligible. PDF rasterization belongs to a later secured Gateway/preprocessing stage.
+HOMR `0.7.0` performs its own internal title handling. The container is tested without network access. Client-controlled HOMR options are rejected, and only JPG/JPEG or PNG images inside the temporary workspace are eligible. PDF rasterization belongs to a later secured Gateway/preprocessing stage.
 
 Default staging resources:
 
