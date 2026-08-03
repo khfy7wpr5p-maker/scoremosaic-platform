@@ -124,7 +124,7 @@ services:
       - "8082"
     read_only: true
     tmpfs:
-      - /tmp/scoremosaic-audiveris:rw,noexec,nosuid,size=805306368,mode=0700
+      - /tmp/scoremosaic-audiveris:rw,noexec,nosuid,size=805306368,mode=0700,uid=65532,gid=65532
     user: "65532:65532"
     cap_drop:
       - ALL
