@@ -21,6 +21,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Report resolved HOMR runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check "homr==0.7.0"
+          python -m pip freeze --all | sort | tee /tmp/homr-runtime-freeze.txt
+          python - <<'PY'
+          from importlib.metadata import version
+          assert version("homr") == "0.7.0"
+          PY
+
       - name: Download pinned HOMR assets and report digests
         shell: bash
         run: |
@@ -50,10 +66,12 @@ jobs:
 
           cat digests.txt
 
-      - name: Upload digest report
+      - name: Upload discovery report
         uses: actions/upload-artifact@v4
         with:
-          name: homr-model-digests
-          path: /tmp/homr-assets/digests.txt
+          name: homr-runtime-discovery
+          path: |
+            /tmp/homr-runtime-freeze.txt
+            /tmp/homr-assets/digests.txt
           if-no-files-found: error
           retention-days: 1
