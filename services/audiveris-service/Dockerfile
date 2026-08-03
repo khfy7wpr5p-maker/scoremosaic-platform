@@ -21,6 +21,8 @@ RUN set -eux; \
     echo "${AUDIVERIS_DEB_SHA256}  /tmp/${AUDIVERIS_DEB_NAME}" | sha256sum --check --strict; \
     apt-get install -y --no-install-recommends "/tmp/${AUDIVERIS_DEB_NAME}"; \
     rm -f "/tmp/${AUDIVERIS_DEB_NAME}"; \
+    test -x /opt/audiveris/bin/Audiveris; \
+    ln -s /opt/audiveris/bin/Audiveris /usr/bin/audiveris; \
     command -v audiveris; \
     audiveris -version 2>&1 | grep -F "${AUDIVERIS_VERSION}"; \
     apt-get purge -y --auto-remove curl; \
