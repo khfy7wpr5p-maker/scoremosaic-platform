@@ -1,0 +1,10 @@
+[project]
+name = "scoremosaic-homr-service"
+version = "0.1.0"
+description = "Health-only foundation for the private ScoreMosaic HOMR adapter"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.scoremosaic]
+engine-installed = false
+conversion-enabled = false
