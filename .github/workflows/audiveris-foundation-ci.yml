@@ -95,9 +95,17 @@ jobs:
           echo "container uid: ${actual_uid}"
           test "$actual_uid" = "65532"
 
-          version_output="$(docker exec "$container_id" audiveris -version 2>&1)"
-          printf '%s\n' "$version_output"
-          grep -F "5.11.0" <<<"$version_output"
+          docker exec -i "$container_id" python - <<'PY'
+          from scoremosaic_audiveris.config import load_config
+          from scoremosaic_audiveris.runtime import probe_runtime
+
+          probe = probe_runtime(load_config())
+          print(probe)
+          assert probe.ready, probe
+          assert probe.reason == "ready"
+          assert probe.version == "5.11.0"
+          assert probe.java_runtime_enabled is True
+          PY
 
           docker exec -i "$container_id" python - <<'PY'
           import json
@@ -106,6 +114,7 @@ jobs:
           health = json.load(
               urllib.request.urlopen("http://127.0.0.1:8082/health", timeout=3)
           )
+          print("health:", health)
           assert health["status"] == "ok"
           assert health["engine"]["installed"] is True
           assert health["engine"]["expectedVersion"] == "5.11.0"
@@ -117,6 +126,7 @@ jobs:
           ready = json.load(
               urllib.request.urlopen("http://127.0.0.1:8082/ready", timeout=30)
           )
+          print("ready:", ready)
           assert ready["status"] == "ready"
           assert ready["reason"] == "ready"
           assert ready["engine"]["version"] == "5.11.0"
