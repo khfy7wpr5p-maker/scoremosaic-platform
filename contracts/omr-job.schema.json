@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/omr-job.schema.json",
+  "title": "ScoreMosaic OMR Job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "jobId",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "source",
+    "requestedEngines",
+    "engineRuns",
+    "reviewStatus"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "jobId": {
+      "type": "string",
+      "pattern": "^job_[A-Za-z0-9_-]{8,80}$"
+    },
+    "status": {
+      "enum": [
+        "received",
+        "validated",
+        "queued",
+        "processing",
+        "candidates_ready",
+        "needs_review",
+        "under_review",
+        "corrected",
+        "approved",
+        "rejected",
+        "published",
+        "failed",
+        "expired"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "$ref": "#/$defs/sourceArtifact"
+    },
+    "requestedEngines": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/engineName"
+      }
+    },
+    "engineRuns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/engineRun"
+      }
+    },
+    "reviewStatus": {
+      "enum": [
+        "not_ready",
+        "needs_review",
+        "under_review",
+        "corrected",
+        "approved",
+        "rejected",
+        "published"
+      ]
+    },
+    "reviewReportRef": {
+      "type": ["string", "null"],
+      "maxLength": 500
+    },
+    "approvedRevision": {
+      "oneOf": [
+        { "$ref": "#/$defs/approvedRevision" },
+        { "type": "null" }
+      ]
+    },
+    "failure": {
+      "oneOf": [
+        { "$ref": "#/$defs/failure" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "engineName": {
+      "enum": ["homr", "clarity", "audiveris"]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["originalFileName", "artifactRef", "sha256", "sizeBytes"],
+      "properties": {
+        "originalFileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "artifactRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pageCount": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    },
+    "engineRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "engine",
+        "engineVersion",
+        "status",
+        "createdAt",
+        "artifacts",
+        "diagnostics"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "pattern": "^run_[A-Za-z0-9_-]{8,80}$"
+        },
+        "engine": {
+          "$ref": "#/$defs/engineName"
+        },
+        "engineVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "modelVersion": {
+          "type": ["string", "null"],
+          "maxLength": 200
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "processing",
+            "completed",
+            "failed",
+            "cancelled",
+            "timed_out"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resultArtifact"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/diagnostic"
+          }
+        }
+      }
+    },
+    "resultArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "artifactRef", "sha256", "sizeBytes"],
+      "properties": {
+        "kind": {
+          "enum": ["musicxml", "mxl", "omr_project", "log_summary", "preview"]
+        },
+        "artifactRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mediaType": {
+          "type": ["string", "null"],
+          "maxLength": 150
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]{3,80}$"
+        },
+        "severity": {
+          "enum": ["info", "warning", "error"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "approvedRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "artifactRef", "sha256", "approvedBy", "approvedAt"],
+      "properties": {
+        "revisionId": {
+          "type": "string",
+          "pattern": "^rev_[A-Za-z0-9_-]{6,80}$"
+        },
+        "artifactRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "approvedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "approvedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "occurredAt"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]{3,80}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
