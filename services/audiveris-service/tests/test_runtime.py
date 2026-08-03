@@ -33,11 +33,15 @@ class RuntimeTests(unittest.TestCase):
                 }
             )
             runner = lambda *args, **kwargs: subprocess.CompletedProcess(
-                args[0], 0, "Audiveris 5.11.0\n", ""
+                args[0],
+                0,
+                "- Tesseract:    5.5.2\n- Library:      1.4.14\n- Version:      5.11.0\n",
+                "",
             )
             probe = probe_runtime(config, runner=runner)
             self.assertTrue(probe.ready)
             self.assertEqual(probe.version, "5.11.0")
+            self.assertIn("1.4.14", probe.diagnostic)
 
     def test_probe_rejects_version_mismatch(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -54,11 +58,12 @@ class RuntimeTests(unittest.TestCase):
                 }
             )
             runner = lambda *args, **kwargs: subprocess.CompletedProcess(
-                args[0], 0, "Audiveris 5.10.2\n", ""
+                args[0], 0, "- Version:      5.10.2\n", ""
             )
             probe = probe_runtime(config, runner=runner)
             self.assertFalse(probe.ready)
             self.assertEqual(probe.reason, "audiveris_version_mismatch")
+            self.assertEqual(probe.version, "5.10.2")
 
     def test_probe_timeout_is_isolated(self) -> None:
         with TemporaryDirectory() as temp_dir:
