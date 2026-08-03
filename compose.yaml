@@ -102,6 +102,47 @@ services:
       retries: 3
       start_period: 3s
 
+  audiveris-foundation:
+    profiles: ["audiveris-foundation"]
+    build:
+      context: ./services/audiveris-service
+      dockerfile: Dockerfile
+    environment:
+      SCOREMOSAIC_AUDIVERIS_HOST: 0.0.0.0
+      SCOREMOSAIC_AUDIVERIS_PORT: 8082
+      SCOREMOSAIC_AUDIVERIS_LOG_LEVEL: INFO
+      SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE: disabled
+      SCOREMOSAIC_AUDIVERIS_MAX_REQUEST_BYTES: 20971520
+      SCOREMOSAIC_AUDIVERIS_MAX_PAGES: 40
+      SCOREMOSAIC_AUDIVERIS_MAX_IMAGE_PIXELS: 80000000
+      SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS: 300
+      SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT: /tmp/scoremosaic-audiveris
+    expose:
+      - "8082"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: "no"
+    stop_grace_period: 5s
+    networks:
+      - omr-internal
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=2).read()
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+
 networks:
   omr-internal:
     internal: true
