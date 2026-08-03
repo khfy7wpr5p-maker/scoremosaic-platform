@@ -43,9 +43,16 @@ class TranscriptionResult:
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
 
+def _jna_root(config: ServiceConfig) -> Path:
+    workspace = config.workspace_root
+    return workspace.parent / f"{workspace.name}-jna"
+
+
 def _runtime_environment(config: ServiceConfig) -> dict[str, str]:
     workspace = config.workspace_root
     home = workspace / "home"
+    java_tmp = workspace / "tmp"
+    jna_tmp = _jna_root(config)
     env = dict(os.environ)
     for dangerous_name in (
         "CLASSPATH",
@@ -62,9 +69,15 @@ def _runtime_environment(config: ServiceConfig) -> dict[str, str]:
             "XDG_DATA_HOME": str(home / ".local" / "share"),
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
-            "TMPDIR": str(workspace / "tmp"),
-            "TMP": str(workspace / "tmp"),
-            "TEMP": str(workspace / "tmp"),
+            "TMPDIR": str(java_tmp),
+            "TMP": str(java_tmp),
+            "TEMP": str(java_tmp),
+            "JAVA_TOOL_OPTIONS": (
+                f"-Djava.io.tmpdir={java_tmp} "
+                f"-Djna.tmpdir={jna_tmp} "
+                "-Djava.awt.headless=true "
+                "--enable-native-access=ALL-UNNAMED"
+            ),
         }
     )
     return env
@@ -80,6 +93,7 @@ def _prepare_runtime_directories(config: ServiceConfig) -> None:
         home / ".config",
         home / ".local" / "share",
         workspace / "tmp",
+        _jna_root(config),
     ):
         path.mkdir(parents=True, exist_ok=True)
 
