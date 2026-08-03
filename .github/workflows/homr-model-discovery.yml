@@ -6,6 +6,11 @@ on:
       - "feature/homr-runtime-integration"
     paths:
       - ".github/workflows/homr-model-discovery.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/homr-model-discovery.yml"
   workflow_dispatch:
 
 permissions:
