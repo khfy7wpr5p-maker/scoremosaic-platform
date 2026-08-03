@@ -8,6 +8,7 @@ on:
       - "feature/omr-gateway-foundation"
       - "feature/audiveris-runtime-integration"
       - "feature/homr-runtime-integration"
+      - "feature/clarity-runtime-integration"
     paths:
       - ".github/workflows/coolify-staging-ci.yml"
       - "deploy/coolify/staging/**"
@@ -79,6 +80,9 @@ jobs:
           assert values["HOMR_CPUS"] == "2.00"
           assert values["HOMR_MEMORY_LIMIT"] == "4096m"
           assert values["HOMR_TMPFS_BYTES"] == "1073741824"
+          assert values["CLARITY_CPUS"] == "2.00"
+          assert values["CLARITY_MEMORY_LIMIT"] == "6144m"
+          assert values["CLARITY_TMPFS_BYTES"] == "2147483648"
           assert values["AUDIVERIS_CPUS"] == "2.00"
           assert values["AUDIVERIS_MEMORY_LIMIT"] == "4096m"
           assert values["AUDIVERIS_TMPFS_BYTES"] == "805306368"
@@ -121,7 +125,8 @@ jobs:
               assert service.get("read_only") is True
               assert service.get("user") == "65532:65532"
               assert service.get("restart") == "unless-stopped"
-              assert service.get("pids_limit") == 128
+              expected_pids = 256 if name == "clarity-foundation" else 128
+              assert service.get("pids_limit") == expected_pids
               assert "ALL" in service.get("cap_drop", [])
               assert "no-new-privileges:true" in service.get("security_opt", [])
               assert set(service.get("networks", {})) == {"omr-internal"}
@@ -151,6 +156,27 @@ jobs:
               and "uid=65532" in item
               and "gid=65532" in item
               for item in homr_tmpfs
+          )
+
+          clarity = services["clarity-foundation"]
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_COMPUTE_MODE"] == "cpu"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_PYTHON_COMMAND"] == "/usr/local/bin/python"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_SOURCE_ROOT"] == "/opt/clarity"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_SOURCE_REVISION"] == "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_MODEL_REVISION"] == "ee14c1e41ab371fe27bf8a2707ea588560077e73"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS"] == "1200"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_PDF_DPI"] == "300"
+          assert clarity["environment"]["SCOREMOSAIC_CLARITY_BEAM_WIDTH"] == "2"
+          assert clarity.get("cpus") == 2.0
+          assert clarity.get("mem_limit") == "6442450944"
+          clarity_tmpfs = [str(item) for item in clarity.get("tmpfs", [])]
+          assert any(
+              "/tmp/scoremosaic-clarity" in item
+              and "noexec" in item
+              and "nodev" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in clarity_tmpfs
           )
 
           audiveris = services["audiveris-foundation"]
