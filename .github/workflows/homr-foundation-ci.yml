@@ -1,14 +1,15 @@
-name: HOMR Service Foundation CI
+name: HOMR Runtime Integration CI
 
 on:
   push:
     branches:
       - main
-      - "feature/homr-service-foundation"
+      - "feature/homr-runtime-integration"
     paths:
       - ".github/workflows/homr-foundation-ci.yml"
       - "services/homr-service/**"
       - "compose.yaml"
+      - "deploy/coolify/staging/**"
   pull_request:
     branches:
       - main
@@ -16,20 +17,21 @@ on:
       - ".github/workflows/homr-foundation-ci.yml"
       - "services/homr-service/**"
       - "compose.yaml"
+      - "deploy/coolify/staging/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: homr-foundation-${{ github.workflow }}-${{ github.ref }}
+  group: homr-runtime-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test-homr-foundation:
-    name: Test HOMR foundation
+  test-homr-runtime:
+    name: Test pinned HOMR CPU runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -48,63 +50,202 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s services/homr-service/tests -v
 
-      - name: Build and smoke-test non-root image
+      - name: Render generated score fixture
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-freefont-ttf librsvg2-bin
+          rsvg-convert \
+            --background-color white \
+            --width 1600 \
+            --height 460 \
+            --output /tmp/scoremosaic-homr-smoke.png \
+            services/homr-service/tests/fixtures/smoke-score.svg
+          test -s /tmp/scoremosaic-homr-smoke.png
+
+      - name: Build verified runtime image
+        run: |
+          image="scoremosaic-homr-runtime:${GITHUB_SHA}"
+          docker build --tag "$image" services/homr-service
+          echo "HOMR_TEST_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Start private non-root offline runtime container
         shell: bash
         run: |
           set -euo pipefail
-          image="scoremosaic-homr-foundation:${GITHUB_SHA}"
-          docker build --tag "$image" services/homr-service
-
           container_id="$(docker run --detach \
+            --network none \
             --read-only \
-            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --tmpfs /tmp/scoremosaic-homr:rw,noexec,nosuid,nodev,size=1073741824,mode=0700,uid=65532,gid=65532 \
             --cap-drop ALL \
             --security-opt no-new-privileges \
-            "$image")"
-          trap 'docker logs "$container_id" || true; docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+            --pids-limit 128 \
+            --cpus 2 \
+            --memory 4g \
+            "$HOMR_TEST_IMAGE")"
+          printf '%s' "$container_id" > /tmp/scoremosaic-homr-container-id
 
-          for attempt in {1..20}; do
-            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read()"; then
-              break
+          for attempt in {1..60}; do
+            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()"; then
+              exit 0
             fi
-            if [[ "$attempt" == "20" ]]; then
-              echo "HOMR foundation health check did not become ready." >&2
+            if [[ "$attempt" == "60" ]]; then
+              echo "HOMR adapter health check did not become ready." >&2
+              docker logs "$container_id" >&2 || true
               exit 1
             fi
             sleep 1
           done
 
-          test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
+      - name: Verify runtime identity and readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_id="$(cat /tmp/scoremosaic-homr-container-id)"
+          actual_uid="$(docker exec "$container_id" python -c 'import os; print(os.getuid())')"
+          echo "container uid: ${actual_uid}"
+          test "$actual_uid" = "65532"
 
-          docker exec -i "$container_id" python - <<'PY'
+          docker exec -i "$container_id" python - <<'PY' | tee /tmp/homr-readiness-diagnostic.txt
           import json
           import urllib.request
 
-          payload = json.load(
-              urllib.request.urlopen("http://127.0.0.1:8080/health", timeout=2)
+          from scoremosaic_homr.config import load_config
+          from scoremosaic_homr.runtime import probe_runtime
+
+          probe = probe_runtime(load_config())
+          print("probe:", probe)
+          print("probe diagnostic:", probe.diagnostic)
+          assert probe.ready, probe
+          assert probe.reason == "ready"
+          assert probe.version == "0.7.0"
+          assert probe.verified_models == 3
+
+          health = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8080/health", timeout=3)
           )
-          assert payload["status"] == "ok"
-          assert payload["engine"]["installed"] is False
-          assert payload["conversionEnabled"] is False
+          print("health:", health)
+          assert health["status"] == "ok"
+          assert health["engine"]["installed"] is True
+          assert health["engine"]["expectedVersion"] == "0.7.0"
+          assert health["engine"]["expectedModels"] == 3
+          assert health["engine"]["computeMode"] == "cpu"
+          assert health["capabilities"]["acceptedInputFormats"] == [
+              "image/jpeg",
+              "image/png",
+          ]
+          assert health["capabilities"]["uploadEnabled"] is False
+          assert health["capabilities"]["conversionEnabled"] is False
+
+          ready = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8080/ready", timeout=60)
+          )
+          print("ready:", ready)
+          assert ready["status"] == "ready"
+          assert ready["reason"] == "ready"
+          assert ready["engine"]["version"] == "0.7.0"
+          assert ready["engine"]["verifiedModels"] == 3
+          assert ready["engine"]["computeMode"] == "cpu"
           PY
 
-          docker exec -i "$container_id" python - <<'PY'
+      - name: Upload readiness diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homr-readiness-diagnostic
+          path: /tmp/homr-readiness-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Run real generated-score transcription
+        shell: bash
+        run: |
+          set -uo pipefail
+          diagnostic=/tmp/homr-transcription-diagnostic.txt
+          : > "$diagnostic"
+          set +e
+          {
+            set -x
+            container_id="$(cat /tmp/scoremosaic-homr-container-id)"
+            docker exec "$container_id" mkdir -p /tmp/scoremosaic-homr/smoke
+            docker exec -i "$container_id" sh -c \
+              'cat > /tmp/scoremosaic-homr/smoke/score.png' \
+              < /tmp/scoremosaic-homr-smoke.png
+            docker exec "$container_id" ls -l /tmp/scoremosaic-homr/smoke/score.png
+
+            docker exec -i "$container_id" python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          from scoremosaic_homr.config import load_config
+          from scoremosaic_homr.runtime import transcribe_file
+
+          work = Path("/tmp/scoremosaic-homr/smoke")
+          result = transcribe_file(work / "score.png", work, load_config())
+          print("transcription diagnostic:", result.diagnostic)
+          assert result.musicxml_artifacts, result.diagnostic
+          musicxml = result.musicxml_artifacts[0]
+          root = ET.parse(musicxml).getroot()
+          assert root.tag.rsplit("}", 1)[-1] in {"score-partwise", "score-timewise"}
+          print("MusicXML:", musicxml)
+          PY
+          } > "$diagnostic" 2>&1
+          status=$?
+          set -e
+          cat "$diagnostic"
+          exit "$status"
+
+      - name: Upload transcription diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homr-transcription-diagnostic
+          path: /tmp/homr-transcription-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Show runtime logs and remove test container
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s /tmp/scoremosaic-homr-container-id ]]; then
+            container_id="$(cat /tmp/scoremosaic-homr-container-id)"
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" >/dev/null 2>&1 || true
+          fi
+
+      - name: Validate private Compose boundary
+        run: |
+          docker compose \
+            --profile homr-foundation \
+            -f compose.yaml \
+            config --format json > /tmp/homr-compose.json
+          python - <<'PY'
           import json
-          import urllib.error
-          import urllib.request
+          from pathlib import Path
 
-          try:
-              urllib.request.urlopen("http://127.0.0.1:8080/ready", timeout=2)
-          except urllib.error.HTTPError as exc:
-              assert exc.code == 503
-              payload = json.load(exc)
-              assert payload["reason"] == "homr_engine_not_installed"
-          else:
-              raise AssertionError("/ready unexpectedly returned success")
+          config = json.loads(Path("/tmp/homr-compose.json").read_text())
+          service = config["services"]["homr-foundation"]
+          assert not service.get("ports")
+          assert service.get("read_only") is True
+          assert service.get("user") == "65532:65532"
+          assert service.get("pids_limit") == 128
+          assert "ALL" in service.get("cap_drop", [])
+          assert "no-new-privileges:true" in service.get("security_opt", [])
+          assert set(service.get("networks", {})) == {"omr-internal"}
+          assert service["environment"]["SCOREMOSAIC_HOMR_RUNTIME_MODE"] == "homr"
+          assert service["environment"]["SCOREMOSAIC_HOMR_COMMAND"] == "/usr/local/bin/homr"
+          assert service["environment"]["SCOREMOSAIC_HOMR_VERSION"] == "0.7.0"
+          assert service["environment"]["SCOREMOSAIC_HOMR_REQUEST_TIMEOUT_SECONDS"] == "900"
+          tmpfs = [str(item) for item in service.get("tmpfs", [])]
+          assert any(
+              "/tmp/scoremosaic-homr" in item
+              and "noexec" in item
+              and "nodev" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in tmpfs
+          )
           PY
-
-      - name: Validate Compose configuration
-        run: docker compose -f compose.yaml config > /dev/null
 
       - name: Check repository diff formatting
         run: git diff --check
