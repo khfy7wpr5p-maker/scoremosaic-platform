@@ -33,7 +33,10 @@ RUN set -eux; \
 
 RUN set -eux; \
     groupadd --system --gid 65532 scoremosaic; \
-    useradd --system --uid 65532 --gid 65532 --home-dir /nonexistent --shell /usr/sbin/nologin scoremosaic
+    useradd --system --uid 65532 --gid 65532 \
+      --home-dir /tmp/scoremosaic-audiveris/home \
+      --no-create-home \
+      --shell /usr/sbin/nologin scoremosaic
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
