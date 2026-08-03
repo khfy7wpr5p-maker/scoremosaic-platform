@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - "infra/coolify-staging-foundation"
+      - "feature/omr-gateway-foundation"
     paths:
       - ".github/workflows/coolify-staging-ci.yml"
       - "deploy/coolify/staging/**"
       - "services/homr-service/**"
       - "services/clarity-service/**"
       - "services/audiveris-service/**"
+      - "services/omr-gateway/**"
   pull_request:
     branches:
       - main
@@ -20,6 +22,7 @@ on:
       - "services/homr-service/**"
       - "services/clarity-service/**"
       - "services/audiveris-service/**"
+      - "services/omr-gateway/**"
   workflow_dispatch:
 
 permissions:
@@ -68,6 +71,9 @@ jobs:
           assert values["COMPOSE_PROJECT_NAME"] == "scoremosaic-staging"
           assert values["SCOREMOSAIC_GATEWAY_INTERNAL_HOST"] == "omr-gateway"
           assert values["SCOREMOSAIC_GATEWAY_INTERNAL_PORT"] == "8090"
+          assert values["GATEWAY_CPUS"] == "0.50"
+          assert values["GATEWAY_MEMORY_LIMIT"] == "256m"
+          assert values["GATEWAY_TMPFS_BYTES"] == "16777216"
           PY
 
       - name: Render Docker Compose configuration
@@ -93,10 +99,10 @@ jobs:
                   "audiveris-service",
                   "/tmp/scoremosaic-audiveris",
               ),
+              "omr-gateway": ("8090", "omr-gateway", "/tmp/scoremosaic-gateway"),
           }
 
           assert set(services) == set(expected), services.keys()
-          assert "omr-gateway" not in services
 
           for name, (port, build_dir, workspace) in expected.items():
               service = services[name]
@@ -122,6 +128,12 @@ jobs:
                   assert "traefik.enable=false" in labels
               else:
                   assert str(labels.get("traefik.enable")).lower() == "false"
+
+          gateway = services["omr-gateway"]
+          assert gateway["environment"]["SCOREMOSAIC_GATEWAY_ORCHESTRATION_MODE"] == "disabled"
+          assert gateway["environment"]["SCOREMOSAIC_GATEWAY_HOMR_BASE_URL"] == "http://homr-foundation:8080"
+          assert gateway["environment"]["SCOREMOSAIC_GATEWAY_CLARITY_BASE_URL"] == "http://clarity-foundation:8081"
+          assert gateway["environment"]["SCOREMOSAIC_GATEWAY_AUDIVERIS_BASE_URL"] == "http://audiveris-foundation:8082"
 
           networks = config["networks"]
           internal_network = next(

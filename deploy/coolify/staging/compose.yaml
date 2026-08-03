@@ -3,10 +3,11 @@ name: scoremosaic-staging
 x-scoremosaic-staging:
   environment: staging
   public-services: []
-  gateway-reservation:
+  gateway:
     service-name: omr-gateway
     internal-port: 8090
-    enabled: false
+    enabled: true
+    public: false
 
 x-omr-service-defaults: &omr-service-defaults
   restart: unless-stopped
@@ -114,6 +115,41 @@ services:
         - python
         - -c
         - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=2).read()
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  omr-gateway:
+    <<: *omr-service-defaults
+    build:
+      context: ../../../services/omr-gateway
+      dockerfile: Dockerfile
+    environment:
+      SCOREMOSAIC_GATEWAY_HOST: 0.0.0.0
+      SCOREMOSAIC_GATEWAY_PORT: 8090
+      SCOREMOSAIC_GATEWAY_LOG_LEVEL: INFO
+      SCOREMOSAIC_GATEWAY_ORCHESTRATION_MODE: disabled
+      SCOREMOSAIC_GATEWAY_PROBE_TIMEOUT_SECONDS: 1
+      SCOREMOSAIC_GATEWAY_MAX_REQUEST_BYTES: 20971520
+      SCOREMOSAIC_GATEWAY_MAX_PAGES: 40
+      SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS: 80000000
+      SCOREMOSAIC_GATEWAY_WORKSPACE_ROOT: /tmp/scoremosaic-gateway
+      SCOREMOSAIC_GATEWAY_HOMR_BASE_URL: http://homr-foundation:8080
+      SCOREMOSAIC_GATEWAY_CLARITY_BASE_URL: http://clarity-foundation:8081
+      SCOREMOSAIC_GATEWAY_AUDIVERIS_BASE_URL: http://audiveris-foundation:8082
+    expose:
+      - "8090"
+    cpus: "${GATEWAY_CPUS:-0.50}"
+    mem_limit: "${GATEWAY_MEMORY_LIMIT:-256m}"
+    tmpfs:
+      - /tmp/scoremosaic-gateway:rw,noexec,nosuid,size=${GATEWAY_TMPFS_BYTES:-16777216},mode=0700
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=2).read()
       interval: 15s
       timeout: 3s
       retries: 3
