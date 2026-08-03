@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Discover pinned source, model, and dependency metadata
+      - name: Verify CPU-only dependency resolution
         shell: bash
         run: |
           set -euo pipefail
@@ -39,54 +39,36 @@ jobs:
           curl --fail --location --proto '=https' --tlsv1.2 \
             --retry 4 --retry-all-errors \
             --output clarity-source.tar.gz "$source_url"
-          sha256sum clarity-source.tar.gz | tee source-digest.txt
+          echo "feee5f0f9bfe0211d3385736371e6e6bff05c496e000c9166777bd7db89c5748  clarity-source.tar.gz" \
+            | sha256sum --check --strict
           tar -xzf clarity-source.tar.gz
           source_dir="$(find . -maxdepth 1 -type d -name 'Clarity-OMR-*' -print -quit)"
           test -n "$source_dir"
 
-          python - <<'PY' | tee huggingface-metadata.txt
-          import json
-          import urllib.request
-
-          api = "https://huggingface.co/api/models/clquwu/Clarity-OMR"
-          with urllib.request.urlopen(api, timeout=30) as response:
-              payload = json.load(response)
-          print("model_revision=" + payload["sha"])
-          for item in payload.get("siblings", []):
-              name = item.get("rfilename")
-              if name in {"yolo.pt", "model.safetensors"}:
-                  print(f"model_file={name}")
-          PY
-
-          model_revision="$(sed -n 's/^model_revision=//p' huggingface-metadata.txt)"
-          test -n "$model_revision"
-          for model in yolo.pt model.safetensors; do
-            url="https://huggingface.co/clquwu/Clarity-OMR/resolve/${model_revision}/${model}?download=true"
-            curl --fail --location --proto '=https' --tlsv1.2 \
-              --retry 4 --retry-all-errors \
-              --output "$model" "$url"
-            sha256sum "$model" | tee -a model-digests.txt
-            stat --printf='%n size=%s\n' "$model" | tee -a model-sizes.txt
-          done
-
           python -m pip install --disable-pip-version-check --upgrade pip
-          python -m pip install --disable-pip-version-check -r "$source_dir/requirements.txt"
+          python -m pip install --disable-pip-version-check \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==2.13.0+cpu" "torchvision==0.28.0+cpu"
+          grep -vE '^[[:space:]]*(torch|torchvision)[[:space:]]*$' \
+            "$source_dir/requirements.txt" > requirements-without-torch.txt
+          python -m pip install --disable-pip-version-check \
+            -r requirements-without-torch.txt
           python -m pip freeze --all | sort | tee runtime-freeze.txt
 
-          {
-            echo "source_commit=${source_commit}"
-            cat source-digest.txt
-            cat huggingface-metadata.txt
-            cat model-digests.txt
-            cat model-sizes.txt
-          } | tee discovery-summary.txt
+          python - <<'PY'
+          import torch
+          import torchvision
+          assert torch.__version__ == "2.13.0+cpu"
+          assert torchvision.__version__ == "0.28.0+cpu"
+          assert not torch.cuda.is_available()
+          print("torch=" + torch.__version__)
+          print("torchvision=" + torchvision.__version__)
+          PY
 
-      - name: Upload discovery reports
+      - name: Upload CPU lock report
         uses: actions/upload-artifact@v4
         with:
-          name: clarity-runtime-discovery
-          path: |
-            /tmp/clarity-discovery/discovery-summary.txt
-            /tmp/clarity-discovery/runtime-freeze.txt
+          name: clarity-runtime-cpu-lock
+          path: /tmp/clarity-discovery/runtime-freeze.txt
           if-no-files-found: error
           retention-days: 1
