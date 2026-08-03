@@ -1,0 +1,13 @@
+[project]
+name = "scoremosaic-audiveris-service"
+version = "0.1.0"
+description = "Health-only foundation for the private ScoreMosaic Audiveris adapter"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.scoremosaic]
+engine-installed = false
+java-runtime-enabled = false
+upload-enabled = false
+conversion-enabled = false
+accepted-input-formats = ["application/pdf", "image/jpeg", "image/png"]
