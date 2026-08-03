@@ -1,4 +1,4 @@
-"""Health-only HTTP foundation for the private Audiveris adapter service."""
+"""Private HTTP status surface for the Audiveris runtime adapter."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import sys
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from . import __version__
 from .config import ConfigError, ServiceConfig, load_config
+from .runtime import RuntimeProbe, probe_runtime
 
 ACCEPTED_INPUT_FORMATS = (
     "application/pdf",
@@ -26,17 +27,40 @@ class RouteResponse:
     allow: str | None = None
 
 
+Probe = Callable[[ServiceConfig], RuntimeProbe]
+
+
 def _capabilities(config: ServiceConfig) -> dict[str, Any]:
     return {
         "acceptedInputFormats": list(ACCEPTED_INPUT_FORMATS),
         "runtimeMode": config.runtime_mode,
         "uploadEnabled": False,
         "conversionEnabled": False,
+        "internalRuntimeEnabled": config.runtime_mode == "audiveris",
     }
 
 
-def route_request(method: str, target: str, config: ServiceConfig) -> RouteResponse:
-    """Return deterministic status responses without accepting OMR input."""
+def _engine_metadata(config: ServiceConfig) -> dict[str, Any]:
+    command_available = (
+        config.runtime_mode == "audiveris"
+        and config.audiveris_command.is_file()
+    )
+    return {
+        "name": "audiveris",
+        "installed": command_available,
+        "expectedVersion": config.audiveris_version,
+        "javaRuntimeEnabled": command_available,
+    }
+
+
+def route_request(
+    method: str,
+    target: str,
+    config: ServiceConfig,
+    *,
+    runtime_probe: Probe = probe_runtime,
+) -> RouteResponse:
+    """Return status responses while keeping upload and job routes disabled."""
 
     path = urlsplit(target).path
     if method == "GET" and path == "/health":
@@ -46,23 +70,25 @@ def route_request(method: str, target: str, config: ServiceConfig) -> RouteRespo
                 "service": "scoremosaic-audiveris-service",
                 "version": __version__,
                 "status": "ok",
-                "engine": {
-                    "name": "audiveris",
-                    "installed": False,
-                    "javaRuntimeEnabled": False,
-                },
+                "engine": _engine_metadata(config),
                 "capabilities": _capabilities(config),
             },
         )
 
     if method == "GET" and path == "/ready":
+        probe = runtime_probe(config)
         return RouteResponse(
-            status=503,
+            status=200 if probe.ready else 503,
             payload={
                 "service": "scoremosaic-audiveris-service",
                 "version": __version__,
-                "status": "not_ready",
-                "reason": "audiveris_engine_not_installed",
+                "status": "ready" if probe.ready else "not_ready",
+                "reason": probe.reason,
+                "engine": {
+                    "name": "audiveris",
+                    "version": probe.version,
+                    "javaRuntimeEnabled": probe.java_runtime_enabled,
+                },
                 "capabilities": _capabilities(config),
             },
         )
@@ -84,19 +110,19 @@ def make_handler(config: ServiceConfig) -> type[BaseHTTPRequestHandler]:
         server_version = "ScoreMosaicAudiveris"
         sys_version = ""
 
-        def do_GET(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_GET(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_POST(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_POST(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_PUT(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_PUT(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_PATCH(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_PATCH(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_DELETE(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_DELETE(self) -> None:  # noqa: N802
             self._respond()
 
         def _respond(self) -> None:
@@ -134,7 +160,6 @@ def make_handler(config: ServiceConfig) -> type[BaseHTTPRequestHandler]:
             )
 
         def log_message(self, format: str, *args: object) -> None:
-            # Avoid BaseHTTPRequestHandler logging raw request targets or queries.
             return
 
     return Handler

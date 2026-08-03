@@ -111,25 +111,30 @@ services:
       SCOREMOSAIC_AUDIVERIS_HOST: 0.0.0.0
       SCOREMOSAIC_AUDIVERIS_PORT: 8082
       SCOREMOSAIC_AUDIVERIS_LOG_LEVEL: INFO
-      SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE: disabled
+      SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE: audiveris
+      SCOREMOSAIC_AUDIVERIS_COMMAND: /usr/bin/audiveris
+      SCOREMOSAIC_AUDIVERIS_VERSION: 5.11.0
+      SCOREMOSAIC_AUDIVERIS_PROBE_TIMEOUT_SECONDS: 20
       SCOREMOSAIC_AUDIVERIS_MAX_REQUEST_BYTES: 20971520
       SCOREMOSAIC_AUDIVERIS_MAX_PAGES: 40
       SCOREMOSAIC_AUDIVERIS_MAX_IMAGE_PIXELS: 80000000
-      SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS: 300
+      SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS: 600
       SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT: /tmp/scoremosaic-audiveris
     expose:
       - "8082"
     read_only: true
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16777216
+      - /tmp/scoremosaic-audiveris:rw,noexec,nosuid,nodev,size=805306368,mode=0700,uid=65532,gid=65532
+      - /tmp/scoremosaic-audiveris-jna:rw,exec,nosuid,nodev,size=67108864,mode=0700,uid=65532,gid=65532
     user: "65532:65532"
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
+    pids_limit: 128
     init: true
     restart: "no"
-    stop_grace_period: 5s
+    stop_grace_period: 20s
     networks:
       - omr-internal
     healthcheck:
@@ -137,11 +142,11 @@ services:
         - CMD
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=2).read()
-      interval: 10s
-      timeout: 3s
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=3).read()
+      interval: 15s
+      timeout: 5s
       retries: 3
-      start_period: 3s
+      start_period: 20s
 
   omr-gateway-foundation:
     profiles: ["gateway-foundation"]

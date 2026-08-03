@@ -1,14 +1,15 @@
-name: Audiveris Service Foundation CI
+name: Audiveris Runtime Integration CI
 
 on:
   push:
     branches:
       - main
-      - "feature/audiveris-service-foundation"
+      - "feature/audiveris-runtime-integration"
     paths:
       - ".github/workflows/audiveris-foundation-ci.yml"
       - "services/audiveris-service/**"
       - "compose.yaml"
+      - "deploy/coolify/staging/**"
   pull_request:
     branches:
       - main
@@ -16,20 +17,21 @@ on:
       - ".github/workflows/audiveris-foundation-ci.yml"
       - "services/audiveris-service/**"
       - "compose.yaml"
+      - "deploy/coolify/staging/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: audiveris-foundation-${{ github.workflow }}-${{ github.ref }}
+  group: audiveris-runtime-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test-audiveris-foundation:
-    name: Test Audiveris foundation
+  test-audiveris-runtime:
+    name: Test pinned Audiveris runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
 
     steps:
       - name: Check out repository
@@ -48,71 +50,220 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s services/audiveris-service/tests -v
 
-      - name: Build and smoke-test non-root image
+      - name: Render generated score fixture
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-freefont-ttf librsvg2-bin
+          rsvg-convert \
+            --background-color white \
+            --width 1600 \
+            --height 460 \
+            --output /tmp/scoremosaic-audiveris-smoke.png \
+            services/audiveris-service/tests/fixtures/smoke-score.svg
+          test -s /tmp/scoremosaic-audiveris-smoke.png
+
+      - name: Build verified runtime image
+        run: |
+          image="scoremosaic-audiveris-runtime:${GITHUB_SHA}"
+          docker build --tag "$image" services/audiveris-service
+          echo "AUDIVERIS_TEST_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Start private non-root runtime container
         shell: bash
         run: |
           set -euo pipefail
-          image="scoremosaic-audiveris-foundation:${GITHUB_SHA}"
-          docker build --tag "$image" services/audiveris-service
-
           container_id="$(docker run --detach \
             --read-only \
-            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --tmpfs /tmp/scoremosaic-audiveris:rw,noexec,nosuid,nodev,size=805306368,mode=0700,uid=65532,gid=65532 \
+            --tmpfs /tmp/scoremosaic-audiveris-jna:rw,exec,nosuid,nodev,size=67108864,mode=0700,uid=65532,gid=65532 \
             --cap-drop ALL \
             --security-opt no-new-privileges \
-            "$image")"
-          trap 'docker logs "$container_id" || true; docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+            --pids-limit 128 \
+            --cpus 2 \
+            --memory 4g \
+            "$AUDIVERIS_TEST_IMAGE")"
+          printf '%s' "$container_id" > /tmp/scoremosaic-audiveris-container-id
 
-          for attempt in {1..20}; do
-            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=2).read()"; then
-              break
+          for attempt in {1..40}; do
+            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=3).read()"; then
+              exit 0
             fi
-            if [[ "$attempt" == "20" ]]; then
-              echo "Audiveris foundation health check did not become ready." >&2
+            if [[ "$attempt" == "40" ]]; then
+              echo "Audiveris adapter health check did not become ready." >&2
+              docker logs "$container_id" >&2 || true
               exit 1
             fi
             sleep 1
           done
 
-          test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
+      - name: Verify runtime identity and readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_id="$(cat /tmp/scoremosaic-audiveris-container-id)"
+          actual_uid="$(docker exec "$container_id" python -c 'import os; print(os.getuid())')"
+          echo "container uid: ${actual_uid}"
+          test "$actual_uid" = "65532"
 
-          docker exec -i "$container_id" python - <<'PY'
+          docker exec -i "$container_id" python - <<'PY' | tee /tmp/audiveris-readiness-diagnostic.txt
           import json
           import urllib.request
 
-          payload = json.load(
-              urllib.request.urlopen("http://127.0.0.1:8082/health", timeout=2)
+          from scoremosaic_audiveris.config import load_config
+          from scoremosaic_audiveris.runtime import probe_runtime
+
+          probe = probe_runtime(load_config())
+          print("probe:", probe)
+          print("probe diagnostic:", probe.diagnostic)
+          assert probe.ready, probe
+          assert probe.reason == "ready"
+          assert probe.version == "5.11.0"
+          assert probe.java_runtime_enabled is True
+
+          health = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8082/health", timeout=3)
           )
-          assert payload["status"] == "ok"
-          assert payload["engine"]["installed"] is False
-          assert payload["engine"]["javaRuntimeEnabled"] is False
-          assert payload["capabilities"]["acceptedInputFormats"] == [
-              "application/pdf",
-              "image/jpeg",
-              "image/png",
-          ]
-          assert payload["capabilities"]["runtimeMode"] == "disabled"
-          assert payload["capabilities"]["uploadEnabled"] is False
-          assert payload["capabilities"]["conversionEnabled"] is False
+          print("health:", health)
+          assert health["status"] == "ok"
+          assert health["engine"]["installed"] is True
+          assert health["engine"]["expectedVersion"] == "5.11.0"
+          assert health["engine"]["javaRuntimeEnabled"] is True
+          assert health["capabilities"]["runtimeMode"] == "audiveris"
+          assert health["capabilities"]["uploadEnabled"] is False
+          assert health["capabilities"]["conversionEnabled"] is False
+
+          ready = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8082/ready", timeout=30)
+          )
+          print("ready:", ready)
+          assert ready["status"] == "ready"
+          assert ready["reason"] == "ready"
+          assert ready["engine"]["version"] == "5.11.0"
           PY
 
-          docker exec -i "$container_id" python - <<'PY'
-          import json
-          import urllib.error
-          import urllib.request
+      - name: Upload readiness diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiveris-readiness-diagnostic
+          path: /tmp/audiveris-readiness-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
 
-          try:
-              urllib.request.urlopen("http://127.0.0.1:8082/ready", timeout=2)
-          except urllib.error.HTTPError as exc:
-              assert exc.code == 503
-              payload = json.load(exc)
-              assert payload["reason"] == "audiveris_engine_not_installed"
+      - name: Run real generated-score transcription
+        shell: bash
+        run: |
+          set -uo pipefail
+          diagnostic=/tmp/audiveris-transcription-diagnostic.txt
+          : > "$diagnostic"
+          set +e
+          {
+            set -x
+            container_id="$(cat /tmp/scoremosaic-audiveris-container-id)"
+            docker exec "$container_id" mkdir -p \
+              /tmp/scoremosaic-audiveris/smoke/input \
+              /tmp/scoremosaic-audiveris/smoke/output
+            docker exec -i "$container_id" sh -c \
+              'cat > /tmp/scoremosaic-audiveris/smoke/input/score.png' \
+              < /tmp/scoremosaic-audiveris-smoke.png
+            docker exec "$container_id" ls -l \
+              /tmp/scoremosaic-audiveris/smoke/input/score.png
+
+            docker exec -i "$container_id" python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          import xml.etree.ElementTree as ET
+
+          from scoremosaic_audiveris.config import load_config
+          from scoremosaic_audiveris.runtime import transcribe_file
+
+          result = transcribe_file(
+              Path("/tmp/scoremosaic-audiveris/smoke/input/score.png"),
+              Path("/tmp/scoremosaic-audiveris/smoke/output"),
+              load_config(),
+          )
+          print("transcription diagnostic:", result.diagnostic)
+          assert result.musicxml_artifacts, result.diagnostic
+          assert result.omr_artifacts, result.diagnostic
+
+          musicxml = result.musicxml_artifacts[0]
+          if zipfile.is_zipfile(musicxml):
+              with zipfile.ZipFile(musicxml) as archive:
+                  xml_names = [
+                      name for name in archive.namelist()
+                      if name.lower().endswith((".xml", ".musicxml"))
+                      and not name.startswith("META-INF/")
+                  ]
+                  assert xml_names, archive.namelist()
+                  ET.fromstring(archive.read(xml_names[0]))
           else:
-              raise AssertionError("/ready unexpectedly returned success")
-          PY
+              ET.parse(musicxml)
 
-      - name: Validate Compose configuration
-        run: docker compose -f compose.yaml config > /dev/null
+          print("MusicXML:", musicxml)
+          print("OMR:", result.omr_artifacts[0])
+          PY
+          } > "$diagnostic" 2>&1
+          status=$?
+          set -e
+          cat "$diagnostic"
+          exit "$status"
+
+      - name: Upload transcription diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiveris-transcription-diagnostic
+          path: /tmp/audiveris-transcription-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Show runtime logs and remove test container
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s /tmp/scoremosaic-audiveris-container-id ]]; then
+            container_id="$(cat /tmp/scoremosaic-audiveris-container-id)"
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" >/dev/null 2>&1 || true
+          fi
+
+      - name: Validate private Compose boundary
+        run: |
+          docker compose \
+            --profile audiveris-foundation \
+            -f compose.yaml \
+            config --format json > /tmp/audiveris-compose.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path("/tmp/audiveris-compose.json").read_text())
+          service = config["services"]["audiveris-foundation"]
+          assert not service.get("ports")
+          assert service.get("read_only") is True
+          assert service.get("user") == "65532:65532"
+          assert "ALL" in service.get("cap_drop", [])
+          assert "no-new-privileges:true" in service.get("security_opt", [])
+          assert set(service.get("networks", {})) == {"omr-internal"}
+          assert service["environment"]["SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE"] == "audiveris"
+          assert service["environment"]["SCOREMOSAIC_AUDIVERIS_VERSION"] == "5.11.0"
+          tmpfs = [str(item) for item in service.get("tmpfs", [])]
+          assert any(
+              "/tmp/scoremosaic-audiveris" in item
+              and "/tmp/scoremosaic-audiveris-jna" not in item
+              and "noexec" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in tmpfs
+          )
+          assert any(
+              "/tmp/scoremosaic-audiveris-jna" in item
+              and "exec" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in tmpfs
+          )
+          PY
 
       - name: Check repository diff formatting
         run: git diff --check

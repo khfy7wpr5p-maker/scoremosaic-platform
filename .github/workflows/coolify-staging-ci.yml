@@ -6,6 +6,7 @@ on:
       - main
       - "infra/coolify-staging-foundation"
       - "feature/omr-gateway-foundation"
+      - "feature/audiveris-runtime-integration"
     paths:
       - ".github/workflows/coolify-staging-ci.yml"
       - "deploy/coolify/staging/**"
@@ -74,6 +75,10 @@ jobs:
           assert values["GATEWAY_CPUS"] == "0.50"
           assert values["GATEWAY_MEMORY_LIMIT"] == "256m"
           assert values["GATEWAY_TMPFS_BYTES"] == "16777216"
+          assert values["AUDIVERIS_CPUS"] == "2.00"
+          assert values["AUDIVERIS_MEMORY_LIMIT"] == "4096m"
+          assert values["AUDIVERIS_TMPFS_BYTES"] == "805306368"
+          assert values["AUDIVERIS_JNA_TMPFS_BYTES"] == "67108864"
           PY
 
       - name: Render Docker Compose configuration
@@ -128,6 +133,30 @@ jobs:
                   assert "traefik.enable=false" in labels
               else:
                   assert str(labels.get("traefik.enable")).lower() == "false"
+
+          audiveris = services["audiveris-foundation"]
+          assert audiveris["environment"]["SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE"] == "audiveris"
+          assert audiveris["environment"]["SCOREMOSAIC_AUDIVERIS_COMMAND"] == "/usr/bin/audiveris"
+          assert audiveris["environment"]["SCOREMOSAIC_AUDIVERIS_VERSION"] == "5.11.0"
+          assert audiveris["environment"]["SCOREMOSAIC_AUDIVERIS_REQUEST_TIMEOUT_SECONDS"] == "600"
+          audiveris_tmpfs = [str(item) for item in audiveris.get("tmpfs", [])]
+          assert any(
+              "/tmp/scoremosaic-audiveris" in item
+              and "/tmp/scoremosaic-audiveris-jna" not in item
+              and "noexec" in item
+              and "nodev" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in audiveris_tmpfs
+          )
+          assert any(
+              "/tmp/scoremosaic-audiveris-jna" in item
+              and "exec" in item
+              and "nodev" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in audiveris_tmpfs
+          )
 
           gateway = services["omr-gateway"]
           assert gateway["environment"]["SCOREMOSAIC_GATEWAY_ORCHESTRATION_MODE"] == "disabled"
