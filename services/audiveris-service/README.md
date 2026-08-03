@@ -16,7 +16,9 @@ Implemented:
 - path containment and symbolic-link rejection
 - bounded probe and transcription timeouts
 - non-root UID/GID `65532:65532`
-- read-only root filesystem with a dedicated temporary workspace
+- read-only root filesystem
+- non-executable temporary OMR workspace
+- separate 64 MiB executable JNA-only temporary mount required for its native library loader
 - dropped Linux capabilities and `no-new-privileges`
 - private Compose and Coolify network placement with no published host port
 - generated score fixture used only for CI conversion verification
@@ -62,6 +64,8 @@ audiveris -batch -transcribe -export -save -swap -output <server-output> -- <ser
 
 Callers cannot add Audiveris switches. Input and output paths must remain inside `SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT`. Symbolic-link inputs and unsupported suffixes are rejected.
 
+The adapter supplies fixed Java options. General Java temporary files stay inside the non-executable workspace. JNA native-library extraction is redirected to `/tmp/scoremosaic-audiveris-jna`, a separate non-persistent mount with execution enabled because native shared libraries cannot load from a `noexec` filesystem. The JNA mount is owned by UID/GID `65532`, uses `nosuid,nodev`, and contains no user source or OMR output.
+
 ## Configuration
 
 | Variable | Default | Boundary |
@@ -96,8 +100,9 @@ GitHub Actions additionally:
 3. verifies `/health` and `/ready`,
 4. renders the generated SVG score to PNG,
 5. performs a real batch transcription,
-6. requires a generated `.mxl` artifact,
-7. validates private Compose boundaries.
+6. requires generated `.mxl` and `.omr` artifacts,
+7. parses the MusicXML structure,
+8. validates private Compose and temporary-mount boundaries.
 
 ## Security and licensing gates before upload is enabled
 
