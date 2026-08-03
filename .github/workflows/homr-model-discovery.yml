@@ -1,0 +1,54 @@
+name: HOMR Model Discovery
+
+on:
+  push:
+    branches:
+      - "feature/homr-runtime-integration"
+    paths:
+      - ".github/workflows/homr-model-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download pinned HOMR assets and report digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/homr-assets
+          cd /tmp/homr-assets
+
+          assets=(
+            "segnet_308-3296ccd40960f90ca6ab9c035cca945675d30a0f.zip"
+            "encoder_pytorch_model_426-b6fd20809a8dcaf10dfd39a4ca4f64c6f056e644.zip"
+            "decoder_pytorch_model_426-b6fd20809a8dcaf10dfd39a4ca4f64c6f056e644.zip"
+          )
+
+          : > digests.txt
+          for asset in "${assets[@]}"; do
+            url="https://github.com/liebharc/homr/releases/download/onnx_checkpoints/${asset}"
+            curl --fail --location --proto '=https' --tlsv1.2 \
+              --retry 4 --retry-all-errors \
+              --output "$asset" "$url"
+            sha256sum "$asset" | tee -a digests.txt
+            unzip -q "$asset" -d "${asset%.zip}"
+            find "${asset%.zip}" -type f -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              | tee -a digests.txt
+          done
+
+          cat digests.txt
+
+      - name: Upload digest report
+        uses: actions/upload-artifact@v4
+        with:
+          name: homr-model-digests
+          path: /tmp/homr-assets/digests.txt
+          if-no-files-found: error
+          retention-days: 1
