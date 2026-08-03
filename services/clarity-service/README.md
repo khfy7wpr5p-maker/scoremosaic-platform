@@ -2,72 +2,100 @@
 
 ## Current status
 
-This branch contains a health-only Clarity-OMR service foundation. Clarity source code, model weights, inference runtime, file upload, PDF/image decoding, MusicXML generation, artifact storage, and job execution are deliberately not installed or enabled.
+This service contains a verified, private Clarity-OMR CPU runtime while keeping browser upload, Gateway orchestration, persistent storage, and public routing disabled.
 
 Implemented now:
 
-- Python 3.12 standard-library service with no runtime dependencies
-- `GET /health` returning service health while clearly reporting that Clarity and its model are not installed
-- `GET /ready` returning HTTP 503 until real engine integration is complete
-- declared future input capability for PDF, JPEG (`.jpg`/`.jpeg`), and PNG
-- upload and conversion flags fixed to `false`
-- compute mode fixed to `disabled`
-- bounded environment configuration, including future request, page, and image-pixel limits
-- non-root container user
-- read-only container filesystem with a small temporary filesystem
-- dropped Linux capabilities and `no-new-privileges`
-- private Compose network with no published host port
-- unit, image, health, readiness, non-root, and Compose checks in GitHub Actions
+- pinned upstream source commit `c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82`
+- verified source archive SHA-256
+- pinned Hugging Face model revision `ee14c1e41ab371fe27bf8a2707ea588560077e73`
+- verified SHA-256 values for `yolo.pt` and `model.safetensors`
+- exact CPU dependency lock with `torch==2.13.0+cpu` and `torchvision==0.28.0+cpu`
+- `GET /health` reporting the expected runtime while upload/conversion remain disabled
+- `GET /ready` returning 200 only after source, model, dependency, and CPU checks succeed
+- bounded internal PDF-to-MusicXML helper with fixed server-controlled options
+- generated, non-copyrighted PDF smoke fixture in GitHub Actions
+- MusicXML size, XML, root-element, and unsafe-declaration validation
+- non-root UID/GID `65532`, read-only root filesystem, dropped capabilities, and `no-new-privileges`
+- private Compose network with no published host port or public proxy route
 
 ## Security boundary
 
-The service is private infrastructure. It must not receive browser traffic directly and must not be assigned a public domain. `compose.yaml` uses only `expose`, not `ports`, and attaches the service to the internal OMR network.
+The HTTP service exposes health and readiness only. All non-GET methods return 405 and unknown routes return 404. No HTTP request can submit a PDF, select a model, set an output path, alter beam width, enable GPU, or create a job.
 
-The current service does not accept files or MusicXML. The declared formats are a future gateway/service contract only; they do not prove that an upstream Clarity revision natively accepts every format. During real integration, the gateway must validate and normalize PDF, JPEG, and PNG before inference.
+The internal helper accepts only server-controlled `.pdf` paths within `/tmp/scoremosaic-clarity`. Symbolic links, workspace escapes, unsupported suffixes, stale output files, and unsafe MusicXML declarations are rejected.
 
-No filename, path, callback URL, engine output, model file, or client-provided identifier is trusted.
-
-## Current endpoints
+The fixed internal command is equivalent to:
 
 ```text
-GET /health  -> 200; process is running, engine and model are not installed
-GET /ready   -> 503; upload and conversion are unavailable
+python /opt/clarity/omr.py <server-controlled.pdf>
+  --output <server-controlled.musicxml>
+  --device cpu
+  --beam-width 2
+  --pdf-dpi 300
+  --work-dir <server-controlled-directory>
 ```
 
-All other paths return 404. Non-GET methods return 405.
+Runtime execution is forced offline with Hugging Face and Transformers offline flags. Model downloads occur only during the reproducible image build and are checksum-verified. No user-controlled Clarity options are accepted.
 
-The health payload declares:
+Clarity natively receives PDF in this stage. The service does not claim native JPG/JPEG/PNG support. Image inputs may be securely normalized by a later Gateway preprocessing stage after the application upload security gates are complete.
+
+## Endpoints
+
+```text
+GET /health -> 200 while the adapter process is running
+GET /ready  -> 200 only when the pinned CPU runtime and two models verify
+```
+
+Readiness does not authorize conversion through HTTP. The capability payload remains:
 
 ```json
 {
-  "acceptedInputFormats": [
-    "application/pdf",
-    "image/jpeg",
-    "image/png"
-  ],
-  "computeMode": "disabled",
+  "acceptedInputFormats": ["application/pdf"],
+  "computeMode": "cpu",
+  "nativePdfOnly": true,
   "uploadEnabled": false,
   "conversionEnabled": false
 }
 ```
 
-`.jpg` and `.jpeg` are represented by the same MIME type: `image/jpeg`.
+## Pinned provenance
+
+| Component | Pin |
+|---|---|
+| Upstream source | `c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82` |
+| Model revision | `ee14c1e41ab371fe27bf8a2707ea588560077e73` |
+| Stage A model | `info/yolo.pt` |
+| Stage B model | `info/model.safetensors` |
+| PyTorch | `2.13.0+cpu` |
+| Torchvision | `0.28.0+cpu` |
+
+Exact source/model checksums and license notes are recorded in `THIRD_PARTY_NOTICES.md`. Exact Python dependencies are recorded in `requirements-runtime.txt`.
+
+The upstream source declares GPL-3.0. The pinned model repository does not expose a separate model license in the runtime path. Public service or image distribution requires a separate model provenance and licensing review.
 
 ## Configuration
 
-| Variable | Default | Allowed boundary |
+| Variable | Default | Boundary |
 |---|---:|---|
-| `SCOREMOSAIC_CLARITY_HOST` | `127.0.0.1` | loopback or wildcard bind addresses only |
+| `SCOREMOSAIC_CLARITY_HOST` | `127.0.0.1` | loopback or wildcard bind only |
 | `SCOREMOSAIC_CLARITY_PORT` | `8081` | 1024–65535 |
 | `SCOREMOSAIC_CLARITY_LOG_LEVEL` | `INFO` | DEBUG, INFO, WARNING, ERROR, CRITICAL |
-| `SCOREMOSAIC_CLARITY_COMPUTE_MODE` | `disabled` | must remain `disabled` in this foundation |
+| `SCOREMOSAIC_CLARITY_COMPUTE_MODE` | `disabled` | `disabled` or `cpu`; GPU rejected |
+| `SCOREMOSAIC_CLARITY_PYTHON_COMMAND` | `/usr/local/bin/python` | absolute path |
+| `SCOREMOSAIC_CLARITY_SOURCE_ROOT` | `/opt/clarity` | absolute non-root path |
+| `SCOREMOSAIC_CLARITY_SOURCE_REVISION` | pinned commit | exact 40-character lowercase revision |
+| `SCOREMOSAIC_CLARITY_MODEL_REVISION` | pinned model revision | exact 40-character lowercase revision |
+| `SCOREMOSAIC_CLARITY_PROBE_TIMEOUT_SECONDS` | `90` | 1–300 seconds |
 | `SCOREMOSAIC_CLARITY_MAX_REQUEST_BYTES` | `20971520` | 1 KiB–100 MiB |
 | `SCOREMOSAIC_CLARITY_MAX_PAGES` | `40` | 1–200 |
 | `SCOREMOSAIC_CLARITY_MAX_IMAGE_PIXELS` | `80000000` | 1–200 megapixels |
-| `SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS` | `180` | 1–900 seconds |
-| `SCOREMOSAIC_CLARITY_WORKSPACE_ROOT` | `/tmp/scoremosaic-clarity` | absolute path only |
+| `SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS` | `1200` | 60–3600 seconds |
+| `SCOREMOSAIC_CLARITY_PDF_DPI` | `300` | 150–400 |
+| `SCOREMOSAIC_CLARITY_BEAM_WIDTH` | `2` | 1–5 |
+| `SCOREMOSAIC_CLARITY_WORKSPACE_ROOT` | `/tmp/scoremosaic-clarity` | absolute non-root path |
 
-The request, page, pixel, timeout, and workspace settings are reserved for later gateway-controlled job execution. They do not enable upload or inference.
+The container image sets compute mode to `cpu`. The disabled default remains useful for source-level unit tests and fail-closed operation outside the image.
 
 ## Local checks
 
@@ -78,31 +106,15 @@ python -m compileall -q services/clarity-service/src
 python -m unittest discover -s services/clarity-service/tests -v
 ```
 
-Docker is intentionally tested by GitHub Actions and later by Coolify staging rather than inside the current Codespaces container.
+The full image build and real generated-score transcription are intentionally run by GitHub Actions because they require large pinned model assets and more memory than the lightweight Codespaces verification step.
 
-## Planned internal contract
+## Still disabled
 
-Real integration may add these private capabilities only after security gates exist:
-
-```text
-POST   /internal/jobs
-GET    /internal/jobs/{runId}
-GET    /internal/jobs/{runId}/artifacts
-POST   /internal/jobs/{runId}/cancel
-DELETE /internal/jobs/{runId}
-```
-
-## Acceptance gate before real Clarity integration
-
-- pinned Clarity source revision and dependency lock
-- pinned model revision and verified checksum
-- license, source, and model provenance records
-- authenticated service-to-service access
-- secure PDF/JPEG/PNG validation using magic bytes and decoded-content limits
-- EXIF orientation handling and metadata stripping for camera images
-- server-generated job and artifact paths
-- explicit CPU/GPU resource mode decided only during real integration
-- timeout, cancellation, cleanup, and restart recovery
-- immutable candidate artifacts with hashes and engine/model metadata
-- safe MusicXML validation before downstream use
-- no automatic teacher approval or publication
+- HTTP PDF/JPG/JPEG/PNG upload
+- Gateway job creation, queueing, cancellation, or orchestration
+- public domain, browser route, or direct engine access
+- persistent PDF, intermediate-image, or MusicXML storage
+- user authentication and authorization
+- Ensemble comparison and candidate ranking
+- Canonical Score Model
+- teacher review, editor, approval, and note tracking
