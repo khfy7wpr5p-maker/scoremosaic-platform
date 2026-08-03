@@ -23,11 +23,13 @@ The service is private infrastructure. It must not receive browser traffic direc
 
 The HTTP server accepts only `GET /health` and `GET /ready`. All mutating methods are disabled. Runtime readiness does not authorize processing a user document.
 
-The internal helper accepts no client-controlled HOMR flags. It forces CPU mode and disables title/OCR processing:
+The internal helper accepts no client-controlled HOMR flags and forces CPU mode:
 
 ```text
-homr --gpu no --no-title <server-controlled-image-path>
+homr --gpu no <server-controlled-image-path>
 ```
+
+HOMR `0.7.0` performs its own internal title handling. The container is tested without network access, and no title, OCR, model, or command option is accepted from a client.
 
 Input and output paths must remain inside the private temporary workspace. Symbolic links, unsupported suffixes, path escapes, and pre-existing output artifacts are rejected.
 
