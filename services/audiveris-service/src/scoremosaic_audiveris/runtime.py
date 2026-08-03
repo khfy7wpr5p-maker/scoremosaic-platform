@@ -12,7 +12,10 @@ import subprocess
 from .config import ServiceConfig
 
 _SUPPORTED_SUFFIXES = {".pdf", ".jpg", ".jpeg", ".png"}
-_VERSION_TOKEN_RE = re.compile(r"(?<![0-9])([0-9]+\.[0-9]+\.[0-9]+)(?![0-9])")
+_AUDIVERIS_VERSION_RE = re.compile(
+    r"(?im)^\s*-\s*Version:\s*"
+    r"([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?)\s*$"
+)
 _MAX_DIAGNOSTIC_CHARS = 16_384
 
 
@@ -26,6 +29,7 @@ class RuntimeProbe:
     reason: str
     version: str | None
     java_runtime_enabled: bool
+    diagnostic: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,17 +118,35 @@ def probe_runtime(
         )
     except subprocess.TimeoutExpired:
         return RuntimeProbe(False, "audiveris_probe_timed_out", None, False)
-    except OSError:
-        return RuntimeProbe(False, "audiveris_probe_failed", None, False)
+    except OSError as exc:
+        return RuntimeProbe(
+            False,
+            "audiveris_probe_failed",
+            None,
+            False,
+            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+        )
 
     output = _diagnostic(completed.stdout, completed.stderr)
-    match = _VERSION_TOKEN_RE.search(output)
+    match = _AUDIVERIS_VERSION_RE.search(output)
     version = match.group(1) if match else None
     if completed.returncode != 0:
-        return RuntimeProbe(False, "audiveris_probe_nonzero_exit", version, False)
+        return RuntimeProbe(
+            False,
+            "audiveris_probe_nonzero_exit",
+            version,
+            False,
+            output,
+        )
     if version != config.audiveris_version:
-        return RuntimeProbe(False, "audiveris_version_mismatch", version, False)
-    return RuntimeProbe(True, "ready", version, True)
+        return RuntimeProbe(
+            False,
+            "audiveris_version_mismatch",
+            version,
+            False,
+            output,
+        )
+    return RuntimeProbe(True, "ready", version, True, output)
 
 
 def _resolved_workspace(config: ServiceConfig) -> Path:
@@ -185,7 +207,9 @@ def transcribe_file(
 
     probe = probe_runtime(config, runner=runner)
     if not probe.ready:
-        raise RuntimeExecutionError(probe.reason)
+        raise RuntimeExecutionError(
+            f"{probe.reason}:{probe.diagnostic}" if probe.diagnostic else probe.reason
+        )
 
     command = build_transcription_command(input_path, output_dir, config)
     try:
