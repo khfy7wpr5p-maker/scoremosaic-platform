@@ -111,7 +111,8 @@ services:
     cpus: "${AUDIVERIS_CPUS:-2.00}"
     mem_limit: "${AUDIVERIS_MEMORY_LIMIT:-4096m}"
     tmpfs:
-      - /tmp/scoremosaic-audiveris:rw,noexec,nosuid,size=${AUDIVERIS_TMPFS_BYTES:-805306368},mode=0700,uid=65532,gid=65532
+      - /tmp/scoremosaic-audiveris:rw,noexec,nosuid,nodev,size=${AUDIVERIS_TMPFS_BYTES:-805306368},mode=0700,uid=65532,gid=65532
+      - /tmp/scoremosaic-audiveris-jna:rw,exec,nosuid,nodev,size=${AUDIVERIS_JNA_TMPFS_BYTES:-67108864},mode=0700,uid=65532,gid=65532
     stop_grace_period: 20s
     healthcheck:
       test:
