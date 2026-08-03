@@ -33,12 +33,12 @@ MODEL_SPECS: tuple[ModelSpec, ...] = (
         "6ed36640db4ef5d223098b6d5efe4eda97c66b24a2c72faab8a018c749003a8d",
     ),
     ModelSpec(
-        "transformer/encoder_pytorch_model_426-b6fd20809a8dcaf10dfd39a4ca4f64c6f056e644.onnx",
-        "1513e83ae281ef06cdb8f08451b59f06c56536f13bd3418b4fd13227543dc4ff",
+        "transformer/encoder_pytorch_model_396-f6feedb42ff90087d898b0941a55d040fa6b2903.onnx",
+        "4c16df852b3789f2676b0d49f0545dab0740e4005f7b472c5252add642f5d5eb",
     ),
     ModelSpec(
-        "transformer/decoder_pytorch_model_426-b6fd20809a8dcaf10dfd39a4ca4f64c6f056e644.onnx",
-        "8652b5c2e3129775ca9109eb180c16c3615413ce38005adc8ce5966c3c76737c",
+        "transformer/decoder_pytorch_model_396-f6feedb42ff90087d898b0941a55d040fa6b2903.onnx",
+        "3e10fd5ae52d0b86792721922fcd954c283a7ed365de7446425bdabe38f3e57d",
     ),
 )
 
