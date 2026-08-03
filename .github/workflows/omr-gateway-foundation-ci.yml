@@ -124,7 +124,10 @@ jobs:
 
       - name: Validate root Compose gateway boundary
         run: |
-          docker compose -f compose.yaml config --format json > /tmp/root-compose.json
+          docker compose \
+            --profile gateway-foundation \
+            -f compose.yaml \
+            config --format json > /tmp/root-compose.json
           python - <<'PY'
           import json
           from pathlib import Path
