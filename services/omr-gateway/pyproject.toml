@@ -1,0 +1,13 @@
+[project]
+name = "scoremosaic-omr-gateway"
+version = "0.1.0"
+description = "Health-only foundation for the private ScoreMosaic OMR Gateway"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.scoremosaic]
+upload-enabled = false
+orchestration-enabled = false
+orchestration-mode = "disabled"
+accepted-input-formats = ["application/pdf", "image/jpeg", "image/png"]
+engines = ["audiveris", "homr", "clarity"]
