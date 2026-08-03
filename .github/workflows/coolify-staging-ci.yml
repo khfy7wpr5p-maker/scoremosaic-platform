@@ -1,0 +1,150 @@
+name: Coolify Staging Foundation CI
+
+on:
+  push:
+    branches:
+      - main
+      - "infra/coolify-staging-foundation"
+    paths:
+      - ".github/workflows/coolify-staging-ci.yml"
+      - "deploy/coolify/staging/**"
+      - "services/homr-service/**"
+      - "services/clarity-service/**"
+      - "services/audiveris-service/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/coolify-staging-ci.yml"
+      - "deploy/coolify/staging/**"
+      - "services/homr-service/**"
+      - "services/clarity-service/**"
+      - "services/audiveris-service/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coolify-staging-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-coolify-staging:
+    name: Validate private Coolify staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate non-secret environment template
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("deploy/coolify/staging/.env.example")
+          values: dict[str, str] = {}
+          forbidden = ("TOKEN", "SECRET", "PASSWORD", "PRIVATE_KEY", "API_KEY")
+
+          for raw_line in path.read_text(encoding="utf-8").splitlines():
+              line = raw_line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              if "=" not in line:
+                  raise AssertionError(f"invalid environment line: {raw_line!r}")
+              key, value = line.split("=", 1)
+              key = key.strip()
+              value = value.strip()
+              if not key or not value:
+                  raise AssertionError(f"empty environment key/value: {raw_line!r}")
+              if any(fragment in key.upper() for fragment in forbidden):
+                  raise AssertionError(f"secret-like key must not be committed: {key}")
+              values[key] = value
+
+          assert values["COMPOSE_PROJECT_NAME"] == "scoremosaic-staging"
+          assert values["SCOREMOSAIC_GATEWAY_INTERNAL_HOST"] == "omr-gateway"
+          assert values["SCOREMOSAIC_GATEWAY_INTERNAL_PORT"] == "8090"
+          PY
+
+      - name: Render Docker Compose configuration
+        run: |
+          docker compose \
+            --env-file deploy/coolify/staging/.env.example \
+            -f deploy/coolify/staging/compose.yaml \
+            config --format json > /tmp/scoremosaic-staging.json
+
+      - name: Enforce private staging boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path("/tmp/scoremosaic-staging.json").read_text())
+          services = config["services"]
+          expected = {
+              "homr-foundation": ("8080", "homr-service", "/tmp/scoremosaic-homr"),
+              "clarity-foundation": ("8081", "clarity-service", "/tmp/scoremosaic-clarity"),
+              "audiveris-foundation": (
+                  "8082",
+                  "audiveris-service",
+                  "/tmp/scoremosaic-audiveris",
+              ),
+          }
+
+          assert set(services) == set(expected), services.keys()
+          assert "omr-gateway" not in services
+
+          for name, (port, build_dir, workspace) in expected.items():
+              service = services[name]
+              assert not service.get("ports"), f"{name} publishes a host port"
+              exposed = {str(item).split("/")[0] for item in service.get("expose", [])}
+              assert exposed == {port}, (name, exposed)
+              assert service.get("read_only") is True
+              assert service.get("user") == "65532:65532"
+              assert service.get("restart") == "unless-stopped"
+              assert service.get("pids_limit") == 128
+              assert "ALL" in service.get("cap_drop", [])
+              assert "no-new-privileges:true" in service.get("security_opt", [])
+              assert set(service.get("networks", {})) == {"omr-internal"}
+              assert service.get("healthcheck", {}).get("test")
+              assert service.get("cpus")
+              assert service.get("mem_limit")
+              assert service.get("tmpfs")
+              assert any(workspace in str(item) for item in service["tmpfs"])
+              assert build_dir in service["build"]["context"]
+
+              labels = service.get("labels", {})
+              if isinstance(labels, list):
+                  assert "traefik.enable=false" in labels
+              else:
+                  assert str(labels.get("traefik.enable")).lower() == "false"
+
+          networks = config["networks"]
+          internal_network = next(
+              value
+              for key, value in networks.items()
+              if key == "omr-internal" or key.endswith("_omr-internal")
+          )
+          assert internal_network.get("internal") is True
+          PY
+
+      - name: Reject published ports in source Compose
+        run: |
+          if grep -nE '^[[:space:]]+ports:' deploy/coolify/staging/compose.yaml; then
+            echo "Coolify staging services must not publish host ports." >&2
+            exit 1
+          fi
+
+      - name: Validate Compose syntax
+        run: |
+          docker compose \
+            --env-file deploy/coolify/staging/.env.example \
+            -f deploy/coolify/staging/compose.yaml \
+            config --quiet
+
+      - name: Check repository diff formatting
+        run: git diff --check
