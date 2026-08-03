@@ -35,26 +35,32 @@ services:
       SCOREMOSAIC_HOMR_HOST: 0.0.0.0
       SCOREMOSAIC_HOMR_PORT: 8080
       SCOREMOSAIC_HOMR_LOG_LEVEL: INFO
+      SCOREMOSAIC_HOMR_RUNTIME_MODE: homr
+      SCOREMOSAIC_HOMR_COMMAND: /usr/local/bin/homr
+      SCOREMOSAIC_HOMR_VERSION: 0.7.0
+      SCOREMOSAIC_HOMR_PROBE_TIMEOUT_SECONDS: 30
       SCOREMOSAIC_HOMR_MAX_REQUEST_BYTES: 20971520
       SCOREMOSAIC_HOMR_MAX_PAGES: 40
-      SCOREMOSAIC_HOMR_REQUEST_TIMEOUT_SECONDS: 120
+      SCOREMOSAIC_HOMR_MAX_IMAGE_PIXELS: 80000000
+      SCOREMOSAIC_HOMR_REQUEST_TIMEOUT_SECONDS: 900
       SCOREMOSAIC_HOMR_WORKSPACE_ROOT: /tmp/scoremosaic-homr
     expose:
       - "8080"
-    cpus: "${HOMR_CPUS:-1.00}"
-    mem_limit: "${HOMR_MEMORY_LIMIT:-768m}"
+    cpus: "${HOMR_CPUS:-2.00}"
+    mem_limit: "${HOMR_MEMORY_LIMIT:-4096m}"
     tmpfs:
-      - /tmp/scoremosaic-homr:rw,noexec,nosuid,size=${HOMR_TMPFS_BYTES:-33554432},mode=0700
+      - /tmp/scoremosaic-homr:rw,noexec,nosuid,nodev,size=${HOMR_TMPFS_BYTES:-1073741824},mode=0700,uid=65532,gid=65532
+    stop_grace_period: 20s
     healthcheck:
       test:
         - CMD
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read()
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()
       interval: 15s
-      timeout: 3s
+      timeout: 5s
       retries: 3
-      start_period: 5s
+      start_period: 20s
 
   clarity-foundation:
     <<: *omr-service-defaults
