@@ -1,0 +1,42 @@
+name: HOMR 0.7.0 Model Discovery
+
+on:
+  push:
+    branches:
+      - "feature/homr-runtime-integration"
+    paths:
+      - ".github/workflows/homr-model-discovery.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/homr-model-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download HOMR 0.7.0 transformer assets and report digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/homr-assets
+          cd /tmp/homr-assets
+          assets=(
+            "encoder_pytorch_model_396-f6feedb42ff90087d898b0941a55d040fa6b2903.zip"
+            "decoder_pytorch_model_396-f6feedb42ff90087d898b0941a55d040fa6b2903.zip"
+          )
+          for asset in "${assets[@]}"; do
+            curl --fail --location --proto '=https' --tlsv1.2 \
+              --retry 4 --retry-all-errors \
+              --output "$asset" \
+              "https://github.com/liebharc/homr/releases/download/onnx_checkpoints/${asset}"
+            sha256sum "$asset"
+            unzip -q "$asset" -d "${asset%.zip}"
+            find "${asset%.zip}" -type f -print0 | sort -z | xargs -0 sha256sum
+          done
