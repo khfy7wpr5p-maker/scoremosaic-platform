@@ -1,0 +1,169 @@
+name: OMR Gateway Foundation CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/omr-gateway-foundation"
+    paths:
+      - ".github/workflows/omr-gateway-foundation-ci.yml"
+      - "services/omr-gateway/**"
+      - "compose.yaml"
+      - "deploy/coolify/staging/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/omr-gateway-foundation-ci.yml"
+      - "services/omr-gateway/**"
+      - "compose.yaml"
+      - "deploy/coolify/staging/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omr-gateway-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-omr-gateway-foundation:
+    name: Test OMR Gateway foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile gateway source
+        run: python -m compileall -q services/omr-gateway/src
+
+      - name: Run gateway unit tests
+        run: python -m unittest discover -s services/omr-gateway/tests -v
+
+      - name: Build and smoke-test non-root image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="scoremosaic-omr-gateway-foundation:${GITHUB_SHA}"
+          docker build --tag "$image" services/omr-gateway
+
+          container_id="$(docker run --detach \
+            --read-only \
+            --tmpfs /tmp/scoremosaic-gateway:rw,noexec,nosuid,size=16m \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --env SCOREMOSAIC_GATEWAY_AUDIVERIS_BASE_URL=http://127.0.0.1:65082 \
+            --env SCOREMOSAIC_GATEWAY_HOMR_BASE_URL=http://127.0.0.1:65080 \
+            --env SCOREMOSAIC_GATEWAY_CLARITY_BASE_URL=http://127.0.0.1:65081 \
+            "$image")"
+          trap 'docker logs "$container_id" || true; docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..20}; do
+            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=2).read()"; then
+              break
+            fi
+            if [[ "$attempt" == "20" ]]; then
+              echo "OMR Gateway foundation health check did not become ready." >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
+
+          docker exec -i "$container_id" python - <<'PY'
+          import json
+          import urllib.request
+
+          payload = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8090/health", timeout=2)
+          )
+          assert payload["status"] == "ok"
+          assert payload["gateway"] == "running"
+          assert payload["capabilities"]["acceptedInputFormats"] == [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+          ]
+          assert payload["capabilities"]["uploadEnabled"] is False
+          assert payload["capabilities"]["orchestrationEnabled"] is False
+          assert payload["capabilities"]["candidateIsolation"] is True
+          assert payload["engines"] == {
+              "audiveris": "not_ready",
+              "homr": "not_ready",
+              "clarity": "not_ready",
+          }
+          PY
+
+          docker exec -i "$container_id" python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+          try:
+              urllib.request.urlopen("http://127.0.0.1:8090/ready", timeout=5)
+          except urllib.error.HTTPError as exc:
+              assert exc.code == 503
+              payload = json.load(exc)
+              assert payload["reason"] == "orchestration_disabled"
+              assert set(payload["engines"]) == {"audiveris", "homr", "clarity"}
+              assert set(payload["engines"].values()) == {"unavailable"}
+          else:
+              raise AssertionError("/ready unexpectedly returned success")
+          PY
+
+      - name: Validate root Compose gateway boundary
+        run: |
+          docker compose -f compose.yaml config --format json > /tmp/root-compose.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path("/tmp/root-compose.json").read_text())
+          service = config["services"]["omr-gateway-foundation"]
+          assert not service.get("ports")
+          exposed = {str(item).split("/")[0] for item in service.get("expose", [])}
+          assert exposed == {"8090"}
+          assert service.get("read_only") is True
+          assert service.get("user") == "65532:65532"
+          assert "ALL" in service.get("cap_drop", [])
+          assert "no-new-privileges:true" in service.get("security_opt", [])
+          assert set(service.get("networks", {})) == {"omr-internal"}
+          assert service["environment"]["SCOREMOSAIC_GATEWAY_ORCHESTRATION_MODE"] == "disabled"
+          PY
+
+      - name: Validate Coolify gateway boundary
+        run: |
+          docker compose \
+            --env-file deploy/coolify/staging/.env.example \
+            -f deploy/coolify/staging/compose.yaml \
+            config --format json > /tmp/coolify-compose.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path("/tmp/coolify-compose.json").read_text())
+          service = config["services"]["omr-gateway"]
+          assert not service.get("ports")
+          assert service.get("read_only") is True
+          assert service.get("user") == "65532:65532"
+          assert set(service.get("networks", {})) == {"omr-internal"}
+          labels = service.get("labels", {})
+          if isinstance(labels, list):
+              assert "traefik.enable=false" in labels
+          else:
+              assert str(labels.get("traefik.enable")).lower() == "false"
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
