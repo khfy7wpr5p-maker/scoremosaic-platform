@@ -1,4 +1,4 @@
-"""Health-only HTTP foundation for the private HOMR adapter service."""
+"""Private HTTP health and readiness adapter for the HOMR runtime."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import sys
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from . import __version__
 from .config import ConfigError, ServiceConfig, load_config
+from .runtime import MODEL_SPECS, RuntimeProbe, probe_runtime
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,8 +21,27 @@ class RouteResponse:
     allow: str | None = None
 
 
-def route_request(method: str, target: str, config: ServiceConfig) -> RouteResponse:
-    """Return a deterministic response without accepting OMR input yet."""
+RuntimeProbeCallable = Callable[[ServiceConfig], RuntimeProbe]
+
+
+def _capabilities(config: ServiceConfig) -> dict[str, Any]:
+    return {
+        "acceptedInputFormats": ["image/jpeg", "image/png"],
+        "runtimeMode": config.runtime_mode,
+        "internalRuntimeEnabled": config.runtime_mode == "homr",
+        "uploadEnabled": False,
+        "conversionEnabled": False,
+    }
+
+
+def route_request(
+    method: str,
+    target: str,
+    config: ServiceConfig,
+    *,
+    runtime_probe: RuntimeProbeCallable = probe_runtime,
+) -> RouteResponse:
+    """Return deterministic private status responses without accepting OMR input."""
 
     path = urlsplit(target).path
     if method == "GET" and path == "/health":
@@ -31,20 +51,33 @@ def route_request(method: str, target: str, config: ServiceConfig) -> RouteRespo
                 "service": "scoremosaic-homr-service",
                 "version": __version__,
                 "status": "ok",
-                "engine": {"name": "homr", "installed": False},
-                "conversionEnabled": False,
+                "engine": {
+                    "name": "homr",
+                    "installed": config.runtime_mode == "homr",
+                    "expectedVersion": config.homr_version,
+                    "expectedModels": len(MODEL_SPECS),
+                    "computeMode": "cpu",
+                },
+                "capabilities": _capabilities(config),
             },
         )
 
     if method == "GET" and path == "/ready":
+        probe = runtime_probe(config)
         return RouteResponse(
-            status=503,
+            status=200 if probe.ready else 503,
             payload={
                 "service": "scoremosaic-homr-service",
                 "version": __version__,
-                "status": "not_ready",
-                "reason": "homr_engine_not_installed",
-                "conversionEnabled": False,
+                "status": "ready" if probe.ready else "not_ready",
+                "reason": probe.reason,
+                "engine": {
+                    "name": "homr",
+                    "version": probe.version,
+                    "verifiedModels": probe.verified_models,
+                    "computeMode": "cpu",
+                },
+                "capabilities": _capabilities(config),
             },
         )
 
@@ -115,7 +148,6 @@ def make_handler(config: ServiceConfig) -> type[BaseHTTPRequestHandler]:
             )
 
         def log_message(self, format: str, *args: object) -> None:
-            # Avoid BaseHTTPRequestHandler logging the raw request target/query string.
             return
 
     return Handler
