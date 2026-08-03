@@ -43,7 +43,7 @@ class TranscriptionResult:
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
 
-def _jna_root(config: ServiceConfig) -> Path:
+def _native_cache_root(config: ServiceConfig) -> Path:
     workspace = config.workspace_root
     return workspace.parent / f"{workspace.name}-jna"
 
@@ -52,7 +52,7 @@ def _runtime_environment(config: ServiceConfig) -> dict[str, str]:
     workspace = config.workspace_root
     home = workspace / "home"
     java_tmp = workspace / "tmp"
-    jna_tmp = _jna_root(config)
+    native_cache = _native_cache_root(config)
     env = dict(os.environ)
     for dangerous_name in (
         "CLASSPATH",
@@ -74,7 +74,8 @@ def _runtime_environment(config: ServiceConfig) -> dict[str, str]:
             "TEMP": str(java_tmp),
             "JAVA_TOOL_OPTIONS": (
                 f"-Djava.io.tmpdir={java_tmp} "
-                f"-Djna.tmpdir={jna_tmp} "
+                f"-Djna.tmpdir={native_cache} "
+                f"-Dorg.bytedeco.javacpp.cachedir={native_cache} "
                 "-Djava.awt.headless=true "
                 "--enable-native-access=ALL-UNNAMED"
             ),
@@ -93,7 +94,7 @@ def _prepare_runtime_directories(config: ServiceConfig) -> None:
         home / ".config",
         home / ".local" / "share",
         workspace / "tmp",
-        _jna_root(config),
+        _native_cache_root(config),
     ):
         path.mkdir(parents=True, exist_ok=True)
 
