@@ -18,11 +18,21 @@ class ServiceConfigTests(unittest.TestCase):
         self.assertEqual(config.port, 8081)
         self.assertEqual(config.log_level, "INFO")
         self.assertEqual(config.compute_mode, "disabled")
+        self.assertEqual(config.source_revision, "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82")
+        self.assertEqual(config.model_revision, "ee14c1e41ab371fe27bf8a2707ea588560077e73")
+        self.assertEqual(config.probe_timeout_seconds, 90)
         self.assertEqual(config.max_request_bytes, 20 * 1024 * 1024)
         self.assertEqual(config.max_pages, 40)
         self.assertEqual(config.max_image_pixels, 80_000_000)
-        self.assertEqual(config.request_timeout_seconds, 180)
+        self.assertEqual(config.request_timeout_seconds, 1200)
+        self.assertEqual(config.pdf_dpi, 300)
+        self.assertEqual(config.beam_width, 2)
         self.assertTrue(config.workspace_root.is_absolute())
+        self.assertTrue(config.source_root.is_absolute())
+
+    def test_cpu_compute_mode_is_allowed(self) -> None:
+        config = load_config({"SCOREMOSAIC_CLARITY_COMPUTE_MODE": "cpu"})
+        self.assertEqual(config.compute_mode, "cpu")
 
     def test_internal_container_bind_address_is_allowed(self) -> None:
         config = load_config({"SCOREMOSAIC_CLARITY_HOST": "0.0.0.0"})
@@ -32,9 +42,13 @@ class ServiceConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "approved bind address"):
             load_config({"SCOREMOSAIC_CLARITY_HOST": "example.com"})
 
-    def test_compute_mode_cannot_enable_inference(self) -> None:
-        with self.assertRaisesRegex(ConfigError, "must remain disabled"):
+    def test_gpu_compute_mode_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ConfigError, "disabled or cpu"):
             load_config({"SCOREMOSAIC_CLARITY_COMPUTE_MODE": "gpu"})
+
+    def test_invalid_source_revision_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ConfigError, "40-character"):
+            load_config({"SCOREMOSAIC_CLARITY_SOURCE_REVISION": "main"})
 
     def test_out_of_range_page_limit_is_rejected(self) -> None:
         with self.assertRaisesRegex(ConfigError, "between 1 and 200"):
@@ -49,10 +63,12 @@ class ServiceConfigTests(unittest.TestCase):
             load_config({"SCOREMOSAIC_CLARITY_PORT": "eight"})
 
     def test_relative_workspace_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ConfigError, "must be absolute"):
-            load_config(
-                {"SCOREMOSAIC_CLARITY_WORKSPACE_ROOT": "relative/path"}
-            )
+        with self.assertRaisesRegex(ConfigError, "absolute non-root"):
+            load_config({"SCOREMOSAIC_CLARITY_WORKSPACE_ROOT": "relative/path"})
+
+    def test_root_source_path_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ConfigError, "absolute non-root"):
+            load_config({"SCOREMOSAIC_CLARITY_SOURCE_ROOT": "/"})
 
 
 if __name__ == "__main__":
