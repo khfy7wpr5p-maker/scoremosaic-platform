@@ -162,7 +162,7 @@ jobs:
             /tmp/scoremosaic-audiveris-smoke.png \
             "$container_id:/tmp/scoremosaic-audiveris/smoke/input/score.png"
 
-          docker exec -i "$container_id" python - <<'PY'
+          docker exec -i "$container_id" python - <<'PY' 2>&1 | tee /tmp/audiveris-transcription-diagnostic.txt
           from pathlib import Path
           import zipfile
           import xml.etree.ElementTree as ET
@@ -195,6 +195,15 @@ jobs:
           print("MusicXML:", musicxml)
           print("OMR:", result.omr_artifacts[0])
           PY
+
+      - name: Upload transcription diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiveris-transcription-diagnostic
+          path: /tmp/audiveris-transcription-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
 
       - name: Show runtime logs and remove test container
         if: always()
