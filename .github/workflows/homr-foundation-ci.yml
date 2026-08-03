@@ -1,0 +1,108 @@
+name: HOMR Service Foundation CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/homr-service-foundation"
+    paths:
+      - ".github/workflows/homr-foundation-ci.yml"
+      - "services/homr-service/**"
+      - "compose.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/homr-foundation-ci.yml"
+      - "services/homr-service/**"
+      - "compose.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homr-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-homr-foundation:
+    name: Test HOMR foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile service source
+        run: python -m compileall -q services/homr-service/src
+
+      - name: Run unit tests
+        run: python -m unittest discover -s services/homr-service/tests -v
+
+      - name: Build and smoke-test non-root image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="scoremosaic-homr-foundation:${GITHUB_SHA}"
+          docker build --tag "$image" services/homr-service
+
+          container_id="$({
+            docker run --detach \
+              --read-only \
+              --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+              --cap-drop ALL \
+              --security-opt no-new-privileges \
+              "$image"
+          })"
+          trap 'docker logs "$container_id" || true; docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..20}; do
+            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read()"; then
+              break
+            fi
+            if [[ "$attempt" == "20" ]]; then
+              echo "HOMR foundation health check did not become ready." >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
+
+          docker exec "$container_id" python -c "
+          import json
+          import urllib.request
+          payload = json.load(urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2))
+          assert payload['status'] == 'ok'
+          assert payload['engine']['installed'] is False
+          assert payload['conversionEnabled'] is False
+          "
+
+          docker exec "$container_id" python -c "
+          import json
+          import urllib.error
+          import urllib.request
+          try:
+              urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=2)
+          except urllib.error.HTTPError as exc:
+              assert exc.code == 503
+              payload = json.load(exc)
+              assert payload['reason'] == 'homr_engine_not_installed'
+          else:
+              raise AssertionError('/ready unexpectedly returned success')
+          "
+
+      - name: Validate Compose configuration
+        run: docker compose -f compose.yaml config > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check
