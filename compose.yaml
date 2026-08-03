@@ -1,7 +1,5 @@
 name: scoremosaic
 
-# Phase 0 contains no OMR engine containers.
-# This tools-only service validates that the JSON contract files are syntactically valid.
 services:
   contract-check:
     image: python:3.12-alpine
@@ -23,3 +21,46 @@ services:
         for path in files:
             json.loads(path.read_text(encoding='utf-8'))
             print(f'valid JSON: {path.name}')
+
+  homr-foundation:
+    profiles: ["homr-foundation"]
+    build:
+      context: ./services/homr-service
+      dockerfile: Dockerfile
+    environment:
+      SCOREMOSAIC_HOMR_HOST: 0.0.0.0
+      SCOREMOSAIC_HOMR_PORT: 8080
+      SCOREMOSAIC_HOMR_LOG_LEVEL: INFO
+      SCOREMOSAIC_HOMR_MAX_REQUEST_BYTES: 20971520
+      SCOREMOSAIC_HOMR_MAX_PAGES: 40
+      SCOREMOSAIC_HOMR_REQUEST_TIMEOUT_SECONDS: 120
+      SCOREMOSAIC_HOMR_WORKSPACE_ROOT: /tmp/scoremosaic-homr
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: "no"
+    stop_grace_period: 5s
+    networks:
+      - omr-internal
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read()
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+
+networks:
+  omr-internal:
+    internal: true
