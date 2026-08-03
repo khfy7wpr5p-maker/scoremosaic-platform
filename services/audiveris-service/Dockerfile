@@ -14,6 +14,7 @@ RUN set -eux; \
     test "$(dpkg --print-architecture)" = "amd64"; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates curl python3-minimal python-is-python3; \
+    mkdir -p /usr/share/applications /usr/share/desktop-directories; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 4 --retry-all-errors \
       --output "/tmp/${AUDIVERIS_DEB_NAME}" \
       "https://github.com/Audiveris/audiveris/releases/download/${AUDIVERIS_VERSION}/${AUDIVERIS_DEB_NAME}"; \
