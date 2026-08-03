@@ -35,11 +35,12 @@ Default staging resources:
 |---|---:|
 | CPU | `2.00` |
 | Memory | `4096m` |
-| Temporary workspace | `805306368` bytes (768 MiB) |
+| Non-executable OMR workspace | `805306368` bytes (768 MiB) |
+| Executable JNA-only workspace | `67108864` bytes (64 MiB) |
 | Request timeout | `600` seconds |
 | Process limit | `128` |
 
-The root filesystem remains read-only. Only `/tmp/scoremosaic-audiveris` is writable through `tmpfs`; it is intentionally non-persistent. Restarting or replacing the container removes temporary OMR artifacts.
+The root filesystem remains read-only. User input, OMR working files, MusicXML, and `.omr` output are restricted to `/tmp/scoremosaic-audiveris`, a non-persistent `noexec,nosuid,nodev` mount. Audiveris uses JNA to load native libraries, so native extraction is redirected to the separate `/tmp/scoremosaic-audiveris-jna` mount. That smaller mount allows execution but remains `nosuid,nodev`, is owned by UID/GID `65532`, and must never contain user source files or OMR output. Restarting or replacing the container removes both mounts.
 
 ## Readiness behavior
 
@@ -72,7 +73,7 @@ Each service is configured with:
 - all Linux capabilities dropped
 - `no-new-privileges`
 - process-count, CPU, memory, timeout, and temporary-workspace limits
-- a service-specific `tmpfs` workspace
+- service-specific non-persistent temporary mounts
 - bounded shutdown and restart behavior
 - no public proxy route
 
@@ -102,10 +103,11 @@ Before the first deployment of this runtime:
 2. Require successful Foundation, HOMR, Clarity, Audiveris Runtime, Gateway, and Coolify staging checks.
 3. Confirm that no service has a domain or published host port.
 4. Confirm Audiveris remains pinned to `5.11.0` and its verified package checksum.
-5. Confirm Coolify contains only non-secret resource variables from `.env.example`.
-6. Confirm there is no persistent volume for PDFs, images, MusicXML, `.omr`, model files, or Gateway job data.
-7. Confirm Render remains unchanged as fallback until staging acceptance is complete.
-8. Complete the Audiveris AGPL notice and source-availability review before any public or user-facing network use.
+5. Confirm the main Audiveris workspace remains `noexec` and only the bounded JNA mount allows execution.
+6. Confirm Coolify contains only non-secret resource variables from `.env.example`.
+7. Confirm there is no persistent volume for PDFs, images, MusicXML, `.omr`, model files, or Gateway job data.
+8. Confirm Render remains unchanged as fallback until staging acceptance is complete.
+9. Complete the Audiveris AGPL notice and source-availability review before any public or user-facing network use.
 
 ## Staging verification
 
@@ -116,10 +118,11 @@ After deployment:
 3. Confirm HOMR and Clarity `/ready` remain 503 for their expected unavailable reasons.
 4. Confirm Gateway `/ready` remains 503 with `orchestration_disabled` and separate engine states.
 5. Confirm every container runs as UID `65532`.
-6. Confirm root filesystems are read-only and only service-specific temporary directories are writable.
-7. Confirm there are no public domains, published ports, or proxy routes.
-8. Confirm the Gateway can resolve engine service names only through `omr-internal`.
-9. Confirm an Audiveris smoke artifact disappears after container replacement.
+6. Confirm root filesystems are read-only.
+7. Confirm the Audiveris OMR workspace is `noexec,nosuid,nodev` and the JNA-only mount is `exec,nosuid,nodev`.
+8. Confirm there are no public domains, published ports, or proxy routes.
+9. Confirm the Gateway can resolve engine service names only through `omr-internal`.
+10. Confirm Audiveris smoke artifacts and JNA temporary files disappear after container replacement.
 
 A successful runtime deployment does not authorize real user uploads.
 
