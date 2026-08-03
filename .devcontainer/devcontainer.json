@@ -1,14 +1,6 @@
 {
   "name": "ScoreMosaic Development",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "version": "latest",
-      "moby": true,
-      "dockerDashComposeVersion": "v2"
-    },
-    "ghcr.io/devcontainers/features/git-lfs:1": {}
-  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -19,5 +11,5 @@
     }
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "python --version && git lfs version && docker --version && docker compose version"
+  "postCreateCommand": "python --version"
 }
