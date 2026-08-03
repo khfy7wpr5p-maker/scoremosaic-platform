@@ -7,6 +7,7 @@ on:
       - "infra/coolify-staging-foundation"
       - "feature/omr-gateway-foundation"
       - "feature/audiveris-runtime-integration"
+      - "feature/homr-runtime-integration"
     paths:
       - ".github/workflows/coolify-staging-ci.yml"
       - "deploy/coolify/staging/**"
@@ -75,6 +76,9 @@ jobs:
           assert values["GATEWAY_CPUS"] == "0.50"
           assert values["GATEWAY_MEMORY_LIMIT"] == "256m"
           assert values["GATEWAY_TMPFS_BYTES"] == "16777216"
+          assert values["HOMR_CPUS"] == "2.00"
+          assert values["HOMR_MEMORY_LIMIT"] == "4096m"
+          assert values["HOMR_TMPFS_BYTES"] == "1073741824"
           assert values["AUDIVERIS_CPUS"] == "2.00"
           assert values["AUDIVERIS_MEMORY_LIMIT"] == "4096m"
           assert values["AUDIVERIS_TMPFS_BYTES"] == "805306368"
@@ -133,6 +137,21 @@ jobs:
                   assert "traefik.enable=false" in labels
               else:
                   assert str(labels.get("traefik.enable")).lower() == "false"
+
+          homr = services["homr-foundation"]
+          assert homr["environment"]["SCOREMOSAIC_HOMR_RUNTIME_MODE"] == "homr"
+          assert homr["environment"]["SCOREMOSAIC_HOMR_COMMAND"] == "/usr/local/bin/homr"
+          assert homr["environment"]["SCOREMOSAIC_HOMR_VERSION"] == "0.7.0"
+          assert homr["environment"]["SCOREMOSAIC_HOMR_REQUEST_TIMEOUT_SECONDS"] == "900"
+          homr_tmpfs = [str(item) for item in homr.get("tmpfs", [])]
+          assert any(
+              "/tmp/scoremosaic-homr" in item
+              and "noexec" in item
+              and "nodev" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in homr_tmpfs
+          )
 
           audiveris = services["audiveris-foundation"]
           assert audiveris["environment"]["SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE"] == "audiveris"
