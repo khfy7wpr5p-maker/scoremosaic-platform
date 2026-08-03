@@ -1,0 +1,63 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node.js
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+dist/
+build/
+coverage/
+
+# Runtime and generated artifacts
+storage/
+data/
+tmp/
+temp/
+logs/
+*.log
+*.pid
+
+# Untrusted or generated music documents
+*.pdf
+*.musicxml
+*.mxl
+*.omr
+!tests/fixtures/**
+
+# Model weights and large ML artifacts
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+models/
+weights/
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local container overrides
+compose.override.yaml
+docker-compose.override.yml
