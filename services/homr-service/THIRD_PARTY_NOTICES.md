@@ -13,13 +13,13 @@ The ScoreMosaic image includes the unmodified upstream HOMR package and its runt
 
 ## Pinned ONNX model assets
 
-The following assets are fetched from the upstream `onnx_checkpoints` release and verified before installation.
+The following HOMR `0.7.0` assets are fetched from the upstream `onnx_checkpoints` release and verified before installation.
 
 | Asset | Archive SHA-256 | Installed ONNX SHA-256 |
 |---|---|---|
 | `segnet_308-3296ccd40960f90ca6ab9c035cca945675d30a0f.zip` | `1d4277354a8397a6830ef1279232e6d989c2d254b7451525e53ff3d3754b1f70` | `6ed36640db4ef5d223098b6d5efe4eda97c66b24a2c72faab8a018c749003a8d` |
-| `encoder_pytorch_model_426-b6fd20809a8dcaf10dfd39a4ca4f64c6f056e644.zip` | `10128de32aad243cb8b85e7b6bc059b9e376f33d85a6d442974b86c2b7f2b847` | `1513e83ae281ef06cdb8f08451b59f06c56536f13bd3418b4fd13227543dc4ff` |
-| `decoder_pytorch_model_426-b6fd20809a8dcaf10dfd39a4ca4f64c6f056e644.zip` | `c28801d95ff062190b00d84d73e73cbca13df2fdeb01886ba82363e20ebe83da` | `8652b5c2e3129775ca9109eb180c16c3615413ce38005adc8ce5966c3c76737c` |
+| `encoder_pytorch_model_396-f6feedb42ff90087d898b0941a55d040fa6b2903.zip` | `9d9bc44da68c1180c85173d739edb2d703d90c0dbbdfadc9ebf6636685a5489b` | `4c16df852b3789f2676b0d49f0545dab0740e4005f7b472c5252add642f5d5eb` |
+| `decoder_pytorch_model_396-f6feedb42ff90087d898b0941a55d040fa6b2903.zip` | `0a2f023e1ecf41f5f969f2ed4ef80c050ce29a4996c6655056cf36c6104677e8` | `3e10fd5ae52d0b86792721922fcd954c283a7ed365de7446425bdabe38f3e57d` |
 
 ## Runtime dependencies
 
