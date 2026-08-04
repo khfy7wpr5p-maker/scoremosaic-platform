@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 import json
 import os
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 
@@ -15,6 +16,22 @@ from .config import ServiceConfig
 
 _MAX_DIAGNOSTIC_CHARS = 16_384
 _MAX_MUSICXML_BYTES = 64 * 1024 * 1024
+_MUSICXML_DOCTYPE_RE = re.compile(
+    rb"""
+    <!DOCTYPE\s+
+    (?P<root>score-partwise|score-timewise)\s+
+    PUBLIC\s+
+    (?P<public_quote>["'])
+    -//Recordare//DTD\s+MusicXML\s+\d+(?:\.\d+)?\s+
+    (?P<form>Partwise|Timewise)//EN
+    (?P=public_quote)\s+
+    (?P<system_quote>["'])
+    https?://(?:www\.)?musicxml\.org/dtds/
+    (?P<dtd>partwise|timewise)\.dtd
+    (?P=system_quote)\s*>
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
 
 
 class RuntimeExecutionError(RuntimeError):
@@ -357,22 +374,78 @@ def build_transcription_command(
     )
 
 
+def _sanitize_musicxml_document(document: bytes) -> bytes:
+    """Remove only a canonical MusicXML DTD without resolving external entities."""
+
+    upper = document.upper()
+    if b"<!ENTITY" in upper:
+        raise RuntimeExecutionError("clarity_musicxml_unsafe_declaration")
+
+    doctype_index = upper.find(b"<!DOCTYPE")
+    if doctype_index < 0:
+        return document
+    if upper.find(b"<!DOCTYPE", doctype_index + 1) >= 0 or doctype_index > 8192:
+        raise RuntimeExecutionError("clarity_musicxml_unsafe_declaration")
+
+    match = _MUSICXML_DOCTYPE_RE.search(document)
+    if match is None or match.start() != doctype_index:
+        raise RuntimeExecutionError("clarity_musicxml_unsafe_declaration")
+
+    root_name = match.group("root").lower()
+    form = match.group("form").lower()
+    dtd = match.group("dtd").lower()
+    expected = b"partwise" if root_name == b"score-partwise" else b"timewise"
+    if form != expected or dtd != expected:
+        raise RuntimeExecutionError("clarity_musicxml_unsafe_declaration")
+
+    sanitized = document[: match.start()] + document[match.end() :]
+    sanitized_upper = sanitized.upper()
+    if b"<!DOCTYPE" in sanitized_upper or b"<!ENTITY" in sanitized_upper:
+        raise RuntimeExecutionError("clarity_musicxml_unsafe_declaration")
+    return sanitized
+
+
+def _replace_musicxml_atomically(path: Path, document: bytes) -> None:
+    temporary = path.with_name(f".{path.name}.sanitized")
+    if temporary.exists() or temporary.is_symlink():
+        raise RuntimeExecutionError("clarity_musicxml_sanitize_target_exists")
+    try:
+        with temporary.open("xb") as stream:
+            stream.write(document)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except OSError as exc:
+        raise RuntimeExecutionError("clarity_musicxml_sanitize_failed") from exc
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def _validate_musicxml(path: Path) -> None:
     if path.is_symlink() or not path.is_file():
         raise RuntimeExecutionError("clarity_musicxml_not_created")
     size = path.stat().st_size
     if size <= 0 or size > _MAX_MUSICXML_BYTES:
         raise RuntimeExecutionError("clarity_musicxml_size_invalid")
-    prefix = path.read_bytes()[:8192].upper()
-    if b"<!DOCTYPE" in prefix or b"<!ENTITY" in prefix:
-        raise RuntimeExecutionError("clarity_musicxml_unsafe_declaration")
     try:
-        root = ET.parse(path).getroot()
+        document = path.read_bytes()
+    except OSError as exc:
+        raise RuntimeExecutionError("clarity_musicxml_read_failed") from exc
+
+    sanitized = _sanitize_musicxml_document(document)
+    try:
+        root = ET.fromstring(sanitized)
     except ET.ParseError as exc:
         raise RuntimeExecutionError("clarity_musicxml_invalid_xml") from exc
     root_name = root.tag.rsplit("}", 1)[-1]
     if root_name not in {"score-partwise", "score-timewise"}:
         raise RuntimeExecutionError("clarity_musicxml_invalid_root")
+
+    if sanitized != document:
+        _replace_musicxml_atomically(path, sanitized)
 
 
 def transcribe_file(
