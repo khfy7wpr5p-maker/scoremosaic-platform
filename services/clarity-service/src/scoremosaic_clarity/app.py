@@ -1,4 +1,4 @@
-"""Health-only HTTP foundation for the private Clarity-OMR adapter service."""
+"""Private health and readiness service for the Clarity-OMR adapter."""
 
 from __future__ import annotations
 
@@ -6,17 +6,15 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import sys
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from . import __version__
 from .config import ConfigError, ServiceConfig, load_config
+from .runtime import RuntimeProbe, probe_runtime
 
-ACCEPTED_INPUT_FORMATS = (
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-)
+ACCEPTED_INPUT_FORMATS = ("application/pdf",)
+Probe = Callable[[ServiceConfig], RuntimeProbe]
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,12 +28,19 @@ def _capabilities(config: ServiceConfig) -> dict[str, Any]:
     return {
         "acceptedInputFormats": list(ACCEPTED_INPUT_FORMATS),
         "computeMode": config.compute_mode,
+        "nativePdfOnly": True,
         "uploadEnabled": False,
         "conversionEnabled": False,
     }
 
 
-def route_request(method: str, target: str, config: ServiceConfig) -> RouteResponse:
+def route_request(
+    method: str,
+    target: str,
+    config: ServiceConfig,
+    *,
+    probe: Probe = probe_runtime,
+) -> RouteResponse:
     """Return deterministic status responses without accepting OMR input."""
 
     path = urlsplit(target).path
@@ -48,24 +53,35 @@ def route_request(method: str, target: str, config: ServiceConfig) -> RouteRespo
                 "status": "ok",
                 "engine": {
                     "name": "clarity-omr",
-                    "installed": False,
-                    "modelInstalled": False,
+                    "installed": config.compute_mode == "cpu",
+                    "sourceRevision": config.source_revision,
+                    "modelRevision": config.model_revision,
+                    "expectedModels": 2,
+                    "computeMode": config.compute_mode,
                 },
                 "capabilities": _capabilities(config),
             },
         )
 
     if method == "GET" and path == "/ready":
-        return RouteResponse(
-            status=503,
-            payload={
-                "service": "scoremosaic-clarity-service",
-                "version": __version__,
-                "status": "not_ready",
-                "reason": "clarity_engine_not_installed",
-                "capabilities": _capabilities(config),
+        runtime = probe(config)
+        payload = {
+            "service": "scoremosaic-clarity-service",
+            "version": __version__,
+            "status": "ready" if runtime.ready else "not_ready",
+            "reason": runtime.reason,
+            "engine": {
+                "sourceRevision": runtime.source_revision,
+                "modelRevision": runtime.model_revision,
+                "verifiedModels": runtime.verified_models,
+                "torchVersion": runtime.torch_version,
+                "computeMode": config.compute_mode,
             },
-        )
+            "capabilities": _capabilities(config),
+        }
+        if runtime.diagnostic and not runtime.ready:
+            payload["diagnostic"] = runtime.diagnostic
+        return RouteResponse(status=200 if runtime.ready else 503, payload=payload)
 
     if method != "GET":
         return RouteResponse(
@@ -134,7 +150,6 @@ def make_handler(config: ServiceConfig) -> type[BaseHTTPRequestHandler]:
             )
 
         def log_message(self, format: str, *args: object) -> None:
-            # Avoid BaseHTTPRequestHandler logging raw request targets or queries.
             return
 
     return Handler

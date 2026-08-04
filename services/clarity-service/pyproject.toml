@@ -1,13 +1,17 @@
 [project]
 name = "scoremosaic-clarity-service"
-version = "0.1.0"
-description = "Health-only foundation for the private ScoreMosaic Clarity-OMR adapter"
+version = "0.2.0"
+description = "Private verified CPU adapter for the ScoreMosaic Clarity-OMR runtime"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [tool.scoremosaic]
-engine-installed = false
-model-installed = false
+engine-installed = true
+model-installed = true
+compute-mode = "cpu"
+source-revision = "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82"
+model-revision = "ee14c1e41ab371fe27bf8a2707ea588560077e73"
+verified-models = 2
 upload-enabled = false
 conversion-enabled = false
-accepted-input-formats = ["application/pdf", "image/jpeg", "image/png"]
+accepted-input-formats = ["application/pdf"]

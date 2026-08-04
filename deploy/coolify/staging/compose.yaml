@@ -71,28 +71,37 @@ services:
       SCOREMOSAIC_CLARITY_HOST: 0.0.0.0
       SCOREMOSAIC_CLARITY_PORT: 8081
       SCOREMOSAIC_CLARITY_LOG_LEVEL: INFO
-      SCOREMOSAIC_CLARITY_COMPUTE_MODE: disabled
+      SCOREMOSAIC_CLARITY_COMPUTE_MODE: cpu
+      SCOREMOSAIC_CLARITY_PYTHON_COMMAND: /usr/local/bin/python
+      SCOREMOSAIC_CLARITY_SOURCE_ROOT: /opt/clarity
+      SCOREMOSAIC_CLARITY_SOURCE_REVISION: c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82
+      SCOREMOSAIC_CLARITY_MODEL_REVISION: ee14c1e41ab371fe27bf8a2707ea588560077e73
+      SCOREMOSAIC_CLARITY_PROBE_TIMEOUT_SECONDS: 90
       SCOREMOSAIC_CLARITY_MAX_REQUEST_BYTES: 20971520
       SCOREMOSAIC_CLARITY_MAX_PAGES: 40
       SCOREMOSAIC_CLARITY_MAX_IMAGE_PIXELS: 80000000
-      SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS: 180
+      SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS: 1200
+      SCOREMOSAIC_CLARITY_PDF_DPI: 300
+      SCOREMOSAIC_CLARITY_BEAM_WIDTH: 2
       SCOREMOSAIC_CLARITY_WORKSPACE_ROOT: /tmp/scoremosaic-clarity
     expose:
       - "8081"
-    cpus: "${CLARITY_CPUS:-1.00}"
-    mem_limit: "${CLARITY_MEMORY_LIMIT:-1024m}"
+    cpus: "${CLARITY_CPUS:-2.00}"
+    mem_limit: "${CLARITY_MEMORY_LIMIT:-6144m}"
+    pids_limit: 256
     tmpfs:
-      - /tmp/scoremosaic-clarity:rw,noexec,nosuid,size=${CLARITY_TMPFS_BYTES:-33554432},mode=0700
+      - /tmp/scoremosaic-clarity:rw,noexec,nosuid,nodev,size=${CLARITY_TMPFS_BYTES:-2147483648},mode=0700,uid=65532,gid=65532
+    stop_grace_period: 30s
     healthcheck:
       test:
         - CMD
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=2).read()
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3).read()
       interval: 15s
-      timeout: 3s
+      timeout: 5s
       retries: 3
-      start_period: 5s
+      start_period: 30s
 
   audiveris-foundation:
     <<: *omr-service-defaults

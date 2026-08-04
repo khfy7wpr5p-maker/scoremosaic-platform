@@ -1,14 +1,15 @@
-name: Clarity Service Foundation CI
+name: Clarity Runtime Integration CI
 
 on:
   push:
     branches:
       - main
-      - "feature/clarity-service-foundation"
+      - "feature/clarity-runtime-integration"
     paths:
       - ".github/workflows/clarity-foundation-ci.yml"
       - "services/clarity-service/**"
       - "compose.yaml"
+      - "deploy/coolify/staging/**"
   pull_request:
     branches:
       - main
@@ -16,20 +17,21 @@ on:
       - ".github/workflows/clarity-foundation-ci.yml"
       - "services/clarity-service/**"
       - "compose.yaml"
+      - "deploy/coolify/staging/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: clarity-foundation-${{ github.workflow }}-${{ github.ref }}
+  group: clarity-runtime-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test-clarity-foundation:
-    name: Test Clarity foundation
+  test-clarity-runtime:
+    name: Test pinned Clarity CPU runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -48,71 +50,199 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s services/clarity-service/tests -v
 
-      - name: Build and smoke-test non-root image
+      - name: Render generated score fixture
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lilypond
+          mkdir -p /tmp/scoremosaic-clarity-fixture
+          lilypond \
+            --pdf \
+            --output=/tmp/scoremosaic-clarity-fixture/smoke-score \
+            services/clarity-service/tests/fixtures/smoke-score.ly
+          test -s /tmp/scoremosaic-clarity-fixture/smoke-score.pdf
+
+      - name: Build verified runtime image
+        run: |
+          image="scoremosaic-clarity-runtime:${GITHUB_SHA}"
+          docker build --tag "$image" services/clarity-service
+          echo "CLARITY_TEST_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Start private non-root offline runtime container
         shell: bash
         run: |
           set -euo pipefail
-          image="scoremosaic-clarity-foundation:${GITHUB_SHA}"
-          docker build --tag "$image" services/clarity-service
-
           container_id="$(docker run --detach \
+            --network none \
             --read-only \
-            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --tmpfs /tmp/scoremosaic-clarity:rw,noexec,nosuid,nodev,size=2147483648,mode=0700,uid=65532,gid=65532 \
             --cap-drop ALL \
             --security-opt no-new-privileges \
-            "$image")"
-          trap 'docker logs "$container_id" || true; docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+            --pids-limit 256 \
+            --cpus 2 \
+            --memory 6g \
+            --memory-swap 6g \
+            "$CLARITY_TEST_IMAGE")"
+          printf '%s' "$container_id" > /tmp/scoremosaic-clarity-container-id
 
-          for attempt in {1..20}; do
-            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=2).read()"; then
-              break
+          for attempt in {1..90}; do
+            if docker exec "$container_id" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3).read()"; then
+              exit 0
             fi
-            if [[ "$attempt" == "20" ]]; then
-              echo "Clarity foundation health check did not become ready." >&2
+            if [[ "$attempt" == "90" ]]; then
+              echo "Clarity adapter health check did not become ready." >&2
+              docker logs "$container_id" >&2 || true
               exit 1
             fi
             sleep 1
           done
 
+      - name: Verify runtime identity and readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_id="$(cat /tmp/scoremosaic-clarity-container-id)"
           test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
 
-          docker exec -i "$container_id" python - <<'PY'
+          docker exec -i "$container_id" python - <<'PY' | tee /tmp/clarity-readiness-diagnostic.txt
           import json
           import urllib.request
 
-          payload = json.load(
-              urllib.request.urlopen("http://127.0.0.1:8081/health", timeout=2)
+          from scoremosaic_clarity.config import load_config
+          from scoremosaic_clarity.runtime import probe_runtime
+
+          probe = probe_runtime(load_config())
+          print("probe:", probe)
+          print("probe diagnostic:", probe.diagnostic)
+          assert probe.ready, probe
+          assert probe.reason == "ready"
+          assert probe.source_revision == "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82"
+          assert probe.model_revision == "ee14c1e41ab371fe27bf8a2707ea588560077e73"
+          assert probe.verified_models == 2
+          assert probe.torch_version == "2.13.0+cpu"
+
+          health = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8081/health", timeout=3)
           )
-          assert payload["status"] == "ok"
-          assert payload["engine"]["installed"] is False
-          assert payload["engine"]["modelInstalled"] is False
-          assert payload["capabilities"]["acceptedInputFormats"] == [
-              "application/pdf",
-              "image/jpeg",
-              "image/png",
-          ]
-          assert payload["capabilities"]["computeMode"] == "disabled"
-          assert payload["capabilities"]["uploadEnabled"] is False
-          assert payload["capabilities"]["conversionEnabled"] is False
+          print("health:", health)
+          assert health["status"] == "ok"
+          assert health["engine"]["installed"] is True
+          assert health["engine"]["expectedModels"] == 2
+          assert health["engine"]["computeMode"] == "cpu"
+          assert health["capabilities"]["acceptedInputFormats"] == ["application/pdf"]
+          assert health["capabilities"]["nativePdfOnly"] is True
+          assert health["capabilities"]["uploadEnabled"] is False
+          assert health["capabilities"]["conversionEnabled"] is False
+
+          ready = json.load(
+              urllib.request.urlopen("http://127.0.0.1:8081/ready", timeout=120)
+          )
+          print("ready:", ready)
+          assert ready["status"] == "ready"
+          assert ready["reason"] == "ready"
+          assert ready["engine"]["verifiedModels"] == 2
+          assert ready["engine"]["torchVersion"] == "2.13.0+cpu"
           PY
 
-          docker exec -i "$container_id" python - <<'PY'
+      - name: Upload readiness diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clarity-readiness-diagnostic
+          path: /tmp/clarity-readiness-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Run real generated-score transcription
+        shell: bash
+        run: |
+          set -uo pipefail
+          diagnostic=/tmp/clarity-transcription-diagnostic.txt
+          : > "$diagnostic"
+          set +e
+          {
+            set -x
+            container_id="$(cat /tmp/scoremosaic-clarity-container-id)"
+            docker exec "$container_id" mkdir -p /tmp/scoremosaic-clarity/smoke
+            docker exec -i "$container_id" sh -c \
+              'cat > /tmp/scoremosaic-clarity/smoke/score.pdf' \
+              < /tmp/scoremosaic-clarity-fixture/smoke-score.pdf
+            docker exec "$container_id" ls -lh /tmp/scoremosaic-clarity/smoke/score.pdf
+
+            docker exec -i "$container_id" python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          from scoremosaic_clarity.config import load_config
+          from scoremosaic_clarity.runtime import transcribe_file
+
+          work = Path("/tmp/scoremosaic-clarity/smoke")
+          result = transcribe_file(work / "score.pdf", work / "output", load_config())
+          print("transcription diagnostic:", result.diagnostic)
+          assert result.musicxml_artifacts, result.diagnostic
+          musicxml = result.musicxml_artifacts[0]
+          root = ET.parse(musicxml).getroot()
+          assert root.tag.rsplit("}", 1)[-1] in {"score-partwise", "score-timewise"}
+          print("MusicXML:", musicxml)
+          print("MusicXML bytes:", musicxml.stat().st_size)
+          PY
+          } > "$diagnostic" 2>&1
+          status=$?
+          set -e
+          cat "$diagnostic"
+          exit "$status"
+
+      - name: Upload transcription diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clarity-transcription-diagnostic
+          path: /tmp/clarity-transcription-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Show runtime logs and remove test container
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s /tmp/scoremosaic-clarity-container-id ]]; then
+            container_id="$(cat /tmp/scoremosaic-clarity-container-id)"
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" >/dev/null 2>&1 || true
+          fi
+
+      - name: Validate private Compose boundary
+        run: |
+          docker compose \
+            --profile clarity-foundation \
+            -f compose.yaml \
+            config --format json > /tmp/clarity-compose.json
+          python - <<'PY'
           import json
-          import urllib.error
-          import urllib.request
+          from pathlib import Path
 
-          try:
-              urllib.request.urlopen("http://127.0.0.1:8081/ready", timeout=2)
-          except urllib.error.HTTPError as exc:
-              assert exc.code == 503
-              payload = json.load(exc)
-              assert payload["reason"] == "clarity_engine_not_installed"
-          else:
-              raise AssertionError("/ready unexpectedly returned success")
+          config = json.loads(Path("/tmp/clarity-compose.json").read_text())
+          service = config["services"]["clarity-foundation"]
+          assert not service.get("ports")
+          assert service.get("read_only") is True
+          assert service.get("user") == "65532:65532"
+          assert service.get("pids_limit") == 256
+          assert "ALL" in service.get("cap_drop", [])
+          assert "no-new-privileges:true" in service.get("security_opt", [])
+          assert set(service.get("networks", {})) == {"omr-internal"}
+          assert service["environment"]["SCOREMOSAIC_CLARITY_COMPUTE_MODE"] == "cpu"
+          assert service["environment"]["SCOREMOSAIC_CLARITY_SOURCE_REVISION"] == "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82"
+          assert service["environment"]["SCOREMOSAIC_CLARITY_MODEL_REVISION"] == "ee14c1e41ab371fe27bf8a2707ea588560077e73"
+          assert service["environment"]["SCOREMOSAIC_CLARITY_REQUEST_TIMEOUT_SECONDS"] == "1200"
+          tmpfs = [str(item) for item in service.get("tmpfs", [])]
+          assert any(
+              "/tmp/scoremosaic-clarity" in item
+              and "noexec" in item
+              and "nodev" in item
+              and "uid=65532" in item
+              and "gid=65532" in item
+              for item in tmpfs
+          )
           PY
-
-      - name: Validate Compose configuration
-        run: docker compose -f compose.yaml config > /dev/null
 
       - name: Check repository diff formatting
         run: git diff --check
