@@ -1,0 +1,81 @@
+{
+  "accuracyClaim": false,
+  "boundaries": {
+    "automaticCorrection": false,
+    "automaticMerge": false,
+    "engineRanking": false,
+    "publication": false,
+    "readOnly": true,
+    "teacherApproval": false,
+    "winnerSelection": false
+  },
+  "candidateCount": 3,
+  "candidates": [
+    {
+      "canonicalDoctypeRemoved": true,
+      "canonicalSha256": "62a1bfeb279bcbae8d9150a53215a9f71ff8f5215e8411b3e22b8d39ad90feef",
+      "captureMetadataPath": "services/ensemble-service/tests/fixtures/real-engines/audiveris.capture.json",
+      "capturedMusicXmlSha256": "fce8923e6724d2331c5e45412fe5c06ef3b34089cef0879d459d5d68fa8fdedd",
+      "containerFormat": "mxl",
+      "diagnosticCount": 5,
+      "engine": "audiveris",
+      "engineVersion": "5.11.0",
+      "eventCount": 16,
+      "extractedMusicXmlSha256": "557658fca4a298f5532c7be9d2dd14c75b59eb144c557f9cc09781b66642a5af",
+      "inputArtifactSha256": "a44c055646bda7495cdb7a20b4c840b943bc6d7884ef5ae492104a77d452056f",
+      "measureCount": 4,
+      "modelVersion": "bundled-with-audiveris-5.11.0",
+      "musicXmlPath": "services/ensemble-service/tests/fixtures/real-engines/audiveris.musicxml",
+      "partCount": 1
+    },
+    {
+      "canonicalDoctypeRemoved": false,
+      "canonicalSha256": "d3275df125124aad4fabf60f52cce4a5b46a7f0ac94ca94a3f0ffcd16f4951ff",
+      "captureMetadataPath": "services/ensemble-service/tests/fixtures/real-engines/homr.capture.json",
+      "capturedMusicXmlSha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d",
+      "containerFormat": "xml",
+      "diagnosticCount": 2,
+      "engine": "homr",
+      "engineVersion": "0.7.0",
+      "eventCount": 16,
+      "extractedMusicXmlSha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d",
+      "inputArtifactSha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d",
+      "measureCount": 4,
+      "modelVersion": "three-pinned-model-checksums",
+      "musicXmlPath": "services/ensemble-service/tests/fixtures/real-engines/homr.musicxml",
+      "partCount": 1
+    },
+    {
+      "canonicalDoctypeRemoved": false,
+      "canonicalSha256": "46a289932b3dc9c09b1bdedbb0054fe3b1a97dfa5629d63c88e53be0b81ccb06",
+      "captureMetadataPath": "services/ensemble-service/tests/fixtures/real-engines/clarity.capture.json",
+      "capturedMusicXmlSha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066",
+      "containerFormat": "xml",
+      "diagnosticCount": 1,
+      "engine": "clarity",
+      "engineVersion": "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82",
+      "eventCount": 16,
+      "extractedMusicXmlSha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066",
+      "inputArtifactSha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066",
+      "measureCount": 4,
+      "modelVersion": "ee14c1e41ab371fe27bf8a2707ea588560077e73",
+      "musicXmlPath": "services/ensemble-service/tests/fixtures/real-engines/clarity.musicxml",
+      "partCount": 1
+    }
+  ],
+  "comparison": {
+    "differenceCategories": {
+      "tie": 2
+    },
+    "differenceCount": 2,
+    "formatVersion": "0.1-foundation",
+    "identical": false,
+    "resultSha256": "7560c9f27518daad9cc9f48c8328ab3517af932a344f82919c545393a4c8ddd2"
+  },
+  "fixtureSetVersion": "0.1-foundation",
+  "source": {
+    "description": "One treble-clef C-major 4/4 part with four measures and sixteen quarter notes.",
+    "path": "services/ensemble-service/tests/fixtures/real-engines/shared-score.ly",
+    "sha256": "0c4b19af81df47ab224a191ffd1c13b2acf53ee4b73ad722aeb745da567e1a56"
+  }
+}
