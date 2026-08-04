@@ -1,47 +1,52 @@
 # Ensemble Service
 
-## Status
+## Current status
 
-Specification placeholder only. No public API or comparison implementation exists in Phase 0.
+**Canonical Score Model v1 foundation only.**
+
+The package now contains a deterministic, provenance-preserving MusicXML normalizer and executable model tests. It does not yet compare candidates, run jobs, expose an API, rank engines, merge MusicXML, or approve a score.
+
+## Implemented foundation
+
+- strict byte-only `score-partwise` MusicXML input
+- DTD/entity, size, element-count, nesting, and cursor-safety gates
+- exact rational onsets and durations in quarter-note units
+- part, measure, staff, voice, note, rest, chord, tie, dot, tuplet, and TAB structures
+- explicit `backup` and `forward` timing evidence
+- written versus effective duration preservation
+- immutable source engine and artifact provenance
+- event XML paths and source event indexes
+- deterministic JSON serialization and canonical SHA-256
+- bounded diagnostics for data retained only in the immutable raw candidate
+- JSON Schema contract: `contracts/canonical-score.schema.json`
+
+See `docs/canonical-score-model.md` for the detailed boundary.
 
 ## Planned responsibility
 
-The Ensemble service owns the external job lifecycle and coordinates private engine services. It preserves each candidate, validates outputs, compares normalized musical events, and creates a structured teacher-review report.
+The Ensemble service will own candidate normalization and later comparison. It will preserve each candidate, validate outputs, compare normalized musical events, and create a structured teacher-review report.
 
-## Ensemble v1 behavior
+## Explicit current non-goals
 
-- Dispatch a job to enabled engines independently.
-- Record engine, code version, model version, timing, failures, and artifact hashes.
-- Validate MusicXML before parsing.
-- Normalize candidates without discarding provenance.
-- Detect structural and musical disagreements.
-- Produce issue evidence, severity, and an optional recommendation.
-- Keep ambiguous cases unresolved rather than guessing.
-
-## Explicit v1 non-goals
-
+- No candidate comparison or measure alignment
+- No engine ranking or winner selection
 - No silent MusicXML merge
 - No automatic correction of pitch or rhythm
-- No teacher approval performed by the engine
+- No HTTP upload or job endpoint
+- No persistence or artifact mutation
+- No teacher approval
 - No learner-facing publication
-- No direct access to engine volumes or model files from external clients
 
-## Planned external capabilities
+## Local verification
 
-The versioned API contract will be finalized in Phase 1. Expected capabilities:
-
-```text
-GET    /health
-GET    /ready
-POST   /api/v1/jobs
-GET    /api/v1/jobs/{jobId}
-GET    /api/v1/jobs/{jobId}/report
-GET    /api/v1/jobs/{jobId}/artifacts/{artifactId}
-POST   /api/v1/jobs/{jobId}/cancel
-DELETE /api/v1/jobs/{jobId}
+```bash
+python -m compileall -q services/ensemble-service/src
+python -m unittest discover -s services/ensemble-service/tests -v
 ```
 
-## Comparison domains
+The fixed fixture must produce the pinned canonical SHA-256 recorded in the test suite.
+
+## Future comparison domains
 
 - measure presence, ordering, and duration balance
 - time signature and divisions
@@ -52,6 +57,6 @@ DELETE /api/v1/jobs/{jobId}
 - MusicXML timing structure, including backup/forward semantics
 - guitar string, fret, and pitch consistency when present
 
-## Acceptance gate
+## Acceptance gate before comparator work
 
-Implementation starts only after the job state machine, secure MusicXML gate, artifact policy, authentication boundary, and review-report contract have executable tests.
+Comparator implementation remains blocked until the canonical contract, hostile XML tests, deterministic fixture hash, and provenance checks pass in GitHub Actions and the feature PR is explicitly approved.

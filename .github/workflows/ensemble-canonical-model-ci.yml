@@ -1,0 +1,96 @@
+name: Ensemble Canonical Score Model CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/canonical-score-model-foundation"
+    paths:
+      - ".github/workflows/ensemble-canonical-model-ci.yml"
+      - "services/ensemble-service/**"
+      - "contracts/canonical-score.schema.json"
+      - "docs/canonical-score-model.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ensemble-canonical-model-ci.yml"
+      - "services/ensemble-service/**"
+      - "contracts/canonical-score.schema.json"
+      - "docs/canonical-score-model.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ensemble-canonical-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-canonical-score-model:
+    name: Test deterministic canonical normalization
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run canonical model tests
+        run: python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Verify fixed fixture digest and disabled boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          from scoremosaic_ensemble.musicxml import normalize_musicxml
+
+          service = Path("services/ensemble-service")
+          fixture = service / "tests/fixtures/canonical-smoke.musicxml"
+          score = normalize_musicxml(
+              fixture.read_bytes(),
+              engine="homr",
+              engine_version="0.7.0",
+              model_version="fixture-model",
+              artifact_ref="candidates/homr/original.musicxml",
+          )
+          assert score.canonical_sha256 == "dd556d328a26697b19a545a30437a782b895930554c48fa8b6cae7046b6a4744"
+          assert score.measure_count == 2
+          assert score.event_count == 9
+
+          config = tomllib.loads((service / "pyproject.toml").read_text())
+          boundary = config["tool"]["scoremosaic"]
+          assert boundary["canonical-score-model-version"] == "1.0"
+          assert boundary["comparison-enabled"] is False
+          assert boundary["automatic-merge-enabled"] is False
+          assert boundary["teacher-approval-enabled"] is False
+          assert boundary["public-api-enabled"] is False
+          PY
+
+      - name: Validate JSON contracts are parseable
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          schema = json.loads(Path("contracts/canonical-score.schema.json").read_text())
+          assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+          assert schema["properties"]["schemaVersion"]["const"] == "1.0"
+          assert schema["properties"]["rootType"]["const"] == "score-partwise"
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
