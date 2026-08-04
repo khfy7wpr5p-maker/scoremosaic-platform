@@ -1,0 +1,13 @@
+{
+  "canonicalDoctypeRemoved": true,
+  "captureFormatVersion": "0.1-foundation",
+  "capturedMusicXmlSha256": "fce8923e6724d2331c5e45412fe5c06ef3b34089cef0879d459d5d68fa8fdedd",
+  "containerFormat": "mxl",
+  "engine": "audiveris",
+  "engineVersion": "5.11.0",
+  "extractedMusicXmlSha256": "557658fca4a298f5532c7be9d2dd14c75b59eb144c557f9cc09781b66642a5af",
+  "inputArtifactSha256": "a44c055646bda7495cdb7a20b4c840b943bc6d7884ef5ae492104a77d452056f",
+  "modelVersion": "bundled-with-audiveris-5.11.0",
+  "rootType": "score-partwise",
+  "sourceFixtureSha256": "0c4b19af81df47ab224a191ffd1c13b2acf53ee4b73ad722aeb745da567e1a56"
+}
