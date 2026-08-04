@@ -1,0 +1,482 @@
+name: Ensemble Real Canonical Fixtures CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/ensemble-real-canonical-fixtures"
+    paths:
+      - ".github/workflows/ensemble-real-canonical-fixtures-ci.yml"
+      - "services/ensemble-service/**"
+      - "services/audiveris-service/**"
+      - "services/homr-service/**"
+      - "services/clarity-service/**"
+      - "docs/ensemble-real-canonical-fixtures.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ensemble-real-canonical-fixtures-ci.yml"
+      - "services/ensemble-service/**"
+      - "services/audiveris-service/**"
+      - "services/homr-service/**"
+      - "services/clarity-service/**"
+      - "docs/ensemble-real-canonical-fixtures.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ensemble-real-fixtures-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render-shared-score:
+    name: Render one bounded shared score
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Render deterministic PDF and PNG inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lilypond poppler-utils
+
+          source_file="services/ensemble-service/tests/fixtures/real-engines/shared-score.ly"
+          output_dir="/tmp/scoremosaic-shared-score"
+          mkdir -p "$output_dir"
+
+          lilypond \
+            --pdf \
+            --output="$output_dir/shared-score" \
+            "$source_file"
+          pdftoppm \
+            -png \
+            -r 300 \
+            -singlefile \
+            "$output_dir/shared-score.pdf" \
+            "$output_dir/shared-score"
+
+          cp "$source_file" "$output_dir/shared-score.ly"
+          sha256sum "$source_file" | awk '{print $1}' > "$output_dir/source.sha256"
+          test -s "$output_dir/shared-score.pdf"
+          test -s "$output_dir/shared-score.png"
+          test -s "$output_dir/shared-score.ly"
+          test "$(wc -c < "$output_dir/source.sha256")" -eq 65
+          file "$output_dir/shared-score.pdf" "$output_dir/shared-score.png"
+
+      - name: Upload shared immutable inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ensemble-shared-score-inputs
+          path: /tmp/scoremosaic-shared-score
+          if-no-files-found: error
+          retention-days: 3
+
+  capture-real-candidate:
+    name: Capture real ${{ matrix.engine }} candidate
+    needs: render-shared-score
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: audiveris
+            service_dir: services/audiveris-service
+            port: 8082
+            workspace_root: /tmp/scoremosaic-audiveris
+            tmpfs_size: 1073741824
+            pids_limit: 128
+            memory_limit: 4g
+            input_file: shared-score.png
+            input_suffix: png
+            engine_version: 5.11.0
+            model_version: bundled-with-audiveris-5.11.0
+          - engine: homr
+            service_dir: services/homr-service
+            port: 8080
+            workspace_root: /tmp/scoremosaic-homr
+            tmpfs_size: 1073741824
+            pids_limit: 128
+            memory_limit: 4g
+            input_file: shared-score.png
+            input_suffix: png
+            engine_version: 0.7.0
+            model_version: three-pinned-model-checksums
+          - engine: clarity
+            service_dir: services/clarity-service
+            port: 8081
+            workspace_root: /tmp/scoremosaic-clarity
+            tmpfs_size: 2147483648
+            pids_limit: 256
+            memory_limit: 6g
+            input_file: shared-score.pdf
+            input_suffix: pdf
+            engine_version: c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82
+            model_version: ee14c1e41ab371fe27bf8a2707ea588560077e73
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Download shared score inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: ensemble-shared-score-inputs
+          path: /tmp/scoremosaic-shared-score
+
+      - name: Verify capture helper and shared input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile services/ensemble-service/tools/capture_real_fixture.py
+          test -s "/tmp/scoremosaic-shared-score/${{ matrix.input_file }}"
+          test -s /tmp/scoremosaic-shared-score/source.sha256
+
+      - name: Build pinned ${{ matrix.engine }} runtime image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="scoremosaic-${{ matrix.engine }}-real-fixture:${GITHUB_SHA}"
+          docker build --tag "$image" "${{ matrix.service_dir }}"
+          echo "REAL_FIXTURE_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Start private hardened runtime container
+        shell: bash
+        run: |
+          set -euo pipefail
+          extra_args=()
+          if [[ "${{ matrix.engine }}" == "audiveris" ]]; then
+            extra_args+=(
+              --tmpfs
+              "/tmp/scoremosaic-audiveris-jna:rw,exec,nosuid,nodev,size=67108864,mode=0700,uid=65532,gid=65532"
+            )
+          fi
+          if [[ "${{ matrix.engine }}" == "clarity" ]]; then
+            extra_args+=(--memory-swap "${{ matrix.memory_limit }}")
+          fi
+
+          container_id="$(docker run --detach \
+            --network none \
+            --read-only \
+            --tmpfs "${{ matrix.workspace_root }}:rw,noexec,nosuid,nodev,size=${{ matrix.tmpfs_size }},mode=0700,uid=65532,gid=65532" \
+            "${extra_args[@]}" \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit "${{ matrix.pids_limit }}" \
+            --cpus 2 \
+            --memory "${{ matrix.memory_limit }}" \
+            "$REAL_FIXTURE_IMAGE")"
+          printf '%s' "$container_id" > /tmp/scoremosaic-real-fixture-container-id
+
+          for attempt in {1..120}; do
+            if docker exec "$container_id" python -c \
+              "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${{ matrix.port }}/health', timeout=3).read()"; then
+              exit 0
+            fi
+            if [[ "$attempt" == "120" ]]; then
+              echo "${{ matrix.engine }} health check did not become ready." >&2
+              docker logs "$container_id" >&2 || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run real transcription and capture immutable MusicXML
+        shell: bash
+        run: |
+          set -euo pipefail
+          diagnostic="/tmp/${{ matrix.engine }}-real-fixture-diagnostic.txt"
+          exec > >(tee "$diagnostic") 2>&1
+
+          container_id="$(cat /tmp/scoremosaic-real-fixture-container-id)"
+          workspace="${{ matrix.workspace_root }}/real-fixture"
+          input_path="$workspace/input.${{ matrix.input_suffix }}"
+
+          docker exec "$container_id" mkdir -p "$workspace/input" "$workspace/output" "$workspace/capture"
+          docker exec -i "$container_id" sh -c "cat > '$input_path'" \
+            < "/tmp/scoremosaic-shared-score/${{ matrix.input_file }}"
+          docker exec "$container_id" test -s "$input_path"
+
+          docker exec \
+            --env ENGINE="${{ matrix.engine }}" \
+            --env WORKSPACE="$workspace" \
+            --env INPUT_SUFFIX="${{ matrix.input_suffix }}" \
+            -i "$container_id" python - <<'PY'
+          from pathlib import Path
+          import os
+          import shutil
+
+          engine = os.environ["ENGINE"]
+          workspace = Path(os.environ["WORKSPACE"])
+          input_path = workspace / f"input.{os.environ['INPUT_SUFFIX']}"
+
+          if engine == "audiveris":
+              from scoremosaic_audiveris.config import load_config
+              from scoremosaic_audiveris.runtime import transcribe_file
+
+              result = transcribe_file(input_path, workspace / "output", load_config())
+          elif engine == "homr":
+              from scoremosaic_homr.config import load_config
+              from scoremosaic_homr.runtime import transcribe_file
+
+              result = transcribe_file(input_path, workspace, load_config())
+          elif engine == "clarity":
+              from scoremosaic_clarity.config import load_config
+              from scoremosaic_clarity.runtime import transcribe_file
+
+              result = transcribe_file(input_path, workspace / "output", load_config())
+          else:
+              raise AssertionError(f"unsupported engine: {engine}")
+
+          print("engine:", engine)
+          print("diagnostic:", result.diagnostic)
+          assert result.musicxml_artifacts, result.diagnostic
+          artifact = result.musicxml_artifacts[0]
+          assert artifact.is_file() and not artifact.is_symlink(), artifact
+          destination = workspace / "capture" / "engine-artifact"
+          shutil.copyfile(artifact, destination)
+          print("engine artifact:", artifact)
+          print("captured bytes:", destination.stat().st_size)
+          PY
+
+          docker cp \
+            "$container_id:$workspace/capture/engine-artifact" \
+            /tmp/scoremosaic-engine-artifact
+          test -s /tmp/scoremosaic-engine-artifact
+
+          mkdir -p /tmp/scoremosaic-captured-fixture
+          source_sha="$(tr -d '\n' < /tmp/scoremosaic-shared-score/source.sha256)"
+          python services/ensemble-service/tools/capture_real_fixture.py \
+            --input /tmp/scoremosaic-engine-artifact \
+            --output "/tmp/scoremosaic-captured-fixture/${{ matrix.engine }}.musicxml" \
+            --metadata "/tmp/scoremosaic-captured-fixture/${{ matrix.engine }}.capture.json" \
+            --engine "${{ matrix.engine }}" \
+            --engine-version "${{ matrix.engine_version }}" \
+            --model-version "${{ matrix.model_version }}" \
+            --source-fixture-sha256 "$source_sha"
+
+          cat "/tmp/scoremosaic-captured-fixture/${{ matrix.engine }}.capture.json"
+          test -s "/tmp/scoremosaic-captured-fixture/${{ matrix.engine }}.musicxml"
+
+      - name: Upload captured ${{ matrix.engine }} fixture
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-fixture-${{ matrix.engine }}
+          path: /tmp/scoremosaic-captured-fixture
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload real-engine diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-fixture-${{ matrix.engine }}-diagnostic
+          path: /tmp/${{ matrix.engine }}-real-fixture-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Remove runtime container
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s /tmp/scoremosaic-real-fixture-container-id ]]; then
+            container_id="$(cat /tmp/scoremosaic-real-fixture-container-id)"
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" >/dev/null 2>&1 || true
+          fi
+
+  validate-real-canonical-candidates:
+    name: Normalize and compare three real candidates
+    needs:
+      - render-shared-score
+      - capture-real-candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Download all real candidate fixtures
+        uses: actions/download-artifact@v4
+        with:
+          pattern: real-fixture-*
+          path: /tmp/scoremosaic-real-fixtures
+          merge-multiple: true
+
+      - name: Compile and run Ensemble unit tests
+        run: |
+          python -m compileall -q services/ensemble-service/src services/ensemble-service/tools
+          python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Normalize real candidates and run neutral comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/scoremosaic-real-validation
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          from collections import Counter
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          from scoremosaic_ensemble import compare_candidates, normalize_musicxml
+
+          root = Path("/tmp/scoremosaic-real-fixtures")
+          output = Path("/tmp/scoremosaic-real-validation")
+          engines = ("audiveris", "homr", "clarity")
+          candidates = []
+          source_hashes = set()
+          summaries = []
+
+          for engine in engines:
+              musicxml_path = root / f"{engine}.musicxml"
+              metadata_path = root / f"{engine}.capture.json"
+              assert musicxml_path.is_file() and not musicxml_path.is_symlink()
+              assert metadata_path.is_file() and not metadata_path.is_symlink()
+
+              document = musicxml_path.read_bytes()
+              metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+              assert metadata["engine"] == engine
+              assert metadata["capturedMusicXmlSha256"] == sha256(document).hexdigest()
+              assert metadata["rootType"] == "score-partwise"
+              source_hashes.add(metadata["sourceFixtureSha256"])
+
+              score = normalize_musicxml(
+                  document,
+                  engine=engine,
+                  engine_version=metadata["engineVersion"],
+                  model_version=metadata["modelVersion"],
+                  artifact_ref=f"fixtures/real-engines/{engine}.musicxml",
+              )
+              assert score.source.artifact_sha256 == metadata["capturedMusicXmlSha256"]
+              assert score.source.engine == engine
+              assert score.measure_count > 0
+              assert score.event_count > 0
+              for part in score.parts:
+                  for measure in part.measures:
+                      for event in measure.events:
+                          assert event.provenance.xml_path
+                          assert event.provenance.source_event_index >= 0
+
+              (output / f"{engine}.canonical.json").write_text(
+                  score.to_json() + "\n",
+                  encoding="utf-8",
+              )
+              candidates.append(score)
+              summaries.append(
+                  {
+                      "engine": engine,
+                      "engineVersion": metadata["engineVersion"],
+                      "modelVersion": metadata["modelVersion"],
+                      "capturedMusicXmlSha256": metadata["capturedMusicXmlSha256"],
+                      "canonicalSha256": score.canonical_sha256,
+                      "partCount": len(score.parts),
+                      "measureCount": score.measure_count,
+                      "eventCount": score.event_count,
+                      "diagnosticCount": len(score.diagnostics),
+                  }
+              )
+
+          assert len(source_hashes) == 1
+          original_hashes = tuple(score.canonical_sha256 for score in candidates)
+          result = compare_candidates(tuple(candidates))
+          reversed_result = compare_candidates(tuple(reversed(candidates)))
+          assert result.to_json(indent=None) == reversed_result.to_json(indent=None)
+          assert original_hashes == tuple(score.canonical_sha256 for score in candidates)
+
+          payload = result.as_dict()
+          assert payload["candidateCount"] == 3
+          assert {item["source"]["engine"] for item in payload["candidates"]} == set(engines)
+          assert payload["comparisonMode"] == "neutral-all-candidates"
+          assert payload["alignment"]["fuzzyAlignment"] is False
+          assert payload["boundaries"] == {
+              "readOnly": True,
+              "engineRanking": False,
+              "winnerSelection": False,
+              "automaticMerge": False,
+              "automaticCorrection": False,
+              "teacherApproval": False,
+              "publication": False,
+          }
+
+          for difference in result.differences:
+              assert len(difference.observations) == 3
+              for observation in difference.observations:
+                  assert observation.source.engine in engines
+                  assert len(observation.canonical_sha256) == 64
+                  if observation.event_id is not None:
+                      assert observation.xml_path
+                      assert observation.source_event_index is not None
+
+          category_counts = Counter(item.category for item in result.differences)
+          summary = {
+              "validationFormatVersion": "0.1-foundation",
+              "sourceFixtureSha256": next(iter(source_hashes)),
+              "candidateCount": len(candidates),
+              "candidates": summaries,
+              "comparison": {
+                  "formatVersion": payload["formatVersion"],
+                  "resultSha256": result.result_sha256,
+                  "identical": result.identical,
+                  "differenceCount": len(result.differences),
+                  "differenceCategories": dict(sorted(category_counts.items())),
+              },
+              "boundaries": payload["boundaries"],
+          }
+          (output / "comparison.foundation.json").write_text(
+              result.to_json() + "\n",
+              encoding="utf-8",
+          )
+          (output / "validation-summary.json").write_text(
+              json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2))
+          PY
+
+      - name: Copy captured inputs into validation bundle
+        run: |
+          cp /tmp/scoremosaic-real-fixtures/*.musicxml /tmp/scoremosaic-real-validation/
+          cp /tmp/scoremosaic-real-fixtures/*.capture.json /tmp/scoremosaic-real-validation/
+          test "$(find /tmp/scoremosaic-real-validation -maxdepth 1 -type f | wc -l)" -ge 11
+
+      - name: Upload real Canonical validation bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-canonical-validation-bundle
+          path: /tmp/scoremosaic-real-validation
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Verify phase boundaries and repository formatting
+        run: |
+          test ! -e contracts/ensemble-comparison-report.schema.json
+          test ! -e contracts/comparison-report.schema.json
+          test ! -d services/st-omr-service
+          git diff --check
