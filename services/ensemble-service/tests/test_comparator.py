@@ -254,10 +254,8 @@ class ComparatorFoundationTests(unittest.TestCase):
         self.assertEqual(len(event_two), 1)
         self.assertEqual(event_two[0].field, "event.presence")
         self.assertEqual(
-            [observation.present for observation in event_two[0].observations],
-            sorted(
-                [observation.present for observation in event_two[0].observations]
-            ),
+            {observation.present for observation in event_two[0].observations},
+            {False, True},
         )
 
     def test_missing_measure_is_reported_once(self) -> None:
