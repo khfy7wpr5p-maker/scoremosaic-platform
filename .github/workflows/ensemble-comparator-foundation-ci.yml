@@ -1,0 +1,93 @@
+name: Ensemble Comparator v1 Foundation CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/ensemble-comparator-v1-foundation"
+    paths:
+      - ".github/workflows/ensemble-comparator-foundation-ci.yml"
+      - "services/ensemble-service/**"
+      - "docs/ensemble-comparator-v1-foundation.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ensemble-comparator-foundation-ci.yml"
+      - "services/ensemble-service/**"
+      - "docs/ensemble-comparator-v1-foundation.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ensemble-comparator-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-comparator-foundation:
+    name: Test neutral read-only Canonical comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run Ensemble unit tests
+        run: python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Verify comparator boundary configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          from scoremosaic_ensemble import COMPARISON_FORMAT_VERSION
+          from scoremosaic_ensemble.comparator import (
+              MAX_CANDIDATES,
+              MAX_DIFFERENCES,
+              MAX_TOTAL_EVENTS,
+          )
+
+          service = Path("services/ensemble-service")
+          config = tomllib.loads((service / "pyproject.toml").read_text())
+          project = config["project"]
+          boundary = config["tool"]["scoremosaic"]
+
+          assert project["version"] == "0.2.0"
+          assert project["dependencies"] == []
+          assert COMPARISON_FORMAT_VERSION == "0.1-foundation"
+          assert boundary["canonical-score-model-version"] == "1.0"
+          assert boundary["comparison-foundation-version"] == "0.1-foundation"
+          assert boundary["comparison-library-enabled"] is True
+          assert boundary["comparison-enabled"] is False
+          assert boundary["engine-ranking-enabled"] is False
+          assert boundary["winner-selection-enabled"] is False
+          assert boundary["automatic-merge-enabled"] is False
+          assert boundary["automatic-correction-enabled"] is False
+          assert boundary["teacher-approval-enabled"] is False
+          assert boundary["public-api-enabled"] is False
+          assert MAX_CANDIDATES == 8
+          assert MAX_TOTAL_EVENTS == 250_000
+          assert MAX_DIFFERENCES == 200_000
+          PY
+
+      - name: Verify no external comparison-report contract was added
+        run: |
+          test ! -e contracts/ensemble-comparison-report.schema.json
+          test ! -e contracts/comparison-report.schema.json
+
+      - name: Check repository diff formatting
+        run: git diff --check
