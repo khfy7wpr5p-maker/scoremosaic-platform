@@ -1,4 +1,4 @@
-"""ScoreMosaic Ensemble canonical score model foundation."""
+"""ScoreMosaic Ensemble canonical model and neutral comparator foundation."""
 
 from .canonical import (
     CanonicalEvent,
@@ -17,14 +17,31 @@ from .canonical import (
     TimingMovement,
     TupletRatio,
 )
+from .comparator import (
+    COMPARISON_FORMAT_VERSION,
+    CandidateObservation,
+    CandidateSummary,
+    ComparisonDifference,
+    ComparisonError,
+    ComparisonLocation,
+    ComparisonResult,
+    compare_candidates,
+)
 from .musicxml import MusicXmlNormalizationError, normalize_musicxml
 
 __all__ = [
+    "COMPARISON_FORMAT_VERSION",
+    "CandidateObservation",
+    "CandidateSummary",
     "CanonicalEvent",
     "CanonicalMeasure",
     "CanonicalModelError",
     "CanonicalPart",
     "CanonicalScore",
+    "ComparisonDifference",
+    "ComparisonError",
+    "ComparisonLocation",
+    "ComparisonResult",
     "DivisionsChange",
     "EventProvenance",
     "MusicXmlNormalizationError",
@@ -36,7 +53,8 @@ __all__ = [
     "TimeSignatureChange",
     "TimingMovement",
     "TupletRatio",
+    "compare_candidates",
     "normalize_musicxml",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
