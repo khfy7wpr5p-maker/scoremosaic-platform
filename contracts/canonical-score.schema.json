@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/canonical-score.schema.json",
+  "title": "ScoreMosaic Canonical Score",
+  "description": "Deterministic, provenance-preserving normalization of one immutable OMR MusicXML candidate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "rootType",
+    "movementTitle",
+    "parts",
+    "diagnostics",
+    "canonicalSha256"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "source": { "$ref": "#/$defs/source" },
+    "rootType": { "const": "score-partwise" },
+    "movementTitle": {
+      "type": ["string", "null"],
+      "maxLength": 500
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/part" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 1001,
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "canonicalSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": { "type": "integer" },
+        "denominator": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "engineVersion",
+        "modelVersion",
+        "artifactRef",
+        "artifactSha256"
+      ],
+      "properties": {
+        "engine": { "enum": ["homr", "clarity", "audiveris"] },
+        "engineVersion": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "modelVersion": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "artifactRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "name", "ordinal", "measures"],
+      "properties": {
+        "partId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "name": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "measures": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/measure" }
+        }
+      }
+    },
+    "measure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measureId",
+        "number",
+        "ordinal",
+        "implicit",
+        "divisionsAtStart",
+        "timeSignatureAtStart",
+        "expectedDuration",
+        "observedDuration",
+        "divisionsChanges",
+        "timeSignatureChanges",
+        "timingMovements",
+        "events"
+      ],
+      "properties": {
+        "measureId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "number": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "implicit": { "type": "boolean" },
+        "divisionsAtStart": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "timeSignatureAtStart": {
+          "oneOf": [
+            { "$ref": "#/$defs/timeSignature" },
+            { "type": "null" }
+          ]
+        },
+        "expectedDuration": {
+          "oneOf": [
+            { "$ref": "#/$defs/rational" },
+            { "type": "null" }
+          ]
+        },
+        "observedDuration": { "$ref": "#/$defs/rational" },
+        "divisionsChanges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/divisionsChange" }
+        },
+        "timeSignatureChanges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/timeSignatureChange" }
+        },
+        "timingMovements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/timingMovement" }
+        },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/event" }
+        }
+      }
+    },
+    "timeSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beats", "beatType"],
+      "properties": {
+        "beats": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(\\+[1-9][0-9]*)*$",
+          "maxLength": 40
+        },
+        "beatType": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        }
+      }
+    },
+    "divisionsChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["xmlOrder", "onset", "divisions"],
+      "properties": {
+        "xmlOrder": { "type": "integer", "minimum": 0 },
+        "onset": { "$ref": "#/$defs/rational" },
+        "divisions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      }
+    },
+    "timeSignatureChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["xmlOrder", "onset", "timeSignature"],
+      "properties": {
+        "xmlOrder": { "type": "integer", "minimum": 0 },
+        "onset": { "$ref": "#/$defs/rational" },
+        "timeSignature": { "$ref": "#/$defs/timeSignature" }
+      }
+    },
+    "timingMovement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "xmlOrder",
+        "duration",
+        "fromPosition",
+        "toPosition",
+        "xmlPath"
+      ],
+      "properties": {
+        "kind": { "enum": ["backup", "forward"] },
+        "xmlOrder": { "type": "integer", "minimum": 0 },
+        "duration": { "$ref": "#/$defs/rational" },
+        "fromPosition": { "$ref": "#/$defs/rational" },
+        "toPosition": { "$ref": "#/$defs/rational" },
+        "xmlPath": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "xmlOrder",
+        "kind",
+        "onset",
+        "effectiveDuration",
+        "writtenDuration",
+        "writtenType",
+        "dots",
+        "tuplet",
+        "voice",
+        "staff",
+        "pitch",
+        "tab",
+        "grace",
+        "chordGroup",
+        "chordIndex",
+        "ties",
+        "provenance"
+      ],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "xmlOrder": { "type": "integer", "minimum": 0 },
+        "kind": { "enum": ["note", "rest", "unpitched"] },
+        "onset": { "$ref": "#/$defs/rational" },
+        "effectiveDuration": { "$ref": "#/$defs/rational" },
+        "writtenDuration": {
+          "oneOf": [
+            { "$ref": "#/$defs/rational" },
+            { "type": "null" }
+          ]
+        },
+        "writtenType": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "dots": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "tuplet": {
+          "oneOf": [
+            { "$ref": "#/$defs/tuplet" },
+            { "type": "null" }
+          ]
+        },
+        "voice": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "staff": { "type": "integer", "minimum": 1, "maximum": 128 },
+        "pitch": {
+          "oneOf": [
+            { "$ref": "#/$defs/pitch" },
+            { "type": "null" }
+          ]
+        },
+        "tab": {
+          "oneOf": [
+            { "$ref": "#/$defs/tab" },
+            { "type": "null" }
+          ]
+        },
+        "grace": { "type": "boolean" },
+        "chordGroup": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "chordIndex": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "ties": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["continue", "start", "stop"] }
+        },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "pitch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step", "alter", "octave"],
+      "properties": {
+        "step": { "enum": ["A", "B", "C", "D", "E", "F", "G"] },
+        "alter": { "$ref": "#/$defs/rational" },
+        "octave": { "type": "integer", "minimum": -2, "maximum": 12 }
+      }
+    },
+    "tab": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["string", "fret"],
+      "properties": {
+        "string": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "fret": { "type": "integer", "minimum": 0, "maximum": 96 }
+      }
+    },
+    "tuplet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actualNotes", "normalNotes"],
+      "properties": {
+        "actualNotes": { "type": "integer", "minimum": 1, "maximum": 1024 },
+        "normalNotes": { "type": "integer", "minimum": 1, "maximum": 1024 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["xmlPath", "sourceEventIndex"],
+      "properties": {
+        "xmlPath": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "sourceEventIndex": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "xmlPath"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "severity": { "enum": ["info", "warning"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "xmlPath": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    }
+  }
+}
