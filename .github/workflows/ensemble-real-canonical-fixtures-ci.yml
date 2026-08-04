@@ -256,9 +256,9 @@ jobs:
           print("captured bytes:", destination.stat().st_size)
           PY
 
-          docker cp \
-            "$container_id:$workspace/capture/engine-artifact" \
-            /tmp/scoremosaic-engine-artifact
+          docker exec "$container_id" sh -c \
+            "cat '$workspace/capture/engine-artifact'" \
+            > /tmp/scoremosaic-engine-artifact
           test -s /tmp/scoremosaic-engine-artifact
 
           mkdir -p /tmp/scoremosaic-captured-fixture
