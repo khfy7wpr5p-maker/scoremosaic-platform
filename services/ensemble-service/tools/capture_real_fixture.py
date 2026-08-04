@@ -26,7 +26,7 @@ _MUSICXML_DOCTYPE_RE = re.compile(
     (?P<root>score-partwise|score-timewise)\s+
     PUBLIC\s+
     (?P<public_quote>["'])
-    -//Recordare//DTD\s+MusicXML\s+\d+(?:\.\d+)?\s+
+    -//Recordare//DTD\s+MusicXML\s+\d+(?:\.\d+)*\s+
     (?P<form>Partwise|Timewise)//EN
     (?P=public_quote)\s+
     (?P<system_quote>["'])
