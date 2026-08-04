@@ -1,13 +1,18 @@
 [project]
 name = "scoremosaic-ensemble-service"
-version = "0.1.0"
-description = "Deterministic Canonical Score Model foundation for ScoreMosaic OMR candidates"
+version = "0.2.0"
+description = "Deterministic Canonical Score Model and neutral comparator foundation for ScoreMosaic OMR candidates"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [tool.scoremosaic]
 canonical-score-model-version = "1.0"
+comparison-foundation-version = "0.1-foundation"
+comparison-library-enabled = true
 comparison-enabled = false
+engine-ranking-enabled = false
+winner-selection-enabled = false
 automatic-merge-enabled = false
+automatic-correction-enabled = false
 teacher-approval-enabled = false
 public-api-enabled = false
