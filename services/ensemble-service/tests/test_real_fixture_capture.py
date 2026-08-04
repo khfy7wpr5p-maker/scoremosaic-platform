@@ -77,6 +77,17 @@ class RealFixtureCaptureTests(unittest.TestCase):
         self.assertNotIn(b"<!DOCTYPE", captured.upper())
         self.assertTrue(metadata["canonicalDoctypeRemoved"])
 
+    def test_canonical_dotted_musicxml_doctype_version_is_removed(self) -> None:
+        document = b"""<?xml version="1.0"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.0"><part-list/></score-partwise>
+"""
+
+        captured, metadata = self._capture(document, engine="audiveris")
+
+        self.assertNotIn(b"<!DOCTYPE", captured.upper())
+        self.assertTrue(metadata["canonicalDoctypeRemoved"])
+
     def test_entity_declaration_is_rejected(self) -> None:
         document = b"""<!DOCTYPE score-partwise [
 <!ENTITY secret SYSTEM "file:///etc/passwd">
