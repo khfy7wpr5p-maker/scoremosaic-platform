@@ -1,0 +1,13 @@
+{
+  "canonicalDoctypeRemoved": false,
+  "captureFormatVersion": "0.1-foundation",
+  "capturedMusicXmlSha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d",
+  "containerFormat": "xml",
+  "engine": "homr",
+  "engineVersion": "0.7.0",
+  "extractedMusicXmlSha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d",
+  "inputArtifactSha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d",
+  "modelVersion": "three-pinned-model-checksums",
+  "rootType": "score-partwise",
+  "sourceFixtureSha256": "0c4b19af81df47ab224a191ffd1c13b2acf53ee4b73ad722aeb745da567e1a56"
+}

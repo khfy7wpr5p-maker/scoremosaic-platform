@@ -1,0 +1,13 @@
+{
+  "canonicalDoctypeRemoved": false,
+  "captureFormatVersion": "0.1-foundation",
+  "capturedMusicXmlSha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066",
+  "containerFormat": "xml",
+  "engine": "clarity",
+  "engineVersion": "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82",
+  "extractedMusicXmlSha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066",
+  "inputArtifactSha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066",
+  "modelVersion": "ee14c1e41ab371fe27bf8a2707ea588560077e73",
+  "rootType": "score-partwise",
+  "sourceFixtureSha256": "0c4b19af81df47ab224a191ffd1c13b2acf53ee4b73ad722aeb745da567e1a56"
+}
