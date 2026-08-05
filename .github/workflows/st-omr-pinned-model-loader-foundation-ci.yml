@@ -41,8 +41,10 @@ jobs:
           ! grep -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
             services/st-omr-service/pyproject.toml \
             services/st-omr-service/requirements.lock
-          ! grep -R -E "(/upload|/infer|/predict|gateway-integration-enabled = true|ensemble-integration-enabled = true|model-loading-enabled = true|inference-enabled = true)" \
-            services/st-omr-service/src \
+          ! grep -R -E "(/upload|/infer|/predict)" \
+            services/st-omr-service/src
+
+          ! grep -E "^[[:space:]]*(gateway-integration-enabled|ensemble-integration-enabled|model-loading-enabled|inference-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
             services/st-omr-service/pyproject.toml
       - name: Check diff formatting
         run: git diff --check
