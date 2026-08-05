@@ -1,5 +1,32 @@
-"""ScoreMosaic OMR Gateway foundation."""
+"""ScoreMosaic OMR Gateway foundation and disabled orchestration contract."""
 
-__all__ = ["__version__"]
+from .orchestration import (
+    ACCEPTED_SOURCE_MEDIA_TYPES,
+    ENGINE_NAMES,
+    ORCHESTRATION_CONTRACT_TYPE,
+    ORCHESTRATION_SCHEMA_VERSION,
+    EngineRunPlan,
+    ExpectedArtifactPlan,
+    GatewayOrchestrationPlan,
+    OrchestrationContractError,
+    SourceArtifactPlan,
+    build_orchestration_plan,
+    verify_orchestration_plan,
+)
 
-__version__ = "0.1.0"
+__all__ = [
+    "ACCEPTED_SOURCE_MEDIA_TYPES",
+    "ENGINE_NAMES",
+    "ORCHESTRATION_CONTRACT_TYPE",
+    "ORCHESTRATION_SCHEMA_VERSION",
+    "EngineRunPlan",
+    "ExpectedArtifactPlan",
+    "GatewayOrchestrationPlan",
+    "OrchestrationContractError",
+    "SourceArtifactPlan",
+    "build_orchestration_plan",
+    "verify_orchestration_plan",
+    "__version__",
+]
+
+__version__ = "0.2.0"

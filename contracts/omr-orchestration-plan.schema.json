@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/omr-orchestration-plan.schema.json",
+  "title": "ScoreMosaic OMR Gateway Orchestration Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractType",
+    "planId",
+    "planSha256",
+    "jobId",
+    "sourceArtifact",
+    "requestedEngines",
+    "engineRuns",
+    "lifecyclePolicy",
+    "timeoutPolicy",
+    "artifactPolicy",
+    "boundaries"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "contractType": { "const": "scoremosaic-gateway-orchestration-plan" },
+    "planId": {
+      "type": "string",
+      "pattern": "^plan_[a-f0-9]{24}$"
+    },
+    "planSha256": { "$ref": "#/$defs/sha256" },
+    "jobId": {
+      "type": "string",
+      "pattern": "^job_[A-Za-z0-9_-]{8,80}$"
+    },
+    "sourceArtifact": { "$ref": "#/$defs/sourceArtifact" },
+    "requestedEngines": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/engineName" }
+    },
+    "engineRuns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/engineRun" }
+    },
+    "lifecyclePolicy": { "$ref": "#/$defs/lifecyclePolicy" },
+    "timeoutPolicy": { "$ref": "#/$defs/timeoutPolicy" },
+    "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" },
+    "boundaries": { "$ref": "#/$defs/boundaries" }
+  },
+  "$defs": {
+    "engineName": {
+      "enum": ["audiveris", "homr", "clarity"]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "artifactRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "artifactRef",
+        "sha256",
+        "sizeBytes",
+        "mediaType",
+        "immutable"
+      ],
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "pattern": "^artifact_[a-f0-9]{24}$"
+        },
+        "artifactRef": { "$ref": "#/$defs/artifactRef" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 104857600
+        },
+        "mediaType": {
+          "enum": ["application/pdf", "image/jpeg", "image/png"]
+        },
+        "immutable": { "const": true }
+      }
+    },
+    "expectedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "kind",
+        "artifactRef",
+        "immutable",
+        "sha256Required"
+      ],
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "pattern": "^artifact_[a-f0-9]{24}$"
+        },
+        "kind": { "enum": ["musicxml", "diagnostic"] },
+        "artifactRef": { "$ref": "#/$defs/artifactRef" },
+        "immutable": { "const": true },
+        "sha256Required": { "const": true }
+      }
+    },
+    "engineRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "engine",
+        "operation",
+        "transportProfile",
+        "endpointKey",
+        "inputArtifactId",
+        "candidateId",
+        "candidateNamespace",
+        "timeoutSeconds",
+        "attemptLimit",
+        "initialState",
+        "expectedArtifacts"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "pattern": "^run_[a-f0-9]{24}$"
+        },
+        "engine": { "$ref": "#/$defs/engineName" },
+        "operation": { "const": "transcribe" },
+        "transportProfile": { "const": "private-engine-adapter-v1" },
+        "endpointKey": { "$ref": "#/$defs/engineName" },
+        "inputArtifactId": {
+          "type": "string",
+          "pattern": "^artifact_[a-f0-9]{24}$"
+        },
+        "candidateId": {
+          "type": "string",
+          "pattern": "^candidate_[a-f0-9]{24}$"
+        },
+        "candidateNamespace": { "$ref": "#/$defs/artifactRef" },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 7200
+        },
+        "attemptLimit": { "const": 1 },
+        "initialState": { "const": "planned" },
+        "expectedArtifacts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/expectedArtifact" },
+                {
+                  "type": "object",
+                  "properties": { "kind": { "const": "musicxml" } }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/expectedArtifact" },
+                {
+                  "type": "object",
+                  "properties": { "kind": { "const": "diagnostic" } }
+                }
+              ]
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "lifecyclePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engineRunStates",
+        "terminalEngineRunStates",
+        "allowedEngineRunTransitions"
+      ],
+      "properties": {
+        "engineRunStates": {
+          "const": [
+            "planned",
+            "queued",
+            "dispatching",
+            "running",
+            "completed",
+            "failed",
+            "cancelled",
+            "timed_out"
+          ]
+        },
+        "terminalEngineRunStates": {
+          "const": ["completed", "failed", "cancelled", "timed_out"]
+        },
+        "allowedEngineRunTransitions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "planned",
+            "queued",
+            "dispatching",
+            "running",
+            "completed",
+            "failed",
+            "cancelled",
+            "timed_out"
+          ],
+          "properties": {
+            "planned": { "const": ["queued", "cancelled"] },
+            "queued": { "const": ["dispatching", "cancelled", "timed_out"] },
+            "dispatching": { "const": ["running", "failed", "cancelled", "timed_out"] },
+            "running": { "const": ["completed", "failed", "cancelled", "timed_out"] },
+            "completed": { "const": [] },
+            "failed": { "const": [] },
+            "cancelled": { "const": [] },
+            "timed_out": { "const": [] }
+          }
+        }
+      }
+    },
+    "timeoutPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clock",
+        "startsAt",
+        "cancellationGraceSeconds",
+        "totalDeadlineSeconds",
+        "timeoutIsTerminal",
+        "retryAfterTimeout"
+      ],
+      "properties": {
+        "clock": { "const": "monotonic" },
+        "startsAt": { "const": "dispatch" },
+        "cancellationGraceSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "totalDeadlineSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 7500
+        },
+        "timeoutIsTerminal": { "const": true },
+        "retryAfterTimeout": { "const": false }
+      }
+    },
+    "artifactPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceImmutable",
+        "candidateIsolation",
+        "hashRequired",
+        "overwriteAllowed",
+        "crossEngineWriteAllowed"
+      ],
+      "properties": {
+        "sourceImmutable": { "const": true },
+        "candidateIsolation": { "const": true },
+        "hashRequired": { "const": true },
+        "overwriteAllowed": { "const": false },
+        "crossEngineWriteAllowed": { "const": false }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executionEnabled",
+        "uploadEnabled",
+        "persistenceEnabled",
+        "networkDispatchEnabled",
+        "engineRanking",
+        "winnerSelection",
+        "automaticMerge",
+        "automaticCorrection",
+        "teacherApproval",
+        "publication"
+      ],
+      "properties": {
+        "executionEnabled": { "const": false },
+        "uploadEnabled": { "const": false },
+        "persistenceEnabled": { "const": false },
+        "networkDispatchEnabled": { "const": false },
+        "engineRanking": { "const": false },
+        "winnerSelection": { "const": false },
+        "automaticMerge": { "const": false },
+        "automaticCorrection": { "const": false },
+        "teacherApproval": { "const": false },
+        "publication": { "const": false }
+      }
+    }
+  }
+}
