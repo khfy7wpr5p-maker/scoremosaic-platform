@@ -1,5 +1,5 @@
-"""Pinned offline model runtime foundation for isolated ST-OMR."""
+"""Structured synthetic symbol output contract for isolated ST-OMR."""
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 SERVICE_NAME = "st-omr-service"
-PHASE = "pinned-offline-model-runtime-foundation"
+PHASE = "structured-synthetic-symbol-output-contract"
