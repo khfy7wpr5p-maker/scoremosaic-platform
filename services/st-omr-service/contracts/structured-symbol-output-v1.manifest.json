@@ -1,0 +1,7 @@
+{
+  "manifestVersion": "1.0",
+  "artifactName": "structured-symbol-output-v1.synthetic.json",
+  "artifactSha256": "7bf31d00787a07fac099f244591ec7eb2798c9c56ee73b0f53de165e02266476",
+  "canonicalSha256": "78136ad2dda8addf74835a43b2071acc6d8fb093b0c8ded21ac61d8a7417a1e1",
+  "purpose": "static_repository_synthetic_contract_sample"
+}

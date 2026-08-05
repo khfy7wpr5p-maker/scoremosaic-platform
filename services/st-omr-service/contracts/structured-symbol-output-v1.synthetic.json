@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "documentId": "synthetic-symbol-output-v1",
+  "fixture": {
+    "fixtureId": "generated-single-staff",
+    "fixtureVersion": "1.0.0",
+    "inputSha256": "4c33aa3211217ddaa48da3eef4e9763a1ada0278699a35a2b939820e46036f5e"
+  },
+  "model": {
+    "modelId": "st-omr-repository-test-linear",
+    "modelVersion": "0.0.1",
+    "modelSha256": "cb72738ab6f5d2ccf7b435b9aa99f4e2b82bf32da46df97424ccbae74211aaca",
+    "repositoryTestOnly": true
+  },
+  "coordinateSpace": {"unit": "integer-grid", "min": 0, "max": 4096},
+  "symbols": [
+    {"id": "s001", "type": "staff", "bbox": {"x": 100, "y": 100, "width": 1200, "height": 240}, "confidence": 1000},
+    {"id": "s002", "type": "measure", "bbox": {"x": 120, "y": 110, "width": 560, "height": 220}, "confidence": 1000},
+    {"id": "s003", "type": "clef", "bbox": {"x": 140, "y": 130, "width": 70, "height": 150}, "confidence": 980},
+    {"id": "s004", "type": "time_signature", "bbox": {"x": 230, "y": 145, "width": 80, "height": 120}, "confidence": 970},
+    {"id": "s005", "type": "notehead", "bbox": {"x": 360, "y": 190, "width": 36, "height": 28}, "confidence": 930},
+    {"id": "s006", "type": "stem", "bbox": {"x": 392, "y": 125, "width": 6, "height": 95}, "confidence": 910},
+    {"id": "s007", "type": "beam", "bbox": {"x": 392, "y": 120, "width": 120, "height": 14}, "confidence": 900},
+    {"id": "s008", "type": "rest", "bbox": {"x": 540, "y": 180, "width": 34, "height": 55}, "confidence": 920},
+    {"id": "s009", "type": "barline", "bbox": {"x": 660, "y": 110, "width": 6, "height": 220}, "confidence": 990}
+  ],
+  "boundaries": {
+    "realOmrInference": false,
+    "userInputAccepted": false,
+    "httpInferenceEnabled": false,
+    "musicXmlGenerated": false,
+    "gatewayIntegration": false,
+    "ensembleIntegration": false,
+    "networkUsed": false,
+    "gpuUsed": false,
+    "persistentStorageUsed": false,
+    "productionEligible": false
+  }
+}

@@ -13,6 +13,7 @@ from .model_guard import disabled_model_evidence
 from .offline_fixture_inference import disabled_fixture_inference_evidence
 from .offline_model_runtime import disabled_offline_model_runtime_evidence
 from .runtime import runtime_evidence
+from .structured_symbol_output import disabled_structured_symbol_output_evidence
 
 HOST: Final = "0.0.0.0"
 DEFAULT_PORT: Final = 8080
@@ -30,6 +31,7 @@ def health_payload() -> dict[str, object]:
         "generatedFixtureSuite": disabled_fixture_suite_evidence(),
         "fixedEvaluation": disabled_fixed_evaluation_evidence(),
         "offlineModelRuntime": disabled_offline_model_runtime_evidence(),
+        "structuredSymbolOutput": disabled_structured_symbol_output_evidence(),
     }
 
 
@@ -45,7 +47,7 @@ def readiness_payload() -> dict[str, object]:
 
 
 class HealthOnlyHandler(BaseHTTPRequestHandler):
-    server_version = "ScoreMosaicSTOMR/0.7"
+    server_version = "ScoreMosaicSTOMR/0.8"
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
@@ -92,9 +94,7 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
         *,
         extra_headers: dict[str, str] | None = None,
     ) -> None:
-        body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(
-            "utf-8"
-        )
+        body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         self.send_response(status.value)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

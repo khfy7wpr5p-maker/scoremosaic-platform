@@ -36,6 +36,22 @@ class PayloadTests(unittest.TestCase):
         self.assertFalse(offline_runtime["ensembleIntegration"])
         self.assertFalse(offline_runtime["productionEligible"])
 
+        symbols = payload["structuredSymbolOutput"]
+        self.assertEqual(symbols["status"], "static_repository_synthetic_contract_sample_not_requested")
+        self.assertTrue(symbols["repositorySyntheticOnly"])
+        self.assertTrue(symbols["repeatedValidationAndCanonicalizationOnly"])
+        self.assertFalse(symbols["symbolProducingModel"])
+        self.assertFalse(symbols["realSymbolDetection"])
+        self.assertFalse(symbols["musicalInterpretation"])
+        self.assertFalse(symbols["inferenceAccuracyClaim"])
+        self.assertFalse(symbols["realOmrInference"])
+        self.assertFalse(symbols["userInputAccepted"])
+        self.assertFalse(symbols["httpInferenceEnabled"])
+        self.assertFalse(symbols["musicXmlGenerated"])
+        self.assertFalse(symbols["gatewayIntegration"])
+        self.assertFalse(symbols["ensembleIntegration"])
+        self.assertFalse(symbols["productionEligible"])
+
     def test_readiness_is_explicitly_disabled(self) -> None:
         self.assertEqual(
             readiness_payload(),
@@ -85,6 +101,9 @@ class EndpointTests(unittest.TestCase):
         self.assertTrue(body["offlineModelRuntime"]["offlineModelRuntimeEnabled"])
         self.assertIs(body["offlineModelRuntime"]["modelLoaded"], False)
         self.assertIs(body["offlineModelRuntime"]["inferenceEnabled"], False)
+        self.assertTrue(body["structuredSymbolOutput"]["repeatedValidationAndCanonicalizationOnly"])
+        self.assertIs(body["structuredSymbolOutput"]["symbolProducingModel"], False)
+        self.assertIs(body["structuredSymbolOutput"]["realSymbolDetection"], False)
         self.assertEqual(headers["cache-control"], "no-store")
 
     def test_ready_returns_explanatory_503(self) -> None:

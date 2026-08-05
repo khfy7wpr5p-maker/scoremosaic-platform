@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoremosaic-st-omr"
-version = "0.7.0"
-description = "Pinned repository-test model runtime foundation for isolated ScoreMosaic ST-OMR"
+version = "0.8.0"
+description = "Closed static repository-synthetic symbol contract sample for isolated ScoreMosaic ST-OMR"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,7 +16,7 @@ scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
 where = ["src"]
 
 [tool.scoremosaic]
-phase = "pinned-offline-model-runtime-foundation"
+phase = "structured-synthetic-symbol-output-contract"
 service-role = "candidate_omr_engine"
 device-policy = "cpu_only"
 dependency-lock-required = true
@@ -24,6 +24,7 @@ resource-limits-required = true
 manifest-validation-enabled = true
 checksum-validation-enabled = true
 allowed-model-root = "models"
+allowed-contracts-root = "contracts"
 model-loading-enabled = false
 inference-enabled = false
 pinned-offline-model-runtime-enabled = true
@@ -33,6 +34,11 @@ repository-test-model-inference-enabled = true
 offline-generated-fixture-inference-enabled = true
 generated-fixture-suite-enabled = true
 fixed-evaluation-enabled = true
+structured-synthetic-symbol-output-enabled = true
+static-repository-symbol-sample-only = true
+symbol-producing-model-enabled = false
+real-symbol-detection-enabled = false
+musical-interpretation-enabled = false
 real-omr-evaluation-enabled = false
 real-omr-inference-enabled = false
 general-accuracy-claim-enabled = false
@@ -40,8 +46,17 @@ user-input-enabled = false
 allowed-fixture-root = "fixtures"
 allowed-evaluation-root = "evaluations"
 upload-enabled = false
+musicxml-generation-enabled = false
 gateway-integration-enabled = false
 ensemble-integration-enabled = false
+automatic-correction-enabled = false
+ranking-enabled = false
+winner-selection-enabled = false
+training-enabled = false
+self-training-enabled = false
+teacher-approval-enabled = false
+publication-enabled = false
 network-dispatch-enabled = false
+gpu-enabled = false
 persistent-storage-enabled = false
 public-endpoint-enabled = false

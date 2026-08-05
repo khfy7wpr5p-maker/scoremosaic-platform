@@ -5,15 +5,14 @@ on:
     branches:
       - main
       - feature/st-omr-pinned-offline-model-runtime-foundation
+      - feature/st-omr-structured-symbol-output-contract
     paths:
       - "services/st-omr-service/**"
       - ".github/workflows/st-omr-pinned-offline-model-runtime-foundation-ci.yml"
       - ".github/workflows/st-omr-health-only-service-foundation-ci.yml"
       - "docs/st-omr-pinned-offline-model-runtime-foundation.md"
   pull_request:
-    branches:
-      - main
-      - feature/st-omr-fixed-evaluation-integration
+    branches: [main]
     paths:
       - "services/st-omr-service/**"
       - ".github/workflows/st-omr-pinned-offline-model-runtime-foundation-ci.yml"
@@ -28,75 +27,47 @@ jobs:
   verify-pinned-offline-model-runtime:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
       - name: Compile service
         run: python -m compileall -q services/st-omr-service/src
-
       - name: Run all ST-OMR tests
         run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
-
       - name: Load and execute pinned test model twice
         shell: bash
         run: |
           set -euo pipefail
           PYTHONPATH=services/st-omr-service/src python - <<'PY'
           from pathlib import Path
-          from scoremosaic_st_omr.offline_model_runtime import (
-              load_pinned_offline_test_model,
-              run_pinned_offline_test_model,
-          )
-
+          from scoremosaic_st_omr.offline_model_runtime import load_pinned_offline_test_model, run_pinned_offline_test_model
           service = Path('services/st-omr-service')
           models = service / 'models'
           fixtures = service / 'fixtures'
           model_manifest = models / 'st-omr-test-linear-v1.manifest.json'
           fixture_manifest = fixtures / 'generated-single-staff-v1.manifest.json'
-
-          loaded = load_pinned_offline_test_model(
-              manifest_path=model_manifest,
-              allowed_model_root=models,
-          )
+          loaded = load_pinned_offline_test_model(manifest_path=model_manifest, allowed_model_root=models)
           assert loaded.model_id == 'st-omr-repository-test-linear'
           assert loaded.model_version == '0.0.1'
           assert loaded.artifact_sha256 == 'cb72738ab6f5d2ccf7b435b9aa99f4e2b82bf32da46df97424ccbae74211aaca'
-
-          kwargs = {
-              'model_manifest_path': model_manifest,
-              'model_root': models,
-              'fixture_manifest_path': fixture_manifest,
-              'fixture_root': fixtures,
-          }
+          kwargs = {'model_manifest_path': model_manifest, 'model_root': models, 'fixture_manifest_path': fixture_manifest, 'fixture_root': fixtures}
           first = run_pinned_offline_test_model(**kwargs)
           second = run_pinned_offline_test_model(**kwargs)
           assert first == second
-
           evidence = first.as_dict()
           assert evidence['predictedLabel'] == 'repository_fixture_shape'
           assert evidence['modelLoaded'] is True
           assert evidence['inferenceEnabled'] is True
           assert evidence['offlineOnly'] is True
           assert evidence['repositoryTestModelOnly'] is True
-          assert evidence['realOmrInference'] is False
-          assert evidence['realOmrAccuracyMeasured'] is False
-          assert evidence['generalAccuracyClaim'] is False
-          assert evidence['userInputAccepted'] is False
-          assert evidence['httpInferenceEnabled'] is False
-          assert evidence['networkUsed'] is False
-          assert evidence['gatewayIntegration'] is False
-          assert evidence['ensembleIntegration'] is False
-          assert evidence['productionEligible'] is False
+          for key in ('realOmrInference','realOmrAccuracyMeasured','generalAccuracyClaim','userInputAccepted','httpInferenceEnabled','networkUsed','gatewayIntegration','ensembleIntegration','productionEligible'):
+              assert evidence[key] is False, key
           PY
-
-      - name: Verify closed Phase 21 boundaries
+      - name: Verify Phase 21 invariants remain intact
         shell: bash
         run: |
           set -euo pipefail
@@ -104,39 +75,24 @@ jobs:
           from pathlib import Path
           import json
           import tomllib
-
           service = Path('services/st-omr-service')
           project = tomllib.loads((service / 'pyproject.toml').read_text())
           boundary = project['tool']['scoremosaic']
-
-          assert project['project']['version'] == '0.7.0'
           assert project['project']['dependencies'] == []
-          assert boundary['phase'] == 'pinned-offline-model-runtime-foundation'
           assert boundary['device-policy'] == 'cpu_only'
-          assert boundary['model-loading-enabled'] is False
-          assert boundary['inference-enabled'] is False
           assert boundary['pinned-offline-model-runtime-enabled'] is True
           assert boundary['repository-test-model-only'] is True
           assert boundary['repository-test-model-loading-enabled'] is True
           assert boundary['repository-test-model-inference-enabled'] is True
-
+          assert boundary['model-loading-enabled'] is False
+          assert boundary['inference-enabled'] is False
           for key in (
-              'real-omr-inference-enabled',
-              'real-omr-evaluation-enabled',
-              'general-accuracy-claim-enabled',
-              'user-input-enabled',
-              'upload-enabled',
-              'gateway-integration-enabled',
-              'ensemble-integration-enabled',
-              'network-dispatch-enabled',
-              'persistent-storage-enabled',
-              'public-endpoint-enabled',
+              'real-omr-inference-enabled','real-omr-evaluation-enabled','general-accuracy-claim-enabled',
+              'user-input-enabled','upload-enabled','gateway-integration-enabled','ensemble-integration-enabled',
+              'network-dispatch-enabled','gpu-enabled','persistent-storage-enabled','public-endpoint-enabled',
           ):
               assert boundary[key] is False, key
-
-          manifest = json.loads(
-              (service / 'models' / 'st-omr-test-linear-v1.manifest.json').read_text()
-          )
+          manifest = json.loads((service / 'models' / 'st-omr-test-linear-v1.manifest.json').read_text())
           assert manifest['purpose'] == 'repository_test_only'
           assert manifest['provenance'] == {
               'creationMethod': 'hand_authored_repository_test_fixture',
@@ -145,17 +101,11 @@ jobs:
           }
           assert all(value is False for value in manifest['boundaries'].values())
           PY
-
           ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
-            services/st-omr-service/pyproject.toml \
-            services/st-omr-service/requirements.lock
-
-          ! grep -R -E "(/upload|/infer|/predict|/model/load)" \
-            services/st-omr-service/src
-
-          ! grep -E "^[[:space:]]*(model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled|upload-enabled|gateway-integration-enabled|ensemble-integration-enabled|network-dispatch-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
+            services/st-omr-service/pyproject.toml services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict|/model/load)" services/st-omr-service/src
+          ! grep -E "^[[:space:]]*(model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled|upload-enabled|gateway-integration-enabled|ensemble-integration-enabled|network-dispatch-enabled|gpu-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
             services/st-omr-service/pyproject.toml
-
       - name: Verify model is excluded from service image
         shell: bash
         run: |
@@ -163,6 +113,5 @@ jobs:
           docker build --pull=false -t scoremosaic-st-omr:phase21 services/st-omr-service
           docker run --rm --entrypoint sh scoremosaic-st-omr:phase21 -c 'test ! -d /app/models'
           test "$(docker image inspect scoremosaic-st-omr:phase21 --format '{{.Config.User}}')" = "10001:10001"
-
       - name: Check diff formatting
         run: git diff --check
