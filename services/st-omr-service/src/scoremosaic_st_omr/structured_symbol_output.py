@@ -11,15 +11,8 @@ CONTRACT_VERSION: Final = "structured-synthetic-symbol-output-v1"
 EXPECTED_DOCUMENT_ID: Final = "synthetic-symbol-output-v1"
 EXPECTED_ARTIFACT_SHA256: Final = "c0285ece10a6ced0a1de968ca9673c22dc2f4e9dc8e6f0dadf50ed4eb629d419"
 ALLOWED_SYMBOL_TYPES: Final = (
-    "staff",
-    "measure",
-    "clef",
-    "time_signature",
-    "notehead",
-    "stem",
-    "beam",
-    "rest",
-    "barline",
+    "staff", "measure", "clef", "time_signature", "notehead",
+    "stem", "beam", "rest", "barline",
 )
 EXPECTED_FIXTURE: Final = {
     "fixtureId": "generated-single-staff-v1",
@@ -132,9 +125,7 @@ def validate_structured_symbol_output(*, artifact_path: Path) -> StructuredSymbo
         raise StructuredSymbolOutputError("model provenance is malformed")
     if payload.get("boundaries") != EXPECTED_BOUNDARIES:
         raise StructuredSymbolOutputError("closed boundaries were changed")
-
-    coordinate_space = payload.get("coordinateSpace")
-    if coordinate_space != {"unit": "integer-grid", "min": 0, "max": 4096}:
+    if payload.get("coordinateSpace") != {"unit": "integer-grid", "min": 0, "max": 4096}:
         raise StructuredSymbolOutputError("coordinate space does not match the closed contract")
 
     symbols = payload.get("symbols")
@@ -175,7 +166,6 @@ def validate_structured_symbol_output(*, artifact_path: Path) -> StructuredSymbo
     digest = _sha256(canonical)
     if digest != EXPECTED_ARTIFACT_SHA256:
         raise StructuredSymbolOutputError("structured symbol artifact tampering detected")
-
     return StructuredSymbolOutputEvidence(
         document_id=EXPECTED_DOCUMENT_ID,
         symbol_count=len(ids),
@@ -183,6 +173,11 @@ def validate_structured_symbol_output(*, artifact_path: Path) -> StructuredSymbo
         canonical_sha256=digest,
         canonical_bytes=canonical,
     )
+
+
+def require_byte_identical_outputs(first: bytes, second: bytes) -> None:
+    if first != second:
+        raise StructuredSymbolOutputError("nondeterministic structured symbol output")
 
 
 def disabled_structured_symbol_output_evidence() -> dict[str, object]:
