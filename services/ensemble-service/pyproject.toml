@@ -1,7 +1,7 @@
 [project]
 name = "scoremosaic-ensemble-service"
-version = "0.2.0"
-description = "Deterministic Canonical Score Model, neutral comparator, and versioned report contract for ScoreMosaic OMR candidates"
+version = "0.3.0"
+description = "Deterministic Canonical Score Model, neutral comparison, versioned reports, and fixed-dataset evaluation for ScoreMosaic OMR candidates"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
@@ -10,10 +10,16 @@ canonical-score-model-version = "1.0"
 comparison-foundation-version = "0.1-foundation"
 real-fixture-validation-version = "0.1-foundation"
 comparison-report-version = "1.0"
+fixed-evaluation-dataset-version = "1.0"
+fixed-evaluation-result-version = "1.0"
 comparison-library-enabled = true
 real-fixture-validation-ci-enabled = true
 comparison-report-library-enabled = true
+fixed-evaluation-library-enabled = true
 comparison-enabled = false
+evaluation-runtime-enabled = false
+aggregate-score-enabled = false
+general-accuracy-claim-enabled = false
 engine-ranking-enabled = false
 winner-selection-enabled = false
 automatic-merge-enabled = false

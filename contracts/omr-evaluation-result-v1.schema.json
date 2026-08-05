@@ -1,0 +1,308 @@
+{
+  "$defs": {
+    "boundaries": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregateScore": {
+          "const": false
+        },
+        "automaticCorrection": {
+          "const": false
+        },
+        "automaticMerge": {
+          "const": false
+        },
+        "engineRanking": {
+          "const": false
+        },
+        "liveTraining": {
+          "const": false
+        },
+        "publication": {
+          "const": false
+        },
+        "readOnly": {
+          "const": true
+        },
+        "stOmrIntegration": {
+          "const": false
+        },
+        "teacherApproval": {
+          "const": false
+        },
+        "winnerSelection": {
+          "const": false
+        }
+      },
+      "required": [
+        "readOnly",
+        "aggregateScore",
+        "engineRanking",
+        "winnerSelection",
+        "automaticMerge",
+        "automaticCorrection",
+        "teacherApproval",
+        "publication",
+        "liveTraining",
+        "stOmrIntegration"
+      ],
+      "type": "object"
+    },
+    "candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactRef": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$",
+          "type": "string"
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "canonicalSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "engine": {
+          "enum": [
+            "audiveris",
+            "homr",
+            "clarity"
+          ]
+        },
+        "engineVersion": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          ]
+        },
+        "modelVersion": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "engine",
+        "engineVersion",
+        "modelVersion",
+        "artifactRef",
+        "artifactSha256",
+        "canonicalSha256"
+      ],
+      "type": "object"
+    },
+    "countSide": {
+      "additionalProperties": false,
+      "properties": {
+        "eventCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "measureCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "partCount": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "partCount",
+        "measureCount",
+        "eventCount"
+      ],
+      "type": "object"
+    },
+    "counts": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate": {
+          "$ref": "#/$defs/countSide"
+        },
+        "exact": {
+          "$ref": "#/$defs/exactSide"
+        },
+        "reference": {
+          "$ref": "#/$defs/countSide"
+        }
+      },
+      "required": [
+        "reference",
+        "candidate",
+        "exact"
+      ],
+      "type": "object"
+    },
+    "exactSide": {
+      "additionalProperties": false,
+      "properties": {
+        "eventCount": {
+          "type": "boolean"
+        },
+        "measureCount": {
+          "type": "boolean"
+        },
+        "partCount": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "partCount",
+        "measureCount",
+        "eventCount"
+      ],
+      "type": "object"
+    },
+    "gates": {
+      "additionalProperties": false,
+      "properties": {
+        "allFieldsPerfect": {
+          "type": "boolean"
+        },
+        "coreSuccess": {
+          "type": "boolean"
+        },
+        "exactCounts": {
+          "type": "boolean"
+        },
+        "generalAccuracyClaim": {
+          "const": false
+        }
+      },
+      "required": [
+        "exactCounts",
+        "coreSuccess",
+        "allFieldsPerfect",
+        "generalAccuracyClaim"
+      ],
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,99}$",
+      "type": "string"
+    },
+    "metricResult": {
+      "additionalProperties": false,
+      "properties": {
+        "correct": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "incorrect": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "enum": [
+            "eventPresence",
+            "onset",
+            "kind",
+            "effectiveDuration",
+            "writtenDuration",
+            "writtenType",
+            "pitch",
+            "chord",
+            "voice",
+            "staff",
+            "ties",
+            "dots",
+            "tuplet",
+            "tab"
+          ]
+        },
+        "perfect": {
+          "type": "boolean"
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "correct",
+        "incorrect",
+        "total",
+        "perfect"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "$id": "https://scoremosaic.invalid/contracts/omr-evaluation-result-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "boundaries": {
+      "$ref": "#/$defs/boundaries"
+    },
+    "candidate": {
+      "$ref": "#/$defs/candidate"
+    },
+    "caseId": {
+      "$ref": "#/$defs/id"
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "datasetId": {
+      "$ref": "#/$defs/id"
+    },
+    "datasetSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "gates": {
+      "$ref": "#/$defs/gates"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/metricResult"
+      },
+      "maxItems": 14,
+      "minItems": 14,
+      "type": "array"
+    },
+    "reportType": {
+      "const": "scoremosaic.fixed-omr-evaluation-result"
+    },
+    "resultSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "reportType",
+    "datasetId",
+    "datasetSha256",
+    "caseId",
+    "candidate",
+    "counts",
+    "metrics",
+    "gates",
+    "boundaries",
+    "resultSha256"
+  ],
+  "title": "ScoreMosaic Fixed OMR Evaluation Result v1",
+  "type": "object"
+}

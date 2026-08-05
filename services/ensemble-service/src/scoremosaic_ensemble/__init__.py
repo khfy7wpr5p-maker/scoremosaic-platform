@@ -1,4 +1,4 @@
-"""ScoreMosaic Ensemble canonical model, comparator, and report contract."""
+"""ScoreMosaic Ensemble canonical, comparison, report, and evaluation contracts."""
 
 from .canonical import (
     CanonicalEvent,
@@ -27,6 +27,21 @@ from .comparator import (
     ComparisonResult,
     compare_candidates,
 )
+from .evaluation import (
+    CORE_METRIC_NAMES,
+    DATASET_SCHEMA_VERSION,
+    DATASET_TYPE,
+    METRIC_NAMES,
+    RESULT_SCHEMA_VERSION,
+    RESULT_TYPE,
+    EvaluationError,
+    EvaluationResult,
+    MetricResult,
+    evaluate_candidate,
+    load_fixed_dataset,
+    validate_evaluation_result_payload,
+    validate_fixed_dataset,
+)
 from .musicxml import MusicXmlNormalizationError, normalize_musicxml
 from .report import (
     REPORT_SCHEMA_VERSION,
@@ -39,8 +54,14 @@ from .report import (
 
 __all__ = [
     "COMPARISON_FORMAT_VERSION",
+    "CORE_METRIC_NAMES",
+    "DATASET_SCHEMA_VERSION",
+    "DATASET_TYPE",
+    "METRIC_NAMES",
     "REPORT_SCHEMA_VERSION",
     "REPORT_TYPE",
+    "RESULT_SCHEMA_VERSION",
+    "RESULT_TYPE",
     "CandidateObservation",
     "CandidateSummary",
     "CanonicalEvent",
@@ -55,7 +76,10 @@ __all__ = [
     "ComparisonResult",
     "DivisionsChange",
     "EnsembleComparisonReport",
+    "EvaluationError",
+    "EvaluationResult",
     "EventProvenance",
+    "MetricResult",
     "MusicXmlNormalizationError",
     "NormalizationDiagnostic",
     "Pitch",
@@ -67,8 +91,12 @@ __all__ = [
     "TupletRatio",
     "build_comparison_report",
     "compare_candidates",
+    "evaluate_candidate",
+    "load_fixed_dataset",
     "normalize_musicxml",
     "validate_comparison_report_payload",
+    "validate_evaluation_result_payload",
+    "validate_fixed_dataset",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

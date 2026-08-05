@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Canonical Score Model v1, Ensemble Comparator v1 foundation, and Ensemble Comparison Report v1.**
+**Canonical Score Model v1, Ensemble Comparator v1 foundation, Ensemble Comparison Report v1, and Fixed OMR Evaluation Dataset v1.**
 
-The package contains a deterministic, provenance-preserving MusicXML normalizer, a read-only comparator for two to eight Canonical Score Model candidates, and a stable versioned report wrapper for one neutral comparison result.
+The package contains a deterministic, provenance-preserving MusicXML normalizer, a read-only comparator for two to eight Canonical Score Model candidates, a stable versioned report wrapper for one neutral comparison result, and a frozen-dataset evaluator with exact field metrics.
 
 ## Implemented Canonical Score Model foundation
 
@@ -53,6 +53,20 @@ The nested comparator format remains `0.1-foundation`. See `docs/ensemble-compar
 
 See `docs/ensemble-comparison-report-v1.md`.
 
+## Implemented Fixed OMR Evaluation Dataset v1
+
+- frozen and self-hashed dataset manifest
+- one manually reviewed reference MusicXML independent of engine output
+- pinned Audiveris, HOMR, and Clarity candidate artifacts, versions, model provenance, and SHA-256 values
+- exact integer metrics for event presence, onset, kind, effective/written duration, written type, pitch, chord, voice, staff, ties, dots, tuplets, and TAB
+- deterministic part/measure/event ordinal alignment
+- separate `exactCounts`, `coreSuccess`, and `allFieldsPerfect` gates
+- deterministic evaluation-result SHA-256 with full runtime verification
+- closed JSON Schemas for dataset and result version `1.0`
+- no aggregate score and no general accuracy claim
+
+See `docs/fixed-evaluation-dataset-v1.md`.
+
 ## Explicit current non-goals
 
 - No fuzzy or semantic event alignment
@@ -63,6 +77,7 @@ See `docs/ensemble-comparison-report-v1.md`.
 - No persistence or artifact mutation
 - No teacher approval
 - No learner-facing publication
+- No live or self-directed model training
 - No ST-OMR implementation or integration in this phase
 
 ## Local verification
@@ -74,12 +89,11 @@ python -m unittest discover -s services/ensemble-service/tests -v
 
 ## Acceptance gate
 
-- identical inputs produce deterministic comparison and report hashes
-- candidate input order does not change compact report JSON
-- report and comparison hashes are independently verified
-- changed counts, content, versions, identity, or boundaries are rejected
-- all difference observations retain source and event provenance
+- the frozen dataset and every referenced artifact verify against pinned SHA-256 values
+- identical candidates and manifests produce deterministic result hashes
+- all metric counts, exact-count gates, and success gates are recomputed during result validation
+- current real engine candidates match their pinned v1 baseline
 - candidate objects and raw artifacts remain unchanged
-- ranking, winner selection, merging, correction, teacher approval, publication, and ST-OMR remain disabled
+- aggregate scoring, ranking, winner selection, merging, correction, teacher approval, publication, live training, and ST-OMR remain disabled
 
-The next gated project step is the Gateway orchestration contract. It does not activate uploads, jobs, persistence, or real orchestration.
+The next gated project step is **ST-OMR Architecture and Contract**. It does not create an ST-OMR service or activate Gateway and Ensemble integration.

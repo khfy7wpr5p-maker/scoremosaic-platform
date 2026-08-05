@@ -1,0 +1,884 @@
+{
+  "boundaries": {
+    "automaticCorrection": false,
+    "automaticMerge": false,
+    "datasetMutation": false,
+    "engineRanking": false,
+    "liveTraining": false,
+    "publication": false,
+    "readOnly": true,
+    "stOmrIntegration": false,
+    "teacherApproval": false,
+    "winnerSelection": false
+  },
+  "caseCount": 1,
+  "cases": [
+    {
+      "candidates": [
+        {
+          "engine": "audiveris",
+          "engineVersion": "5.11.0",
+          "expected": {
+            "allFieldsPerfect": true,
+            "coreSuccess": true,
+            "eventCount": 16,
+            "measureCount": 4,
+            "metrics": {
+              "chord": {
+                "correct": 16,
+                "total": 16
+              },
+              "dots": {
+                "correct": 16,
+                "total": 16
+              },
+              "effectiveDuration": {
+                "correct": 16,
+                "total": 16
+              },
+              "eventPresence": {
+                "correct": 16,
+                "total": 16
+              },
+              "kind": {
+                "correct": 16,
+                "total": 16
+              },
+              "onset": {
+                "correct": 16,
+                "total": 16
+              },
+              "pitch": {
+                "correct": 16,
+                "total": 16
+              },
+              "staff": {
+                "correct": 16,
+                "total": 16
+              },
+              "tab": {
+                "correct": 16,
+                "total": 16
+              },
+              "ties": {
+                "correct": 16,
+                "total": 16
+              },
+              "tuplet": {
+                "correct": 16,
+                "total": 16
+              },
+              "voice": {
+                "correct": 16,
+                "total": 16
+              },
+              "writtenDuration": {
+                "correct": 16,
+                "total": 16
+              },
+              "writtenType": {
+                "correct": 16,
+                "total": 16
+              }
+            },
+            "partCount": 1
+          },
+          "modelVersion": "bundled-with-audiveris-5.11.0",
+          "path": "services/ensemble-service/tests/fixtures/real-engines/audiveris.musicxml",
+          "sha256": "fce8923e6724d2331c5e45412fe5c06ef3b34089cef0879d459d5d68fa8fdedd"
+        },
+        {
+          "engine": "homr",
+          "engineVersion": "0.7.0",
+          "expected": {
+            "allFieldsPerfect": true,
+            "coreSuccess": true,
+            "eventCount": 16,
+            "measureCount": 4,
+            "metrics": {
+              "chord": {
+                "correct": 16,
+                "total": 16
+              },
+              "dots": {
+                "correct": 16,
+                "total": 16
+              },
+              "effectiveDuration": {
+                "correct": 16,
+                "total": 16
+              },
+              "eventPresence": {
+                "correct": 16,
+                "total": 16
+              },
+              "kind": {
+                "correct": 16,
+                "total": 16
+              },
+              "onset": {
+                "correct": 16,
+                "total": 16
+              },
+              "pitch": {
+                "correct": 16,
+                "total": 16
+              },
+              "staff": {
+                "correct": 16,
+                "total": 16
+              },
+              "tab": {
+                "correct": 16,
+                "total": 16
+              },
+              "ties": {
+                "correct": 16,
+                "total": 16
+              },
+              "tuplet": {
+                "correct": 16,
+                "total": 16
+              },
+              "voice": {
+                "correct": 16,
+                "total": 16
+              },
+              "writtenDuration": {
+                "correct": 16,
+                "total": 16
+              },
+              "writtenType": {
+                "correct": 16,
+                "total": 16
+              }
+            },
+            "partCount": 1
+          },
+          "modelVersion": "three-pinned-model-checksums",
+          "path": "services/ensemble-service/tests/fixtures/real-engines/homr.musicxml",
+          "sha256": "0c88392ec67a58afa26bd9bdd5a11b0df107cf8b9bfde7c99bb8ec2b3810709d"
+        },
+        {
+          "engine": "clarity",
+          "engineVersion": "c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82",
+          "expected": {
+            "allFieldsPerfect": false,
+            "coreSuccess": true,
+            "eventCount": 16,
+            "measureCount": 4,
+            "metrics": {
+              "chord": {
+                "correct": 16,
+                "total": 16
+              },
+              "dots": {
+                "correct": 16,
+                "total": 16
+              },
+              "effectiveDuration": {
+                "correct": 16,
+                "total": 16
+              },
+              "eventPresence": {
+                "correct": 16,
+                "total": 16
+              },
+              "kind": {
+                "correct": 16,
+                "total": 16
+              },
+              "onset": {
+                "correct": 16,
+                "total": 16
+              },
+              "pitch": {
+                "correct": 16,
+                "total": 16
+              },
+              "staff": {
+                "correct": 16,
+                "total": 16
+              },
+              "tab": {
+                "correct": 16,
+                "total": 16
+              },
+              "ties": {
+                "correct": 14,
+                "total": 16
+              },
+              "tuplet": {
+                "correct": 16,
+                "total": 16
+              },
+              "voice": {
+                "correct": 16,
+                "total": 16
+              },
+              "writtenDuration": {
+                "correct": 16,
+                "total": 16
+              },
+              "writtenType": {
+                "correct": 16,
+                "total": 16
+              }
+            },
+            "partCount": 1
+          },
+          "modelVersion": "ee14c1e41ab371fe27bf8a2707ea588560077e73",
+          "path": "services/ensemble-service/tests/fixtures/real-engines/clarity.musicxml",
+          "sha256": "21d9fd9280108cfa9b500e9a72a06499d02b86a8ce62f4f1b8b608212a2d4066"
+        }
+      ],
+      "caseId": "treble-quarter-sequence-001",
+      "description": "One manually reviewed treble-clef C-major 4/4 part with four measures and sixteen quarter notes.",
+      "profile": [
+        "4-4",
+        "no-tab",
+        "pitched-notes",
+        "quarter-notes",
+        "single-part",
+        "single-staff",
+        "treble-clef"
+      ],
+      "reference": {
+        "eventCount": 16,
+        "events": [
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 1,
+            "kind": "note",
+            "measureOrdinal": 1,
+            "onset": {
+              "denominator": 1,
+              "numerator": 0
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "C"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 2,
+            "kind": "note",
+            "measureOrdinal": 1,
+            "onset": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "D"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 3,
+            "kind": "note",
+            "measureOrdinal": 1,
+            "onset": {
+              "denominator": 1,
+              "numerator": 2
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "E"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 4,
+            "kind": "note",
+            "measureOrdinal": 1,
+            "onset": {
+              "denominator": 1,
+              "numerator": 3
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "F"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 1,
+            "kind": "note",
+            "measureOrdinal": 2,
+            "onset": {
+              "denominator": 1,
+              "numerator": 0
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "G"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 2,
+            "kind": "note",
+            "measureOrdinal": 2,
+            "onset": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "A"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 3,
+            "kind": "note",
+            "measureOrdinal": 2,
+            "onset": {
+              "denominator": 1,
+              "numerator": 2
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "B"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 4,
+            "kind": "note",
+            "measureOrdinal": 2,
+            "onset": {
+              "denominator": 1,
+              "numerator": 3
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 5,
+              "step": "C"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 1,
+            "kind": "note",
+            "measureOrdinal": 3,
+            "onset": {
+              "denominator": 1,
+              "numerator": 0
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 5,
+              "step": "C"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 2,
+            "kind": "note",
+            "measureOrdinal": 3,
+            "onset": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "B"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 3,
+            "kind": "note",
+            "measureOrdinal": 3,
+            "onset": {
+              "denominator": 1,
+              "numerator": 2
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "A"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 4,
+            "kind": "note",
+            "measureOrdinal": 3,
+            "onset": {
+              "denominator": 1,
+              "numerator": 3
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "G"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 1,
+            "kind": "note",
+            "measureOrdinal": 4,
+            "onset": {
+              "denominator": 1,
+              "numerator": 0
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "F"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 2,
+            "kind": "note",
+            "measureOrdinal": 4,
+            "onset": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "E"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 3,
+            "kind": "note",
+            "measureOrdinal": 4,
+            "onset": {
+              "denominator": 1,
+              "numerator": 2
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "D"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          },
+          {
+            "chord": {
+              "index": null,
+              "member": false
+            },
+            "dots": 0,
+            "effectiveDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "eventOrdinal": 4,
+            "kind": "note",
+            "measureOrdinal": 4,
+            "onset": {
+              "denominator": 1,
+              "numerator": 3
+            },
+            "partOrdinal": 1,
+            "pitch": {
+              "alter": {
+                "denominator": 1,
+                "numerator": 0
+              },
+              "octave": 4,
+              "step": "C"
+            },
+            "staff": 1,
+            "tab": null,
+            "ties": [],
+            "tuplet": null,
+            "voice": "1",
+            "writtenDuration": {
+              "denominator": 1,
+              "numerator": 1
+            },
+            "writtenType": "quarter"
+          }
+        ],
+        "measureCount": 4,
+        "partCount": 1,
+        "path": "evaluation/fixed-v1/cases/treble-quarter-sequence-001/reference.musicxml",
+        "reviewStatus": "manually-reviewed",
+        "sha256": "00b158c8ac26574f98a8e4c26096d97b65fa3337558ab955960451a9b8f17277"
+      }
+    }
+  ],
+  "datasetId": "fixed-omr-evaluation-v1",
+  "datasetSha256": "57c520d4d36e23327183af4df9fdeb561553f478ed267721d44acbae0212dadf",
+  "datasetType": "scoremosaic.fixed-omr-evaluation-dataset",
+  "generalAccuracyClaim": false,
+  "metricSet": {
+    "aggregateScoreEnabled": false,
+    "coreMetricNames": [
+      "eventPresence",
+      "onset",
+      "kind",
+      "effectiveDuration",
+      "pitch"
+    ],
+    "engineRankingEnabled": false,
+    "metricNames": [
+      "eventPresence",
+      "onset",
+      "kind",
+      "effectiveDuration",
+      "writtenDuration",
+      "writtenType",
+      "pitch",
+      "chord",
+      "voice",
+      "staff",
+      "ties",
+      "dots",
+      "tuplet",
+      "tab"
+    ],
+    "winnerSelectionEnabled": false
+  },
+  "schemaVersion": "1.0",
+  "status": "frozen"
+}

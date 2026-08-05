@@ -66,7 +66,7 @@ jobs:
           project = config["project"]
           boundary = config["tool"]["scoremosaic"]
 
-          assert project["version"] == "0.2.0"
+          assert project["version"] == "0.3.0"
           assert project["dependencies"] == []
           assert COMPARISON_FORMAT_VERSION == "0.1-foundation"
           assert boundary["canonical-score-model-version"] == "1.0"
