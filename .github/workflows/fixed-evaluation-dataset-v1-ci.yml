@@ -1,0 +1,141 @@
+name: Fixed Evaluation Dataset v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/fixed-evaluation-dataset-v1"
+    paths:
+      - ".github/workflows/fixed-evaluation-dataset-v1-ci.yml"
+      - "contracts/omr-evaluation-dataset-v1.schema.json"
+      - "contracts/omr-evaluation-result-v1.schema.json"
+      - "evaluation/fixed-v1/**"
+      - "services/ensemble-service/**"
+      - "docs/fixed-evaluation-dataset-v1.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/fixed-evaluation-dataset-v1-ci.yml"
+      - "contracts/omr-evaluation-dataset-v1.schema.json"
+      - "contracts/omr-evaluation-result-v1.schema.json"
+      - "evaluation/fixed-v1/**"
+      - "services/ensemble-service/**"
+      - "docs/fixed-evaluation-dataset-v1.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fixed-evaluation-dataset-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-fixed-evaluation-dataset:
+    name: Verify frozen dataset and exact metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run Ensemble unit tests
+        run: python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Verify versioned contracts and disabled boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          from pathlib import Path
+          import json
+          import tomllib
+
+          import scoremosaic_ensemble
+          from scoremosaic_ensemble import (
+              DATASET_SCHEMA_VERSION,
+              DATASET_TYPE,
+              METRIC_NAMES,
+              RESULT_SCHEMA_VERSION,
+              RESULT_TYPE,
+              load_fixed_dataset,
+          )
+
+          root = Path(".").resolve()
+          service = root / "services" / "ensemble-service"
+          project = tomllib.loads((service / "pyproject.toml").read_text())
+          boundary = project["tool"]["scoremosaic"]
+          dataset_schema = json.loads(
+              (root / "contracts" / "omr-evaluation-dataset-v1.schema.json").read_text()
+          )
+          result_schema = json.loads(
+              (root / "contracts" / "omr-evaluation-result-v1.schema.json").read_text()
+          )
+          dataset = load_fixed_dataset(
+              root / "evaluation" / "fixed-v1" / "manifest.json",
+              root,
+          )
+
+          assert scoremosaic_ensemble.__version__ == "0.3.0"
+          assert project["project"]["version"] == "0.3.0"
+          assert project["project"]["dependencies"] == []
+          assert DATASET_SCHEMA_VERSION == "1.0"
+          assert RESULT_SCHEMA_VERSION == "1.0"
+          assert DATASET_TYPE == "scoremosaic.fixed-omr-evaluation-dataset"
+          assert RESULT_TYPE == "scoremosaic.fixed-omr-evaluation-result"
+          assert boundary["fixed-evaluation-dataset-version"] == "1.0"
+          assert boundary["fixed-evaluation-result-version"] == "1.0"
+          assert boundary["fixed-evaluation-library-enabled"] is True
+          assert boundary["evaluation-runtime-enabled"] is False
+          assert boundary["aggregate-score-enabled"] is False
+          assert boundary["general-accuracy-claim-enabled"] is False
+          assert boundary["engine-ranking-enabled"] is False
+          assert boundary["winner-selection-enabled"] is False
+
+          assert dataset_schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+          assert dataset_schema["additionalProperties"] is False
+          assert dataset_schema["properties"]["schemaVersion"]["const"] == "1.0"
+          assert dataset_schema["properties"]["datasetType"]["const"] == DATASET_TYPE
+          assert result_schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+          assert result_schema["additionalProperties"] is False
+          assert result_schema["properties"]["schemaVersion"]["const"] == "1.0"
+          assert result_schema["properties"]["reportType"]["const"] == RESULT_TYPE
+
+          assert dataset["status"] == "frozen"
+          assert dataset["caseCount"] == 1
+          assert dataset["generalAccuracyClaim"] is False
+          assert tuple(dataset["metricSet"]["metricNames"]) == METRIC_NAMES
+          assert dataset["metricSet"]["aggregateScoreEnabled"] is False
+          assert dataset["metricSet"]["engineRankingEnabled"] is False
+          assert dataset["metricSet"]["winnerSelectionEnabled"] is False
+          assert dataset["boundaries"]["liveTraining"] is False
+          assert dataset["boundaries"]["stOmrIntegration"] is False
+          PY
+
+      - name: Verify phase exclusions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d services/st-omr-service
+          test ! -e contracts/engine-ranking.schema.json
+          test ! -e contracts/merged-musicxml.schema.json
+          ! grep -R "preferredEngine\|winnerSelection.*true\|engineRanking.*true\|aggregateScoreEnabled.*true\|generalAccuracyClaim.*true" \
+            services/ensemble-service/src \
+            evaluation/fixed-v1 \
+            contracts/omr-evaluation-dataset-v1.schema.json \
+            contracts/omr-evaluation-result-v1.schema.json
+
+      - name: Check repository diff formatting
+        run: git diff --check
