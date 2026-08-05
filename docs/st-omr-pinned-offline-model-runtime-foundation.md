@@ -1,5 +1,9 @@
 # ST-OMR Pinned Offline Model Runtime Foundation
 
+## Status
+
+Phase 21 is implemented on PR #26. Phase 20 was squash-merged into `main`, and PR #26 now targets `main` directly.
+
 ## Phase 21 boundary
 
 Phase 21 introduces the first explicitly loaded repository-controlled test model for ST-OMR. The model is loaded only after manifest, path, provenance, and SHA-256 validation and is executed only against repository-owned synthetic fixtures.
@@ -42,10 +46,13 @@ This phase proves model lifecycle, deterministic loading, bounded CPU execution,
 8. `/ready` remains `503`, mutating routes remain unavailable, and no HTTP inference route exists.
 9. All Phase 15-20 regression and Phase 21 CI gates pass.
 
+## Verification sequence
+
+1. PR #25 was squash-merged into `main`.
+2. The Phase 21 branch was rebuilt on the Phase 20 merge commit.
+3. PR #26 was retargeted to `main`.
+4. Final `main`-targeted regression checks must pass before the PR is marked ready for review.
+
 ## Non-claim
 
 A passing Phase 21 run proves only that a pinned repository test model can be safely loaded and executed offline against synthetic fixtures. It does not prove music knowledge, notation recognition, MusicXML correctness, generalization, or production readiness.
-
-## Dependency rule
-
-This phase is stacked on PR #25. It must not be retargeted to or merged into `main` until Phase 20 has been merged.
