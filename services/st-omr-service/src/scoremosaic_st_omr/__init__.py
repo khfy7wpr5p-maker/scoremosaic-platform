@@ -1,5 +1,5 @@
-"""Fixed evaluation integration for the isolated ST-OMR candidate engine."""
+"""Pinned offline model runtime foundation for isolated ST-OMR."""
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 SERVICE_NAME = "st-omr-service"
-PHASE = "fixed-evaluation-integration"
+PHASE = "pinned-offline-model-runtime-foundation"

@@ -1,0 +1,24 @@
+{
+  "manifestVersion": "1.0",
+  "modelId": "st-omr-repository-test-linear",
+  "modelVersion": "0.0.1",
+  "artifactName": "st-omr-test-linear-v1.model.json",
+  "sha256": "cb72738ab6f5d2ccf7b435b9aa99f4e2b82bf32da46df97424ccbae74211aaca",
+  "runtimeKind": "deterministic-integer-linear-v1",
+  "purpose": "repository_test_only",
+  "inputSchemaVersion": "1.0",
+  "outputSchemaVersion": "1.0",
+  "provenance": {
+    "creationMethod": "hand_authored_repository_test_fixture",
+    "trainingDataUsed": false,
+    "externalWeightsUsed": false
+  },
+  "boundaries": {
+    "realOmrModel": false,
+    "userInputAccepted": false,
+    "httpInference": false,
+    "gatewayIntegration": false,
+    "ensembleIntegration": false,
+    "productionEligible": false
+  }
+}

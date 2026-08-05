@@ -11,6 +11,7 @@ from .fixed_evaluation import disabled_fixed_evaluation_evidence
 from .fixture_suite import disabled_fixture_suite_evidence
 from .model_guard import disabled_model_evidence
 from .offline_fixture_inference import disabled_fixture_inference_evidence
+from .offline_model_runtime import disabled_offline_model_runtime_evidence
 from .runtime import runtime_evidence
 
 HOST: Final = "0.0.0.0"
@@ -28,6 +29,7 @@ def health_payload() -> dict[str, object]:
         "offlineFixtureInference": disabled_fixture_inference_evidence(),
         "generatedFixtureSuite": disabled_fixture_suite_evidence(),
         "fixedEvaluation": disabled_fixed_evaluation_evidence(),
+        "offlineModelRuntime": disabled_offline_model_runtime_evidence(),
     }
 
 
@@ -43,7 +45,7 @@ def readiness_payload() -> dict[str, object]:
 
 
 class HealthOnlyHandler(BaseHTTPRequestHandler):
-    server_version = "ScoreMosaicSTOMR/0.6"
+    server_version = "ScoreMosaicSTOMR/0.7"
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
@@ -52,7 +54,10 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
         if self.path == "/ready":
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, readiness_payload())
             return
-        self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "service": SERVICE_NAME})
+        self._send_json(
+            HTTPStatus.NOT_FOUND,
+            {"status": "not_found", "service": SERVICE_NAME},
+        )
 
     def do_POST(self) -> None:  # noqa: N802
         self._method_not_allowed()
@@ -72,7 +77,11 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
     def _method_not_allowed(self) -> None:
         self._send_json(
             HTTPStatus.METHOD_NOT_ALLOWED,
-            {"status": "method_not_allowed", "service": SERVICE_NAME, "allowedMethods": ["GET"]},
+            {
+                "status": "method_not_allowed",
+                "service": SERVICE_NAME,
+                "allowedMethods": ["GET"],
+            },
             extra_headers={"Allow": "GET"},
         )
 
@@ -83,7 +92,9 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
         *,
         extra_headers: dict[str, str] | None = None,
     ) -> None:
-        body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
         self.send_response(status.value)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
