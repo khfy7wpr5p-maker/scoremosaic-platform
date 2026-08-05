@@ -1,56 +1,43 @@
-# ST-OMR pinned offline model runtime foundation
+# ST-OMR structured synthetic symbol output contract
 
-This package is the isolated shell for a future ScoreMosaic-native OMR candidate engine. Phase 21 adds the first explicitly loaded repository-controlled test model after path, provenance, boundary, and SHA-256 validation.
+Phase 22 validates a static repository-owned synthetic contract sample. It does not run a symbol-producing model, perform real symbol detection, interpret music, or claim inference accuracy.
 
-The included model is hand-authored, integer-only, untrained, and limited to repository synthetic fixtures. It is not a real OMR model and makes no music-recognition or accuracy claim.
+The static sample contains only symbol type, bounding box, and confidence. It does not contain staff/measure membership, notehead–stem attachment, beam membership, pitch, duration, voice, chord relations, reading-order semantics, or a notation graph.
 
-## Closed offline model flow
+## Closed validation flow
 
 ```text
-repository test model manifest
+closed JSON Schema 2020-12
         ↓
-path + provenance + boundary validation
+manual semantic contract validation
         ↓
-pinned artifact SHA-256 verification
+allowed contracts root + direct-child checks
         ↓
-closed integer-only model parsing
+manifest-pinned raw SHA-256
         ↓
-repository synthetic fixture validation
+canonical SHA-256
         ↓
-deterministic offline evidence
+repeated validation/canonicalization evidence
 ```
 
-The service process does not load this model. Loading and execution happen only through the explicit offline function used by tests and CI.
+The general contract validator is independent of a specific artifact hash. Repository ownership and artifact integrity are enforced separately through the pinned manifest and allowed-root verifier.
 
 ## Endpoints
 
-- `GET /health` returns `200` and reports that the pinned offline runtime is available but not requested; `modelLoaded` and `inferenceEnabled` remain `false` in health evidence.
-- `GET /ready` returns `503` with `modelLoaded: false`, `inferenceEnabled: false`, and `reason: model_runtime_disabled`.
-- Unknown routes, including `/infer`, return `404`.
+- `GET /health` returns `200` and reports that the static repository sample capability is available but not requested.
+- `GET /ready` returns `503`; service readiness is not promoted.
+- Unknown routes return `404`.
 - `POST`, `PUT`, `PATCH`, and `DELETE` return `405`.
+
+## Closed boundaries
+
+No real/trained model, external weights, PDF/image/user input, HTTP inference/upload/model-loading, MusicXML, Gateway, Ensemble, automatic correction/ranking/winner selection, training/self-training, teacher approval/publication, network, GPU, persistence, or production behavior is enabled.
+
+The Phase 21 repository test model remains available only to the explicit offline test function. It does not produce the Phase 22 symbol sample and is not copied into the service container.
 
 ## Local verification
 
 ```bash
-cd services/st-omr-service
-PYTHONPATH=src python -m unittest discover -s tests -v
-PYTHONPATH=src python - <<'PY'
-from pathlib import Path
-from scoremosaic_st_omr.offline_model_runtime import run_pinned_offline_test_model
-
-root = Path('.')
-result = run_pinned_offline_test_model(
-    model_manifest_path=root / 'models' / 'st-omr-test-linear-v1.manifest.json',
-    model_root=root / 'models',
-    fixture_manifest_path=root / 'fixtures' / 'generated-single-staff-v1.manifest.json',
-    fixture_root=root / 'fixtures',
-)
-print(result.as_dict())
-PY
+PYTHONPATH=services/st-omr-service/src \
+python -m unittest discover -s services/st-omr-service/tests -v
 ```
-
-## Fixed exclusions
-
-The service is not listed in the repository Compose topology and is not selectable by the current Gateway orchestration contract. No trained or externally sourced model, real OMR inference, PDF/image/user input, upload route, HTTP inference route, MusicXML generation, outbound dispatch, persistent storage, public route, Gateway integration, Ensemble integration, teacher approval, training, self-training, publication, or production deployment is enabled in this phase.
-
-The repository test model is not copied into the service container and cannot make the service ready.
