@@ -1,4 +1,4 @@
-FROM python:3.12-slim@sha256:9f9f5d24f6f8d4dd7cc8e9c5b2f76cb0d70fb0eb8f7e1b95c73ff6fd183a21b8
+FROM python:3.12.11-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
