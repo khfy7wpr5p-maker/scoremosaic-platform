@@ -1,5 +1,21 @@
-"""ScoreMosaic OMR Gateway foundation and disabled orchestration contract."""
+"""ScoreMosaic OMR Gateway foundation and disabled contract libraries."""
 
+from .artifact_lifecycle import (
+    ARTIFACT_STATES,
+    CANDIDATE_STATES,
+    LIFECYCLE_CONTRACT_TYPE,
+    LIFECYCLE_SCHEMA_VERSION,
+    OUTPUT_ARTIFACT_KINDS,
+    ArtifactLifecycleError,
+    ArtifactRecord,
+    CandidateArtifactLifecycle,
+    CandidateRecord,
+    LifecycleEvent,
+    build_artifact_lifecycle,
+    transition_artifact,
+    transition_candidate,
+    verify_artifact_lifecycle,
+)
 from .orchestration import (
     ACCEPTED_SOURCE_MEDIA_TYPES,
     ENGINE_NAMES,
@@ -16,17 +32,31 @@ from .orchestration import (
 
 __all__ = [
     "ACCEPTED_SOURCE_MEDIA_TYPES",
+    "ARTIFACT_STATES",
+    "CANDIDATE_STATES",
     "ENGINE_NAMES",
+    "LIFECYCLE_CONTRACT_TYPE",
+    "LIFECYCLE_SCHEMA_VERSION",
     "ORCHESTRATION_CONTRACT_TYPE",
     "ORCHESTRATION_SCHEMA_VERSION",
+    "OUTPUT_ARTIFACT_KINDS",
+    "ArtifactLifecycleError",
+    "ArtifactRecord",
+    "CandidateArtifactLifecycle",
+    "CandidateRecord",
     "EngineRunPlan",
     "ExpectedArtifactPlan",
     "GatewayOrchestrationPlan",
+    "LifecycleEvent",
     "OrchestrationContractError",
     "SourceArtifactPlan",
+    "build_artifact_lifecycle",
     "build_orchestration_plan",
+    "transition_artifact",
+    "transition_candidate",
+    "verify_artifact_lifecycle",
     "verify_orchestration_plan",
     "__version__",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
