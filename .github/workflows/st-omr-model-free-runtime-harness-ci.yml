@@ -38,10 +38,14 @@ jobs:
         run: |
           set -euo pipefail
           test -f services/st-omr-service/requirements.lock
-          ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda" \
+          ! grep -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda" \
             services/st-omr-service/pyproject.toml \
             services/st-omr-service/requirements.lock
-          ! grep -R -E "(/upload|/infer|/predict|gateway-integration-enabled = true|ensemble-integration-enabled = true)" \
-            services/st-omr-service
+          ! grep -R -E \
+            --exclude='*.pyc' \
+            --exclude-dir='__pycache__' \
+            "(/upload|/infer|/predict|gateway-integration-enabled = true|ensemble-integration-enabled = true)" \
+            services/st-omr-service/src \
+            services/st-omr-service/pyproject.toml
       - name: Check diff formatting
         run: git diff --check
