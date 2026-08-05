@@ -1,0 +1,102 @@
+name: ST-OMR Health-Only Service Foundation CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/st-omr-health-only-service-foundation"
+    paths:
+      - ".github/workflows/st-omr-health-only-service-foundation-ci.yml"
+      - "services/st-omr-service/**"
+      - "contracts/omr-orchestration-plan.schema.json"
+      - "compose.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/st-omr-health-only-service-foundation-ci.yml"
+      - "services/st-omr-service/**"
+      - "contracts/omr-orchestration-plan.schema.json"
+      - "compose.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st-omr-health-only-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-health-only-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile source
+        run: python -m compileall -q services/st-omr-service/src
+
+      - name: Run unit and endpoint tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+
+      - name: Verify package and disabled boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          root = Path('.').resolve()
+          service = root / 'services' / 'st-omr-service'
+          project = tomllib.loads((service / 'pyproject.toml').read_text())
+          boundary = project['tool']['scoremosaic']
+
+          assert project['project']['version'] == '0.1.0'
+          assert project['project']['dependencies'] == []
+          assert boundary['phase'] == 'health-only-service-foundation'
+          assert boundary['service-role'] == 'candidate_omr_engine'
+          for key in (
+              'model-loading-enabled',
+              'inference-enabled',
+              'upload-enabled',
+              'gateway-integration-enabled',
+              'ensemble-integration-enabled',
+              'network-dispatch-enabled',
+              'persistent-storage-enabled',
+              'public-endpoint-enabled',
+          ):
+              assert boundary[key] is False, key
+
+          orchestration = (root / 'contracts' / 'omr-orchestration-plan.schema.json').read_text()
+          compose = (root / 'compose.yaml').read_text()
+          assert '"st-omr"' not in orchestration
+          assert 'st-omr-service:' not in compose
+          PY
+
+      - name: Verify no model or inference surface exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d services/st-omr-service/models
+          test ! -d services/st-omr-service/model
+          ! grep -R -E "torch|tensorflow|onnxruntime|paddle|transformers|/infer|/predict|/upload" \
+            services/st-omr-service/src \
+            services/st-omr-service/pyproject.toml
+
+      - name: Build container
+        run: docker build --pull=false -t scoremosaic-st-omr:health-only services/st-omr-service
+
+      - name: Verify non-root image user
+        run: test "$(docker image inspect scoremosaic-st-omr:health-only --format '{{.Config.User}}')" = "10001:10001"
+
+      - name: Check diff formatting
+        run: git diff --check
