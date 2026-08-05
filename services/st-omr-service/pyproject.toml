@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoremosaic-st-omr"
-version = "0.2.0"
-description = "Model-free runtime harness for the isolated ScoreMosaic ST-OMR candidate engine"
+version = "0.3.0"
+description = "Pinned model validation foundation for the isolated ScoreMosaic ST-OMR candidate engine"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,11 +16,14 @@ scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
 where = ["src"]
 
 [tool.scoremosaic]
-phase = "model-free-runtime-harness"
+phase = "pinned-model-loader-foundation"
 service-role = "candidate_omr_engine"
 device-policy = "cpu_only"
 dependency-lock-required = true
 resource-limits-required = true
+manifest-validation-enabled = true
+checksum-validation-enabled = true
+allowed-model-root = "models"
 model-loading-enabled = false
 inference-enabled = false
 upload-enabled = false
