@@ -1,7 +1,7 @@
 [project]
 name = "scoremosaic-omr-gateway"
-version = "0.1.0"
-description = "Health-only foundation for the private ScoreMosaic OMR Gateway"
+version = "0.2.0"
+description = "Health-only private OMR Gateway with a disabled versioned orchestration contract"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
@@ -9,5 +9,10 @@ dependencies = []
 upload-enabled = false
 orchestration-enabled = false
 orchestration-mode = "disabled"
+orchestration-contract-version = "1.0"
+orchestration-contract-library-enabled = true
+orchestration-execution-enabled = false
+network-dispatch-enabled = false
+persistence-enabled = false
 accepted-input-formats = ["application/pdf", "image/jpeg", "image/png"]
 engines = ["audiveris", "homr", "clarity"]
