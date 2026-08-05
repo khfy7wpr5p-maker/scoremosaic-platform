@@ -52,6 +52,10 @@ Produce deterministic, suite-level evaluation evidence from synthetic fixtures u
 7. `/health` remains 200, `/ready` remains 503, and mutating routes remain unavailable.
 8. All Phase 15-19 regression and Phase 20 CI gates pass.
 
+## Verification
+
+All repository and ST-OMR CI workflows passed on the completed Phase 20 head revision.
+
 ## Non-claim
 
 A passing fixed evaluation only proves deterministic execution against repository-owned synthetic fixtures. It does not prove OMR accuracy, MusicXML correctness, real-score support, or production readiness.
