@@ -4,7 +4,7 @@
 
 This service remains a private, health-only foundation for the shared ScoreMosaic OMR Gateway. It centralizes the configured internal addresses for Audiveris, HOMR, and Clarity, but it does not accept files, create jobs through HTTP, call an OMR conversion endpoint, persist artifacts, or produce MusicXML.
 
-Phase 11 adds a **versioned orchestration-plan contract library** without enabling orchestration. The library can deterministically describe a future job plan, engine-run lifecycle, timeout policy, source/candidate artifact relationships, and security boundaries. It performs no file, network, queue, database, or storage operation.
+Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 adds a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or storage. Both libraries are deterministic and perform no file, network, queue, database, or storage operation.
 
 Implemented now:
 
@@ -17,10 +17,12 @@ Implemented now:
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
-- explicit lifecycle transitions and bounded timeout policy
-- immutable source and candidate artifact relationships
+- explicit engine-run lifecycle transitions and bounded timeout policy
+- versioned `1.0` candidate/artifact lifecycle JSON Schema
+- immutable source, raw-result, MusicXML, and diagnostic artifact relationships
+- append-only lifecycle events with a SHA-256 hash chain
+- deterministic lifecycle, event, candidate, and artifact verification
 - independent candidate namespaces for Audiveris, HOMR, and Clarity
-- exact runtime verifier for plan hashes, relationships, policies, and disabled boundaries
 - non-root, read-only container foundation
 - no public port or direct browser route
 
@@ -31,7 +33,7 @@ GET /health -> 200; gateway process is running
 GET /ready  -> 503; orchestration and upload are disabled
 ```
 
-All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs` and an orchestration endpoint do not exist in this foundation.
+All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an orchestration endpoint, and an artifact lifecycle endpoint do not exist in this foundation.
 
 The health payload declares:
 
@@ -84,14 +86,80 @@ The contract defines:
 
 The contract does **not** dispatch the plan. `transportProfile` is only a future adapter label. `endpointKey` is one of `audiveris`, `homr`, or `clarity`; it is not a URL, hostname, path, token, or credential.
 
-All decision and execution boundaries remain fixed:
+See `docs/gateway-orchestration-contract-v1.md` for the complete architectural boundary.
+
+## Candidate and artifact lifecycle v1 boundary
+
+`build_artifact_lifecycle()` accepts a verified orchestration-plan payload and creates a deterministic initial lifecycle only. Its serialized shape is governed by:
+
+```text
+contracts/candidate-artifact-lifecycle.schema.json
+```
+
+Each engine candidate receives three isolated output artifact records in fixed order:
+
+```text
+raw_engine_result
+musicxml
+diagnostic
+```
+
+The raw engine result is preserved as a separate opaque artifact. It is never treated as automatically correct and is not merged into another engine's result.
+
+Candidate states:
+
+```text
+reserved -> collecting -> sealed
+reserved/collecting -> failed | cancelled | timed_out
+```
+
+Artifact states:
+
+```text
+reserved -> writing -> sealed
+reserved/writing -> rejected | abandoned
+```
+
+Terminal candidate and artifact states cannot be reopened. The source artifact is sealed at lifecycle creation and cannot transition. A candidate can be sealed only when all of its artifacts are sealed. A failed, cancelled, or timed-out candidate requires every artifact to be terminal first.
+
+`transition_candidate()` and `transition_artifact()` return new immutable lifecycle objects. Every transition appends one deterministic event. Events use contiguous sequence numbers, `previousEventSha256`, and `eventSha256` to form an append-only chain.
+
+A sealed output artifact requires:
+
+- lowercase SHA-256
+- positive bounded byte size
+- exact kind-specific media type
+
+`verify_artifact_lifecycle()` rebuilds the initial lifecycle from the pinned orchestration plan, replays all events, verifies the event chain, and requires an exact final payload match. It rejects changed content hashes, state records, relationships, policies, boundaries, lifecycle hashes, events, or extra fields.
+
+Fixed lifecycle policies include:
+
+```json
+{
+  "appendOnlyEvents": true,
+  "sourceImmutable": true,
+  "rawEngineResultPreserved": true,
+  "hashRequiredBeforeSeal": true,
+  "overwriteAllowed": false,
+  "crossEngineWriteAllowed": false,
+  "terminalStateReopenAllowed": false,
+  "candidateSealRequiresAllArtifactsSealed": true
+}
+```
+
+See `docs/candidate-artifact-lifecycle-v1.md` for the complete state and security boundary.
+
+## Disabled execution and decision boundaries
 
 ```json
 {
   "executionEnabled": false,
   "uploadEnabled": false,
-  "persistenceEnabled": false,
   "networkDispatchEnabled": false,
+  "queueEnabled": false,
+  "persistenceEnabled": false,
+  "storageWritesEnabled": false,
+  "runtimeMutationEnabled": false,
   "engineRanking": false,
   "winnerSelection": false,
   "automaticMerge": false,
@@ -100,8 +168,6 @@ All decision and execution boundaries remain fixed:
   "publication": false
 }
 ```
-
-See `docs/gateway-orchestration-contract-v1.md` for the complete architectural boundary.
 
 ## Existing job model boundary
 
@@ -117,7 +183,7 @@ It does not:
 - merge or rank candidate results
 - approve or publish output
 
-The candidate separation is intentionally explicit. The v1 orchestration plan strengthens it with a unique candidate identifier and run-specific namespace:
+The candidate separation is intentionally explicit:
 
 ```text
 candidates/{jobId}/{engine}/{candidateId}
@@ -142,7 +208,7 @@ No engine is allowed to overwrite another engine's candidate.
 | `SCOREMOSAIC_GATEWAY_HOMR_BASE_URL` | `http://homr-foundation:8080` | same boundary |
 | `SCOREMOSAIC_GATEWAY_CLARITY_BASE_URL` | `http://clarity-foundation:8081` | same boundary |
 
-The engine addresses are deployment configuration, never orchestration-plan or user input. Readiness probes read at most 64 KiB from each response and use a strict timeout.
+The engine addresses are deployment configuration, never orchestration-plan, lifecycle, or user input. Readiness probes read at most 64 KiB from each response and use a strict timeout.
 
 ## Local checks
 
@@ -155,16 +221,16 @@ python -m unittest discover -s services/omr-gateway/tests -v
 
 Docker validation is performed in GitHub Actions and later in Coolify staging.
 
-## Required gates before real orchestration
+## Required gates before real orchestration and storage
 
 - secure PDF/JPEG/PNG validation by magic bytes and decoded-content limits
 - authenticated service-to-service requests
 - concrete engine adapter request/response contracts
 - server-generated job, run, candidate, and artifact identifiers
 - queue, timeout enforcement, cancellation, cleanup, and restart recovery
-- immutable source and candidate artifact hashes
+- content-addressed immutable source and candidate artifact storage
 - safe MusicXML validation
-- controlled storage with retention rules
+- retention, cleanup, and recovery rules
 - real engine adapters with pinned versions
 - no automatic teacher approval or publication
 
@@ -174,6 +240,7 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 - real upload or conversion
 - live network dispatch or orchestration execution
 - database, queue, or persistent storage
+- runtime artifact mutation or overwrite
 - automatic Ensemble comparison invocation
 - engine ranking, preferred candidate, or winner selection
 - automatic MusicXML merge or correction
