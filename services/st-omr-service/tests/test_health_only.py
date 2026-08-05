@@ -16,6 +16,12 @@ class PayloadTests(unittest.TestCase):
         self.assertEqual(payload["status"], "healthy")
         self.assertEqual(payload["service"], SERVICE_NAME)
         self.assertEqual(payload["phase"], PHASE)
+        evaluation = payload["fixedEvaluation"]
+        self.assertTrue(evaluation["fixedEvaluationEnabled"])
+        self.assertFalse(evaluation["realOmrAccuracyMeasured"])
+        self.assertFalse(evaluation["generalAccuracyClaim"])
+        self.assertFalse(evaluation["modelLoaded"])
+        self.assertFalse(evaluation["realOmrInference"])
 
     def test_readiness_is_explicitly_disabled(self) -> None:
         self.assertEqual(
@@ -58,6 +64,7 @@ class EndpointTests(unittest.TestCase):
         status, body, headers = self.request("GET", "/health")
         self.assertEqual(status, 200)
         self.assertEqual(body["status"], "healthy")
+        self.assertTrue(body["fixedEvaluation"]["fixedEvaluationEnabled"])
         self.assertEqual(headers["cache-control"], "no-store")
 
     def test_ready_returns_explanatory_503(self) -> None:
