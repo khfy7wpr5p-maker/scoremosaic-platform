@@ -35,43 +35,85 @@ jobs:
         run: python -m compileall -q services/st-omr-service/src
       - name: Run all ST-OMR tests
         run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
-      - name: Validate structured artifact twice
+      - name: Execute closed JSON Schema contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          import copy
+          import json
+          from pathlib import Path
+          from scoremosaic_st_omr.json_schema_contract import JsonSchemaContractError, load_and_validate_json_schema_2020_12_subset
+
+          contracts = Path('services/st-omr-service/contracts')
+          schema = contracts / 'structured-symbol-output-v1.schema.json'
+          artifact = contracts / 'structured-symbol-output-v1.synthetic.json'
+          payload = json.loads(artifact.read_text())
+          load_and_validate_json_schema_2020_12_subset(payload, schema_path=schema)
+
+          mutations = []
+          nested_extra = copy.deepcopy(payload); nested_extra['fixture']['extra'] = False; mutations.append(nested_extra)
+          unknown_symbol = copy.deepcopy(payload); unknown_symbol['symbols'][0]['type'] = 'unknown'; mutations.append(unknown_symbol)
+          invalid_coordinate = copy.deepcopy(payload); invalid_coordinate['symbols'][0]['bbox']['x'] = 4097; mutations.append(invalid_coordinate)
+          invalid_confidence = copy.deepcopy(payload); invalid_confidence['symbols'][0]['confidence'] = 1001; mutations.append(invalid_confidence)
+          missing_field = copy.deepcopy(payload); del missing_field['symbols'][0]['confidence']; mutations.append(missing_field)
+          for mutation in mutations:
+              try:
+                  load_and_validate_json_schema_2020_12_subset(mutation, schema_path=schema)
+              except JsonSchemaContractError:
+                  pass
+              else:
+                  raise AssertionError('closed JSON Schema accepted an invalid payload')
+          PY
+      - name: Verify pinned static repository artifact twice
         shell: bash
         run: |
           set -euo pipefail
           PYTHONPATH=services/st-omr-service/src python - <<'PY'
           from pathlib import Path
-          from scoremosaic_st_omr.structured_symbol_output import (
-              EXPECTED_ARTIFACT_SHA256,
-              require_byte_identical_outputs,
-              validate_structured_symbol_output,
-          )
+          from scoremosaic_st_omr.structured_symbol_output import require_byte_identical_outputs, verify_repository_structured_artifact
 
-          artifact = Path('services/st-omr-service/contracts/structured-symbol-output-v1.synthetic.json')
-          first = validate_structured_symbol_output(artifact_path=artifact)
-          second = validate_structured_symbol_output(artifact_path=artifact)
+          contracts = Path('services/st-omr-service/contracts')
+          kwargs = {
+              'artifact_path': contracts / 'structured-symbol-output-v1.synthetic.json',
+              'manifest_path': contracts / 'structured-symbol-output-v1.manifest.json',
+              'allowed_contracts_root': contracts,
+          }
+          first = verify_repository_structured_artifact(**kwargs)
+          second = verify_repository_structured_artifact(**kwargs)
           require_byte_identical_outputs(first.canonical_bytes, second.canonical_bytes)
           assert first == second
           assert first.symbol_count == 9
-          assert first.canonical_sha256 == EXPECTED_ARTIFACT_SHA256
+          assert first.canonical_sha256 == '78136ad2dda8addf74835a43b2071acc6d8fb093b0c8ded21ac61d8a7417a1e1'
           evidence = first.as_dict()
-          for key in (
-              'realOmrInference', 'userInputAccepted', 'httpInferenceEnabled',
-              'musicXmlGenerated', 'gatewayIntegration', 'ensembleIntegration',
-              'networkUsed', 'gpuUsed', 'persistentStorageUsed', 'productionEligible',
-          ):
+          assert evidence['repeatedValidationAndCanonicalizationOnly'] is True
+          for key in ('symbolProducingModel','realSymbolDetection','musicalInterpretation','inferenceAccuracyClaim','realOmrInference','userInputAccepted','httpInferenceEnabled','musicXmlGenerated','gatewayIntegration','ensembleIntegration','networkUsed','gpuUsed','persistentStorageUsed','productionEligible'):
               assert evidence[key] is False, key
           PY
-      - name: Verify closed Phase 22 boundaries
+      - name: Verify exact Phase 22 identity and closed boundaries
         shell: bash
         run: |
           set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          import tomllib
+          service = Path('services/st-omr-service')
+          project = tomllib.loads((service / 'pyproject.toml').read_text())
+          boundary = project['tool']['scoremosaic']
+          assert project['project']['version'] == '0.8.0'
+          assert boundary['phase'] == 'structured-synthetic-symbol-output-contract'
+          assert boundary['structured-symbol-output-contract-enabled'] is True
+          assert boundary['static-repository-symbol-sample-only'] is True
+          for key in (
+              'model-loading-enabled','inference-enabled','real-omr-inference-enabled','user-input-enabled','upload-enabled',
+              'musicxml-generation-enabled','gateway-integration-enabled','ensemble-integration-enabled','automatic-correction-enabled',
+              'ranking-enabled','winner-selection-enabled','training-enabled','self-training-enabled','teacher-approval-enabled',
+              'publication-enabled','network-dispatch-enabled','gpu-enabled','persistent-storage-enabled','public-endpoint-enabled',
+          ):
+              assert boundary[key] is False, key
+          PY
           ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
-            services/st-omr-service/pyproject.toml \
-            services/st-omr-service/requirements.lock
-          ! grep -R -E "(/upload|/infer|/predict|/model/load|/musicxml)" \
-            services/st-omr-service/src
-          ! grep -E "^[[:space:]]*(model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled|upload-enabled|musicxml-generation-enabled|gateway-integration-enabled|ensemble-integration-enabled|automatic-correction-enabled|ranking-enabled|winner-selection-enabled|training-enabled|self-training-enabled|teacher-approval-enabled|publication-enabled|network-dispatch-enabled|gpu-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
-            services/st-omr-service/pyproject.toml
+            services/st-omr-service/pyproject.toml services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict|/model/load|/musicxml)" services/st-omr-service/src
       - name: Check diff formatting
         run: git diff --check
