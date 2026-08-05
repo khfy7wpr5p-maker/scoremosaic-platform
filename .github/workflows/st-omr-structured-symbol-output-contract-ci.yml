@@ -102,10 +102,11 @@ jobs:
           boundary = project['tool']['scoremosaic']
           assert project['project']['version'] == '0.8.0'
           assert boundary['phase'] == 'structured-synthetic-symbol-output-contract'
-          assert boundary['structured-symbol-output-contract-enabled'] is True
+          assert boundary['structured-synthetic-symbol-output-enabled'] is True
           assert boundary['static-repository-symbol-sample-only'] is True
           for key in (
-              'model-loading-enabled','inference-enabled','real-omr-inference-enabled','user-input-enabled','upload-enabled',
+              'model-loading-enabled','inference-enabled','symbol-producing-model-enabled','real-symbol-detection-enabled',
+              'musical-interpretation-enabled','real-omr-inference-enabled','user-input-enabled','upload-enabled',
               'musicxml-generation-enabled','gateway-integration-enabled','ensemble-integration-enabled','automatic-correction-enabled',
               'ranking-enabled','winner-selection-enabled','training-enabled','self-training-enabled','teacher-approval-enabled',
               'publication-enabled','network-dispatch-enabled','gpu-enabled','persistent-storage-enabled','public-endpoint-enabled',
