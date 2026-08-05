@@ -2,45 +2,84 @@
 
 ## Status
 
-Phase 22 starts from `main` commit `8796a8896b6868a67ab7812b807578e03485e7c6` on the isolated branch `feature/st-omr-structured-symbol-output-contract`.
+Phase 22 is implemented on draft PR #27 from `main` commit `8796a8896b6868a67ab7812b807578e03485e7c6` on `feature/st-omr-structured-symbol-output-contract`.
 
-This first commit freezes scope only. It does not enable new runtime behavior, service readiness, user input, production inference, MusicXML generation, Gateway, or Ensemble integration.
+This phase validates a **static repository-owned synthetic contract sample**. It does not run a symbol-producing model, perform real symbol detection, interpret music, or measure inference accuracy. Repeated execution means repeated validation and canonicalization of the same pinned static sample only.
 
 ## Objective
 
-Define a closed, versioned, deterministic JSON contract for repository-owned synthetic symbol output produced only from repository-owned synthetic fixtures and the repository-only Phase 21 test runtime.
+Define and execute a closed, versioned, deterministic JSON contract for a repository-owned synthetic symbol sample while keeping artifact pinning separate from reusable contract validation.
 
-## Allowed scope
+## Implemented boundary
 
-- versioned closed JSON Schema
-- repository-owned synthetic symbol output only
-- bounded symbol kinds: staff, measure, clef, time signature, notehead, stem, beam, rest, barline
-- immutable stable IDs and canonical ordering
-- integer or explicitly bounded coordinate fields
-- bounded confidence values with an explicit representation
-- provenance containing model ID/version and fixture ID/version
-- immutable output evidence and canonical SHA-256
-- byte-identical repeated execution evidence
-- positive tests and fail-closed negative tests
-- dedicated Phase 22 CI plus all previous ST-OMR regression suites
+- closed JSON Schema 2020-12 document with every nested object explicitly defined
+- independent manual semantic validator for the same closed contract
+- separate repository artifact verifier with allowed-root, direct-child, symlink, path-escape, raw SHA-256, and canonical SHA-256 checks
+- repository-owned pinned artifact manifest
+- stable symbol IDs and canonical ascending order
+- integer coordinate space from 0 through 4096
+- integer confidence from 0 through 1000
+- static fixture and repository-test-model provenance fields
+- byte-identical repeated validation/canonicalization evidence
+- positive and fail-closed negative tests
+- dedicated Phase 22 CI plus all historical ST-OMR regression suites
 
-## Required negative tests
+## Symbol record scope
 
-- duplicate symbol ID
-- unknown symbol type
-- invalid or out-of-range coordinate
-- invalid confidence
-- malformed fixture or model provenance
-- ordering change
-- schema version mismatch
-- missing required field
-- artifact tampering
-- nondeterministic output
+Each symbol record contains only:
+
+- symbol type
+- bounding box
+- confidence
+
+Phase 22 does **not** define or infer:
+
+- staff or measure membership
+- notehead–stem attachment
+- beam membership
+- pitch
+- duration
+- voice
+- chord relation
+- reading-order semantics
+- notation graph
+
+Those capabilities require separate future phases and are not implied by this contract.
+
+## Schema closure
+
+The JSON Schema independently closes:
+
+- `fixture`
+- `model`
+- `coordinateSpace`
+- every `symbols` item
+- every `bbox`
+- `boundaries`
+
+Every nested object uses `additionalProperties: false`, explicit `required` fields, bounded types, closed patterns or enums, and fixed false boundary constants. A dependency-free repository contract tool executes this schema in tests and CI. The Python semantic validator applies the same closed rules and additionally enforces canonical symbol ordering and bounding-box containment.
+
+## Repository artifact ownership
+
+General contract validation is not tied to one artifact hash. Repository artifact verification is a separate function that requires:
+
+- an allowed root named `contracts`
+- manifest and artifact as direct children
+- no symlink
+- no path escape
+- exact pinned artifact filename
+- pinned raw-file SHA-256
+- pinned canonical SHA-256
+- static repository sample purpose
 
 ## Fixed exclusions
 
 - no real or trained OMR model
 - no externally sourced model weights
+- no symbol-producing model
+- no real symbol detection
+- no musical interpretation
+- no inference accuracy claim
 - no PDF, photograph, image, upload, or user file
 - no HTTP inference, upload, or model-loading endpoint
 - no MusicXML generation
@@ -49,9 +88,20 @@ Define a closed, versioned, deterministic JSON contract for repository-owned syn
 - no automatic correction, ranking, winner selection, or merge
 - no training or self-training
 - no teacher approval or publication workflow
-- no external network, GPU/CUDA, persistent storage, or production deployment
+- no external network
+- no GPU/CUDA
+- no persistent storage
+- no production deployment
 - no readiness promotion; `/ready` remains 503
 
-## Merge policy
+## Verification requirements
 
-The pull request remains draft until implementation is complete, all local tests pass, all historical and Phase 22 CI checks are green, scope is re-audited, and explicit merge approval is given.
+- all ST-OMR unit and regression tests pass
+- JSON Schema accepts the canonical sample
+- JSON Schema rejects nested extras, unknown symbols, invalid coordinates, invalid confidence, and missing fields
+- manual validator rejects duplicate IDs, malformed nested objects, ordering changes, invalid provenance, invalid boundaries, and nondeterminism
+- repository verifier rejects outside-root artifacts, path escape, symlinks, wrong root names, and artifact tampering
+- `/health` remains 200 and reports the capability as a static sample not requested
+- `/ready` remains 503
+- all nine CI workflows complete successfully
+- PR remains draft until separate architectural re-review and explicit merge approval
