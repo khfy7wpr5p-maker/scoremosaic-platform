@@ -6,6 +6,7 @@ on:
       - main
       - "feature/st-omr-health-only-service-foundation"
       - "feature/st-omr-model-free-runtime-harness"
+      - "feature/st-omr-pinned-offline-model-runtime-foundation"
     paths:
       - ".github/workflows/st-omr-health-only-service-foundation-ci.yml"
       - "services/st-omr-service/**"
@@ -81,18 +82,36 @@ jobs:
           assert 'st-omr-service:' not in compose
           PY
 
-      - name: Verify no model or inference surface exists
+      - name: Verify no production model or HTTP inference surface exists
         shell: bash
         run: |
           set -euo pipefail
-          test ! -d services/st-omr-service/models
           test ! -d services/st-omr-service/model
+          test -f services/st-omr-service/models/st-omr-test-linear-v1.model.json
+          test -f services/st-omr-service/models/st-omr-test-linear-v1.manifest.json
+
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          service = Path('services/st-omr-service')
+          boundary = tomllib.loads((service / 'pyproject.toml').read_text())['tool']['scoremosaic']
+          assert boundary['model-loading-enabled'] is False
+          assert boundary['inference-enabled'] is False
+          assert boundary['repository-test-model-only'] is True
+          assert boundary['repository-test-model-loading-enabled'] is True
+          assert boundary['repository-test-model-inference-enabled'] is True
+          PY
+
           ! grep -R -E \
             --exclude='*.pyc' \
             --exclude-dir='__pycache__' \
             "torch|tensorflow|onnxruntime|paddle|transformers|/infer|/predict|/upload" \
             services/st-omr-service/src \
             services/st-omr-service/pyproject.toml
+
+          ! grep -E "^[[:space:]]*COPY[[:space:]]+models" \
+            services/st-omr-service/Dockerfile
 
       - name: Build container
         run: docker build --pull=false -t scoremosaic-st-omr:health-only services/st-omr-service

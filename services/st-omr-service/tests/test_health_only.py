@@ -16,12 +16,25 @@ class PayloadTests(unittest.TestCase):
         self.assertEqual(payload["status"], "healthy")
         self.assertEqual(payload["service"], SERVICE_NAME)
         self.assertEqual(payload["phase"], PHASE)
+
         evaluation = payload["fixedEvaluation"]
         self.assertTrue(evaluation["fixedEvaluationEnabled"])
         self.assertFalse(evaluation["realOmrAccuracyMeasured"])
         self.assertFalse(evaluation["generalAccuracyClaim"])
         self.assertFalse(evaluation["modelLoaded"])
         self.assertFalse(evaluation["realOmrInference"])
+
+        offline_runtime = payload["offlineModelRuntime"]
+        self.assertTrue(offline_runtime["offlineModelRuntimeEnabled"])
+        self.assertTrue(offline_runtime["repositoryTestModelOnly"])
+        self.assertFalse(offline_runtime["modelLoaded"])
+        self.assertFalse(offline_runtime["inferenceEnabled"])
+        self.assertFalse(offline_runtime["realOmrInference"])
+        self.assertFalse(offline_runtime["userInputAccepted"])
+        self.assertFalse(offline_runtime["httpInferenceEnabled"])
+        self.assertFalse(offline_runtime["gatewayIntegration"])
+        self.assertFalse(offline_runtime["ensembleIntegration"])
+        self.assertFalse(offline_runtime["productionEligible"])
 
     def test_readiness_is_explicitly_disabled(self) -> None:
         self.assertEqual(
@@ -51,7 +64,11 @@ class EndpointTests(unittest.TestCase):
         cls.server.server_close()
         cls.thread.join(timeout=5)
 
-    def request(self, method: str, path: str) -> tuple[int, dict[str, object], dict[str, str]]:
+    def request(
+        self,
+        method: str,
+        path: str,
+    ) -> tuple[int, dict[str, object], dict[str, str]]:
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         connection.request(method, path)
         response = connection.getresponse()
@@ -60,11 +77,14 @@ class EndpointTests(unittest.TestCase):
         connection.close()
         return response.status, body, headers
 
-    def test_health_returns_200(self) -> None:
+    def test_health_returns_200_without_loading_model(self) -> None:
         status, body, headers = self.request("GET", "/health")
         self.assertEqual(status, 200)
         self.assertEqual(body["status"], "healthy")
         self.assertTrue(body["fixedEvaluation"]["fixedEvaluationEnabled"])
+        self.assertTrue(body["offlineModelRuntime"]["offlineModelRuntimeEnabled"])
+        self.assertIs(body["offlineModelRuntime"]["modelLoaded"], False)
+        self.assertIs(body["offlineModelRuntime"]["inferenceEnabled"], False)
         self.assertEqual(headers["cache-control"], "no-store")
 
     def test_ready_returns_explanatory_503(self) -> None:

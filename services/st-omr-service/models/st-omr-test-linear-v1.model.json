@@ -1,0 +1,29 @@
+{
+  "formatVersion": "1.0",
+  "runtimeKind": "deterministic-integer-linear-v1",
+  "featureOrder": [
+    "byteLength",
+    "lineCount",
+    "dashCount"
+  ],
+  "labels": [
+    "repository_fixture_shape",
+    "other"
+  ],
+  "weights": {
+    "repository_fixture_shape": [
+      2,
+      11,
+      7
+    ],
+    "other": [
+      -1,
+      -3,
+      -2
+    ]
+  },
+  "bias": {
+    "repository_fixture_shape": 17,
+    "other": -17
+  }
+}

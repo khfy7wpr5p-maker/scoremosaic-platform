@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoremosaic-st-omr"
-version = "0.6.0"
-description = "Fixed synthetic-fixture evaluation integration for isolated ScoreMosaic ST-OMR"
+version = "0.7.0"
+description = "Pinned repository-test model runtime foundation for isolated ScoreMosaic ST-OMR"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,7 +16,7 @@ scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
 where = ["src"]
 
 [tool.scoremosaic]
-phase = "fixed-evaluation-integration"
+phase = "pinned-offline-model-runtime-foundation"
 service-role = "candidate_omr_engine"
 device-policy = "cpu_only"
 dependency-lock-required = true
@@ -26,6 +26,10 @@ checksum-validation-enabled = true
 allowed-model-root = "models"
 model-loading-enabled = false
 inference-enabled = false
+pinned-offline-model-runtime-enabled = true
+repository-test-model-only = true
+repository-test-model-loading-enabled = true
+repository-test-model-inference-enabled = true
 offline-generated-fixture-inference-enabled = true
 generated-fixture-suite-enabled = true
 fixed-evaluation-enabled = true
