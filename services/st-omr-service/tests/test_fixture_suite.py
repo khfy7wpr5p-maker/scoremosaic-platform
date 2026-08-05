@@ -26,7 +26,7 @@ class GeneratedFixtureSuiteTests(unittest.TestCase):
             (
                 "generated-chord-v1",
                 "generated-rhythm-pattern-v1",
-                "generated-single-staff-v1",
+                "generated-single-staff",
             ),
         )
         evidence = first.as_dict()
@@ -52,7 +52,7 @@ class GeneratedFixtureSuiteTests(unittest.TestCase):
             shutil.copytree(self.fixture_root, root)
             second_manifest = root / "generated-rhythm-pattern-v1.manifest.json"
             payload = json.loads(second_manifest.read_text(encoding="utf-8"))
-            payload["fixtureId"] = "generated-single-staff-v1"
+            payload["fixtureId"] = "generated-single-staff"
             second_manifest.write_text(json.dumps(payload), encoding="utf-8")
 
             with self.assertRaises(FixtureSuiteError):
