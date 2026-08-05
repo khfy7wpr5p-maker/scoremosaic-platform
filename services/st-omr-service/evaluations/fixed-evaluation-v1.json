@@ -1,0 +1,26 @@
+{
+  "evaluationVersion": "1.0",
+  "evaluationId": "st-omr-fixed-evaluation-v1",
+  "suiteRegistryName": "generated-fixture-suite-v1.registry.json",
+  "expectedSuiteId": "st-omr-generated-fixture-suite-v1",
+  "expectedSuiteVersion": "1.0",
+  "metricContract": {
+    "allFixturesMustPass": true,
+    "generalAccuracyClaim": false,
+    "realOmrAccuracyMeasured": false
+  },
+  "cases": [
+    {
+      "fixtureId": "generated-single-staff",
+      "expectedOutcome": "closed_fixture_pass"
+    },
+    {
+      "fixtureId": "generated-rhythm-pattern-v1",
+      "expectedOutcome": "closed_fixture_pass"
+    },
+    {
+      "fixtureId": "generated-chord-v1",
+      "expectedOutcome": "closed_fixture_pass"
+    }
+  ]
+}

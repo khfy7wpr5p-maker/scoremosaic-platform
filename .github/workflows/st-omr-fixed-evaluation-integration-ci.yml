@@ -1,0 +1,78 @@
+name: ST-OMR Fixed Evaluation Integration CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/st-omr-fixed-evaluation-integration
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-fixed-evaluation-integration-ci.yml"
+      - "docs/st-omr-fixed-evaluation-integration.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-fixed-evaluation-integration-ci.yml"
+      - "docs/st-omr-fixed-evaluation-integration.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-fixed-evaluation-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile service
+        run: python -m compileall -q services/st-omr-service/src
+      - name: Run all ST-OMR tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+      - name: Execute fixed evaluation twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          from scoremosaic_st_omr.fixed_evaluation import run_fixed_evaluation
+
+          service_root = Path('services/st-omr-service')
+          kwargs = {
+              'evaluation_manifest_path': service_root / 'evaluations' / 'fixed-evaluation-v1.json',
+              'evaluation_root': service_root / 'evaluations',
+              'fixture_root': service_root / 'fixtures',
+          }
+          first = run_fixed_evaluation(**kwargs)
+          second = run_fixed_evaluation(**kwargs)
+          assert first == second
+          assert first.fixture_count == 3
+          assert first.pass_count == 3
+          assert first.fail_count == 0
+          evidence = first.as_dict()
+          assert evidence['modelLoaded'] is False
+          assert evidence['realOmrInference'] is False
+          assert evidence['realOmrAccuracyMeasured'] is False
+          assert evidence['generalAccuracyClaim'] is False
+          assert evidence['userInputAccepted'] is False
+          assert evidence['networkUsed'] is False
+          PY
+      - name: Verify closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
+            services/st-omr-service/pyproject.toml \
+            services/st-omr-service/requirements.lock
+
+          ! grep -R -E "(/upload|/infer|/predict|/evaluate)" \
+            services/st-omr-service/src
+
+          ! grep -E "^[[:space:]]*(gateway-integration-enabled|ensemble-integration-enabled|model-loading-enabled|inference-enabled|real-omr-inference-enabled|real-omr-evaluation-enabled|general-accuracy-claim-enabled|network-dispatch-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
+            services/st-omr-service/pyproject.toml
+      - name: Check diff formatting
+        run: git diff --check
