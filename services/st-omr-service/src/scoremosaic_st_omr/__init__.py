@@ -1,5 +1,5 @@
-"""Generated fixture suite v1 foundation for isolated ST-OMR."""
+"""Fixed evaluation integration for the isolated ST-OMR candidate engine."""
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 SERVICE_NAME = "st-omr-service"
-PHASE = "generated-fixture-suite-v1"
+PHASE = "fixed-evaluation-integration"
