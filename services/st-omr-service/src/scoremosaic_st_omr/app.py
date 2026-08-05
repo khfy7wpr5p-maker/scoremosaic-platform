@@ -34,7 +34,7 @@ def readiness_payload() -> dict[str, object]:
         "phase": PHASE,
         "modelLoaded": False,
         "inferenceEnabled": False,
-        "reason": "production_inference_disabled",
+        "reason": "model_runtime_disabled",
     }
 
 
