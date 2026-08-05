@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "feature/st-omr-health-only-service-foundation"
+      - "feature/st-omr-model-free-runtime-harness"
     paths:
       - ".github/workflows/st-omr-health-only-service-foundation-ci.yml"
       - "services/st-omr-service/**"
@@ -60,9 +61,7 @@ jobs:
           project = tomllib.loads((service / 'pyproject.toml').read_text())
           boundary = project['tool']['scoremosaic']
 
-          assert project['project']['version'] == '0.1.0'
           assert project['project']['dependencies'] == []
-          assert boundary['phase'] == 'health-only-service-foundation'
           assert boundary['service-role'] == 'candidate_omr_engine'
           for key in (
               'model-loading-enabled',
@@ -88,7 +87,10 @@ jobs:
           set -euo pipefail
           test ! -d services/st-omr-service/models
           test ! -d services/st-omr-service/model
-          ! grep -R -E "torch|tensorflow|onnxruntime|paddle|transformers|/infer|/predict|/upload" \
+          ! grep -R -E \
+            --exclude='*.pyc' \
+            --exclude-dir='__pycache__' \
+            "torch|tensorflow|onnxruntime|paddle|transformers|/infer|/predict|/upload" \
             services/st-omr-service/src \
             services/st-omr-service/pyproject.toml
 

@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Final
 
 from . import PHASE, SERVICE_NAME, __version__
+from .runtime import runtime_evidence
 
 HOST: Final = "0.0.0.0"
 DEFAULT_PORT: Final = 8080
@@ -18,6 +19,7 @@ def health_payload() -> dict[str, object]:
         "service": SERVICE_NAME,
         "phase": PHASE,
         "version": __version__,
+        "runtime": runtime_evidence(),
     }
 
 
@@ -33,30 +35,27 @@ def readiness_payload() -> dict[str, object]:
 
 
 class HealthOnlyHandler(BaseHTTPRequestHandler):
-    server_version = "ScoreMosaicSTOMR/0.1"
+    server_version = "ScoreMosaicSTOMR/0.2"
 
-    def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+    def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
             self._send_json(HTTPStatus.OK, health_payload())
             return
         if self.path == "/ready":
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, readiness_payload())
             return
-        self._send_json(
-            HTTPStatus.NOT_FOUND,
-            {"status": "not_found", "service": SERVICE_NAME},
-        )
+        self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "service": SERVICE_NAME})
 
-    def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+    def do_POST(self) -> None:  # noqa: N802
         self._method_not_allowed()
 
-    def do_PUT(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+    def do_PUT(self) -> None:  # noqa: N802
         self._method_not_allowed()
 
-    def do_PATCH(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+    def do_PATCH(self) -> None:  # noqa: N802
         self._method_not_allowed()
 
-    def do_DELETE(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+    def do_DELETE(self) -> None:  # noqa: N802
         self._method_not_allowed()
 
     def log_message(self, format: str, *args: object) -> None:
@@ -65,11 +64,7 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
     def _method_not_allowed(self) -> None:
         self._send_json(
             HTTPStatus.METHOD_NOT_ALLOWED,
-            {
-                "status": "method_not_allowed",
-                "service": SERVICE_NAME,
-                "allowedMethods": ["GET"],
-            },
+            {"status": "method_not_allowed", "service": SERVICE_NAME, "allowedMethods": ["GET"]},
             extra_headers={"Allow": "GET"},
         )
 
@@ -101,6 +96,7 @@ def main() -> None:
     if not 1 <= port <= 65535:
         raise SystemExit("ST_OMR_PORT must be between 1 and 65535")
 
+    runtime_evidence()
     server = ThreadingHTTPServer((HOST, port), HealthOnlyHandler)
     server.serve_forever()
 
