@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "scoremosaic-st-omr"
 version = "0.8.0"
-description = "Structured repository-synthetic symbol output contract for isolated ScoreMosaic ST-OMR"
+description = "Closed static repository-synthetic symbol contract sample for isolated ScoreMosaic ST-OMR"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -24,6 +24,7 @@ resource-limits-required = true
 manifest-validation-enabled = true
 checksum-validation-enabled = true
 allowed-model-root = "models"
+allowed-contracts-root = "contracts"
 model-loading-enabled = false
 inference-enabled = false
 pinned-offline-model-runtime-enabled = true
@@ -34,6 +35,10 @@ offline-generated-fixture-inference-enabled = true
 generated-fixture-suite-enabled = true
 fixed-evaluation-enabled = true
 structured-synthetic-symbol-output-enabled = true
+static-repository-symbol-sample-only = true
+symbol-producing-model-enabled = false
+real-symbol-detection-enabled = false
+musical-interpretation-enabled = false
 real-omr-evaluation-enabled = false
 real-omr-inference-enabled = false
 general-accuracy-claim-enabled = false
