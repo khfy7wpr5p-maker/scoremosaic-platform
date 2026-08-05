@@ -1,0 +1,92 @@
+name: Ensemble Comparison Report v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/ensemble-comparison-report-v1"
+    paths:
+      - ".github/workflows/ensemble-comparison-report-v1-ci.yml"
+      - "contracts/ensemble-comparison-report-v1.schema.json"
+      - "services/ensemble-service/**"
+      - "docs/ensemble-comparison-report-v1.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ensemble-comparison-report-v1-ci.yml"
+      - "contracts/ensemble-comparison-report-v1.schema.json"
+      - "services/ensemble-service/**"
+      - "docs/ensemble-comparison-report-v1.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ensemble-comparison-report-v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-report-v1:
+    name: Verify deterministic versioned report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run Ensemble unit tests
+        run: python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Verify report contract and boundary configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          import json
+          from pathlib import Path
+          import tomllib
+
+          from scoremosaic_ensemble import REPORT_SCHEMA_VERSION, REPORT_TYPE
+
+          root = Path(".")
+          service = root / "services/ensemble-service"
+          schema_path = root / "contracts/ensemble-comparison-report-v1.schema.json"
+          schema = json.loads(schema_path.read_text(encoding="utf-8"))
+          config = tomllib.loads((service / "pyproject.toml").read_text(encoding="utf-8"))
+          boundary = config["tool"]["scoremosaic"]
+
+          assert REPORT_SCHEMA_VERSION == "1.0"
+          assert REPORT_TYPE == "scoremosaic.ensemble.comparison-report"
+          assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+          assert schema["additionalProperties"] is False
+          assert schema["properties"]["schemaVersion"]["const"] == REPORT_SCHEMA_VERSION
+          assert schema["properties"]["reportType"]["const"] == REPORT_TYPE
+          assert boundary["comparison-report-version"] == "1.0"
+          assert boundary["comparison-report-library-enabled"] is True
+          assert boundary["comparison-enabled"] is False
+          assert boundary["engine-ranking-enabled"] is False
+          assert boundary["winner-selection-enabled"] is False
+          assert boundary["automatic-merge-enabled"] is False
+          assert boundary["automatic-correction-enabled"] is False
+          assert boundary["teacher-approval-enabled"] is False
+          assert boundary["public-api-enabled"] is False
+          PY
+
+      - name: Verify phase exclusions
+        run: |
+          test ! -d services/st-omr-service
+          test ! -e contracts/comparison-report.schema.json
+          git diff --check
