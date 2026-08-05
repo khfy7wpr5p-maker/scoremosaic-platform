@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/ensemble-comparison-report-v1.schema.json",
+  "title": "ScoreMosaic Ensemble Comparison Report v1",
+  "description": "Deterministic read-only report for one neutral Ensemble comparison result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportType",
+    "reportId",
+    "comparisonFormatVersion",
+    "comparisonResultSha256",
+    "neutrality",
+    "comparison",
+    "reportSha256"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "reportType": {"const": "scoremosaic.ensemble.comparison-report"},
+    "reportId": {"type": "string", "pattern": "^ensemble_report_[0-9a-f]{24}$"},
+    "comparisonFormatVersion": {"const": "0.1-foundation"},
+    "comparisonResultSha256": {"$ref": "#/$defs/sha256"},
+    "neutrality": {"$ref": "#/$defs/neutrality"},
+    "comparison": {"$ref": "#/$defs/comparison"},
+    "reportSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidateId": {"type": "string", "pattern": "^candidate_[0-9a-f]{24}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "engineVersion", "modelVersion", "artifactRef", "artifactSha256"],
+      "properties": {
+        "engine": {"enum": ["audiveris", "homr", "clarity"]},
+        "engineVersion": {"type": "string", "minLength": 1, "maxLength": 200},
+        "modelVersion": {"type": "string", "minLength": 1, "maxLength": 200},
+        "artifactRef": {"type": "string", "minLength": 1, "maxLength": 500},
+        "artifactSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "neutrality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readOnly", "provenancePreserved", "accuracyClaim", "engineRanking", "winnerSelection", "preferredCandidate", "automaticMerge", "automaticCorrection"],
+      "properties": {
+        "readOnly": {"const": true},
+        "provenancePreserved": {"const": true},
+        "accuracyClaim": {"const": false},
+        "engineRanking": {"const": false},
+        "winnerSelection": {"const": false},
+        "preferredCandidate": {"const": false},
+        "automaticMerge": {"const": false},
+        "automaticCorrection": {"const": false}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readOnly", "engineRanking", "winnerSelection", "automaticMerge", "automaticCorrection", "teacherApproval", "publication"],
+      "properties": {
+        "readOnly": {"const": true},
+        "engineRanking": {"const": false},
+        "winnerSelection": {"const": false},
+        "automaticMerge": {"const": false},
+        "automaticCorrection": {"const": false},
+        "teacherApproval": {"const": false},
+        "publication": {"const": false}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "source", "canonicalSha256", "partCount", "measureCount", "eventCount"],
+      "properties": {
+        "candidateId": {"$ref": "#/$defs/candidateId"},
+        "source": {"$ref": "#/$defs/source"},
+        "canonicalSha256": {"$ref": "#/$defs/sha256"},
+        "partCount": {"type": "integer", "minimum": 0},
+        "measureCount": {"type": "integer", "minimum": 0},
+        "eventCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "measureId", "measureNumber", "eventId", "xmlPath", "sourceEventIndex"],
+      "properties": {
+        "partId": {"type": ["string", "null"]},
+        "measureId": {"type": ["string", "null"]},
+        "measureNumber": {"type": ["string", "null"]},
+        "eventId": {"type": ["string", "null"]},
+        "xmlPath": {"type": ["string", "null"]},
+        "sourceEventIndex": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "source", "canonicalSha256", "present", "value", "provenance"],
+      "properties": {
+        "candidateId": {"$ref": "#/$defs/candidateId"},
+        "source": {"$ref": "#/$defs/source"},
+        "canonicalSha256": {"$ref": "#/$defs/sha256"},
+        "present": {"type": "boolean"},
+        "value": {},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "difference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "field", "location", "observations", "differenceId", "description"],
+      "properties": {
+        "category": {"enum": ["measure", "event_time", "pitch", "duration", "rest", "chord", "voice", "staff", "tie", "dot", "tuplet", "tab"]},
+        "field": {"type": "string", "pattern": "^[a-z][A-Za-z0-9.]{0,99}$"},
+        "location": {"type": "object"},
+        "observations": {"type": "array", "minItems": 2, "maxItems": 8, "items": {"$ref": "#/$defs/observation"}},
+        "differenceId": {"type": "string", "pattern": "^difference_[0-9a-f]{24}$"},
+        "description": {"type": "string", "minLength": 1}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formatVersion", "comparisonMode", "alignment", "boundaries", "candidateCount", "differenceCount", "identical", "candidates", "differences", "resultSha256"],
+      "properties": {
+        "formatVersion": {"const": "0.1-foundation"},
+        "comparisonMode": {"const": "neutral-all-candidates"},
+        "alignment": {"type": "object"},
+        "boundaries": {"$ref": "#/$defs/boundaries"},
+        "candidateCount": {"type": "integer", "minimum": 2, "maximum": 8},
+        "differenceCount": {"type": "integer", "minimum": 0, "maximum": 200000},
+        "identical": {"type": "boolean"},
+        "candidates": {"type": "array", "minItems": 2, "maxItems": 8, "items": {"$ref": "#/$defs/candidate"}},
+        "differences": {"type": "array", "maxItems": 200000, "items": {"$ref": "#/$defs/difference"}},
+        "resultSha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}
