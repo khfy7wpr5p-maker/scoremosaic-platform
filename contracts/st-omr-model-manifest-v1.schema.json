@@ -1,0 +1,324 @@
+{
+  "$defs": {
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactRef": {"$ref": "#/$defs/safeRef"},
+        "mediaType": {
+          "enum": [
+            "application/octet-stream",
+            "application/onnx",
+            "application/x-pytorch",
+            "application/safetensors"
+          ]
+        },
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "sizeBytes": {
+          "maximum": 1099511627776,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["artifactRef", "sha256", "sizeBytes", "mediaType"],
+      "type": "object"
+    },
+    "datasetEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "consentAndLicenseVerified": {"type": "boolean"},
+        "datasetId": {"$ref": "#/$defs/id"},
+        "manifestRef": {"$ref": "#/$defs/safeRef"},
+        "manifestSha256": {"$ref": "#/$defs/sha256"},
+        "purpose": {
+          "enum": ["training", "validation", "test", "regression"]
+        }
+      },
+      "required": [
+        "datasetId",
+        "manifestRef",
+        "manifestSha256",
+        "purpose",
+        "consentAndLicenseVerified"
+      ],
+      "type": "object"
+    },
+    "evaluationEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "allFieldsPerfect": {"type": "boolean"},
+        "coreSuccess": {"type": "boolean"},
+        "datasetId": {"$ref": "#/$defs/id"},
+        "datasetManifestSha256": {"$ref": "#/$defs/sha256"},
+        "generalAccuracyClaim": {"const": false},
+        "profile": {
+          "enum": [
+            "single_staff",
+            "piano_multistaff",
+            "chamber_music",
+            "orchestra_score",
+            "orchestra_part",
+            "guitar_tab",
+            "choir_lyrics",
+            "percussion"
+          ]
+        },
+        "resultRef": {"$ref": "#/$defs/safeRef"},
+        "resultSha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": [
+        "datasetId",
+        "datasetManifestSha256",
+        "resultRef",
+        "resultSha256",
+        "profile",
+        "coreSuccess",
+        "allFieldsPerfect",
+        "generalAccuracyClaim"
+      ],
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,99}$",
+      "type": "string"
+    },
+    "safeRef": {
+      "maxLength": 500,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    }
+  },
+  "$id": "https://scoremosaic.local/contracts/st-omr-model-manifest-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable provenance and release-evidence manifest for a future ST-OMR model artifact.",
+  "properties": {
+    "boundaries": {
+      "additionalProperties": false,
+      "properties": {
+        "deployableFromThisManifestAlone": {"const": false},
+        "ensembleIntegration": {"const": false},
+        "gatewayIntegration": {"const": false},
+        "generalAccuracyClaim": {"const": false},
+        "liveTraining": {"const": false},
+        "publicRelease": {"const": false},
+        "selfTraining": {"const": false},
+        "teacherCorrectionIngestion": {"const": false}
+      },
+      "required": [
+        "deployableFromThisManifestAlone",
+        "liveTraining",
+        "selfTraining",
+        "teacherCorrectionIngestion",
+        "gatewayIntegration",
+        "ensembleIntegration",
+        "publicRelease",
+        "generalAccuracyClaim"
+      ],
+      "type": "object"
+    },
+    "evaluationEvidence": {
+      "items": {"$ref": "#/$defs/evaluationEvidence"},
+      "maxItems": 100,
+      "minItems": 1,
+      "type": "array"
+    },
+    "manifestSha256": {"$ref": "#/$defs/sha256"},
+    "manifestType": {"const": "scoremosaic.st-omr-model-manifest"},
+    "model": {
+      "additionalProperties": false,
+      "properties": {
+        "architectureFamily": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "modelId": {"$ref": "#/$defs/id"},
+        "modelVersion": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$",
+          "type": "string"
+        },
+        "releaseStatus": {
+          "enum": [
+            "contract_fixture",
+            "experimental",
+            "validated",
+            "rejected",
+            "retired"
+          ]
+        },
+        "taskProfiles": {
+          "items": {
+            "enum": [
+              "single_staff",
+              "piano_multistaff",
+              "chamber_music",
+              "orchestra_score",
+              "orchestra_part",
+              "guitar_tab",
+              "choir_lyrics",
+              "percussion"
+            ]
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "modelId",
+        "modelVersion",
+        "releaseStatus",
+        "architectureFamily",
+        "taskProfiles",
+        "artifact"
+      ],
+      "type": "object"
+    },
+    "promotionGates": {
+      "additionalProperties": false,
+      "properties": {
+        "automaticPromotion": {"const": false},
+        "checksumVerified": {"type": "boolean"},
+        "fixedEvaluationCompleted": {"type": "boolean"},
+        "licenseVerified": {"type": "boolean"},
+        "manualApprovalRecorded": {"type": "boolean"},
+        "productionEligible": {"type": "boolean"},
+        "provenanceVerified": {"type": "boolean"},
+        "regressionTestsPassed": {"type": "boolean"}
+      },
+      "required": [
+        "checksumVerified",
+        "provenanceVerified",
+        "licenseVerified",
+        "fixedEvaluationCompleted",
+        "regressionTestsPassed",
+        "manualApprovalRecorded",
+        "productionEligible",
+        "automaticPromotion"
+      ],
+      "type": "object"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "baseModel": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "additionalProperties": false,
+              "properties": {
+                "modelId": {"$ref": "#/$defs/id"},
+                "modelVersion": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {"$ref": "#/$defs/sha256"}
+              },
+              "required": ["modelId", "modelVersion", "sha256"],
+              "type": "object"
+            }
+          ]
+        },
+        "datasets": {
+          "items": {"$ref": "#/$defs/datasetEvidence"},
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "license": {
+          "additionalProperties": false,
+          "properties": {
+            "licenseTextRef": {"$ref": "#/$defs/safeRef"},
+            "licenseTextSha256": {"$ref": "#/$defs/sha256"},
+            "spdxIdentifier": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "spdxIdentifier",
+            "licenseTextRef",
+            "licenseTextSha256"
+          ],
+          "type": "object"
+        },
+        "trainingCodeRevision": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "trainingEnvironmentDigest": {"$ref": "#/$defs/sha256"},
+        "trainingRunId": {"$ref": "#/$defs/id"}
+      },
+      "required": [
+        "trainingRunId",
+        "trainingCodeRevision",
+        "trainingEnvironmentDigest",
+        "baseModel",
+        "datasets",
+        "license"
+      ],
+      "type": "object"
+    },
+    "recordPurpose": {
+      "enum": ["contract_fixture", "model_release"]
+    },
+    "runtimeCompatibility": {
+      "additionalProperties": false,
+      "properties": {
+        "dependencyLockRef": {"$ref": "#/$defs/safeRef"},
+        "dependencyLockSha256": {"$ref": "#/$defs/sha256"},
+        "devicePolicy": {"enum": ["cpu", "gpu", "cpu_or_gpu"]},
+        "engineContractVersion": {"const": "1.0"},
+        "framework": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "frameworkVersion": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "minimumEngineVersion": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "engineContractVersion",
+        "minimumEngineVersion",
+        "framework",
+        "frameworkVersion",
+        "devicePolicy",
+        "dependencyLockRef",
+        "dependencyLockSha256"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": {"const": "1.0"}
+  },
+  "required": [
+    "schemaVersion",
+    "manifestType",
+    "recordPurpose",
+    "model",
+    "runtimeCompatibility",
+    "provenance",
+    "evaluationEvidence",
+    "promotionGates",
+    "boundaries",
+    "manifestSha256"
+  ],
+  "title": "ScoreMosaic ST-OMR Model Manifest v1",
+  "type": "object"
+}

@@ -1,0 +1,309 @@
+{
+  "$defs": {
+    "boundaries": {
+      "additionalProperties": false,
+      "properties": {
+        "architectureOnly": {"const": true},
+        "automaticCorrectionEnabled": {"const": false},
+        "automaticMergeEnabled": {"const": false},
+        "engineRankingEnabled": {"const": false},
+        "ensembleIntegrationEnabled": {"const": false},
+        "gatewayIntegrationEnabled": {"const": false},
+        "liveTrainingEnabled": {"const": false},
+        "networkDispatchEnabled": {"const": false},
+        "persistentStorageEnabled": {"const": false},
+        "productionDeploymentEnabled": {"const": false},
+        "publicEndpointEnabled": {"const": false},
+        "publicationEnabled": {"const": false},
+        "selfTrainingEnabled": {"const": false},
+        "serviceImplementationEnabled": {"const": false},
+        "teacherApprovalEnabled": {"const": false},
+        "uploadEnabled": {"const": false},
+        "winnerSelectionEnabled": {"const": false}
+      },
+      "required": [
+        "architectureOnly",
+        "serviceImplementationEnabled",
+        "gatewayIntegrationEnabled",
+        "ensembleIntegrationEnabled",
+        "publicEndpointEnabled",
+        "uploadEnabled",
+        "networkDispatchEnabled",
+        "persistentStorageEnabled",
+        "automaticMergeEnabled",
+        "automaticCorrectionEnabled",
+        "engineRankingEnabled",
+        "winnerSelectionEnabled",
+        "teacherApprovalEnabled",
+        "publicationEnabled",
+        "liveTrainingEnabled",
+        "selfTrainingEnabled",
+        "productionDeploymentEnabled"
+      ],
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,99}$",
+      "type": "string"
+    },
+    "profile": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "single_staff",
+            "piano_multistaff",
+            "chamber_music",
+            "orchestra_score",
+            "orchestra_part",
+            "guitar_tab",
+            "choir_lyrics",
+            "percussion"
+          ]
+        },
+        "notes": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "experimental",
+            "validated",
+            "disabled"
+          ]
+        }
+      },
+      "required": ["name", "status", "notes"],
+      "type": "object"
+    }
+  },
+  "$id": "https://scoremosaic.local/contracts/st-omr-engine-contract-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Closed architecture contract for the future isolated ST-OMR candidate engine. This contract does not enable a runtime service.",
+  "properties": {
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "contractId": {"$ref": "#/$defs/id"},
+    "contractType": {"const": "scoremosaic.st-omr-engine-contract"},
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedPageMediaTypes": {
+          "items": false,
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {"const": "image/jpeg"},
+            {"const": "image/png"}
+          ],
+          "type": "array",
+          "uniqueItems": true
+        },
+        "acceptsArbitraryUrl": {"const": false},
+        "acceptsCallerCredentials": {"const": false},
+        "acceptsRawExternalUpload": {"const": false},
+        "descriptorType": {"const": "scoremosaic.prepared-page-set-v1"},
+        "gatewayOwnsPdfDecoding": {"const": true},
+        "pageOrderRequired": {"const": true},
+        "preparedInputOnly": {"const": true},
+        "sourceArtifactImmutable": {"const": true},
+        "sourceHashRequired": {"const": true}
+      },
+      "required": [
+        "preparedInputOnly",
+        "acceptsRawExternalUpload",
+        "acceptsArbitraryUrl",
+        "acceptsCallerCredentials",
+        "descriptorType",
+        "acceptedPageMediaTypes",
+        "sourceArtifactImmutable",
+        "sourceHashRequired",
+        "pageOrderRequired",
+        "gatewayOwnsPdfDecoding"
+      ],
+      "type": "object"
+    },
+    "modelPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "automaticPromotion": {"const": false},
+        "codeRevisionRequired": {"const": true},
+        "evaluationEvidenceRequiredBeforePromotion": {"const": true},
+        "fixedRegressionSetRequired": {"const": true},
+        "manifestSchema": {"const": "st-omr-model-manifest-v1"},
+        "modelSha256Required": {"const": true},
+        "pinnedModelVersionRequired": {"const": true},
+        "trainingDatasetProvenanceRequired": {"const": true},
+        "unverifiedModelLoading": {"const": false}
+      },
+      "required": [
+        "manifestSchema",
+        "pinnedModelVersionRequired",
+        "modelSha256Required",
+        "trainingDatasetProvenanceRequired",
+        "codeRevisionRequired",
+        "evaluationEvidenceRequiredBeforePromotion",
+        "fixedRegressionSetRequired",
+        "automaticPromotion",
+        "unverifiedModelLoading"
+      ],
+      "type": "object"
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactKinds": {
+          "items": false,
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {"const": "raw_engine_output"},
+            {"const": "musicxml"},
+            {"const": "diagnostics"},
+            {"const": "confidence_evidence"}
+          ],
+          "type": "array"
+        },
+        "confidenceEvidenceRequired": {"const": false},
+        "crossEngineWriteForbidden": {"const": true},
+        "normalizationOwner": {"const": "ensemble-service"},
+        "overwriteForbidden": {"const": true},
+        "rawArtifactsRemainSeparate": {"const": true},
+        "requiredArtifactsImmutable": {"const": true},
+        "resultHashRequired": {"const": true},
+        "writesCanonicalScoreDirectly": {"const": false}
+      },
+      "required": [
+        "artifactKinds",
+        "confidenceEvidenceRequired",
+        "writesCanonicalScoreDirectly",
+        "normalizationOwner",
+        "rawArtifactsRemainSeparate",
+        "requiredArtifactsImmutable",
+        "resultHashRequired",
+        "overwriteForbidden",
+        "crossEngineWriteForbidden"
+      ],
+      "type": "object"
+    },
+    "profiles": {
+      "items": {"$ref": "#/$defs/profile"},
+      "maxItems": 8,
+      "minItems": 8,
+      "type": "array"
+    },
+    "runtimeSecurity": {
+      "additionalProperties": false,
+      "properties": {
+        "boundedTimeoutRequired": {"const": true},
+        "modelChecksumVerificationRequired": {"const": true},
+        "nonRootRequired": {"const": true},
+        "outboundNetworkDefaultDeny": {"const": true},
+        "readOnlyRootFilesystemRequired": {"const": true},
+        "resourceLimitsRequired": {"const": true},
+        "separateContainerRequired": {"const": true},
+        "separateDependencyLockRequired": {"const": true},
+        "temporaryWorkspaceOnly": {"const": true}
+      },
+      "required": [
+        "nonRootRequired",
+        "readOnlyRootFilesystemRequired",
+        "temporaryWorkspaceOnly",
+        "outboundNetworkDefaultDeny",
+        "resourceLimitsRequired",
+        "boundedTimeoutRequired",
+        "modelChecksumVerificationRequired",
+        "separateDependencyLockRequired",
+        "separateContainerRequired"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": {"const": "1.0"},
+    "service": {
+      "additionalProperties": false,
+      "properties": {
+        "candidateOnly": {"const": true},
+        "deploymentIsolationRequired": {"const": true},
+        "embeddedInEnsemble": {"const": false},
+        "embeddedInGateway": {"const": false},
+        "finalTruthAuthority": {"const": false},
+        "role": {"const": "candidate_omr_engine"},
+        "serviceName": {"const": "st-omr-service"},
+        "symbolicEndpointKey": {"const": "st-omr"},
+        "transportProfile": {"const": "private-engine-adapter-v1"}
+      },
+      "required": [
+        "serviceName",
+        "role",
+        "candidateOnly",
+        "finalTruthAuthority",
+        "embeddedInGateway",
+        "embeddedInEnsemble",
+        "deploymentIsolationRequired",
+        "symbolicEndpointKey",
+        "transportProfile"
+      ],
+      "type": "object"
+    },
+    "trainingPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "explicitPermissionRequired": {"const": true},
+        "frozenEvaluationSetRequired": {"const": true},
+        "liveSystemTraining": {"const": false},
+        "manualReleaseApprovalRequired": {"const": true},
+        "qualityControlRequired": {"const": true},
+        "regressionTestsRequired": {"const": true},
+        "selfDirectedTraining": {"const": false},
+        "separateTrainingEnvironmentRequired": {"const": true},
+        "teacherCorrectionsUsedAutomatically": {"const": false}
+      },
+      "required": [
+        "liveSystemTraining",
+        "selfDirectedTraining",
+        "teacherCorrectionsUsedAutomatically",
+        "explicitPermissionRequired",
+        "qualityControlRequired",
+        "separateTrainingEnvironmentRequired",
+        "frozenEvaluationSetRequired",
+        "regressionTestsRequired",
+        "manualReleaseApprovalRequired"
+      ],
+      "type": "object"
+    },
+    "versioning": {
+      "additionalProperties": false,
+      "properties": {
+        "compatibilityPolicy": {"const": "semver-major-for-breaking-contract-change"},
+        "contractVersionIndependent": {"const": true},
+        "engineVersionRequired": {"const": true},
+        "modelVersionIndependent": {"const": true}
+      },
+      "required": [
+        "compatibilityPolicy",
+        "engineVersionRequired",
+        "modelVersionIndependent",
+        "contractVersionIndependent"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "contractType",
+    "contractId",
+    "service",
+    "input",
+    "output",
+    "profiles",
+    "modelPolicy",
+    "runtimeSecurity",
+    "trainingPolicy",
+    "versioning",
+    "boundaries"
+  ],
+  "title": "ScoreMosaic ST-OMR Engine Contract v1",
+  "type": "object"
+}

@@ -1,0 +1,75 @@
+name: ST-OMR Architecture Contract v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/st-omr-architecture-contract-v1"
+    paths:
+      - ".github/workflows/st-omr-architecture-contract-v1-ci.yml"
+      - "contracts/st-omr-engine-contract-v1.schema.json"
+      - "contracts/st-omr-model-manifest-v1.schema.json"
+      - "docs/st-omr-architecture-contract-v1.md"
+      - "tests/test_st_omr_contract_v1.py"
+      - "contracts/omr-orchestration-plan.schema.json"
+      - "compose.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/st-omr-architecture-contract-v1-ci.yml"
+      - "contracts/st-omr-engine-contract-v1.schema.json"
+      - "contracts/st-omr-model-manifest-v1.schema.json"
+      - "docs/st-omr-architecture-contract-v1.md"
+      - "tests/test_st_omr_contract_v1.py"
+      - "contracts/omr-orchestration-plan.schema.json"
+      - "compose.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st-omr-architecture-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-st-omr-architecture-contract:
+    name: Verify architecture-only ST-OMR contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Parse JSON contracts
+        run: |
+          python -m json.tool contracts/st-omr-engine-contract-v1.schema.json >/dev/null
+          python -m json.tool contracts/st-omr-model-manifest-v1.schema.json >/dev/null
+
+      - name: Compile contract tests
+        run: python -m compileall -q tests
+
+      - name: Run ST-OMR architecture contract tests
+        run: python -m unittest discover -s tests -p "test_st_omr_contract_v1.py" -v
+
+      - name: Verify architecture-only exclusions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d services/st-omr-service
+          ! grep -q '"st-omr"' contracts/omr-orchestration-plan.schema.json
+          ! grep -Eq '^[[:space:]]*st-omr(-service)?:[[:space:]]*$' compose.yaml
+          ! grep -R '"serviceImplementationEnabled":[[:space:]]*true\|"gatewayIntegrationEnabled":[[:space:]]*true\|"ensembleIntegrationEnabled":[[:space:]]*true\|"liveTrainingEnabled":[[:space:]]*true\|"selfTrainingEnabled":[[:space:]]*true' \
+            contracts/st-omr-engine-contract-v1.schema.json
+
+      - name: Check repository diff formatting
+        run: git diff --check
