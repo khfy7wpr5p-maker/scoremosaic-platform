@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scoremosaic-st-omr"
+version = "0.1.0"
+description = "Health-only foundation for the future isolated ScoreMosaic ST-OMR candidate engine"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.scoremosaic]
+phase = "health-only-service-foundation"
+service-role = "candidate_omr_engine"
+model-loading-enabled = false
+inference-enabled = false
+upload-enabled = false
+gateway-integration-enabled = false
+ensemble-integration-enabled = false
+network-dispatch-enabled = false
+persistent-storage-enabled = false
+public-endpoint-enabled = false
