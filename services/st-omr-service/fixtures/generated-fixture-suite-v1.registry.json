@@ -1,0 +1,9 @@
+{
+  "suiteVersion": "1.0",
+  "suiteId": "st-omr-generated-fixture-suite-v1",
+  "fixtures": [
+    {"manifestName": "generated-single-staff-v1.manifest.json"},
+    {"manifestName": "generated-rhythm-pattern-v1.manifest.json"},
+    {"manifestName": "generated-chord-v1.manifest.json"}
+  ]
+}
