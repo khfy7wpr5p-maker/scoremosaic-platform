@@ -22,8 +22,8 @@ class PayloadTests(unittest.TestCase):
             readiness_payload(),
             {
                 "status": "not_ready",
-                "service": "st-omr-service",
-                "phase": "health-only-foundation",
+                "service": SERVICE_NAME,
+                "phase": PHASE,
                 "modelLoaded": False,
                 "inferenceEnabled": False,
                 "reason": "model_runtime_disabled",
