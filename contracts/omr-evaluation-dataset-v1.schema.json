@@ -1,0 +1,858 @@
+{
+  "$defs": {
+    "boundaries": {
+      "additionalProperties": false,
+      "properties": {
+        "automaticCorrection": {
+          "const": false
+        },
+        "automaticMerge": {
+          "const": false
+        },
+        "datasetMutation": {
+          "const": false
+        },
+        "engineRanking": {
+          "const": false
+        },
+        "liveTraining": {
+          "const": false
+        },
+        "publication": {
+          "const": false
+        },
+        "readOnly": {
+          "const": true
+        },
+        "stOmrIntegration": {
+          "const": false
+        },
+        "teacherApproval": {
+          "const": false
+        },
+        "winnerSelection": {
+          "const": false
+        }
+      },
+      "required": [
+        "readOnly",
+        "datasetMutation",
+        "automaticMerge",
+        "automaticCorrection",
+        "engineRanking",
+        "winnerSelection",
+        "teacherApproval",
+        "publication",
+        "liveTraining",
+        "stOmrIntegration"
+      ],
+      "type": "object"
+    },
+    "candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "engine": {
+          "enum": [
+            "audiveris",
+            "homr",
+            "clarity"
+          ]
+        },
+        "engineVersion": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expected": {
+          "$ref": "#/$defs/expected"
+        },
+        "modelVersion": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$",
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "engine",
+        "engineVersion",
+        "modelVersion",
+        "path",
+        "sha256",
+        "expected"
+      ],
+      "type": "object"
+    },
+    "case": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/candidate"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "caseId": {
+          "$ref": "#/$defs/id"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "profile": {
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "reference": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "required": [
+        "caseId",
+        "description",
+        "profile",
+        "reference",
+        "candidates"
+      ],
+      "type": "object"
+    },
+    "chord": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "minimum": 0,
+              "type": "integer"
+            }
+          ]
+        },
+        "member": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "member",
+        "index"
+      ],
+      "type": "object"
+    },
+    "coreMetricNames": {
+      "items": false,
+      "maxItems": 5,
+      "minItems": 5,
+      "prefixItems": [
+        {
+          "const": "eventPresence"
+        },
+        {
+          "const": "onset"
+        },
+        {
+          "const": "kind"
+        },
+        {
+          "const": "effectiveDuration"
+        },
+        {
+          "const": "pitch"
+        }
+      ],
+      "type": "array"
+    },
+    "expected": {
+      "additionalProperties": false,
+      "properties": {
+        "allFieldsPerfect": {
+          "type": "boolean"
+        },
+        "coreSuccess": {
+          "type": "boolean"
+        },
+        "eventCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "measureCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "metrics": {
+          "additionalProperties": false,
+          "properties": {
+            "chord": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "dots": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "effectiveDuration": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "eventPresence": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "kind": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "onset": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "pitch": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "staff": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "tab": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "ties": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "tuplet": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "voice": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "writtenDuration": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            },
+            "writtenType": {
+              "additionalProperties": false,
+              "properties": {
+                "correct": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "correct",
+                "total"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "eventPresence",
+            "onset",
+            "kind",
+            "effectiveDuration",
+            "writtenDuration",
+            "writtenType",
+            "pitch",
+            "chord",
+            "voice",
+            "staff",
+            "ties",
+            "dots",
+            "tuplet",
+            "tab"
+          ],
+          "type": "object"
+        },
+        "partCount": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "partCount",
+        "measureCount",
+        "eventCount",
+        "metrics",
+        "coreSuccess",
+        "allFieldsPerfect"
+      ],
+      "type": "object"
+    },
+    "fraction": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "numerator": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator"
+      ],
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,99}$",
+      "type": "string"
+    },
+    "metricNames": {
+      "items": false,
+      "maxItems": 14,
+      "minItems": 14,
+      "prefixItems": [
+        {
+          "const": "eventPresence"
+        },
+        {
+          "const": "onset"
+        },
+        {
+          "const": "kind"
+        },
+        {
+          "const": "effectiveDuration"
+        },
+        {
+          "const": "writtenDuration"
+        },
+        {
+          "const": "writtenType"
+        },
+        {
+          "const": "pitch"
+        },
+        {
+          "const": "chord"
+        },
+        {
+          "const": "voice"
+        },
+        {
+          "const": "staff"
+        },
+        {
+          "const": "ties"
+        },
+        {
+          "const": "dots"
+        },
+        {
+          "const": "tuplet"
+        },
+        {
+          "const": "tab"
+        }
+      ],
+      "type": "array"
+    },
+    "metricSet": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregateScoreEnabled": {
+          "const": false
+        },
+        "coreMetricNames": {
+          "$ref": "#/$defs/coreMetricNames"
+        },
+        "engineRankingEnabled": {
+          "const": false
+        },
+        "metricNames": {
+          "$ref": "#/$defs/metricNames"
+        },
+        "winnerSelectionEnabled": {
+          "const": false
+        }
+      },
+      "required": [
+        "metricNames",
+        "coreMetricNames",
+        "aggregateScoreEnabled",
+        "engineRankingEnabled",
+        "winnerSelectionEnabled"
+      ],
+      "type": "object"
+    },
+    "nullableFraction": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/fraction"
+        }
+      ]
+    },
+    "pitch": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "alter": {
+              "$ref": "#/$defs/fraction"
+            },
+            "octave": {
+              "maximum": 12,
+              "minimum": -2,
+              "type": "integer"
+            },
+            "step": {
+              "enum": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "alter",
+            "octave"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "reference": {
+      "additionalProperties": false,
+      "properties": {
+        "eventCount": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/truthEvent"
+          },
+          "maxItems": 250000,
+          "minItems": 1,
+          "type": "array"
+        },
+        "measureCount": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "partCount": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$",
+          "type": "string"
+        },
+        "reviewStatus": {
+          "const": "manually-reviewed"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "reviewStatus",
+        "partCount",
+        "measureCount",
+        "eventCount",
+        "events"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "truthEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "chord": {
+          "$ref": "#/$defs/chord"
+        },
+        "dots": {
+          "maximum": 8,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "effectiveDuration": {
+          "$ref": "#/$defs/fraction"
+        },
+        "eventOrdinal": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "note",
+            "rest",
+            "unpitched"
+          ]
+        },
+        "measureOrdinal": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "onset": {
+          "$ref": "#/$defs/fraction"
+        },
+        "partOrdinal": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pitch": {
+          "$ref": "#/$defs/pitch"
+        },
+        "staff": {
+          "maximum": 128,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tab": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "ties": {
+          "items": {
+            "enum": [
+              "start",
+              "stop",
+              "continue"
+            ]
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "tuplet": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "voice": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "writtenDuration": {
+          "$ref": "#/$defs/nullableFraction"
+        },
+        "writtenType": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "partOrdinal",
+        "measureOrdinal",
+        "eventOrdinal",
+        "onset",
+        "kind",
+        "effectiveDuration",
+        "writtenDuration",
+        "writtenType",
+        "pitch",
+        "chord",
+        "voice",
+        "staff",
+        "ties",
+        "dots",
+        "tuplet",
+        "tab"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://scoremosaic.invalid/contracts/omr-evaluation-dataset-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "boundaries": {
+      "$ref": "#/$defs/boundaries"
+    },
+    "caseCount": {
+      "maximum": 10000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/case"
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "type": "array"
+    },
+    "datasetId": {
+      "$ref": "#/$defs/id"
+    },
+    "datasetSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "datasetType": {
+      "const": "scoremosaic.fixed-omr-evaluation-dataset"
+    },
+    "generalAccuracyClaim": {
+      "const": false
+    },
+    "metricSet": {
+      "$ref": "#/$defs/metricSet"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "status": {
+      "const": "frozen"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "datasetType",
+    "datasetId",
+    "datasetSha256",
+    "status",
+    "caseCount",
+    "generalAccuracyClaim",
+    "metricSet",
+    "boundaries",
+    "cases"
+  ],
+  "title": "ScoreMosaic Fixed OMR Evaluation Dataset v1",
+  "type": "object"
+}
