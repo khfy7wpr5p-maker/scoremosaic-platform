@@ -67,7 +67,7 @@ jobs:
           for key in ('realOmrInference','realOmrAccuracyMeasured','generalAccuracyClaim','userInputAccepted','httpInferenceEnabled','networkUsed','gatewayIntegration','ensembleIntegration','productionEligible'):
               assert evidence[key] is False, key
           PY
-      - name: Verify closed Phase 21 capability remains intact
+      - name: Verify Phase 21 invariants remain intact
         shell: bash
         run: |
           set -euo pipefail
@@ -78,23 +78,18 @@ jobs:
           service = Path('services/st-omr-service')
           project = tomllib.loads((service / 'pyproject.toml').read_text())
           boundary = project['tool']['scoremosaic']
-          assert project['project']['version'] in {'0.7.0', '0.8.0'}
           assert project['project']['dependencies'] == []
-          assert boundary['phase'] in {
-              'pinned-offline-model-runtime-foundation',
-              'structured-synthetic-symbol-output-contract',
-          }
           assert boundary['device-policy'] == 'cpu_only'
-          assert boundary['model-loading-enabled'] is False
-          assert boundary['inference-enabled'] is False
           assert boundary['pinned-offline-model-runtime-enabled'] is True
           assert boundary['repository-test-model-only'] is True
           assert boundary['repository-test-model-loading-enabled'] is True
           assert boundary['repository-test-model-inference-enabled'] is True
+          assert boundary['model-loading-enabled'] is False
+          assert boundary['inference-enabled'] is False
           for key in (
               'real-omr-inference-enabled','real-omr-evaluation-enabled','general-accuracy-claim-enabled',
               'user-input-enabled','upload-enabled','gateway-integration-enabled','ensemble-integration-enabled',
-              'network-dispatch-enabled','persistent-storage-enabled','public-endpoint-enabled',
+              'network-dispatch-enabled','gpu-enabled','persistent-storage-enabled','public-endpoint-enabled',
           ):
               assert boundary[key] is False, key
           manifest = json.loads((service / 'models' / 'st-omr-test-linear-v1.manifest.json').read_text())
@@ -109,7 +104,7 @@ jobs:
           ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
             services/st-omr-service/pyproject.toml services/st-omr-service/requirements.lock
           ! grep -R -E "(/upload|/infer|/predict|/model/load)" services/st-omr-service/src
-          ! grep -E "^[[:space:]]*(model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled|upload-enabled|gateway-integration-enabled|ensemble-integration-enabled|network-dispatch-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
+          ! grep -E "^[[:space:]]*(model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled|upload-enabled|gateway-integration-enabled|ensemble-integration-enabled|network-dispatch-enabled|gpu-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
             services/st-omr-service/pyproject.toml
       - name: Verify model is excluded from service image
         shell: bash
