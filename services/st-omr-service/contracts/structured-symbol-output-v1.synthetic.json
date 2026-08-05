@@ -2,9 +2,9 @@
   "schemaVersion": "1.0",
   "documentId": "synthetic-symbol-output-v1",
   "fixture": {
-    "fixtureId": "generated-single-staff-v1",
-    "fixtureVersion": "1.0",
-    "inputSha256": "c86127f67d5aeb809075cfa8a1f0e9aa945f31f33d77969ffdfaf469be3117e2"
+    "fixtureId": "generated-single-staff",
+    "fixtureVersion": "1.0.0",
+    "inputSha256": "4c33aa3211217ddaa48da3eef4e9763a1ada0278699a35a2b939820e46036f5e"
   },
   "model": {
     "modelId": "st-omr-repository-test-linear",
@@ -12,11 +12,7 @@
     "modelSha256": "cb72738ab6f5d2ccf7b435b9aa99f4e2b82bf32da46df97424ccbae74211aaca",
     "repositoryTestOnly": true
   },
-  "coordinateSpace": {
-    "unit": "integer-grid",
-    "min": 0,
-    "max": 4096
-  },
+  "coordinateSpace": {"unit": "integer-grid", "min": 0, "max": 4096},
   "symbols": [
     {"id": "s001", "type": "staff", "bbox": {"x": 100, "y": 100, "width": 1200, "height": 240}, "confidence": 1000},
     {"id": "s002", "type": "measure", "bbox": {"x": 120, "y": 110, "width": 560, "height": 220}, "confidence": 1000},
