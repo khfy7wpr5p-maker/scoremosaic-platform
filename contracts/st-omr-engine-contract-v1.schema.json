@@ -1,36 +1,5 @@
 {
   "$defs": {
-    "artifactKind": {
-      "additionalProperties": false,
-      "properties": {
-        "contentType": {
-          "maxLength": 200,
-          "minLength": 1,
-          "type": "string"
-        },
-        "immutable": {
-          "const": true
-        },
-        "kind": {
-          "enum": [
-            "raw_engine_output",
-            "musicxml",
-            "diagnostics",
-            "confidence_evidence"
-          ]
-        },
-        "required": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "kind",
-        "required",
-        "immutable",
-        "contentType"
-      ],
-      "type": "object"
-    },
     "boundaries": {
       "additionalProperties": false,
       "properties": {
