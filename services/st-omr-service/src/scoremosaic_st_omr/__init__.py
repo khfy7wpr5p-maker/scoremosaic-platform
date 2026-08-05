@@ -1,5 +1,5 @@
-"""Offline generated-fixture inference foundation for isolated ST-OMR."""
+"""Generated fixture suite v1 foundation for isolated ST-OMR."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 SERVICE_NAME = "st-omr-service"
-PHASE = "offline-generated-fixture-inference"
+PHASE = "generated-fixture-suite-v1"
