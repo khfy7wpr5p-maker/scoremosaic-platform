@@ -1,7 +1,7 @@
 [project]
 name = "scoremosaic-omr-gateway"
-version = "0.2.0"
-description = "Health-only private OMR Gateway with a disabled versioned orchestration contract"
+version = "0.3.0"
+description = "Health-only private OMR Gateway with disabled orchestration and artifact lifecycle contracts"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
@@ -12,6 +12,10 @@ orchestration-mode = "disabled"
 orchestration-contract-version = "1.0"
 orchestration-contract-library-enabled = true
 orchestration-execution-enabled = false
+artifact-lifecycle-contract-version = "1.0"
+artifact-lifecycle-contract-library-enabled = true
+artifact-storage-enabled = false
+artifact-runtime-mutation-enabled = false
 network-dispatch-enabled = false
 persistence-enabled = false
 accepted-input-formats = ["application/pdf", "image/jpeg", "image/png"]

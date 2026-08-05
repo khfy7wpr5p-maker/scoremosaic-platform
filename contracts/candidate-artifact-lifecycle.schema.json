@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/candidate-artifact-lifecycle.schema.json",
+  "title": "ScoreMosaic Candidate and Artifact Lifecycle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractType",
+    "lifecycleId",
+    "lifecycleSha256",
+    "planRef",
+    "sequence",
+    "sourceArtifact",
+    "candidates",
+    "events",
+    "policies",
+    "boundaries"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "contractType": {
+      "const": "scoremosaic-gateway-candidate-artifact-lifecycle"
+    },
+    "lifecycleId": {
+      "type": "string",
+      "pattern": "^lifecycle_[a-f0-9]{24}$"
+    },
+    "lifecycleSha256": { "$ref": "#/$defs/sha256" },
+    "planRef": { "$ref": "#/$defs/planRef" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "sourceArtifact": { "$ref": "#/$defs/sourceArtifact" },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "policies": { "$ref": "#/$defs/policies" },
+    "boundaries": { "$ref": "#/$defs/boundaries" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "artifactId": {
+      "type": "string",
+      "pattern": "^artifact_[a-f0-9]{24}$"
+    },
+    "candidateId": {
+      "type": "string",
+      "pattern": "^candidate_[a-f0-9]{24}$"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^run_[a-f0-9]{24}$"
+    },
+    "engine": {
+      "enum": ["audiveris", "homr", "clarity"]
+    },
+    "artifactRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
+    },
+    "reasonCode": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        }
+      ]
+    },
+    "nullableSha256": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/sha256" }
+      ]
+    },
+    "nullableSize": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 209715200
+        }
+      ]
+    },
+    "nullableMediaType": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1, "maxLength": 100 }
+      ]
+    },
+    "planRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["planId", "planSha256", "jobId"],
+      "properties": {
+        "planId": {
+          "type": "string",
+          "pattern": "^plan_[a-f0-9]{24}$"
+        },
+        "planSha256": { "$ref": "#/$defs/sha256" },
+        "jobId": {
+          "type": "string",
+          "pattern": "^job_[A-Za-z0-9_-]{8,80}$"
+        }
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "kind",
+        "artifactRef",
+        "candidateId",
+        "engine",
+        "state",
+        "sha256",
+        "sizeBytes",
+        "mediaType",
+        "reasonCode",
+        "immutable",
+        "overwriteAllowed"
+      ],
+      "properties": {
+        "artifactId": { "$ref": "#/$defs/artifactId" },
+        "kind": { "const": "source" },
+        "artifactRef": { "$ref": "#/$defs/artifactRef" },
+        "candidateId": { "type": "null" },
+        "engine": { "type": "null" },
+        "state": { "const": "sealed" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 209715200
+        },
+        "mediaType": {
+          "enum": ["application/pdf", "image/jpeg", "image/png"]
+        },
+        "reasonCode": { "type": "null" },
+        "immutable": { "const": true },
+        "overwriteAllowed": { "const": false }
+      }
+    },
+    "outputArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "kind",
+        "artifactRef",
+        "candidateId",
+        "engine",
+        "state",
+        "sha256",
+        "sizeBytes",
+        "mediaType",
+        "reasonCode",
+        "immutable",
+        "overwriteAllowed"
+      ],
+      "properties": {
+        "artifactId": { "$ref": "#/$defs/artifactId" },
+        "kind": {
+          "enum": ["raw_engine_result", "musicxml", "diagnostic"]
+        },
+        "artifactRef": { "$ref": "#/$defs/artifactRef" },
+        "candidateId": { "$ref": "#/$defs/candidateId" },
+        "engine": { "$ref": "#/$defs/engine" },
+        "state": {
+          "enum": ["reserved", "writing", "sealed", "rejected", "abandoned"]
+        },
+        "sha256": { "$ref": "#/$defs/nullableSha256" },
+        "sizeBytes": { "$ref": "#/$defs/nullableSize" },
+        "mediaType": { "$ref": "#/$defs/nullableMediaType" },
+        "reasonCode": { "$ref": "#/$defs/reasonCode" },
+        "immutable": { "const": true },
+        "overwriteAllowed": { "const": false }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "runId",
+        "engine",
+        "candidateNamespace",
+        "state",
+        "reasonCode",
+        "terminal",
+        "artifacts"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/$defs/candidateId" },
+        "runId": { "$ref": "#/$defs/runId" },
+        "engine": { "$ref": "#/$defs/engine" },
+        "candidateNamespace": { "$ref": "#/$defs/artifactRef" },
+        "state": {
+          "enum": ["reserved", "collecting", "sealed", "failed", "cancelled", "timed_out"]
+        },
+        "reasonCode": { "$ref": "#/$defs/reasonCode" },
+        "terminal": { "type": "boolean" },
+        "artifacts": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/outputArtifact" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": { "const": "raw_engine_result" }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/outputArtifact" },
+                {
+                  "type": "object",
+                  "properties": { "kind": { "const": "musicxml" } }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/outputArtifact" },
+                {
+                  "type": "object",
+                  "properties": { "kind": { "const": "diagnostic" } }
+                }
+              ]
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "eventContent": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sha256", "sizeBytes", "mediaType"],
+          "properties": {
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "sizeBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 209715200
+            },
+            "mediaType": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        }
+      ]
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "eventType",
+        "targetId",
+        "fromState",
+        "toState",
+        "reasonCode",
+        "content",
+        "previousEventSha256",
+        "eventId",
+        "eventSha256"
+      ],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1 },
+        "eventType": {
+          "enum": ["candidate_state_changed", "artifact_state_changed"]
+        },
+        "targetId": {
+          "type": "string",
+          "pattern": "^(candidate|artifact)_[a-f0-9]{24}$"
+        },
+        "fromState": {
+          "enum": ["reserved", "collecting", "writing", "sealed", "failed", "cancelled", "timed_out", "rejected", "abandoned"]
+        },
+        "toState": {
+          "enum": ["reserved", "collecting", "writing", "sealed", "failed", "cancelled", "timed_out", "rejected", "abandoned"]
+        },
+        "reasonCode": { "$ref": "#/$defs/reasonCode" },
+        "content": { "$ref": "#/$defs/eventContent" },
+        "previousEventSha256": { "$ref": "#/$defs/sha256" },
+        "eventId": {
+          "type": "string",
+          "pattern": "^event_[a-f0-9]{24}$"
+        },
+        "eventSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "appendOnlyEvents",
+        "sourceImmutable",
+        "rawEngineResultPreserved",
+        "hashRequiredBeforeSeal",
+        "overwriteAllowed",
+        "crossEngineWriteAllowed",
+        "terminalStateReopenAllowed",
+        "candidateSealRequiresAllArtifactsSealed"
+      ],
+      "properties": {
+        "appendOnlyEvents": { "const": true },
+        "sourceImmutable": { "const": true },
+        "rawEngineResultPreserved": { "const": true },
+        "hashRequiredBeforeSeal": { "const": true },
+        "overwriteAllowed": { "const": false },
+        "crossEngineWriteAllowed": { "const": false },
+        "terminalStateReopenAllowed": { "const": false },
+        "candidateSealRequiresAllArtifactsSealed": { "const": true }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executionEnabled",
+        "uploadEnabled",
+        "networkDispatchEnabled",
+        "queueEnabled",
+        "persistenceEnabled",
+        "storageWritesEnabled",
+        "runtimeMutationEnabled",
+        "engineRanking",
+        "winnerSelection",
+        "automaticMerge",
+        "automaticCorrection",
+        "teacherApproval",
+        "publication"
+      ],
+      "properties": {
+        "executionEnabled": { "const": false },
+        "uploadEnabled": { "const": false },
+        "networkDispatchEnabled": { "const": false },
+        "queueEnabled": { "const": false },
+        "persistenceEnabled": { "const": false },
+        "storageWritesEnabled": { "const": false },
+        "runtimeMutationEnabled": { "const": false },
+        "engineRanking": { "const": false },
+        "winnerSelection": { "const": false },
+        "automaticMerge": { "const": false },
+        "automaticCorrection": { "const": false },
+        "teacherApproval": { "const": false },
+        "publication": { "const": false }
+      }
+    }
+  }
+}
