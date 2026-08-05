@@ -2,7 +2,9 @@
 
 ## Current status
 
-This service is a private, health-only foundation for the shared ScoreMosaic OMR Gateway. It centralizes the configured internal addresses for Audiveris, HOMR, and Clarity, but it does not accept files, create jobs through HTTP, call an OMR conversion endpoint, persist artifacts, or produce MusicXML.
+This service remains a private, health-only foundation for the shared ScoreMosaic OMR Gateway. It centralizes the configured internal addresses for Audiveris, HOMR, and Clarity, but it does not accept files, create jobs through HTTP, call an OMR conversion endpoint, persist artifacts, or produce MusicXML.
+
+Phase 11 adds a **versioned orchestration-plan contract library** without enabling orchestration. The library can deterministically describe a future job plan, engine-run lifecycle, timeout policy, source/candidate artifact relationships, and security boundaries. It performs no file, network, queue, database, or storage operation.
 
 Implemented now:
 
@@ -13,7 +15,12 @@ Implemented now:
 - isolated probe results so one unavailable engine does not hide the others
 - declared future PDF, JPEG (`.jpg`/`.jpeg`), and PNG input capability
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
+- versioned `1.0` orchestration-plan JSON Schema
+- deterministic orchestration plan, run, candidate, and artifact identifiers
+- explicit lifecycle transitions and bounded timeout policy
+- immutable source and candidate artifact relationships
 - independent candidate namespaces for Audiveris, HOMR, and Clarity
+- exact runtime verifier for plan hashes, relationships, policies, and disabled boundaries
 - non-root, read-only container foundation
 - no public port or direct browser route
 
@@ -24,7 +31,7 @@ GET /health -> 200; gateway process is running
 GET /ready  -> 503; orchestration and upload are disabled
 ```
 
-All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs` does not exist in this foundation.
+All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs` and an orchestration endpoint do not exist in this foundation.
 
 The health payload declares:
 
@@ -52,7 +59,51 @@ The health payload declares:
 
 The liveness endpoint does not contact sibling services. The readiness endpoint performs bounded private probes and still returns 503 because orchestration is fixed to disabled.
 
-## Job model boundary
+## Orchestration contract v1 boundary
+
+`build_orchestration_plan()` creates an immutable deterministic plan only. Its serialized shape is governed by:
+
+```text
+contracts/omr-orchestration-plan.schema.json
+```
+
+The contract defines:
+
+- one immutable source artifact and SHA-256
+- one to three canonical engine runs
+- symbolic endpoint keys rather than user-supplied URLs
+- one isolated candidate namespace per engine
+- expected immutable MusicXML and diagnostic artifact slots
+- per-engine timeout values from 30 to 7200 seconds
+- monotonic timeout accounting beginning at dispatch
+- a bounded cancellation grace period
+- terminal timeout behavior with no automatic retry
+- explicit engine-run state transitions
+- deterministic `planId` and `planSha256`
+- exact verification that rejects modified identifiers, relationships, hashes, policies, extra fields, ranking, or execution flags
+
+The contract does **not** dispatch the plan. `transportProfile` is only a future adapter label. `endpointKey` is one of `audiveris`, `homr`, or `clarity`; it is not a URL, hostname, path, token, or credential.
+
+All decision and execution boundaries remain fixed:
+
+```json
+{
+  "executionEnabled": false,
+  "uploadEnabled": false,
+  "persistenceEnabled": false,
+  "networkDispatchEnabled": false,
+  "engineRanking": false,
+  "winnerSelection": false,
+  "automaticMerge": false,
+  "automaticCorrection": false,
+  "teacherApproval": false,
+  "publication": false
+}
+```
+
+See `docs/gateway-orchestration-contract-v1.md` for the complete architectural boundary.
+
+## Existing job model boundary
 
 `build_job_record()` creates an immutable in-memory planning record only. It validates the existing `job_...` identifier format and creates one unique engine run and candidate namespace per requested engine.
 
@@ -66,12 +117,10 @@ It does not:
 - merge or rank candidate results
 - approve or publish output
 
-The candidate separation is intentionally explicit:
+The candidate separation is intentionally explicit. The v1 orchestration plan strengthens it with a unique candidate identifier and run-specific namespace:
 
 ```text
-candidates/{jobId}/audiveris
-candidates/{jobId}/homr
-candidates/{jobId}/clarity
+candidates/{jobId}/{engine}/{candidateId}
 ```
 
 No engine is allowed to overwrite another engine's candidate.
@@ -93,7 +142,7 @@ No engine is allowed to overwrite another engine's candidate.
 | `SCOREMOSAIC_GATEWAY_HOMR_BASE_URL` | `http://homr-foundation:8080` | same boundary |
 | `SCOREMOSAIC_GATEWAY_CLARITY_BASE_URL` | `http://clarity-foundation:8081` | same boundary |
 
-The engine addresses are deployment configuration, never user input. Readiness probes read at most 64 KiB from each response and use a strict timeout.
+The engine addresses are deployment configuration, never orchestration-plan or user input. Readiness probes read at most 64 KiB from each response and use a strict timeout.
 
 ## Local checks
 
@@ -110,8 +159,9 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 - secure PDF/JPEG/PNG validation by magic bytes and decoded-content limits
 - authenticated service-to-service requests
-- server-generated job, run, and artifact identifiers
-- queue, timeout, cancellation, cleanup, and restart recovery
+- concrete engine adapter request/response contracts
+- server-generated job, run, candidate, and artifact identifiers
+- queue, timeout enforcement, cancellation, cleanup, and restart recovery
 - immutable source and candidate artifact hashes
 - safe MusicXML validation
 - controlled storage with retention rules
@@ -122,7 +172,10 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 - public API or domain
 - real upload or conversion
+- live network dispatch or orchestration execution
 - database, queue, or persistent storage
-- Ensemble comparison
-- Canonical Score Model
+- automatic Ensemble comparison invocation
+- engine ranking, preferred candidate, or winner selection
+- automatic MusicXML merge or correction
 - user editor, teacher approval, or note tracking
+- ST-OMR implementation or integration
