@@ -1,5 +1,5 @@
-"""Health-only ST-OMR service foundation."""
+"""Model-free ST-OMR runtime harness foundation."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 SERVICE_NAME = "st-omr-service"
-PHASE = "health-only-foundation"
+PHASE = "model-free-runtime-harness"
