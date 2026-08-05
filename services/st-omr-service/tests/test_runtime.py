@@ -4,6 +4,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from scoremosaic_st_omr import PHASE
 from scoremosaic_st_omr.app import health_payload, readiness_payload
 from scoremosaic_st_omr.runtime import load_runtime_limits, runtime_evidence
 
@@ -36,7 +37,7 @@ class ModelFreeRuntimeHarnessTests(unittest.TestCase):
     def test_health_exposes_runtime_evidence_without_readiness(self) -> None:
         health = health_payload()
         self.assertEqual(health["status"], "healthy")
-        self.assertEqual(health["phase"], "model-free-runtime-harness")
+        self.assertEqual(health["phase"], PHASE)
         self.assertIn("runtime", health)
 
         ready = readiness_payload()
