@@ -9,15 +9,15 @@ from typing import Final
 SCHEMA_VERSION: Final = "1.0"
 CONTRACT_VERSION: Final = "structured-synthetic-symbol-output-v1"
 EXPECTED_DOCUMENT_ID: Final = "synthetic-symbol-output-v1"
-EXPECTED_ARTIFACT_SHA256: Final = "c0285ece10a6ced0a1de968ca9673c22dc2f4e9dc8e6f0dadf50ed4eb629d419"
+EXPECTED_ARTIFACT_SHA256: Final = "78136ad2dda8addf74835a43b2071acc6d8fb093b0c8ded21ac61d8a7417a1e1"
 ALLOWED_SYMBOL_TYPES: Final = (
     "staff", "measure", "clef", "time_signature", "notehead",
     "stem", "beam", "rest", "barline",
 )
 EXPECTED_FIXTURE: Final = {
-    "fixtureId": "generated-single-staff-v1",
-    "fixtureVersion": "1.0",
-    "inputSha256": "c86127f67d5aeb809075cfa8a1f0e9aa945f31f33d77969ffdfaf469be3117e2",
+    "fixtureId": "generated-single-staff",
+    "fixtureVersion": "1.0.0",
+    "inputSha256": "4c33aa3211217ddaa48da3eef4e9763a1ada0278699a35a2b939820e46036f5e",
 }
 EXPECTED_MODEL: Final = {
     "modelId": "st-omr-repository-test-linear",
