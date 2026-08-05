@@ -1,5 +1,5 @@
-"""Pinned-model validation foundation for the isolated ST-OMR candidate."""
+"""Offline generated-fixture inference foundation for isolated ST-OMR."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 SERVICE_NAME = "st-omr-service"
-PHASE = "pinned-model-loader-foundation"
+PHASE = "offline-generated-fixture-inference"

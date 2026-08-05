@@ -8,6 +8,7 @@ from typing import Final
 
 from . import PHASE, SERVICE_NAME, __version__
 from .model_guard import disabled_model_evidence
+from .offline_fixture_inference import disabled_fixture_inference_evidence
 from .runtime import runtime_evidence
 
 HOST: Final = "0.0.0.0"
@@ -22,6 +23,7 @@ def health_payload() -> dict[str, object]:
         "version": __version__,
         "runtime": runtime_evidence(),
         "modelValidation": disabled_model_evidence(),
+        "offlineFixtureInference": disabled_fixture_inference_evidence(),
     }
 
 
@@ -37,7 +39,7 @@ def readiness_payload() -> dict[str, object]:
 
 
 class HealthOnlyHandler(BaseHTTPRequestHandler):
-    server_version = "ScoreMosaicSTOMR/0.3"
+    server_version = "ScoreMosaicSTOMR/0.4"
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":

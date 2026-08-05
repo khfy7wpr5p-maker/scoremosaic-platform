@@ -1,0 +1,8 @@
+{
+  "manifestVersion": "1.0",
+  "fixtureId": "generated-single-staff",
+  "fixtureVersion": "1.0.0",
+  "inputName": "generated-single-staff-v1.txt",
+  "inputSha256": "4c33aa3211217ddaa48da3eef4e9763a1ada0278699a35a2b939820e46036f5e",
+  "expectedOutputSha256": "24d660964458829601db48bc6dd494ad496b90f46753871cfb399e5e0941e85f"
+}

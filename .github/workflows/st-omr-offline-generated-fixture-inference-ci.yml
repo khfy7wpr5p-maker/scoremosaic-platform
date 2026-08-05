@@ -1,0 +1,64 @@
+name: ST-OMR Offline Generated-Fixture Inference CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/st-omr-offline-generated-fixture-inference
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-offline-generated-fixture-inference-ci.yml"
+      - "docs/st-omr-offline-generated-fixture-inference.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-offline-generated-fixture-inference-ci.yml"
+      - "docs/st-omr-offline-generated-fixture-inference.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-offline-generated-fixture-inference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile service
+        run: python -m compileall -q services/st-omr-service/src
+      - name: Run all service tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+      - name: Execute pinned generated fixture twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          from scoremosaic_st_omr.offline_fixture_inference import run_generated_fixture
+          root = Path('services/st-omr-service/fixtures')
+          manifest = root / 'generated-single-staff-v1.manifest.json'
+          first = run_generated_fixture(manifest_path=manifest, allowed_root=root)
+          second = run_generated_fixture(manifest_path=manifest, allowed_root=root)
+          assert first == second
+          assert first.as_dict()['modelLoaded'] is False
+          assert first.as_dict()['realOmrInference'] is False
+          assert first.as_dict()['userInputAccepted'] is False
+          assert first.as_dict()['networkUsed'] is False
+          PY
+      - name: Verify closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
+            services/st-omr-service/pyproject.toml \
+            services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict|gateway-integration-enabled = true|ensemble-integration-enabled = true|network-dispatch-enabled = true)" \
+            services/st-omr-service/src \
+            services/st-omr-service/pyproject.toml
+      - name: Check diff formatting
+        run: git diff --check

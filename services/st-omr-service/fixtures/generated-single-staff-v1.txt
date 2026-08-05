@@ -1,0 +1,3 @@
+SC0REMOSAIC_FIXTURE_V1
+staff=single
+symbols=quarter-note:C4,quarter-rest,quarter-note:D4
