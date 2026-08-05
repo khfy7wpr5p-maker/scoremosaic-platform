@@ -1,0 +1,77 @@
+name: ST-OMR Structured Symbol Output Contract CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/st-omr-structured-symbol-output-contract
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-structured-symbol-output-contract-ci.yml"
+      - "docs/st-omr-structured-symbol-output-contract.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-structured-symbol-output-contract-ci.yml"
+      - "docs/st-omr-structured-symbol-output-contract.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-structured-symbol-output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile service
+        run: python -m compileall -q services/st-omr-service/src
+      - name: Run all ST-OMR tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+      - name: Validate structured artifact twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          from scoremosaic_st_omr.structured_symbol_output import (
+              EXPECTED_ARTIFACT_SHA256,
+              require_byte_identical_outputs,
+              validate_structured_symbol_output,
+          )
+
+          artifact = Path('services/st-omr-service/contracts/structured-symbol-output-v1.synthetic.json')
+          first = validate_structured_symbol_output(artifact_path=artifact)
+          second = validate_structured_symbol_output(artifact_path=artifact)
+          require_byte_identical_outputs(first.canonical_bytes, second.canonical_bytes)
+          assert first == second
+          assert first.symbol_count == 9
+          assert first.canonical_sha256 == EXPECTED_ARTIFACT_SHA256
+          evidence = first.as_dict()
+          for key in (
+              'realOmrInference', 'userInputAccepted', 'httpInferenceEnabled',
+              'musicXmlGenerated', 'gatewayIntegration', 'ensembleIntegration',
+              'networkUsed', 'gpuUsed', 'persistentStorageUsed', 'productionEligible',
+          ):
+              assert evidence[key] is False, key
+          PY
+      - name: Verify closed Phase 22 boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
+            services/st-omr-service/pyproject.toml \
+            services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict|/model/load|/musicxml)" \
+            services/st-omr-service/src
+          ! grep -E "^[[:space:]]*(model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled|upload-enabled|musicxml-generation-enabled|gateway-integration-enabled|ensemble-integration-enabled|automatic-correction-enabled|ranking-enabled|winner-selection-enabled|training-enabled|self-training-enabled|teacher-approval-enabled|publication-enabled|network-dispatch-enabled|gpu-enabled|persistent-storage-enabled|public-endpoint-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
+            services/st-omr-service/pyproject.toml
+      - name: Check diff formatting
+        run: git diff --check
