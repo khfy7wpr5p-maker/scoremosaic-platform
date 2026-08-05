@@ -1,0 +1,48 @@
+name: ST-OMR Pinned Model Loader Foundation CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/st-omr-pinned-model-loader-foundation
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-pinned-model-loader-foundation-ci.yml"
+      - "docs/st-omr-pinned-model-loader-foundation.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-pinned-model-loader-foundation-ci.yml"
+      - "docs/st-omr-pinned-model-loader-foundation.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-pinned-model-loader:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile service
+        run: python -m compileall -q services/st-omr-service/src
+      - name: Run all ST-OMR tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+      - name: Verify fail-closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f services/st-omr-service/requirements.lock
+          ! grep -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
+            services/st-omr-service/pyproject.toml \
+            services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict|gateway-integration-enabled = true|ensemble-integration-enabled = true|model-loading-enabled = true|inference-enabled = true)" \
+            services/st-omr-service/src \
+            services/st-omr-service/pyproject.toml
+      - name: Check diff formatting
+        run: git diff --check
