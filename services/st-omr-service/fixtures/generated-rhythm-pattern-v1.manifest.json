@@ -1,0 +1,8 @@
+{
+  "manifestVersion": "1.0",
+  "fixtureId": "generated-rhythm-pattern-v1",
+  "fixtureVersion": "1.0",
+  "inputName": "generated-rhythm-pattern-v1.txt",
+  "inputSha256": "af049894d37c6a4b62a2f1c47c03a34458a68d33e9ad6d40d868728273087dc5",
+  "expectedOutputSha256": "9c55efe26cec63d322b5609e955cb009a5fcb0a553a791413d4f7ccc1c46111e"
+}

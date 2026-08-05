@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoremosaic-st-omr"
-version = "0.4.0"
-description = "Closed offline generated-fixture inference foundation for isolated ScoreMosaic ST-OMR"
+version = "0.5.0"
+description = "Generated fixture suite v1 foundation for isolated ScoreMosaic ST-OMR"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,7 +16,7 @@ scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
 where = ["src"]
 
 [tool.scoremosaic]
-phase = "offline-generated-fixture-inference"
+phase = "generated-fixture-suite-v1"
 service-role = "candidate_omr_engine"
 device-policy = "cpu_only"
 dependency-lock-required = true
@@ -27,6 +27,7 @@ allowed-model-root = "models"
 model-loading-enabled = false
 inference-enabled = false
 offline-generated-fixture-inference-enabled = true
+generated-fixture-suite-enabled = true
 real-omr-inference-enabled = false
 user-input-enabled = false
 allowed-fixture-root = "fixtures"

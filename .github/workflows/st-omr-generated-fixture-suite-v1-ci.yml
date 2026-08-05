@@ -1,0 +1,49 @@
+name: ST-OMR Generated Fixture Suite v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/st-omr-generated-fixture-suite-v1
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-generated-fixture-suite-v1-ci.yml"
+      - "docs/st-omr-generated-fixture-suite-v1.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-generated-fixture-suite-v1-ci.yml"
+      - "docs/st-omr-generated-fixture-suite-v1.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-generated-fixture-suite-v1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile service
+        run: python -m compileall -q services/st-omr-service/src
+      - name: Run all ST-OMR tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+      - name: Verify suite registry and closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f services/st-omr-service/fixtures/generated-fixture-suite-v1.registry.json
+          test "$(find services/st-omr-service/fixtures -maxdepth 1 -type f -name '*.manifest.json' | wc -l)" -ge 3
+          ! grep -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" \
+            services/st-omr-service/pyproject.toml \
+            services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict)" services/st-omr-service/src
+          ! grep -E "^[[:space:]]*(gateway-integration-enabled|ensemble-integration-enabled|model-loading-enabled|inference-enabled|real-omr-inference-enabled|user-input-enabled)[[:space:]]*=[[:space:]]*true[[:space:]]*$" \
+            services/st-omr-service/pyproject.toml
+      - name: Check diff formatting
+        run: git diff --check

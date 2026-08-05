@@ -1,0 +1,8 @@
+{
+  "manifestVersion": "1.0",
+  "fixtureId": "generated-chord-v1",
+  "fixtureVersion": "1.0",
+  "inputName": "generated-chord-v1.txt",
+  "inputSha256": "48d37ed5d7e7b6b2ba06306ef33b490dcb333dc7c34d9c56b5f95a7b52967fc2",
+  "expectedOutputSha256": "f849bef760038b66a8f9a68c39c2230437a84b5bb32b9d1403fa0fa51278c026"
+}
