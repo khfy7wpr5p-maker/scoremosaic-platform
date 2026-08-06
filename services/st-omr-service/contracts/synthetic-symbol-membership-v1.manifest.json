@@ -1,0 +1,12 @@
+{
+  "manifestVersion": "1.0",
+  "artifactName": "synthetic-symbol-membership-v1.synthetic.json",
+  "artifactSha256": "61c0318f512fda882062fcc16c0874a737683bf8434904b3bafd69961837d1cf",
+  "canonicalSha256": "fdc9ad24a5e9997af30b1c6bfe2fcd201f3255e203c37fa8ba5083e1b0f08f1b",
+  "schemaName": "synthetic-symbol-membership-v1.schema.json",
+  "schemaSha256": "9c4d49a3747466d5fa4e815d8783134df2457d2534965e17b3b2a93acaff206c",
+  "sourceArtifactName": "structured-symbol-output-v1.synthetic.json",
+  "sourceManifestName": "structured-symbol-output-v1.manifest.json",
+  "sourceCanonicalSha256": "78136ad2dda8addf74835a43b2071acc6d8fb093b0c8ded21ac61d8a7417a1e1",
+  "purpose": "static_repository_synthetic_membership_sample"
+}

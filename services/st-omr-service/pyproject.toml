@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoremosaic-st-omr"
-version = "0.8.0"
-description = "Closed static repository-synthetic symbol contract sample for isolated ScoreMosaic ST-OMR"
+version = "0.9.0"
+description = "Closed static repository-synthetic symbol membership contract for isolated ScoreMosaic ST-OMR"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,7 +16,7 @@ scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
 where = ["src"]
 
 [tool.scoremosaic]
-phase = "structured-synthetic-symbol-output-contract"
+phase = "synthetic-symbol-membership-contract"
 service-role = "candidate_omr_engine"
 device-policy = "cpu_only"
 dependency-lock-required = true
@@ -35,10 +35,20 @@ offline-generated-fixture-inference-enabled = true
 generated-fixture-suite-enabled = true
 fixed-evaluation-enabled = true
 structured-synthetic-symbol-output-enabled = true
+synthetic-symbol-membership-enabled = true
 static-repository-symbol-sample-only = true
+static-repository-membership-sample-only = true
 symbol-producing-model-enabled = false
 real-symbol-detection-enabled = false
 musical-interpretation-enabled = false
+pitch-assignment-enabled = false
+duration-assignment-enabled = false
+voice-assignment-enabled = false
+attachment-relations-enabled = false
+beam-membership-enabled = false
+chord-relations-enabled = false
+reading-order-semantics-enabled = false
+notation-graph-enabled = false
 real-omr-evaluation-enabled = false
 real-omr-inference-enabled = false
 general-accuracy-claim-enabled = false

@@ -14,6 +14,7 @@ from .offline_fixture_inference import disabled_fixture_inference_evidence
 from .offline_model_runtime import disabled_offline_model_runtime_evidence
 from .runtime import runtime_evidence
 from .structured_symbol_output import disabled_structured_symbol_output_evidence
+from .synthetic_symbol_membership import disabled_synthetic_membership_evidence
 
 HOST: Final = "0.0.0.0"
 DEFAULT_PORT: Final = 8080
@@ -32,6 +33,7 @@ def health_payload() -> dict[str, object]:
         "fixedEvaluation": disabled_fixed_evaluation_evidence(),
         "offlineModelRuntime": disabled_offline_model_runtime_evidence(),
         "structuredSymbolOutput": disabled_structured_symbol_output_evidence(),
+        "syntheticSymbolMembership": disabled_synthetic_membership_evidence(),
     }
 
 
@@ -47,7 +49,7 @@ def readiness_payload() -> dict[str, object]:
 
 
 class HealthOnlyHandler(BaseHTTPRequestHandler):
-    server_version = "ScoreMosaicSTOMR/0.8"
+    server_version = "ScoreMosaicSTOMR/0.9"
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
@@ -56,10 +58,7 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
         if self.path == "/ready":
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, readiness_payload())
             return
-        self._send_json(
-            HTTPStatus.NOT_FOUND,
-            {"status": "not_found", "service": SERVICE_NAME},
-        )
+        self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "service": SERVICE_NAME})
 
     def do_POST(self) -> None:  # noqa: N802
         self._method_not_allowed()
@@ -79,11 +78,7 @@ class HealthOnlyHandler(BaseHTTPRequestHandler):
     def _method_not_allowed(self) -> None:
         self._send_json(
             HTTPStatus.METHOD_NOT_ALLOWED,
-            {
-                "status": "method_not_allowed",
-                "service": SERVICE_NAME,
-                "allowedMethods": ["GET"],
-            },
+            {"status": "method_not_allowed", "service": SERVICE_NAME, "allowedMethods": ["GET"]},
             extra_headers={"Allow": "GET"},
         )
 

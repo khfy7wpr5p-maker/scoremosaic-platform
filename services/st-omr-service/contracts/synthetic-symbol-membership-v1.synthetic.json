@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "documentId": "synthetic-symbol-membership-v1",
+  "symbolArtifact": {
+    "documentId": "synthetic-symbol-output-v1",
+    "canonicalSha256": "78136ad2dda8addf74835a43b2071acc6d8fb093b0c8ded21ac61d8a7417a1e1"
+  },
+  "coordinateSpace": {"unit": "integer-grid", "min": 0, "max": 4096},
+  "staffs": [
+    {"staffId": "staff001", "sourceSymbolId": "s001", "bbox": {"x": 100, "y": 100, "width": 1200, "height": 240}}
+  ],
+  "measures": [
+    {"measureId": "measure001", "staffId": "staff001", "sourceSymbolId": "s002", "bbox": {"x": 120, "y": 110, "width": 560, "height": 220}}
+  ],
+  "memberships": [
+    {"symbolId": "s001", "staffId": "staff001"},
+    {"symbolId": "s002", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s003", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s004", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s005", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s006", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s007", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s008", "staffId": "staff001", "measureId": "measure001"},
+    {"symbolId": "s009", "staffId": "staff001", "measureId": "measure001"}
+  ],
+  "boundaries": {
+    "symbolProducingModel": false,
+    "realSymbolDetection": false,
+    "musicalInterpretation": false,
+    "pitchAssigned": false,
+    "durationAssigned": false,
+    "voiceAssigned": false,
+    "attachmentRelations": false,
+    "beamMembership": false,
+    "chordRelations": false,
+    "readingOrderSemantics": false,
+    "notationGraph": false,
+    "musicXmlGenerated": false,
+    "userInputAccepted": false,
+    "httpInferenceEnabled": false,
+    "gatewayIntegration": false,
+    "ensembleIntegration": false,
+    "networkUsed": false,
+    "gpuUsed": false,
+    "persistentStorageUsed": false,
+    "productionEligible": false
+  }
+}
