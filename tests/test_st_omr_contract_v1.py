@@ -157,8 +157,19 @@ class STOmrArchitectureContractTests(unittest.TestCase):
         self.assertIs(model_boundaries["teacherCorrectionIngestion"]["const"], False)
         self.assertIs(model_boundaries["generalAccuracyClaim"]["const"], False)
 
-    def test_no_runtime_or_gateway_integration_exists(self) -> None:
-        self.assertFalse((ROOT / "services" / "st-omr-service").exists())
+    def test_runtime_boundary_is_guarded_and_gateway_integration_absent(
+        self,
+    ) -> None:
+        validator = (
+            ROOT
+            / "services"
+            / "st-omr-service"
+            / "tools"
+            / "validate_safety_boundary.py"
+        )
+        self.assertTrue(validator.is_file(), validator)
+        self.assertFalse(validator.is_symlink(), validator)
+
         orchestration = (
             ROOT / "contracts" / "omr-orchestration-plan.schema.json"
         ).read_text(encoding="utf-8")

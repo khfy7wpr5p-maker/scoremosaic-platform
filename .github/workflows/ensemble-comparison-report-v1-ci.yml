@@ -87,6 +87,6 @@ jobs:
 
       - name: Verify phase exclusions
         run: |
-          test ! -d services/st-omr-service
+          python3 services/st-omr-service/tools/validate_safety_boundary.py
           test ! -e contracts/comparison-report.schema.json
           git diff --check
