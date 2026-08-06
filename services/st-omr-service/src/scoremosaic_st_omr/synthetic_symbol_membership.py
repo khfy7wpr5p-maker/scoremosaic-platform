@@ -133,7 +133,7 @@ def verify_repository_synthetic_membership(
     if manifest != {
         "manifestVersion": "1.0",
         "artifactName": "synthetic-symbol-membership-v1.synthetic.json",
-        "artifactSha256": "8a623a3e6f9cb65bc554baee62bc27be19cbd14afcf998c6ddb33feff7812abc",
+        "artifactSha256": "6550a15863bcc8d495f670fdfd20126c8c8cb782052b20547ce566f0ebf1f624",
         "canonicalSha256": "40265a4a65808dd1f41396e8b72fde2f35358ed1a00073c298a056e9ee956f2c",
         "schemaName": "synthetic-symbol-membership-v1.schema.json",
         "purpose": "static_repository_synthetic_membership_sample",
