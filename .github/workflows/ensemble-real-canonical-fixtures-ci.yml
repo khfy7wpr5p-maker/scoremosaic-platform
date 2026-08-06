@@ -478,5 +478,5 @@ jobs:
         run: |
           test ! -e contracts/ensemble-comparison-report.schema.json
           test ! -e contracts/comparison-report.schema.json
-          test ! -d services/st-omr-service
+          python3 services/st-omr-service/tools/validate_safety_boundary.py
           git diff --check

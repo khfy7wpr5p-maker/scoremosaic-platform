@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test ! -d services/st-omr-service
+          python3 services/st-omr-service/tools/validate_safety_boundary.py
           ! grep -q '"st-omr"' contracts/omr-orchestration-plan.schema.json
           ! grep -Eq '^[[:space:]]*st-omr(-service)?:[[:space:]]*$' compose.yaml
           ! grep -R '"serviceImplementationEnabled":[[:space:]]*true\|"gatewayIntegrationEnabled":[[:space:]]*true\|"ensembleIntegrationEnabled":[[:space:]]*true\|"liveTrainingEnabled":[[:space:]]*true\|"selfTrainingEnabled":[[:space:]]*true' \

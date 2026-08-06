@@ -137,7 +137,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test ! -d services/st-omr-service
+          python3 services/st-omr-service/tools/validate_safety_boundary.py
           test ! -e contracts/engine-ranking.schema.json
           test ! -e contracts/merged-musicxml.schema.json
           ! grep -R "preferredEngine\|winnerSelection.*true\|executionEnabled.*true" \
