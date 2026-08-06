@@ -14,6 +14,7 @@ from .offline_fixture_inference import disabled_fixture_inference_evidence
 from .offline_model_runtime import disabled_offline_model_runtime_evidence
 from .runtime import runtime_evidence
 from .structured_symbol_output import disabled_structured_symbol_output_evidence
+from .synthetic_reading_order import disabled_synthetic_reading_order_evidence
 from .synthetic_symbol_membership import disabled_synthetic_membership_evidence
 
 HOST: Final = "0.0.0.0"
@@ -34,6 +35,7 @@ def health_payload() -> dict[str, object]:
         "offlineModelRuntime": disabled_offline_model_runtime_evidence(),
         "structuredSymbolOutput": disabled_structured_symbol_output_evidence(),
         "syntheticSymbolMembership": disabled_synthetic_membership_evidence(),
+        "syntheticReadingOrder": disabled_synthetic_reading_order_evidence(),
     }
 
 
@@ -49,7 +51,7 @@ def readiness_payload() -> dict[str, object]:
 
 
 class HealthOnlyHandler(BaseHTTPRequestHandler):
-    server_version = "ScoreMosaicSTOMR/0.9"
+    server_version = "ScoreMosaicSTOMR/0.10"
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
