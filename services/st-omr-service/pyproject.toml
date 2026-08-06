@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoremosaic-st-omr"
-version = "0.9.0"
-description = "Closed static repository-synthetic symbol membership contract for isolated ScoreMosaic ST-OMR"
+version = "0.10.0"
+description = "Closed static repository-synthetic reading order contract for isolated ScoreMosaic ST-OMR"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,7 +16,7 @@ scoremosaic-st-omr = "scoremosaic_st_omr.app:main"
 where = ["src"]
 
 [tool.scoremosaic]
-phase = "synthetic-symbol-membership-contract"
+phase = "synthetic-reading-order-contract"
 service-role = "candidate_omr_engine"
 device-policy = "cpu_only"
 dependency-lock-required = true
@@ -36,8 +36,10 @@ generated-fixture-suite-enabled = true
 fixed-evaluation-enabled = true
 structured-synthetic-symbol-output-enabled = true
 synthetic-symbol-membership-enabled = true
+synthetic-reading-order-enabled = true
 static-repository-symbol-sample-only = true
 static-repository-membership-sample-only = true
+static-repository-reading-order-sample-only = true
 symbol-producing-model-enabled = false
 real-symbol-detection-enabled = false
 musical-interpretation-enabled = false
