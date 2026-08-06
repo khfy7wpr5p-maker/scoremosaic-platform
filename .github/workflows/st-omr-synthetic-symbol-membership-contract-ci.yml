@@ -1,0 +1,83 @@
+name: ST-OMR Synthetic Symbol Membership Contract CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/st-omr-synthetic-symbol-membership-contract
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-synthetic-symbol-membership-contract-ci.yml"
+      - "docs/st-omr-synthetic-symbol-membership-contract.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/st-omr-service/**"
+      - ".github/workflows/st-omr-synthetic-symbol-membership-contract-ci.yml"
+      - "docs/st-omr-synthetic-symbol-membership-contract.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-synthetic-symbol-membership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile service
+        run: python -m compileall -q services/st-omr-service/src
+      - name: Run all ST-OMR tests
+        run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
+      - name: Verify pinned membership twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          from scoremosaic_st_omr.synthetic_symbol_membership import verify_repository_synthetic_membership
+          root = Path('services/st-omr-service/contracts')
+          kwargs = {
+              'artifact_path': root / 'synthetic-symbol-membership-v1.synthetic.json',
+              'manifest_path': root / 'synthetic-symbol-membership-v1.manifest.json',
+              'schema_path': root / 'synthetic-symbol-membership-v1.schema.json',
+              'source_symbol_artifact_path': root / 'structured-symbol-output-v1.synthetic.json',
+              'allowed_contracts_root': root,
+          }
+          first = verify_repository_synthetic_membership(**kwargs)
+          second = verify_repository_synthetic_membership(**kwargs)
+          assert first == second
+          assert first.canonical_bytes == second.canonical_bytes
+          assert first.canonical_sha256 == '40265a4a65808dd1f41396e8b72fde2f35358ed1a00073c298a056e9ee956f2c'
+          assert len(first.symbol_ids) == 9
+          evidence = first.as_dict()
+          assert evidence['staticRepositorySampleOnly'] is True
+          for key in ('symbolProducingModel','realSymbolDetection','musicalInterpretation','pitchAssigned','durationAssigned','voiceAssigned','attachmentRelations','beamMembership','readingOrderSemantics','notationGraph','musicXmlGenerated','productionEligible'):
+              assert evidence[key] is False, key
+          PY
+      - name: Verify exact Phase 23 identity and closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/st-omr-service/src python - <<'PY'
+          from pathlib import Path
+          import tomllib
+          project = tomllib.loads(Path('services/st-omr-service/pyproject.toml').read_text())
+          boundary = project['tool']['scoremosaic']
+          assert project['project']['version'] == '0.9.0'
+          assert boundary['phase'] == 'synthetic-symbol-membership-contract'
+          assert boundary['synthetic-symbol-membership-enabled'] is True
+          assert boundary['static-repository-membership-sample-only'] is True
+          for key in ('model-loading-enabled','inference-enabled','symbol-producing-model-enabled','real-symbol-detection-enabled','musical-interpretation-enabled','pitch-assignment-enabled','duration-assignment-enabled','voice-assignment-enabled','attachment-relations-enabled','beam-membership-enabled','chord-relations-enabled','reading-order-semantics-enabled','notation-graph-enabled','real-omr-inference-enabled','user-input-enabled','upload-enabled','musicxml-generation-enabled','gateway-integration-enabled','ensemble-integration-enabled','network-dispatch-enabled','gpu-enabled','persistent-storage-enabled','public-endpoint-enabled'):
+              assert boundary[key] is False, key
+          PY
+          ! grep -R -Ei "torch|tensorflow|onnxruntime|paddle|tensorrt|cuda|transformers" services/st-omr-service/pyproject.toml services/st-omr-service/requirements.lock
+          ! grep -R -E "(/upload|/infer|/predict|/model/load|/musicxml)" services/st-omr-service/src
+      - name: Check diff formatting
+        run: git diff --check
