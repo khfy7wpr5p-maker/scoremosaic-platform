@@ -7,10 +7,10 @@
   },
   "coordinateSpace": {"unit": "integer-grid", "min": 0, "max": 4096},
   "staffs": [
-    {"staffId": "staff001", "bbox": {"x": 100, "y": 100, "width": 1200, "height": 240}}
+    {"staffId": "staff001", "sourceSymbolId": "s001", "bbox": {"x": 100, "y": 100, "width": 1200, "height": 240}}
   ],
   "measures": [
-    {"measureId": "measure001", "staffId": "staff001", "bbox": {"x": 120, "y": 110, "width": 560, "height": 220}}
+    {"measureId": "measure001", "staffId": "staff001", "sourceSymbolId": "s002", "bbox": {"x": 120, "y": 110, "width": 560, "height": 220}}
   ],
   "memberships": [
     {"symbolId": "s001", "staffId": "staff001"},
