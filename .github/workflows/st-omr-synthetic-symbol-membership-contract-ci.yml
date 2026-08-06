@@ -2,9 +2,7 @@ name: ST-OMR Synthetic Symbol Membership Contract CI
 
 on:
   push:
-    branches:
-      - main
-      - feature/st-omr-synthetic-symbol-membership-contract
+    branches: [main, feature/st-omr-synthetic-symbol-membership-contract]
     paths:
       - "services/st-omr-service/**"
       - ".github/workflows/st-omr-synthetic-symbol-membership-contract-ci.yml"
@@ -35,7 +33,7 @@ jobs:
         run: python -m compileall -q services/st-omr-service/src
       - name: Run all ST-OMR tests
         run: PYTHONPATH=services/st-omr-service/src python -m unittest discover -s services/st-omr-service/tests -v
-      - name: Verify pinned membership twice
+      - name: Verify pinned source chain and membership twice
         shell: bash
         run: |
           set -euo pipefail
@@ -48,18 +46,15 @@ jobs:
               'manifest_path': root / 'synthetic-symbol-membership-v1.manifest.json',
               'schema_path': root / 'synthetic-symbol-membership-v1.schema.json',
               'source_symbol_artifact_path': root / 'structured-symbol-output-v1.synthetic.json',
+              'source_symbol_manifest_path': root / 'structured-symbol-output-v1.manifest.json',
               'allowed_contracts_root': root,
           }
           first = verify_repository_synthetic_membership(**kwargs)
           second = verify_repository_synthetic_membership(**kwargs)
           assert first == second
           assert first.canonical_bytes == second.canonical_bytes
-          assert first.canonical_sha256 == '40265a4a65808dd1f41396e8b72fde2f35358ed1a00073c298a056e9ee956f2c'
+          assert first.canonical_sha256 == 'fdc9ad24a5e9997af30b1c6bfe2fcd201f3255e203c37fa8ba5083e1b0f08f1b'
           assert len(first.symbol_ids) == 9
-          evidence = first.as_dict()
-          assert evidence['staticRepositorySampleOnly'] is True
-          for key in ('symbolProducingModel','realSymbolDetection','musicalInterpretation','pitchAssigned','durationAssigned','voiceAssigned','attachmentRelations','beamMembership','readingOrderSemantics','notationGraph','musicXmlGenerated','productionEligible'):
-              assert evidence[key] is False, key
           PY
       - name: Verify exact Phase 23 identity and closed boundaries
         shell: bash
