@@ -2,84 +2,86 @@
 
 ## Status
 
-Phase 23 scope foundation. This phase starts from verified `main` commit `0e5b46cea1cb64677dc6dd2ec6f7b387030a6e6a` on branch `feature/st-omr-synthetic-symbol-membership-contract`.
+Phase 23 is implemented on draft PR #28 from verified `main` commit `0e5b46cea1cb64677dc6dd2ec6f7b387030a6e6a`.
 
 ## Objective
 
-Define a closed, versioned and deterministic contract that assigns repository-owned synthetic symbols to repository-owned synthetic staff and measure records.
+Validate a closed, versioned and deterministic static repository-owned contract that assigns the Phase 22 synthetic symbols to static synthetic staff and measure records.
 
-This phase is limited to membership references. It does not perform detection, interpretation or inference.
+This phase validates membership records only. It does not run a producer, perform detection, infer musical meaning or measure accuracy.
 
-## Proposed contract boundary
+## Implemented contract boundary
 
-Phase 23 may add:
-
-- a closed JSON Schema for synthetic staff and measure membership
-- stable `staffId` and `measureId` records
-- explicit symbol-to-staff membership
-- explicit symbol-to-measure membership where applicable
-- canonical ordering of staff, measure and membership records
-- bounded integer geometry inherited from Phase 22
-- repository-owned fixture/model provenance
-- immutable evidence and canonical SHA-256
+- closed JSON Schema 2020-12 membership contract
+- repository-owned static membership sample and pinned manifest
+- stable `staffId`, `measureId` and `symbolId` references
+- exact coverage of all source synthetic symbol IDs
+- unique and canonically ordered staff, measure and membership records
+- bounded integer staff and measure geometry
+- measure-to-staff reference and containment checks
+- membership-to-staff and optional membership-to-measure consistency checks
+- allowed `contracts` root, direct-child, symlink and path-escape enforcement
+- raw artifact SHA-256 and canonical SHA-256
 - byte-identical repeated validation/canonicalization
 - positive and fail-closed negative tests
-- a dedicated Phase 23 CI while preserving all historical ST-OMR CI invariants
+- dedicated Phase 23 CI plus all historical ST-OMR regression workflows
 
-## Required fail-closed cases
+## Record scope
 
-- duplicate staff ID
-- duplicate measure ID
-- unknown symbol reference
-- unknown staff reference
-- unknown measure reference
-- invalid staff or measure geometry
-- symbol assigned outside its staff or measure bounds
-- non-canonical ordering
-- schema version mismatch
-- missing required field
-- nested additional property
-- provenance mismatch
-- artifact tampering
-- nondeterministic canonical output
-- outside-root artifact, path escape or symlink
+The membership layer contains only:
 
-## Explicit non-goals
+- staff geometry
+- measure geometry and its staff reference
+- symbol-to-staff reference
+- optional symbol-to-measure reference
 
-Phase 23 does not add or imply:
+It does not define or imply:
 
-- a real or trained OMR model
-- external model weights
-- PDF, image or user input
-- a symbol-producing model
-- real symbol detection
 - pitch, duration or voice
 - notehead–stem attachment
 - beam membership
 - chord relations
 - reading-order semantics
-- notation graph construction
-- MusicXML generation
-- HTTP upload, inference or model-loading endpoints
-- Gateway or Ensemble integration
-- automatic correction, ranking, winner selection or merge
-- training or self-training
-- teacher approval or publication
-- network, GPU, persistent storage or production
-- readiness promotion; `/ready` remains 503
+- notation graph
+- musical correctness of the static membership sample
+
+## Fail-closed coverage
+
+- duplicate or non-canonical staff, measure and symbol IDs
+- missing or extra source symbol membership
+- unknown staff or measure references
+- inconsistent measure/staff references
+- invalid or non-contained geometry
+- nested additional properties
+- forbidden pitch or other out-of-scope fields
+- changed closed boundary values
+- schema or provenance mismatch
+- artifact tampering
+- outside-root path, wrong root name and symlink
+- nondeterministic output
+
+## Fixed exclusions
+
+- no real or trained OMR model or external weights
+- no PDF, image or user input
+- no symbol-producing model or real symbol detection
+- no musical interpretation or accuracy claim
+- no MusicXML
+- no HTTP upload, inference or model-loading endpoint
+- no Gateway or Ensemble integration
+- no correction, ranking, winner selection or merge
+- no training, self-training, teacher approval or publication
+- no network, GPU, persistent storage or production
+- no readiness promotion; `/ready` remains 503
 
 ## Safety invariants
 
-- `/health` remains 200
+- `/health` remains 200 and reports the capability as not requested
 - `/ready` remains 503
-- real OMR remains disabled
-- user input remains disabled
-- HTTP inference remains disabled
-- Gateway and Ensemble remain disabled
-- network, GPU, persistence and production remain disabled
+- the Phase 22 static structured symbol contract remains intact
 - the Phase 21 repository test model remains outside the service container
-- all existing ST-OMR regression tests remain enabled
+- all historical ST-OMR regression tests remain enabled
 
 ## Merge policy
 
-The pull request must remain draft until implementation, negative tests, all historical CI workflows, the dedicated Phase 23 CI and a separate architectural review are complete. Merge requires separate explicit approval.
+PR #28 remains draft until all test and CI runs succeed, review threads are clear, a separate architectural review is complete and explicit merge approval is provided.
