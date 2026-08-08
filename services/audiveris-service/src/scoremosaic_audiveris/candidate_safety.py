@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 import re
 import stat
 import xml.etree.ElementTree as ET
+from xml.parsers import expat
 import zipfile
 
 MAX_ARTIFACT_BYTES = 128 * 1024 * 1024
@@ -169,28 +170,53 @@ def _sanitize_musicxml(document: bytes) -> bytes:
     return sanitized
 
 
-def _validate_xml_tree(root: ET.Element) -> str:
-    root_type = root.tag.rsplit("}", 1)[-1]
-    if root_type not in {"score-partwise", "score-timewise"}:
-        _fail("musicxml_invalid_root")
+def _validate_musicxml_stream(document: bytes) -> str:
+    """Apply structural budgets while parsing, without building an XML tree."""
 
+    parser = expat.ParserCreate(namespace_separator="}")
+    depth = 0
     elements = 0
     attributes = 0
-    stack: list[tuple[ET.Element, int]] = [(root, 1)]
-    while stack:
-        element, depth = stack.pop()
+    root_type: str | None = None
+
+    def start_element(name: str, attrs: dict[str, str]) -> None:
+        nonlocal depth, elements, attributes, root_type
+
+        depth += 1
         if depth > MAX_XML_DEPTH:
             _fail("musicxml_depth_exceeded")
+
         elements += 1
         if elements > MAX_XML_ELEMENTS:
             _fail("musicxml_element_count_exceeded")
-        attribute_count = len(element.attrib)
+
+        attribute_count = len(attrs)
         if attribute_count > MAX_ATTRIBUTES_PER_ELEMENT:
             _fail("musicxml_attributes_per_element_exceeded")
         attributes += attribute_count
         if attributes > MAX_XML_ATTRIBUTES:
             _fail("musicxml_attribute_count_exceeded")
-        stack.extend((child, depth + 1) for child in list(element))
+
+        if elements == 1:
+            root_type = name.rsplit("}", 1)[-1]
+            if root_type not in {"score-partwise", "score-timewise"}:
+                _fail("musicxml_invalid_root")
+
+    def end_element(_name: str) -> None:
+        nonlocal depth
+        depth -= 1
+
+    parser.StartElementHandler = start_element
+    parser.EndElementHandler = end_element
+    try:
+        parser.Parse(document, True)
+    except CandidateSafetyError:
+        raise
+    except expat.ExpatError as exc:
+        raise CandidateSafetyError("musicxml_invalid_xml") from exc
+
+    if root_type is None or depth != 0:
+        _fail("musicxml_invalid_xml")
     return root_type
 
 
@@ -198,11 +224,7 @@ def validate_musicxml_bytes(document: bytes) -> CandidateSafetyResult:
     """Validate bounded MusicXML without resolving DTDs or external entities."""
 
     sanitized = _sanitize_musicxml(document)
-    try:
-        root = ET.fromstring(sanitized)
-    except ET.ParseError as exc:
-        raise CandidateSafetyError("musicxml_invalid_xml") from exc
-    root_type = _validate_xml_tree(root)
+    root_type = _validate_musicxml_stream(sanitized)
     return CandidateSafetyResult("xml", root_type, len(sanitized))
 
 
