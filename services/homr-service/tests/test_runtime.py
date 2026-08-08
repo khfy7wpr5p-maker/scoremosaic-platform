@@ -182,6 +182,34 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(result.return_code, 0)
             self.assertEqual(result.musicxml_artifacts, (output / "score.musicxml",))
 
+    def test_transcription_rejects_unsafe_musicxml_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            output = config.workspace_root / "run"
+            output.mkdir(parents=True)
+            image = output / "score.png"
+            image.write_bytes(b"png")
+
+            def runner(command, **kwargs):
+                Path(command[-1]).with_suffix(".musicxml").write_text(
+                    "<!DOCTYPE score-partwise [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><score-partwise>&x;</score-partwise>",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(command, 0, "done", "")
+
+            with self.assertRaisesRegex(
+                RuntimeExecutionError,
+                "homr_candidate_unsafe:musicxml_unsafe_declaration",
+            ):
+                transcribe_file(
+                    image,
+                    output,
+                    config,
+                    runner=runner,
+                    probe=lambda _: RuntimeProbe(True, "ready", "0.7.0", 3),
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
