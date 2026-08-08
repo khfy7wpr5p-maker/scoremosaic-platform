@@ -1,0 +1,42 @@
+{
+  "contractVersion": "candidate-safety-v1",
+  "trustBoundary": "untrusted-engine-output",
+  "activationRule": "candidate-must-pass-before-canonical-or-ensemble-processing",
+  "limits": {
+    "maxArtifactBytes": 134217728,
+    "maxXmlBytes": 67108864,
+    "maxZipEntries": 128,
+    "maxTotalUncompressedBytes": 134217728,
+    "maxCompressionRatio": 200,
+    "maxXmlDepth": 64,
+    "maxXmlElements": 500000,
+    "maxXmlAttributes": 1000000,
+    "maxAttributesPerElement": 256,
+    "maxContainerXmlBytes": 1048576
+  },
+  "musicXml": {
+    "allowedRoots": [
+      "score-partwise",
+      "score-timewise"
+    ],
+    "rejectEntityDeclarations": true,
+    "rejectNulBytes": true,
+    "canonicalMusicXmlDoctypeMayBeSanitizedBeforeParse": true,
+    "externalEntityResolution": false,
+    "externalNetworkResolution": false
+  },
+  "mxl": {
+    "requireContainerXml": true,
+    "requireExactlyOneRootfile": true,
+    "rejectEncryptedEntries": true,
+    "rejectSymlinkEntries": true,
+    "rejectAbsoluteOrTraversalPaths": true,
+    "rejectDuplicateMembers": true,
+    "containerDeclarationsAllowed": false
+  },
+  "engines": [
+    "audiveris",
+    "homr",
+    "clarity"
+  ]
+}
