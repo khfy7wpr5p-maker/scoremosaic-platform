@@ -1,140 +1,150 @@
 # ScoreMosaic Roadmap
 
-Every phase is gated. A later phase must not begin merely because the previous code exists; its acceptance checks must pass first.
+Every capability is gated. Code presence alone does not authorize activation; the protecting security controls, negative tests, and CI evidence must pass first.
 
-## Phase 0 — Foundation
+## Current secure-development status
 
-Scope:
+| Area | Status | Security meaning |
+|---|---|---|
+| Repository/contracts foundation | Completed | Architecture, contracts, review concepts, isolated service layout exist. |
+| GitHub Actions immutable action pins | Completed | Repository workflows use immutable action SHAs. |
+| Private container/runtime isolation | Completed foundation | Engine services are non-root/private/read-only with restricted capabilities. |
+| HOMR pinned runtime/model foundation | Completed foundation | Pinned runtime/model checks and private execution helper exist. |
+| Clarity pinned source/model foundation | Completed foundation | Pinned source/model and controlled CPU/offline runtime exist. |
+| Audiveris pinned runtime foundation | Completed foundation | Pinned package/runtime and private execution helper exist. |
+| OMR Gateway health/orchestration contracts | Completed foundation | Gateway contracts exist; upload/execution remain disabled. |
+| Candidate/artifact lifecycle v1 | Completed foundation | Candidate isolation and immutable lifecycle contracts exist; production persistence remains disabled. |
+| Canonical Score / Ensemble comparator/report | Completed foundation | Deterministic normalization/comparison/report foundations exist. |
+| Fixed evaluation foundations | Completed | Fixed evaluation datasets/contracts are present. |
+| ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
+| Candidate Safety Gate v1 | Implemented in this security slice | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
+| Safe Intake Gate runtime enforcement | Not started | Configuration limits exist, but external PDF/image upload must remain disabled. |
+| Service-to-service authentication | Not started | Live engine dispatch remains blocked. |
+| Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
+| Production immutable object storage | Not started | Production persistence remains blocked. |
+| External API auth/authz + rate/abuse controls | Not started | Public API exposure remains blocked. |
+| Teacher Review API + RBAC + immutable revisions | Not started | Approval workflow remains a contract, not a production API. |
+| Approval-to-publication barrier | Not started | Learner-facing publication remains blocked. |
+| Base-image digest pinning + repository-owned security scans | Not started | Required before production readiness. |
+| Backup/restore, monitoring, rollback | Not started | Required before production promotion. |
 
-- Repository boundaries and architecture
-- Security boundaries
-- Job and review-report contracts
-- Teacher-review workflow
-- Empty service specifications
-- Safe environment and repository rules
+## Security-first sequence from this point
 
-Exit criteria:
+### Gate A — Candidate Safety Convergence
 
-- Documents and JSON contracts reviewed
-- No real secrets committed
-- No engine, model, or production deployment added
-- Foundation pull request approved
+Goal: engine success must never bypass candidate validation.
 
-## Phase 1 — Contract and security core
+Requirements:
 
-Scope:
+- common Candidate Safety v1 policy;
+- Audiveris MXL ZIP/member/container validation;
+- HOMR MusicXML declaration/size/complexity validation;
+- Clarity MusicXML complexity convergence;
+- hostile MXL/XML negative regression tests;
+- convergence check preventing policy drift across adapters;
+- relevant service CI green.
 
-- Versioned API contract
-- Strict PDF validation
-- Secure XML/MusicXML validation with DTD and external entity processing disabled
-- Job state machine
-- Artifact naming, hashing, retention, and cleanup rules
-- Authentication, authorization, idempotency, rate limits, and safe logging
-- Contract tests and threat-model tests
+Activation effect: none. Public upload/orchestration remains disabled.
 
-Exit criteria:
+### Gate B — Safe Intake Foundation
 
-- Malformed and hostile PDF/XML fixtures fail safely
-- Path traversal and oversized input tests pass
-- Secrets are server-side only
-- No engine integration required
+Goal: no untrusted PDF/image reaches an engine without a central fail-closed intake decision.
 
-## Phase 2 — HOMR service
+Requirements:
 
-Scope:
+- signature/MIME verification;
+- request byte limit;
+- PDF page limit;
+- decoded image/pixel limit;
+- filename/path safety;
+- explicit supported-format allowlist;
+- malformed/truncated/oversized hostile fixtures;
+- deterministic stable rejection categories.
 
-- Isolated service adapter
-- Pinned runtime and upstream revision
-- Health and readiness endpoints
-- Time, memory, and file limits
-- Immutable candidate output
-- Guitar-score benchmark set
+Exit rule: Gateway upload remains disabled until these tests and runtime enforcement pass.
 
-Exit criteria:
+### Gate C — Internal Dispatch Security
 
-- Reproducible container build
-- Health, timeout, cancellation, and failure tests pass
-- Version and license records are present
-- No public engine endpoint
+Goal: enable private orchestration without creating an unauthenticated lateral-movement path.
 
-## Phase 3 — Clarity-OMR service
+Requirements:
 
-Scope and gates mirror Phase 2, with additional model controls:
+- authenticated service-to-service requests;
+- engine identity and endpoint allowlist;
+- job/source/result identity binding;
+- per-engine timeout/cancellation;
+- bounded retry policy;
+- safe diagnostic/error mapping.
 
-- Pinned model revision
-- Model checksum verification
-- Controlled model download or prebuilt image process
-- CPU/GPU behavior documented separately
+Exit rule: `orchestrationMode` must remain disabled until Gate B and Gate C pass.
 
-## Phase 4 — Ensemble comparator v1
+### Gate D — Durable Job and Artifact State
 
-Scope:
+Goal: make processing crash/restart safe before live workload activation.
 
-- Safe normalization into a common event model
-- Measure alignment
-- Structural MusicXML checks
-- Pitch, rhythm, rest, chord, voice, staff, and TAB disagreement detection
-- Confidence evidence and provenance
-- Review-report generation
+Requirements:
 
-Non-goal:
+- durable job state machine;
+- idempotency;
+- immutable source/candidate storage;
+- SHA-256/provenance persistence;
+- retry/cancellation/restart recovery;
+- partial-output and crash-window tests.
 
-- No raw MusicXML merging or automatic correction in v1
+### Gate E — External API Security
 
-Exit criteria:
+Goal: expose only a controlled versioned platform boundary.
 
-- Deterministic comparison on fixed fixtures
-- Every issue points to source engine evidence
-- Unknown or ambiguous cases remain unresolved rather than guessed
+Requirements:
 
-## Phase 5 — Teacher review API and editor contract
+- authentication and authorization;
+- tenant/user scope enforcement where applicable;
+- rate limiting and abuse protection;
+- safe upload session semantics;
+- request/idempotency binding;
+- privacy-safe logs/errors.
 
-Scope:
+### Gate F — Teacher Review and Publication
 
-- Review queue
-- Issue decisions
-- Immutable revisions
-- Undo and revision history
-- Corrected MusicXML validation
-- Approval and rejection records
-- Accessibility requirements for the future editor
+Goal: ensure machine output can never become learner-facing truth without an explicit authorized human decision.
 
-Exit criteria:
+Requirements:
 
-- Original engine artifacts cannot be overwritten
-- Every correction records old value, new value, user, reason, and time
-- Publishing is blocked without teacher approval
+- Teacher Review API;
+- RBAC;
+- immutable corrections/revisions;
+- complete audit evidence;
+- approval bound to exact revision/hash;
+- unresolved-warning/waiver rules;
+- separate publication transition;
+- negative unauthorized approval/publication tests.
 
-## Phase 6 — Audiveris adapter
+### Gate G — Production Readiness
 
-Scope:
+Goal: make the platform safely operable, recoverable, and reproducible.
 
-- Add Audiveris as a third candidate engine
-- Compare Coolify Audiveris with the independent Render reference environment
-- Preserve `.omr` project output when available
+Requirements:
 
-Exit criteria:
+- container base-image digest pinning;
+- dependency/vulnerability/secret scanning;
+- SBOM/provenance evidence;
+- production secrets;
+- monitoring/alerts;
+- capacity/concurrency limits;
+- encrypted backups and demonstrated restore;
+- rollback/promotion procedure;
+- staging soak and acceptance evidence.
 
-- Multiple guitar PDFs pass end-to-end staging tests
-- Restart, storage, cancellation, cleanup, and recovery tests pass
+## Architectural phase mapping
 
-## Phase 7 — Coolify production readiness
+The original phase intent remains, but implementation has progressed through isolated foundations out of strict numerical order. The authoritative rule is now the security gate sequence above:
 
-Scope:
-
-- Staging soak tests
-- Backups and restore test
-- Monitoring and alerts
-- Capacity and concurrency limits
-- Production secrets
-- Rollback procedure
-
-Exit criteria:
-
-- Production deployment is reproducible
-- Restore and rollback are demonstrated
-- Render is not removed until Coolify has remained stable through an agreed observation period
+- Original Phase 0/1 concepts → repository/contracts/security foundations plus Gates A-B.
+- Original Phase 2/3/6 engine work → current HOMR/Clarity/Audiveris private runtime foundations.
+- Original Phase 4 → current Canonical/Ensemble foundations.
+- Original Phase 5 → future Gate F.
+- Original Phase 7 → future Gate G.
 
 ## Change-control rule
 
-Each phase uses a dedicated feature branch and pull request. Direct feature work on `main` is prohibited by project policy, even before branch protection is configured.
+Each security or capability slice uses a dedicated branch and pull request. Direct feature work on `main` is prohibited by project policy. A new capability remains disabled until its protecting gate has fresh negative-test and CI evidence.
