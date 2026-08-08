@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 import sys
 import tempfile
 import unittest
@@ -77,6 +78,17 @@ class MusicXmlSafetyTests(unittest.TestCase):
             self.assertNotIn(b"<!DOCTYPE", rewritten.upper())
             self.assertIn(b"<score-partwise", rewritten)
             self.assertFalse(path.with_name(".result.musicxml.sanitized").exists())
+
+    def test_validator_does_not_parse_element_tree_before_candidate_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "result.musicxml"
+            path.write_bytes(b"<score-partwise><part/></score-partwise>")
+
+            with patch(
+                "scoremosaic_clarity.candidate_safety.ET.fromstring",
+                side_effect=AssertionError("full XML tree parse must not run"),
+            ):
+                _validate_musicxml(path)
 
     def test_validator_rejects_excessive_xml_depth(self) -> None:
         document = (
