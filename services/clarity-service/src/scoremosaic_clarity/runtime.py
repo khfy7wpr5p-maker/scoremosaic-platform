@@ -12,6 +12,7 @@ import re
 import subprocess
 import xml.etree.ElementTree as ET
 
+from .candidate_safety import CandidateSafetyError, validate_musicxml_bytes
 from .config import ServiceConfig
 
 _MAX_DIAGNOSTIC_CHARS = 16_384
@@ -443,6 +444,11 @@ def _validate_musicxml(path: Path) -> None:
     root_name = root.tag.rsplit("}", 1)[-1]
     if root_name not in {"score-partwise", "score-timewise"}:
         raise RuntimeExecutionError("clarity_musicxml_invalid_root")
+
+    try:
+        validate_musicxml_bytes(sanitized)
+    except CandidateSafetyError as exc:
+        raise RuntimeExecutionError(f"clarity_candidate_unsafe:{exc.code}") from exc
 
     if sanitized != document:
         _replace_musicxml_atomically(path, sanitized)
