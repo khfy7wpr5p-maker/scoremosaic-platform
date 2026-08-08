@@ -42,11 +42,37 @@ EXPECTED_CONSTANTS = {
     "maxContainerXmlBytes": "MAX_CONTAINER_XML_BYTES",
 }
 
+EXPECTED_MUSIC_XML_POLICY = {
+    "allowedRoots": ["score-partwise", "score-timewise"],
+    "rejectEntityDeclarations": True,
+    "rejectNulBytes": True,
+    "canonicalMusicXmlDoctypeMayBeSanitizedBeforeParse": True,
+    "externalEntityResolution": False,
+    "externalNetworkResolution": False,
+}
+
+EXPECTED_MXL_POLICY = {
+    "requireContainerXml": True,
+    "requireExactlyOneRootfile": True,
+    "rejectEncryptedEntries": True,
+    "rejectSymlinkEntries": True,
+    "rejectAbsoluteOrTraversalPaths": True,
+    "rejectDuplicateMembers": True,
+    "containerDeclarationsAllowed": False,
+}
+
 
 def main() -> None:
     policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
     if policy.get("contractVersion") != "candidate-safety-v1":
         raise SystemExit("candidate safety contract version mismatch")
+    if policy.get("trustBoundary") != "untrusted-engine-output":
+        raise SystemExit("candidate safety trust boundary mismatch")
+    if (
+        policy.get("activationRule")
+        != "candidate-must-pass-before-canonical-or-ensemble-processing"
+    ):
+        raise SystemExit("candidate safety activation rule mismatch")
 
     module_documents = [path.read_bytes() for path in MODULE_PATHS]
     if any(document != module_documents[0] for document in module_documents[1:]):
@@ -63,6 +89,10 @@ def main() -> None:
                 f"{constant_name}={actual!r}"
             )
 
+    if policy.get("musicXml") != EXPECTED_MUSIC_XML_POLICY:
+        raise SystemExit("candidate safety MusicXML policy mismatch")
+    if policy.get("mxl") != EXPECTED_MXL_POLICY:
+        raise SystemExit("candidate safety MXL policy mismatch")
     if policy.get("engines") != ["audiveris", "homr", "clarity"]:
         raise SystemExit("candidate safety engine set mismatch")
 
