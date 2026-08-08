@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Callable, Iterable
 import os
 import subprocess
-import xml.etree.ElementTree as ET
 
+from .candidate_safety import CandidateSafetyError, validate_musicxml_file
 from .config import ServiceConfig
 
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png"}
@@ -312,11 +312,8 @@ def transcribe_file(
         raise RuntimeExecutionError(f"homr_musicxml_not_created:{diagnostic}")
 
     try:
-        root = ET.parse(expected_output).getroot()
-    except ET.ParseError as exc:
-        raise RuntimeExecutionError("homr_musicxml_invalid_xml") from exc
-    root_name = root.tag.rsplit("}", 1)[-1]
-    if root_name not in {"score-partwise", "score-timewise"}:
-        raise RuntimeExecutionError("homr_musicxml_invalid_root")
+        validate_musicxml_file(expected_output)
+    except CandidateSafetyError as exc:
+        raise RuntimeExecutionError(f"homr_candidate_unsafe:{exc.code}") from exc
 
     return TranscriptionResult(completed.returncode, (expected_output,), diagnostic)
