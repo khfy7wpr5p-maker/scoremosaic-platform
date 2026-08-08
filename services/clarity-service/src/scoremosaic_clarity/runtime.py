@@ -10,8 +10,8 @@ import json
 import os
 import re
 import subprocess
-import xml.etree.ElementTree as ET
 
+from .candidate_safety import CandidateSafetyError, validate_musicxml_bytes
 from .config import ServiceConfig
 
 _MAX_DIAGNOSTIC_CHARS = 16_384
@@ -437,12 +437,13 @@ def _validate_musicxml(path: Path) -> None:
 
     sanitized = _sanitize_musicxml_document(document)
     try:
-        root = ET.fromstring(sanitized)
-    except ET.ParseError as exc:
-        raise RuntimeExecutionError("clarity_musicxml_invalid_xml") from exc
-    root_name = root.tag.rsplit("}", 1)[-1]
-    if root_name not in {"score-partwise", "score-timewise"}:
-        raise RuntimeExecutionError("clarity_musicxml_invalid_root")
+        validate_musicxml_bytes(sanitized)
+    except CandidateSafetyError as exc:
+        if exc.code == "musicxml_invalid_xml":
+            raise RuntimeExecutionError("clarity_musicxml_invalid_xml") from exc
+        if exc.code == "musicxml_invalid_root":
+            raise RuntimeExecutionError("clarity_musicxml_invalid_root") from exc
+        raise RuntimeExecutionError(f"clarity_candidate_unsafe:{exc.code}") from exc
 
     if sanitized != document:
         _replace_musicxml_atomically(path, sanitized)

@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+import zipfile
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
@@ -14,6 +15,7 @@ from scoremosaic_audiveris.runtime import (
     RuntimeExecutionError,
     build_transcription_command,
     probe_runtime,
+    transcribe_file,
 )
 
 
@@ -144,6 +146,46 @@ class RuntimeTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(RuntimeExecutionError, "symbolic-link"):
                 build_transcription_command(link, workspace / "out", config)
+
+    def test_transcription_rejects_unsafe_mxl_candidate(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            command_path = root / "audiveris"
+            command_path.write_text("stub", encoding="utf-8")
+            command_path.chmod(0o755)
+            input_path = workspace / "input.png"
+            input_path.write_bytes(b"png")
+            output_dir = workspace / "out"
+            config = load_config(
+                {
+                    "SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE": "audiveris",
+                    "SCOREMOSAIC_AUDIVERIS_COMMAND": str(command_path),
+                    "SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT": str(workspace),
+                }
+            )
+
+            def runner(command, **kwargs):
+                if "-version" in command:
+                    return subprocess.CompletedProcess(
+                        command, 0, "- Version:      5.11.0\n", ""
+                    )
+                output_root = Path(command[command.index("-output") + 1])
+                output_root.mkdir(parents=True, exist_ok=True)
+                mxl = output_root / "unsafe.mxl"
+                with zipfile.ZipFile(mxl, "w") as archive:
+                    archive.writestr(
+                        "META-INF/container.xml",
+                        '<container><rootfiles><rootfile full-path="../score.musicxml"/></rootfiles></container>',
+                    )
+                    archive.writestr("../score.musicxml", "<score-partwise/>")
+                return subprocess.CompletedProcess(command, 0, "done", "")
+
+            with self.assertRaisesRegex(
+                RuntimeExecutionError, "audiveris_candidate_unsafe:mxl_member_path_unsafe"
+            ):
+                transcribe_file(input_path, output_dir, config, runner=runner)
 
 
 if __name__ == "__main__":

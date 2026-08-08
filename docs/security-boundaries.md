@@ -2,121 +2,187 @@
 
 ## 1. Trust model
 
-All uploaded PDFs, engine-produced MusicXML, filenames, metadata, model downloads, and remote-service responses are untrusted until validated.
+All external documents, engine-produced MusicXML/MXL, filenames, metadata, model downloads, and remote-service responses are untrusted until the applicable validation boundary has passed.
 
-A successful OMR conversion does not imply that the output is safe, structurally valid, musically correct, or suitable for publication.
+A successful OMR process exit does not imply that its output is safe, structurally valid, musically correct, approved, or suitable for publication.
+
+The platform therefore separates two mandatory data gates:
+
+1. **Safe Intake Gate** — protects the platform from untrusted PDF/image input.
+2. **Candidate Safety Gate v1** — protects canonicalization/comparison from untrusted OMR engine output.
 
 ## 2. External exposure
 
-- Only the versioned platform API may receive external traffic.
-- HOMR, Clarity-OMR, and future Audiveris services remain on a private container network.
-- Internal services require authenticated service-to-service requests.
+- Only a future versioned platform API may receive external traffic.
+- HOMR, Clarity-OMR, Audiveris, and ST-OMR engine services remain on private container networks.
+- Internal live dispatch must use authenticated service-to-service requests before it is enabled.
 - Engine services must not receive browser-visible API keys.
 - Development, staging, and production secrets must be separate.
+- Current Gateway upload and execution/orchestration remain disabled.
 
-## 3. PDF intake controls
+## 3. Safe Intake Gate
 
-Before a job is accepted:
+Before any external PDF/image job can be accepted for live processing, the Gateway data plane must enforce:
 
-- Verify the PDF signature and reject extension-only validation.
-- Enforce upload-size and page-count limits.
-- Sanitize the displayed filename and generate server-owned storage paths.
-- Reject path traversal, control characters, and ambiguous archive formats.
-- Apply total job, per-page, memory, CPU, and output-size limits.
-- Process files in isolated, non-root containers with restricted capabilities.
-- Do not execute embedded files, scripts, links, or external resources.
+- file signature and MIME verification rather than extension-only trust;
+- upload byte limits;
+- PDF page-count limits;
+- decoded image/pixel limits;
+- safe supported format allowlists;
+- server-owned job IDs and storage paths;
+- filename/path normalization and traversal rejection;
+- total job, per-page, CPU, memory, timeout, and output budgets;
+- isolated non-root processing with restricted capabilities;
+- no execution of embedded files, scripts, links, or external resources.
 
-## 4. MusicXML and XML controls
+The repository already contains related configuration limits, but configuration alone is not an implemented intake gate. **External upload must remain disabled until runtime enforcement and hostile-input regression tests exist.**
 
-Every candidate must pass a dedicated security gate before parsing:
+## 4. Candidate Safety Gate v1
 
-- Disable DTD processing.
-- Disable external entities and external network resolution.
-- Reject entity expansion and oversized node/text structures.
-- Enforce maximum document size, depth, element count, and attribute count.
-- Accept only expected MusicXML root forms and supported encodings.
-- Parse with a maintained XML parser rather than regular expressions.
-- Validate structural rules separately from musical plausibility.
-- Treat `.mxl` archives as untrusted ZIP files with entry-count, expanded-size, path, and compression-ratio limits.
+Every engine candidate is treated as a fresh untrusted input before Canonical Score or Ensemble processing.
 
-Raw engine output is preserved for audit but must never be rendered or parsed by an unsafe path.
+The shared policy is defined by `contracts/candidate-safety-policy-v1.json` and is currently applied to HOMR, Clarity, and Audiveris runtime outputs.
+
+### MusicXML controls
+
+- Bound artifact/XML byte size.
+- Reject NUL bytes.
+- Reject entity declarations.
+- Permit only the explicitly recognized canonical MusicXML doctype form for sanitization before parse; reject other doctypes.
+- Do not resolve external entities or perform external network resolution.
+- Accept only expected MusicXML root forms.
+- Bound XML depth, total element count, total attribute count, and attributes per element.
+- Treat structural safety separately from musical plausibility.
+
+### MXL controls
+
+- Treat `.mxl` as an untrusted ZIP archive.
+- Bound archive byte size, entry count, per-entry size, and total uncompressed size.
+- Bound compression ratio.
+- Reject encrypted entries.
+- Reject ZIP symlink entries.
+- Reject absolute paths, traversal paths, backslash paths, NUL-containing names, and duplicate members.
+- Require `META-INF/container.xml`.
+- Reject DTD/entity declarations in `container.xml`.
+- Require exactly one declared MusicXML rootfile and verify that the declared member exists.
+
+Raw engine output remains an audit artifact. Passing Candidate Safety v1 means only that the candidate is safe enough for the next controlled parsing stage; it does not mean the music is correct.
 
 ## 5. Storage and artifact controls
 
 - Generate job IDs and artifact paths on the server.
-- Keep original input and raw engine outputs immutable.
-- Store revisions as new artifacts.
-- Calculate and store SHA-256 hashes for input and result artifacts.
-- Separate service volumes; engines must not share a writable directory.
-- Apply retention classes and cleanup only after checking review and protection status.
-- Backups must be encrypted and restore-tested.
+- Keep original input and sealed raw engine outputs immutable.
+- Store sanitization/normalization/correction results as derivatives or revisions rather than overwriting sealed raw artifacts.
+- Calculate and retain SHA-256 hashes and provenance for source and result artifacts.
+- Separate service writable areas; engines must not share unrestricted writable directories.
+- Apply retention classes and cleanup only after checking review/protection status.
+- Production backups must be encrypted and restore-tested.
+
+Production immutable object storage and durable provenance persistence are not yet enabled.
 
 ## 6. Job execution controls
 
-- Use explicit state transitions.
-- Apply per-engine timeouts and cancellation.
-- Limit retries and distinguish retryable from permanent errors.
-- Prevent duplicate processing with idempotency keys or equivalent controls.
-- Do not mark a job completed until required artifacts are durably stored.
-- On restart, interrupted jobs must enter a defined recovery state rather than being assumed successful.
+Before live orchestration is enabled:
+
+- use explicit state transitions;
+- apply per-engine timeouts and cancellation;
+- limit retries and distinguish retryable from permanent failures;
+- enforce idempotency or an equivalent duplicate-processing barrier;
+- do not mark jobs complete until required artifacts are durably stored and verified;
+- recover interrupted jobs into a defined state after restart;
+- bind engine results to the correct job/source identity;
+- require service-to-service authentication for engine dispatch.
+
+Current Gateway orchestration remains disabled while these controls are incomplete.
 
 ## 7. Logging and privacy
 
 Logs may include:
 
-- job ID
-- engine name and pinned version
-- lifecycle state
-- duration and resource summary
-- stable error category
+- job ID;
+- engine name and pinned version;
+- lifecycle state;
+- duration/resource summary;
+- stable bounded error category.
 
 Logs must not include:
 
-- PDF contents
-- complete MusicXML contents
-- bearer tokens or secrets
-- personal names inferred from filenames
-- unrestricted local paths
+- PDF contents;
+- complete MusicXML contents;
+- bearer tokens or secrets;
+- personal names inferred from filenames;
+- unrestricted local paths.
 
-Error responses must avoid stack traces and internal infrastructure details.
+External error responses must avoid stack traces, raw subprocess output, and internal infrastructure details.
 
 ## 8. Dependency and model supply chain
 
 - Pin application dependencies and upstream engine revisions.
-- Record the license and source revision of every engine.
-- Pin model revisions and verify checksums before use.
-- Do not download mutable `latest` artifacts during a production request.
-- Run vulnerability and secret scanning in CI.
-- Review base-image updates deliberately rather than silently.
+- Record engine/model source revision and license.
+- Verify model and downloaded engine artifacts with checksums.
+- Never download mutable `latest` artifacts during a production request.
+- Keep GitHub Actions references pinned to immutable commit SHAs.
+- Add repository-owned vulnerability, dependency, and secret scanning before production readiness.
+- Pin container base images by digest before production promotion.
+- Generate/retain SBOM and provenance evidence for release artifacts when the production release process is introduced.
 
 ## 9. Teacher-review boundary
 
-- Ensemble findings are recommendations, not final truth.
-- Automatic candidate selection must not equal teacher approval.
-- Only an authenticated, authorized reviewer can approve a revision.
-- Every edit and approval must be attributable and timestamped.
-- Learner-facing publication remains blocked while unresolved blocking issues exist.
+- Ensemble findings are evidence/recommendations, not final truth.
+- Automatic candidate selection must never equal teacher approval.
+- Only an authenticated and authorized reviewer may approve a revision.
+- Every edit/approval must identify reviewer, revision, timestamp, reason/evidence, and unresolved warnings or waivers.
+- Corrections create immutable revisions rather than changing raw candidate artifacts.
+- Publication is a separate transition from approval.
+- Learner-facing publication remains blocked while blocking issues are unresolved or no approved revision exists.
 
-## 10. Initial threat-test catalogue
+The production Teacher Review API/RBAC/publication barrier is not yet implemented.
 
-Phase 1 must include tests for:
+## 10. Threat-test catalogue
 
-- renamed non-PDF input
-- malformed and truncated PDF
-- oversized PDF and excessive page count
-- path traversal in filenames and archive entries
-- XML external entities
-- entity expansion
-- deeply nested XML
-- oversized MusicXML
-- malformed `.mxl` and ZIP bomb characteristics
-- HTML or JSON returned in place of MusicXML
-- engine timeout, crash, and partial output
-- duplicate requests
-- cancellation races
-- restart during processing
-- unauthorized review and approval attempts
+Required negative coverage includes:
 
-## 11. Security stop rule
+### Intake
 
-No real OMR engine, public endpoint, or Coolify deployment should be added until the applicable validation, isolation, authentication, and failure tests for that phase are defined.
+- renamed non-PDF/non-image input;
+- malformed/truncated PDF;
+- oversized PDF/image;
+- excessive page/pixel count;
+- path traversal/control characters in filenames;
+- unsupported/ambiguous container formats.
+
+### Candidate output
+
+- XML external/internal entity declarations;
+- noncanonical doctypes;
+- deeply nested XML;
+- excessive element/attribute counts;
+- oversized MusicXML;
+- malformed MXL;
+- ZIP traversal and symlink entries;
+- excessive ZIP entry count/expanded size/compression ratio;
+- encrypted/duplicate ZIP members;
+- invalid/missing/multiple MXL rootfiles;
+- HTML/JSON/other content returned in place of MusicXML.
+
+### Runtime/job lifecycle
+
+- engine timeout/crash/partial output;
+- duplicate requests;
+- cancellation races;
+- restart during processing;
+- result/job identity mismatch;
+- unauthorized internal dispatch;
+- unauthorized review/approval/publication attempts.
+
+## 11. Security stop rules
+
+The following capabilities remain blocked until their protecting controls and negative tests pass:
+
+- **External upload** → blocked until Safe Intake Gate runtime enforcement exists.
+- **Live Gateway dispatch** → blocked until intake enforcement, service-to-service authentication, durable job state, and candidate handling are demonstrated.
+- **Canonical/Ensemble consumption of engine output** → must pass Candidate Safety v1 first.
+- **Teacher approval/publication** → blocked until RBAC, immutable revisions, audit evidence, and approval/publication barriers exist.
+- **Production promotion** → blocked until supply-chain scanning/pinning, monitoring, backup/restore, rollback, and acceptance evidence exist.
+
+Security controls must be implemented before the capability they protect is activated.

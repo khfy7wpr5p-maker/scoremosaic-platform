@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable
 
+from validate_candidate_safety_convergence import main as validate_candidate_safety_convergence
+
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_DIR = ROOT / "contracts"
 DEVCONTAINER_PATH = ROOT / ".devcontainer" / "devcontainer.json"
@@ -147,6 +149,11 @@ def main() -> int:
     else:
         errors.extend(validate_devcontainer(devcontainer))
 
+    try:
+        validate_candidate_safety_convergence()
+    except SystemExit as exc:
+        errors.append(f"candidate safety convergence: {exc}")
+
     if errors:
         print("Foundation validation failed:", file=sys.stderr)
         for error in errors:
@@ -155,6 +162,7 @@ def main() -> int:
 
     print(f"Validated {len(contract_paths)} JSON Schemas.")
     print("Validated .devcontainer/devcontainer.json.")
+    print("Validated Candidate Safety v1 convergence.")
     return 0
 
 

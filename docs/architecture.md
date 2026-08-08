@@ -2,108 +2,190 @@
 
 ## 1. Purpose
 
-ScoreMosaic receives an untrusted score document, runs one or more isolated OMR engines, preserves every candidate result, compares the musical content, and emits a structured review report. A teacher-facing application may later use that report to correct and approve a final score.
+ScoreMosaic receives an untrusted score document, preserves the source, runs isolated OMR engines, validates every engine-produced candidate as untrusted data, normalizes safe musical content, compares candidates, and produces structured evidence for teacher review.
 
 ScoreMosaic is an OMR and review-support platform. It is not the learner-facing playback, narration, or lesson application.
 
-## 2. Initial service boundaries
+## 2. Secure target architecture
 
 ```text
 External application
         |
-        | authenticated HTTPS
+        | versioned authenticated HTTPS API
         v
-ensemble-service
-   |             |
-   | private     | private
-   v             v
-homr-service   clarity-service
++---------------------------+
+| Safe Intake Gate          |
+| - signature / MIME        |
+| - bytes / pages / pixels  |
+| - filename / path safety  |
++---------------------------+
+        |
+        v
+Immutable source artifact
+SHA-256 + provenance
+        |
+        v
+OMR Gateway / job orchestration
+        |
+        +-------------------+-------------------+
+        |                   |                   |
+        v                   v                   v
+  homr-service       clarity-service     audiveris-service
+        |                   |                   |
+        +-------------------+-------------------+
+                            |
+                            v
++------------------------------------------------+
+| Candidate Safety Gate v1                       |
+| MXL ZIP safety + XML declarations + budgets    |
++------------------------------------------------+
+                            |
+                            v
+                    Canonical Score
+                            |
+                            v
+                   Ensemble Comparator
+                            |
+                            v
+                  Review report/evidence
+                            |
+                            v
+                    Teacher Review API
+                            |
+                            v
+                   Approval barrier
+                            |
+                            v
+                  Published MusicXML
 ```
 
-Planned later:
+The Safe Intake Gate protects the platform from untrusted external documents. The Candidate Safety Gate protects the platform from untrusted **engine output**. These are separate trust boundaries and neither may be skipped.
 
-```text
-ensemble-service
-├── homr-service
-├── clarity-service
-└── audiveris-service
-```
+## 3. Current activation state
 
-Only the platform API is intended to receive external traffic. Engine services remain private inside the container network.
+The repository contains substantial runtime and comparison foundations, but the public data plane remains deliberately closed.
 
-## 3. Responsibilities
+### Enabled foundations
+
+- Private HOMR, Clarity-OMR, and Audiveris runtime adapters.
+- Private OMR Gateway health and orchestration contracts.
+- Canonical Score and Ensemble comparison/report foundations.
+- Immutable candidate/artifact lifecycle contracts.
+- Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
+- ST-OMR development foundations isolated from the production candidate path.
+
+### Deliberately disabled or not yet implemented
+
+- External upload.
+- Live Gateway engine dispatch/orchestration.
+- Production persistence.
+- Public publication.
+- Teacher Review production API.
+- Authenticated service-to-service dispatch.
+
+A disabled capability must not be interpreted as implemented merely because configuration limits or contracts already exist.
+
+## 4. Service responsibilities
+
+### omr-gateway
+
+- Own the future external OMR job boundary.
+- Enforce the Safe Intake Gate before any live engine dispatch is enabled.
+- Preserve server-owned job and artifact identity.
+- Dispatch only to authenticated private engine endpoints once that capability is enabled.
+- Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules.
+- Never bypass Candidate Safety v1 when accepting engine results.
 
 ### homr-service
 
-- Accept a validated internal job request.
-- Run one pinned HOMR version in an isolated runtime.
-- Return immutable candidate artifacts and diagnostics.
-- Never decide that its own output is the final approved score.
+- Run one pinned HOMR runtime in an isolated CPU-oriented environment.
+- Accept only server-staged safe paths and fixed command options.
+- Verify pinned model artifacts.
+- Treat generated MusicXML as untrusted and enforce Candidate Safety v1 before returning it as an accepted candidate.
+- Never approve or publish a score.
 
 ### clarity-service
 
-- Accept a validated internal job request.
-- Run one pinned Clarity-OMR and model version in an isolated runtime.
-- Return immutable candidate artifacts and diagnostics.
-- Never decide that its own output is the final approved score.
+- Run one pinned Clarity source/model combination in an isolated CPU environment.
+- Keep model/network behavior controlled and offline during normal runtime.
+- Sanitize only an allowed canonical MusicXML doctype before parsing.
+- Enforce Candidate Safety v1 size and structural-complexity budgets.
+- Never approve or publish a score.
+
+### audiveris-service
+
+- Run the pinned Audiveris runtime in an isolated non-root container.
+- Accept only fixed server-controlled command options and safe workspace paths.
+- Treat every produced `.mxl` archive as untrusted.
+- Enforce Candidate Safety v1 ZIP/member/container/XML limits before the artifact can cross the candidate boundary.
+- Preserve `.omr` project artifacts separately when present.
 
 ### ensemble-service
 
-- Own the external job lifecycle.
-- Dispatch work to enabled engines.
-- Preserve engine identity, version, timing, errors, and artifact references.
-- Normalize safe MusicXML into a common event representation.
+- Consume only candidates that have passed the applicable safety boundary.
+- Preserve engine identity, version, timing, errors, hashes, and artifact references.
+- Normalize safe MusicXML into the Canonical Score model.
 - Compare measure, pitch, rhythm, rest, chord, voice, staff, and TAB evidence.
-- Produce a review report with uncertainty and provenance.
-- Never silently overwrite an engine result.
+- Produce deterministic review evidence with provenance.
+- Never silently overwrite, merge, approve, or publish an engine result.
 
-## 4. Data flow
+### ST-OMR
 
-1. Receive PDF and create a job.
-2. Validate file type, size, page count, and document safety limits.
-3. Store the original input as an immutable artifact.
-4. Dispatch independent engine runs.
-5. Store each raw engine output separately.
-6. Validate every MusicXML output before parsing.
-7. Normalize candidates into a common musical event model.
-8. Compare candidates and detect disagreements or structural errors.
-9. Produce a review report.
-10. Wait for a separate teacher-review workflow to approve or reject a revision.
+ST-OMR remains an isolated development track. Its current synthetic/model-runtime contracts do not authorize user input, Gateway integration, MusicXML publication, or production dispatch. Before ST-OMR can join the candidate path it must satisfy the same intake/output trust boundaries and integration gates as other engines.
 
-## 5. Artifact policy
+## 5. Data flow and trust transitions
 
-The following artifacts must remain distinct:
+1. **Receive external document** — still disabled in the current runtime.
+2. **Safe Intake Gate** — verify signature/MIME, byte limits, page/pixel budgets, and path/filename safety.
+3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
+4. **Create durable job** — future persistence boundary; must support idempotency and restart recovery.
+5. **Dispatch private engine runs** — only after service-to-service authentication is implemented.
+6. **Preserve raw engine output** — raw artifacts remain distinct and immutable after sealing.
+7. **Candidate Safety Gate v1** — validate MXL/ZIP and MusicXML before canonical/ensemble parsing.
+8. **Canonicalize safe candidates** — retain provenance.
+9. **Compare candidates** — disagreements remain evidence, not automatic corrections.
+10. **Teacher review** — corrections create immutable revisions.
+11. **Approval barrier** — teacher identity/revision hash/unresolved blocking issues are checked.
+12. **Publication** — only the explicitly approved revision may become learner-facing output.
+
+## 6. Candidate Safety v1
+
+`contracts/candidate-safety-policy-v1.json` is the common engine-output safety policy for HOMR, Clarity, and Audiveris.
+
+The policy requires, among other controls:
+
+- bounded artifact and XML size;
+- bounded XML depth, element count, and attribute count;
+- rejection of entity declarations and unsafe doctypes;
+- expected MusicXML root types only;
+- `.mxl` entry-count and total-expanded-size limits;
+- compression-ratio limits;
+- rejection of encrypted entries, symlinks, duplicate members, absolute paths, and traversal paths;
+- a valid `META-INF/container.xml` with exactly one declared rootfile.
+
+Candidate validation is a **security gate**, not a musical-correctness judgment. A candidate that passes can still be musically wrong and must continue through canonical comparison and teacher review.
+
+## 7. Artifact policy
+
+Artifacts remain distinct by trust stage and purpose:
 
 ```text
-input.pdf
-homr/original.musicxml
-clarity/original.musicxml
-audiveris/original.musicxml        # future
+source/original.pdf
+engines/homr/raw.musicxml
+engines/clarity/raw.musicxml
+engines/audiveris/raw.mxl
+engines/audiveris/project.omr
+canonical/<candidate-id>.json
 ensemble/review-report.json
 revisions/revision-0001.musicxml
 approved/approved.musicxml
 ```
 
-Raw outputs are immutable. Corrections create new revisions.
+Raw output is never silently overwritten by a corrected revision. Sanitized/normalized derivatives must be separate logical artifacts with provenance back to the raw source.
 
-## 6. Common musical event model
+## 8. Job lifecycle
 
-The exact schema will be defined in a later package. It must preserve at least:
-
-- part, staff, voice, measure, and event position
-- pitch step, alteration, octave
-- written and effective duration
-- rest and chord membership
-- ties, tuplets, dots, backup, and forward timing
-- time signature and divisions
-- guitar string and fret when available
-- source engine and source artifact location
-
-No comparison algorithm should discard provenance.
-
-## 7. Job lifecycle
-
-Initial lifecycle vocabulary:
+Public lifecycle vocabulary remains:
 
 ```text
 received
@@ -121,26 +203,41 @@ failed
 expired
 ```
 
-Implementation may introduce internal substates, but public transitions must remain explicit and auditable.
+Implementation may introduce internal substates, but public transitions must remain explicit and auditable. No state may imply durable success before required artifacts are durably stored and verified.
 
-## 8. Integration boundary
+## 9. Integration boundary
 
-External applications integrate through a versioned API and do not access engine containers, storage paths, or model files directly. API authentication, rate limiting, idempotency, and cancellation semantics must be defined before staging exposure.
+External applications integrate through a versioned API and never access engine containers, local storage paths, or model files directly.
 
-## 9. Deployment environments
+Before staging exposure, the integration boundary must demonstrate:
 
-- Development: GitHub Codespaces
+- authentication and authorization;
+- rate limiting and abuse controls;
+- idempotency;
+- cancellation and retry semantics;
+- service-to-service authentication;
+- Safe Intake Gate enforcement;
+- durable job/artifact state;
+- Candidate Safety v1 enforcement;
+- safe error/logging behavior.
+
+## 10. Deployment environments
+
+- Development: GitHub Codespaces / local development
 - Automated verification: GitHub Actions
-- Integration environment: Coolify `staging`
-- Live environment: Coolify `production` after acceptance gates
+- Integration environment: Coolify staging
+- Production: blocked until explicit production-readiness acceptance gates pass
 
-Render remains outside this repository and may temporarily continue as an independent Audiveris reference environment.
+Engine containers remain private in all environments. Staging availability does not itself authorize public upload or production publication.
 
-## 10. Phase 0 non-goals
+## 11. Non-goals of the current security slice
 
-- Installing HOMR or Clarity-OMR
-- Downloading model weights
-- Running production OMR jobs
-- Automatically merging MusicXML candidates
-- Publishing results to learners
-- Connecting the existing application
+This architecture update does **not** enable:
+
+- public uploads;
+- live Gateway dispatch;
+- automatic candidate ranking/merging/correction;
+- production storage;
+- teacher approval APIs;
+- learner-facing publication;
+- ST-OMR production integration.

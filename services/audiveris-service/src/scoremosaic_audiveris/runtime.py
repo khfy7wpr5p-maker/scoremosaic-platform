@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 
+from .candidate_safety import CandidateSafetyError, validate_mxl_file
 from .config import ServiceConfig
 
 _SUPPORTED_SUFFIXES = {".pdf", ".jpg", ".jpeg", ".png"}
@@ -253,4 +254,13 @@ def transcribe_file(
     omr = tuple(sorted(output_root.rglob("*.omr")))
     if not musicxml:
         raise RuntimeExecutionError(f"audiveris_musicxml_not_created:{diagnostic}")
+
+    for artifact in musicxml:
+        try:
+            validate_mxl_file(artifact)
+        except CandidateSafetyError as exc:
+            raise RuntimeExecutionError(
+                f"audiveris_candidate_unsafe:{exc.code}"
+            ) from exc
+
     return TranscriptionResult(completed.returncode, musicxml, omr, diagnostic)
