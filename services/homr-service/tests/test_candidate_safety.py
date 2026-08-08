@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 import sys
 import unittest
 import zipfile
@@ -35,6 +36,14 @@ class CandidateSafetyTests(unittest.TestCase):
         result = validate_musicxml_bytes(b"<score-partwise version='4.0'/>")
         self.assertEqual(result.root_type, "score-partwise")
         self.assertEqual(result.container_format, "xml")
+
+    def test_musicxml_validation_does_not_build_element_tree(self) -> None:
+        with patch(
+            "scoremosaic_homr.candidate_safety.ET.fromstring",
+            side_effect=AssertionError("full XML tree parse must not run"),
+        ):
+            result = validate_musicxml_bytes(b"<score-partwise><part/></score-partwise>")
+        self.assertEqual(result.root_type, "score-partwise")
 
     def test_entity_declaration_is_rejected(self) -> None:
         document = b"<!DOCTYPE score-partwise [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><score-partwise>&x;</score-partwise>"
