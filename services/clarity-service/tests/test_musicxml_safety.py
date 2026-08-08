@@ -78,6 +78,23 @@ class MusicXmlSafetyTests(unittest.TestCase):
             self.assertIn(b"<score-partwise", rewritten)
             self.assertFalse(path.with_name(".result.musicxml.sanitized").exists())
 
+    def test_validator_rejects_excessive_xml_depth(self) -> None:
+        document = (
+            b"<score-partwise>"
+            + (b"<x>" * 64)
+            + (b"</x>" * 64)
+            + b"</score-partwise>"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "result.musicxml"
+            path.write_bytes(document)
+
+            with self.assertRaisesRegex(
+                RuntimeExecutionError,
+                "clarity_candidate_unsafe:musicxml_depth_exceeded",
+            ):
+                _validate_musicxml(path)
+
 
 if __name__ == "__main__":
     unittest.main()
