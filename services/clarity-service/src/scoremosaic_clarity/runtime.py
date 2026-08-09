@@ -11,7 +11,13 @@ import os
 import re
 import subprocess
 
-from .candidate_safety import CandidateSafetyError, validate_musicxml_bytes
+from .candidate_safety import (
+    CandidateSafetyError,
+    CandidateSafetyHandoff,
+    CandidateSafetyResult,
+    validate_musicxml_bytes,
+    verify_musicxml_handoff,
+)
 from .config import ServiceConfig
 
 _MAX_DIAGNOSTIC_CHARS = 16_384
@@ -72,6 +78,7 @@ class TranscriptionResult:
     return_code: int
     musicxml_artifacts: tuple[Path, ...]
     diagnostic: str
+    candidate_handoffs: tuple[CandidateSafetyHandoff, ...] = ()
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -405,26 +412,7 @@ def _sanitize_musicxml_document(document: bytes) -> bytes:
     return sanitized
 
 
-def _replace_musicxml_atomically(path: Path, document: bytes) -> None:
-    temporary = path.with_name(f".{path.name}.sanitized")
-    if temporary.exists() or temporary.is_symlink():
-        raise RuntimeExecutionError("clarity_musicxml_sanitize_target_exists")
-    try:
-        with temporary.open("xb") as stream:
-            stream.write(document)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    except OSError as exc:
-        raise RuntimeExecutionError("clarity_musicxml_sanitize_failed") from exc
-    finally:
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-
-def _validate_musicxml(path: Path) -> None:
+def _validate_musicxml(path: Path) -> CandidateSafetyResult:
     if path.is_symlink() or not path.is_file():
         raise RuntimeExecutionError("clarity_musicxml_not_created")
     size = path.stat().st_size
@@ -435,18 +423,15 @@ def _validate_musicxml(path: Path) -> None:
     except OSError as exc:
         raise RuntimeExecutionError("clarity_musicxml_read_failed") from exc
 
-    sanitized = _sanitize_musicxml_document(document)
+    _sanitize_musicxml_document(document)
     try:
-        validate_musicxml_bytes(sanitized)
+        return validate_musicxml_bytes(document)
     except CandidateSafetyError as exc:
         if exc.code == "musicxml_invalid_xml":
             raise RuntimeExecutionError("clarity_musicxml_invalid_xml") from exc
         if exc.code == "musicxml_invalid_root":
             raise RuntimeExecutionError("clarity_musicxml_invalid_root") from exc
         raise RuntimeExecutionError(f"clarity_candidate_unsafe:{exc.code}") from exc
-
-    if sanitized != document:
-        _replace_musicxml_atomically(path, sanitized)
 
 
 def transcribe_file(
@@ -486,5 +471,14 @@ def transcribe_file(
             f"clarity_transcription_nonzero_exit:{completed.returncode}:{diagnostic}"
         )
 
-    _validate_musicxml(output_path)
-    return TranscriptionResult(completed.returncode, (output_path,), diagnostic)
+    evidence = _validate_musicxml(output_path)
+    try:
+        handoff = verify_musicxml_handoff(output_path, evidence)
+    except CandidateSafetyError as exc:
+        raise RuntimeExecutionError(f"clarity_candidate_unsafe:{exc.code}") from exc
+    return TranscriptionResult(
+        completed.returncode,
+        (output_path,),
+        diagnostic,
+        (handoff,),
+    )

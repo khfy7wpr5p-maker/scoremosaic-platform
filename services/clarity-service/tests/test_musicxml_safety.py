@@ -63,7 +63,7 @@ class MusicXmlSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeExecutionError, "unsafe_declaration"):
             _sanitize_musicxml_document(document)
 
-    def test_validator_rewrites_only_sanitized_musicxml(self) -> None:
+    def test_validator_preserves_raw_musicxml_bytes(self) -> None:
         document = b"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0"/>
@@ -74,9 +74,7 @@ class MusicXmlSafetyTests(unittest.TestCase):
 
             _validate_musicxml(path)
 
-            rewritten = path.read_bytes()
-            self.assertNotIn(b"<!DOCTYPE", rewritten.upper())
-            self.assertIn(b"<score-partwise", rewritten)
+            self.assertEqual(path.read_bytes(), document)
             self.assertFalse(path.with_name(".result.musicxml.sanitized").exists())
 
     def test_validator_does_not_parse_element_tree_before_candidate_gate(self) -> None:
