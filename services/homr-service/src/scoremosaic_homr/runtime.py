@@ -10,7 +10,12 @@ from typing import Callable, Iterable
 import os
 import subprocess
 
-from .candidate_safety import CandidateSafetyError, validate_musicxml_file
+from .candidate_safety import (
+    CandidateSafetyError,
+    CandidateSafetyHandoff,
+    validate_musicxml_file,
+    verify_musicxml_handoff,
+)
 from .config import ServiceConfig
 
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png"}
@@ -57,6 +62,7 @@ class TranscriptionResult:
     return_code: int
     musicxml_artifacts: tuple[Path, ...]
     diagnostic: str
+    candidate_handoffs: tuple[CandidateSafetyHandoff, ...] = ()
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -312,8 +318,14 @@ def transcribe_file(
         raise RuntimeExecutionError(f"homr_musicxml_not_created:{diagnostic}")
 
     try:
-        validate_musicxml_file(expected_output)
+        evidence = validate_musicxml_file(expected_output)
+        handoff = verify_musicxml_handoff(expected_output, evidence)
     except CandidateSafetyError as exc:
         raise RuntimeExecutionError(f"homr_candidate_unsafe:{exc.code}") from exc
 
-    return TranscriptionResult(completed.returncode, (expected_output,), diagnostic)
+    return TranscriptionResult(
+        completed.returncode,
+        (expected_output,),
+        diagnostic,
+        (handoff,),
+    )

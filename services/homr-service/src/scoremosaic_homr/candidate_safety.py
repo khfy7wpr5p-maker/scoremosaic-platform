@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from io import BytesIO
 from pathlib import Path, PurePosixPath
+from typing import Callable
 import re
 import stat
 import xml.etree.ElementTree as ET
 from xml.parsers import expat
 import zipfile
+
+POLICY_VERSION = "candidate-safety-v1"
 
 MAX_ARTIFACT_BYTES = 128 * 1024 * 1024
 MAX_XML_BYTES = 64 * 1024 * 1024
@@ -53,6 +57,15 @@ class CandidateSafetyResult:
     container_format: str
     root_type: str
     xml_bytes: int
+    policy_version: str = POLICY_VERSION
+    raw_artifact_sha256: str = ""
+    accepted_content_sha256: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateSafetyHandoff:
+    artifact: Path
+    evidence: CandidateSafetyResult
 
 
 def _fail(code: str) -> None:
@@ -223,9 +236,17 @@ def _validate_musicxml_stream(document: bytes) -> str:
 def validate_musicxml_bytes(document: bytes) -> CandidateSafetyResult:
     """Validate bounded MusicXML without resolving DTDs or external entities."""
 
+    raw_artifact_sha256 = sha256(document).hexdigest()
     sanitized = _sanitize_musicxml(document)
     root_type = _validate_musicxml_stream(sanitized)
-    return CandidateSafetyResult("xml", root_type, len(sanitized))
+    return CandidateSafetyResult(
+        "xml",
+        root_type,
+        len(sanitized),
+        POLICY_VERSION,
+        raw_artifact_sha256,
+        sha256(sanitized).hexdigest(),
+    )
 
 
 def validate_musicxml_file(path: Path) -> CandidateSafetyResult:
@@ -239,6 +260,7 @@ def validate_mxl_file(path: Path) -> CandidateSafetyResult:
     """Validate an MXL archive and its single declared MusicXML rootfile."""
 
     document = _read_bounded_file(path, MAX_ARTIFACT_BYTES)
+    raw_artifact_sha256 = sha256(document).hexdigest()
     try:
         archive = zipfile.ZipFile(BytesIO(document))
     except zipfile.BadZipFile as exc:
@@ -275,4 +297,40 @@ def validate_mxl_file(path: Path) -> CandidateSafetyResult:
         musicxml = _read_zip_member(archive, root_info, MAX_XML_BYTES)
 
     result = validate_musicxml_bytes(musicxml)
-    return CandidateSafetyResult("mxl", result.root_type, result.xml_bytes)
+    return CandidateSafetyResult(
+        "mxl",
+        result.root_type,
+        result.xml_bytes,
+        POLICY_VERSION,
+        raw_artifact_sha256,
+        result.accepted_content_sha256,
+    )
+
+
+def _verify_candidate_handoff(
+    path: Path,
+    evidence: CandidateSafetyResult,
+    validator: Callable[[Path], CandidateSafetyResult],
+) -> CandidateSafetyHandoff:
+    if evidence.policy_version != POLICY_VERSION:
+        _fail("candidate_handoff_policy_version_mismatch")
+    current = validator(path)
+    if current != evidence:
+        _fail("candidate_handoff_evidence_mismatch")
+    return CandidateSafetyHandoff(path, evidence)
+
+
+def verify_musicxml_handoff(
+    path: Path, evidence: CandidateSafetyResult
+) -> CandidateSafetyHandoff:
+    """Revalidate MusicXML immediately before handing off its bound evidence."""
+
+    return _verify_candidate_handoff(path, evidence, validate_musicxml_file)
+
+
+def verify_mxl_handoff(
+    path: Path, evidence: CandidateSafetyResult
+) -> CandidateSafetyHandoff:
+    """Revalidate MXL immediately before handing off its bound evidence."""
+
+    return _verify_candidate_handoff(path, evidence, validate_mxl_file)

@@ -79,6 +79,8 @@ def main() -> None:
         raise SystemExit("candidate safety implementations have diverged")
 
     module = runpy.run_path(str(MODULE_PATHS[0]))
+    if module.get("POLICY_VERSION") != policy.get("contractVersion"):
+        raise SystemExit("candidate safety policy version mismatch")
     limits = policy.get("limits", {})
     for contract_name, constant_name in EXPECTED_CONSTANTS.items():
         actual = module.get(constant_name)
