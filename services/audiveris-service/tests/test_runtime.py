@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-import signal
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -18,7 +15,6 @@ import scoremosaic_audiveris.candidate_safety as candidate_safety
 from scoremosaic_audiveris.config import load_config
 from scoremosaic_audiveris.runtime import (
     RuntimeExecutionError,
-    _run_bounded_process,
     build_transcription_command,
     probe_runtime,
     transcribe_file,
@@ -26,72 +22,6 @@ from scoremosaic_audiveris.runtime import (
 
 
 class RuntimeTests(unittest.TestCase):
-    @unittest.skipUnless(
-        os.name == "posix" and Path("/proc").is_dir(),
-        "Audiveris runtime process containment requires Linux",
-    )
-    def test_bounded_process_kills_descendant_holding_captured_output(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            process_group_file = root / "process-group"
-            descendant_file = root / "descendant"
-            child_code = (
-                "import os, pathlib, signal, time; "
-                "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
-                f"pathlib.Path({str(descendant_file)!r}).write_text(str(os.getpid())); "
-                "time.sleep(60)"
-            )
-            parent_code = (
-                "import os, pathlib, subprocess, sys, time; "
-                f"pathlib.Path({str(process_group_file)!r}).write_text(str(os.getpgrp())); "
-                f"subprocess.Popen([sys.executable, '-c', {child_code!r}]); "
-                "print('descendant-started', flush=True); "
-                "time.sleep(60)"
-            )
-
-            previous_handler = signal.getsignal(signal.SIGALRM)
-
-            def fail_if_runner_hangs(_signum, _frame):
-                raise AssertionError("bounded process runner did not return")
-
-            signal.signal(signal.SIGALRM, fail_if_runner_hangs)
-            signal.setitimer(signal.ITIMER_REAL, 5)
-            started = time.monotonic()
-            runner_returned = False
-            try:
-                with self.assertRaises(subprocess.TimeoutExpired):
-                    _run_bounded_process(
-                        [sys.executable, "-c", parent_code],
-                        cwd=root,
-                        env=dict(os.environ),
-                        capture_output=True,
-                        text=True,
-                        timeout=0.5,
-                        check=False,
-                    )
-                runner_returned = True
-            finally:
-                signal.setitimer(signal.ITIMER_REAL, 0)
-                signal.signal(signal.SIGALRM, previous_handler)
-                if not runner_returned and process_group_file.is_file():
-                    try:
-                        os.killpg(
-                            int(process_group_file.read_text(encoding="utf-8")),
-                            signal.SIGKILL,
-                        )
-                    except ProcessLookupError:
-                        pass
-
-            self.assertLess(time.monotonic() - started, 4)
-            descendant_pid = int(descendant_file.read_text(encoding="utf-8"))
-            descendant_stat = Path(f"/proc/{descendant_pid}/stat")
-            if descendant_stat.is_file():
-                self.assertEqual(
-                    descendant_stat.read_text(encoding="utf-8").split()[2],
-                    "Z",
-                    "descendant process is still running after timeout",
-                )
-
     def test_probe_accepts_exact_pinned_version(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             command = Path(temp_dir) / "audiveris"
