@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from io import BytesIO
 import json
+import resource
 import sys
 
 from pypdf import PdfReader
@@ -17,6 +18,7 @@ from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
 
 _ABSOLUTE_MAX_REQUEST_BYTES = 100 * 1024 * 1024
 _ABSOLUTE_MAX_PDF_PAGES = 200
+_PDF_WORKER_MAX_ADDRESS_SPACE_BYTES = 256 * 1024 * 1024
 _PAGE_GRAPH_ROOT_KEYS = ("/Contents", "/Resources", "/Annots")
 _PAGE_GRAPH_BACK_REFERENCE_KEYS = frozenset({"/Parent", "/P"})
 
@@ -24,6 +26,20 @@ _PAGE_GRAPH_BACK_REFERENCE_KEYS = frozenset({"/Parent", "/P"})
 def _emit(payload: dict[str, object]) -> int:
     sys.stdout.write(json.dumps(payload, sort_keys=True, separators=(",", ":")))
     return 0
+
+
+def _apply_address_space_limit() -> bool:
+    try:
+        resource.setrlimit(
+            resource.RLIMIT_AS,
+            (
+                _PDF_WORKER_MAX_ADDRESS_SPACE_BYTES,
+                _PDF_WORKER_MAX_ADDRESS_SPACE_BYTES,
+            ),
+        )
+    except (OSError, ValueError):
+        return False
+    return True
 
 
 def _validate_referenced_object_graph(
@@ -75,8 +91,13 @@ def main() -> int:
         return 2
     if not 1 <= max_pages <= _ABSOLUTE_MAX_PDF_PAGES:
         return 2
+    if not _apply_address_space_limit():
+        return 2
 
-    data = sys.stdin.buffer.read(_ABSOLUTE_MAX_REQUEST_BYTES + 1)
+    try:
+        data = sys.stdin.buffer.read(_ABSOLUTE_MAX_REQUEST_BYTES + 1)
+    except MemoryError:
+        return _emit({"status": "error", "code": "pdf_structure_invalid"})
     if not data or len(data) > _ABSOLUTE_MAX_REQUEST_BYTES:
         return _emit({"status": "error", "code": "pdf_structure_invalid"})
 
