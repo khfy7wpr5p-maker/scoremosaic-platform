@@ -102,6 +102,33 @@ def _build_pdf_with_widget_missing_parent_reference() -> bytes:
     )
 
 
+def _build_pdf_with_missing_page_parent_reference() -> bytes:
+    return _serialize_pdf_objects(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            (
+                b"<< /Type /Page /Parent 99 0 R /MediaBox [0 0 612 792] "
+                b"/Resources << >> >>"
+            ),
+        ]
+    )
+
+
+def _build_pdf_with_stream_resources() -> bytes:
+    return _serialize_pdf_objects(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            (
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                b"/Resources 4 0 R >>"
+            ),
+            b"<< /Length 0 >>\nstream\n\nendstream",
+        ]
+    )
+
+
 def _build_annotated_pdf_with_page_backrefs(page_count: int) -> bytes:
     page_start = 3
     annotation_start = page_start + page_count
@@ -204,6 +231,22 @@ class PdfPageBudgetTests(unittest.TestCase):
         with self.assertRaises(SafeIntakePdfError) as raised:
             inspect_pdf_pages(
                 _build_pdf_with_widget_missing_parent_reference(),
+                max_pages=40,
+            )
+        self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
+    def test_rejects_missing_page_parent_reference_fail_closed(self) -> None:
+        with self.assertRaises(SafeIntakePdfError) as raised:
+            inspect_pdf_pages(
+                _build_pdf_with_missing_page_parent_reference(),
+                max_pages=40,
+            )
+        self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
+    def test_rejects_stream_used_as_resources_dictionary_fail_closed(self) -> None:
+        with self.assertRaises(SafeIntakePdfError) as raised:
+            inspect_pdf_pages(
+                _build_pdf_with_stream_resources(),
                 max_pages=40,
             )
         self.assertEqual(raised.exception.code, "pdf_structure_invalid")
