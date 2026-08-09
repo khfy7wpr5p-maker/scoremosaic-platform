@@ -152,6 +152,14 @@ class PdfPageBudgetTests(unittest.TestCase):
             inspect_pdf_pages(b"\x89PNG\r\n\x1a\nrest", max_pages=40)
         self.assertEqual(raised.exception.code, "pdf_structure_invalid")
 
+    def test_rejects_mutable_pdf_buffers_fail_closed(self) -> None:
+        mutable_pdf = bytearray(_build_pdf(1))
+        for sample in (mutable_pdf, memoryview(mutable_pdf)):
+            with self.subTest(sample_type=type(sample).__name__):
+                with self.assertRaises(SafeIntakePdfError) as raised:
+                    inspect_pdf_pages(sample, max_pages=40)  # type: ignore[arg-type]
+                self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
     def test_maps_inspector_timeout_to_stable_fail_closed_category(self) -> None:
         with patch(
             "scoremosaic_gateway.safe_intake.subprocess.run",
