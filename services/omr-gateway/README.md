@@ -15,6 +15,7 @@ Implemented now:
 - `GET /health` returning process health and disabled capabilities
 - `GET /ready` returning HTTP 503 while orchestration remains disabled
 - bounded readiness probes for the three private engine `/ready` endpoints
+- isolated probe results so one unavailable engine does not hide the others
 - declared future PDF, JPEG (`.jpg`/`.jpeg`), and PNG input capability
 - Safe Intake B.1 bounded signature classification
 - Safe Intake B.2 declared MIME/signature consistency
@@ -231,3 +232,31 @@ python -m pip install pypdf==6.14.2
 python -m compileall -q services/omr-gateway/src
 python -m unittest discover -s services/omr-gateway/tests -v
 ```
+
+Docker validation is performed in GitHub Actions and later in Coolify staging.
+
+## Required gates before real orchestration and storage
+
+- complete Safe Intake Gate enforcement: B.1-B.4 are implemented foundations; B.5 decoded image/pixel limits, B.6 filename/path safety, hostile-input convergence, and the integrated fail-closed intake decision remain required
+- authenticated service-to-service requests
+- concrete engine adapter request/response contracts
+- server-generated job, run, candidate, and artifact identifiers
+- queue, timeout enforcement, cancellation, cleanup, and restart recovery
+- content-addressed immutable source and candidate artifact storage
+- safe MusicXML validation
+- retention, cleanup, and recovery rules
+- real engine adapters with pinned versions
+- no automatic teacher approval or publication
+
+## Explicit non-goals
+
+- public API or domain
+- real upload or conversion
+- live network dispatch or orchestration execution
+- database, queue, or persistent storage
+- runtime artifact mutation or overwrite
+- automatic Ensemble comparison invocation
+- engine ranking, preferred candidate, or winner selection
+- automatic MusicXML merge or correction
+- user editor, teacher approval, or note tracking
+- ST-OMR implementation or integration
