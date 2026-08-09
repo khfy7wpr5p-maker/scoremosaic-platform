@@ -102,6 +102,39 @@ def _build_pdf_with_widget_missing_parent_reference() -> bytes:
     )
 
 
+def _build_annotated_pdf_with_page_backrefs(page_count: int) -> bytes:
+    page_start = 3
+    annotation_start = page_start + page_count
+    kids = " ".join(
+        f"{page_start + index} 0 R"
+        for index in range(page_count)
+    )
+    objects: list[bytes] = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        f"<< /Type /Pages /Kids [{kids}] /Count {page_count} >>".encode("ascii"),
+    ]
+    for index in range(page_count):
+        annotation_object = annotation_start + index
+        objects.append(
+            (
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                b"/Resources << >> /Annots ["
+                + f"{annotation_object} 0 R".encode("ascii")
+                + b"] >>"
+            )
+        )
+    for index in range(page_count):
+        page_object = page_start + index
+        objects.append(
+            (
+                b"<< /Type /Annot /Subtype /Text /Rect [0 0 10 10] /P "
+                + f"{page_object} 0 R".encode("ascii")
+                + b" >>"
+            )
+        )
+    return _serialize_pdf_objects(objects)
+
+
 def _build_encrypted_pdf() -> bytes:
     from pypdf import PdfWriter
 
@@ -175,6 +208,29 @@ class PdfPageBudgetTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "pdf_structure_invalid")
 
+    def test_reuses_worker_visited_set_across_page_validations(self) -> None:
+        from pypdf import PdfReader
+
+        reader = PdfReader(
+            BytesIO(_build_annotated_pdf_with_page_backrefs(2)),
+            strict=True,
+        )
+        pages = list(reader.pages)
+        seen_indirect_objects: set[tuple[int, int]] = set()
+
+        pdf_inspector_worker._validate_page_references(
+            pages[0],
+            seen_indirect_objects,
+        )
+        first_seen = set(seen_indirect_objects)
+        self.assertTrue(first_seen)
+
+        pdf_inspector_worker._validate_page_references(
+            pages[1],
+            seen_indirect_objects,
+        )
+        self.assertEqual(seen_indirect_objects, first_seen)
+
     def test_rejects_encrypted_pdf_fail_closed(self) -> None:
         with self.assertRaises(SafeIntakePdfError) as raised:
             inspect_pdf_pages(_build_encrypted_pdf(), max_pages=40)
@@ -201,6 +257,15 @@ class PdfPageBudgetTests(unittest.TestCase):
             with self.assertRaises(SafeIntakePdfError) as raised:
                 inspect_pdf_pages(_build_pdf(1), max_pages=40)
         self.assertEqual(raised.exception.code, "pdf_inspection_timeout")
+
+    def test_maps_inspector_launch_oserror_to_stable_fail_closed_category(self) -> None:
+        with patch(
+            "scoremosaic_gateway.safe_intake.subprocess.run",
+            side_effect=OSError("worker launch unavailable"),
+        ):
+            with self.assertRaises(SafeIntakePdfError) as raised:
+                inspect_pdf_pages(_build_pdf(1), max_pages=40)
+        self.assertEqual(raised.exception.code, "pdf_structure_invalid")
 
     def test_forwards_immutable_pdf_bytes_without_parent_copy(self) -> None:
         pdf_bytes = _build_pdf(1)
