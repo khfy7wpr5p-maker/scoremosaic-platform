@@ -73,7 +73,7 @@ A successful engine process does **not** make its output trusted. HOMR, Clarity,
 - Canonical Score, Ensemble comparator/report, and fixed evaluation foundations.
 - Candidate Safety v1 for HOMR, Clarity, and Audiveris engine outputs.
 
-The B.4 PDF inspector parses only structural/page evidence. It does not render pages, extract text/images/attachments, execute embedded content, or enable upload. Encrypted PDFs are rejected in the current Safe Intake v1 slice.
+The B.4 PDF inspector parses only structural/page evidence. It does not render pages, extract text/images/attachments, execute embedded content, or enable upload. Encrypted PDFs are rejected in the current Safe Intake v1 slice. Immutable PDF `bytes` are passed to the helper without an additional parent-side payload copy; the Linux helper applies a 256 MiB address-space limit and the private Coolify staging Gateway is budgeted at 512 MiB.
 
 ## Activation gates still required
 
