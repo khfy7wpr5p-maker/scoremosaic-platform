@@ -1,14 +1,16 @@
-"""Pure Safe Intake v1 format policy and bounded signature matching.
+"""Pure Safe Intake v1 format policy and bounded signature/MIME matching.
 
 This module does not accept uploads or declare a document safe for processing.
-It only identifies an allowlisted format from a small caller-supplied header.
-Later Gate B stages must still verify declared MIME, byte/page/pixel budgets,
-filename safety, and full document structure before producing an intake decision.
+It identifies an allowlisted format from a small caller-supplied header and can
+verify that a bounded declared MIME value matches that signature classification.
+Later Gate B stages must still verify byte/page/pixel budgets, filename safety,
+and full document structure before producing an intake decision.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 
 SAFE_INTAKE_POLICY_VERSION = "1.0"
@@ -16,6 +18,14 @@ SAFE_INTAKE_POLICY_VERSION = "1.0"
 
 class SafeIntakeSignatureError(ValueError):
     """Raised when a header cannot match one allowlisted v1 signature."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
+class SafeIntakeMediaTypeError(ValueError):
+    """Raised when declared MIME evidence cannot be safely accepted."""
 
     def __init__(self, code: str) -> None:
         self.code = code
@@ -86,6 +96,13 @@ SAFE_INTAKE_MEDIA_TYPES = tuple(
     for format_policy in SAFE_INTAKE_POLICY_V1.formats
 )
 
+_DECLARED_MEDIA_TYPE_MAX_CHARS = 64
+_MEDIA_TYPE_TOKEN = r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+"
+_DECLARED_MEDIA_TYPE_PATTERN = re.compile(
+    rf"{_MEDIA_TYPE_TOKEN}/{_MEDIA_TYPE_TOKEN}\Z",
+    re.ASCII,
+)
+
 
 def _bounded_header(
     header: bytes | bytearray | memoryview,
@@ -98,6 +115,27 @@ def _bounded_header(
         raise TypeError("header must be a one-dimensional byte buffer")
 
     return bytes(view[:SAFE_INTAKE_POLICY_V1.signature_probe_bytes])
+
+
+def _normalize_declared_media_type(declared_media_type: str | None) -> str:
+    if declared_media_type is None or declared_media_type == "":
+        raise SafeIntakeMediaTypeError("media_type_missing")
+
+    if not isinstance(declared_media_type, str):
+        raise SafeIntakeMediaTypeError("media_type_invalid")
+
+    if len(declared_media_type) > _DECLARED_MEDIA_TYPE_MAX_CHARS:
+        raise SafeIntakeMediaTypeError("media_type_invalid")
+
+    try:
+        declared_media_type.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise SafeIntakeMediaTypeError("media_type_invalid") from exc
+
+    if _DECLARED_MEDIA_TYPE_PATTERN.fullmatch(declared_media_type) is None:
+        raise SafeIntakeMediaTypeError("media_type_invalid")
+
+    return declared_media_type.lower()
 
 
 def match_input_signature(
@@ -125,3 +163,21 @@ def match_input_signature(
         raise SafeIntakeSignatureError("truncated_signature")
 
     raise SafeIntakeSignatureError("unsupported_signature")
+
+
+def verify_signature_media_type(
+    header: bytes | bytearray | memoryview,
+    declared_media_type: str | None,
+) -> SignatureMatch:
+    """Bind declared MIME evidence to a fresh match of the supplied header bytes."""
+
+    normalized_media_type = _normalize_declared_media_type(declared_media_type)
+    signature_match = match_input_signature(header)
+
+    if normalized_media_type not in SAFE_INTAKE_MEDIA_TYPES:
+        raise SafeIntakeMediaTypeError("media_type_unsupported")
+
+    if normalized_media_type != signature_match.media_type:
+        raise SafeIntakeMediaTypeError("signature_media_type_mismatch")
+
+    return signature_match

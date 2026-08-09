@@ -34,10 +34,12 @@ from .safe_intake import (
     SAFE_INTAKE_POLICY_V1,
     SAFE_INTAKE_POLICY_VERSION,
     SafeIntakeFormat,
+    SafeIntakeMediaTypeError,
     SafeIntakePolicy,
     SafeIntakeSignatureError,
     SignatureMatch,
     match_input_signature,
+    verify_signature_media_type,
 )
 
 __all__ = [
@@ -64,6 +66,7 @@ __all__ = [
     "OrchestrationContractError",
     "SourceArtifactPlan",
     "SafeIntakeFormat",
+    "SafeIntakeMediaTypeError",
     "SafeIntakePolicy",
     "SafeIntakeSignatureError",
     "SignatureMatch",
@@ -74,6 +77,7 @@ __all__ = [
     "transition_candidate",
     "verify_artifact_lifecycle",
     "verify_orchestration_plan",
+    "verify_signature_media_type",
     "__version__",
 ]
 

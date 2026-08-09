@@ -14,8 +14,11 @@ from scoremosaic_gateway.orchestration import ACCEPTED_SOURCE_MEDIA_TYPES
 from scoremosaic_gateway.safe_intake import (
     SAFE_INTAKE_MEDIA_TYPES,
     SAFE_INTAKE_POLICY_V1,
+    SafeIntakeMediaTypeError,
     SafeIntakeSignatureError,
+    SignatureMatch,
     match_input_signature,
+    verify_signature_media_type,
 )
 
 
@@ -119,6 +122,96 @@ class FileSignatureTests(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             match_input_signature(memoryview(bytearray(16)).cast("I"))
+
+
+class DeclaredMediaTypeTests(unittest.TestCase):
+    def test_accepts_supported_declared_media_type_when_signature_matches(self) -> None:
+        examples = (
+            (b"%PDF-1.7\nrest", "application/pdf", "pdf"),
+            (b"\xff\xd8\xff\xe0rest", "IMAGE/JPEG", "jpeg"),
+            (b"\x89PNG\r\n\x1a\nrest", "image/png", "png"),
+        )
+
+        for header, declared_media_type, expected_format in examples:
+            with self.subTest(expected_format):
+                verified = verify_signature_media_type(
+                    header,
+                    declared_media_type,
+                )
+                self.assertEqual(verified.format_id, expected_format)
+
+    def test_rejects_missing_declared_media_type_fail_closed(self) -> None:
+        header = b"%PDF-1.7\nrest"
+        for declared_media_type in (None, ""):
+            with self.subTest(declared_media_type=declared_media_type):
+                with self.assertRaises(SafeIntakeMediaTypeError) as raised:
+                    verify_signature_media_type(
+                        header,
+                        declared_media_type,
+                    )
+                self.assertEqual(raised.exception.code, "media_type_missing")
+
+    def test_rejects_invalid_declared_media_type_fail_closed(self) -> None:
+        header = b"%PDF-1.7\nrest"
+        invalid = (
+            " application/pdf",
+            "application/pdf ",
+            "application/pdf; charset=binary",
+            "application/pdf,image/png",
+            "application//pdf",
+            "application",
+            "application/",
+            "application/p\x00df",
+            "应用/pdf",
+            "a/" + ("b" * 80),
+        )
+
+        for declared_media_type in invalid:
+            with self.subTest(declared_media_type=declared_media_type):
+                with self.assertRaises(SafeIntakeMediaTypeError) as raised:
+                    verify_signature_media_type(
+                        header,
+                        declared_media_type,
+                    )
+                self.assertEqual(raised.exception.code, "media_type_invalid")
+
+    def test_rejects_unsupported_declared_media_type_fail_closed(self) -> None:
+        header = b"%PDF-1.7\nrest"
+        for declared_media_type in ("application/octet-stream", "image/gif"):
+            with self.subTest(declared_media_type=declared_media_type):
+                with self.assertRaises(SafeIntakeMediaTypeError) as raised:
+                    verify_signature_media_type(
+                        header,
+                        declared_media_type,
+                    )
+                self.assertEqual(raised.exception.code, "media_type_unsupported")
+
+    def test_rejects_signature_media_type_mismatch_fail_closed(self) -> None:
+        header = b"%PDF-1.7\nrest"
+        for declared_media_type in ("image/jpeg", "image/png"):
+            with self.subTest(declared_media_type=declared_media_type):
+                with self.assertRaises(SafeIntakeMediaTypeError) as raised:
+                    verify_signature_media_type(
+                        header,
+                        declared_media_type,
+                    )
+                self.assertEqual(
+                    raised.exception.code,
+                    "signature_media_type_mismatch",
+                )
+
+    def test_rejects_fabricated_signature_match_as_byte_evidence(self) -> None:
+        fabricated = SignatureMatch(
+            policy_version="1.0",
+            format_id="png",
+            media_type="image/png",
+        )
+
+        with self.assertRaises(TypeError):
+            verify_signature_media_type(
+                fabricated,  # type: ignore[arg-type]
+                "image/png",
+            )
 
 
 if __name__ == "__main__":
