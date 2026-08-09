@@ -33,7 +33,7 @@ Implemented now:
 - non-root, read-only container foundation
 - no public port or direct browser route
 
-B.4 derives page evidence from the exact bounded PDF bytes rather than caller-supplied page metadata. The helper uses `pypdf` with `strict=True`, rejects encrypted PDFs in Safe Intake v1, has a bounded inspection timeout, suppresses raw parser diagnostics, and returns only a bounded stable result. It does not render pages, extract text/images/attachments, follow links, execute embedded content, persist input bytes, or enable upload.
+B.4 derives page evidence from the exact bounded PDF bytes rather than caller-supplied page metadata. The helper uses `pypdf` with `strict=True`, rejects encrypted PDFs in Safe Intake v1, validates referenced page objects, has a bounded inspection timeout, suppresses raw parser diagnostics, and returns only a bounded stable result. Immutable `bytes` are forwarded to the helper without creating a second parent-side payload copy. On the Linux container boundary the worker applies a 256 MiB address-space limit before reading untrusted PDF bytes, while the private Coolify staging Gateway container is budgeted at 512 MiB. It does not render pages, extract text/images/attachments, follow links, execute embedded content, persist input bytes, or enable upload.
 
 ## Current endpoints
 
@@ -221,7 +221,7 @@ The engine addresses are deployment configuration, never orchestration-plan, lif
 
 ## Dependency boundary
 
-Gate B.4 introduces the Gateway's first runtime parser dependency: `pypdf==6.14.2`. It is exact-pinned in project metadata, CI, and the Gateway container build. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work.
+Gate B.4 introduces the Gateway's first runtime parser dependency: `pypdf==6.14.2`. It is exact-pinned in project metadata, CI, and the Gateway container build. The B.4 helper is additionally memory-isolated with a 256 MiB address-space limit inside the current 512 MiB private staging Gateway container. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work.
 
 ## Local checks
 
