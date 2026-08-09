@@ -198,25 +198,19 @@ def _validate_pdf_page_limit(max_pages: int) -> int:
     return max_pages
 
 
-def _bounded_pdf_bytes(
-    pdf_bytes: bytes | bytearray | memoryview,
-) -> bytes:
-    if not isinstance(pdf_bytes, (bytes, bytearray, memoryview)):
+def _bounded_pdf_bytes(pdf_bytes: bytes) -> bytes:
+    if not isinstance(pdf_bytes, bytes):
         raise SafeIntakePdfError("pdf_structure_invalid")
-    view = memoryview(pdf_bytes)
-    if view.ndim != 1 or view.itemsize != 1:
-        raise SafeIntakePdfError("pdf_structure_invalid")
-    if view.nbytes == 0 or view.nbytes > _ABSOLUTE_MAX_REQUEST_BYTES:
+    if not pdf_bytes or len(pdf_bytes) > _ABSOLUTE_MAX_REQUEST_BYTES:
         raise SafeIntakePdfError("pdf_structure_invalid")
 
-    payload = pdf_bytes if isinstance(pdf_bytes, bytes) else bytes(view)
     try:
-        signature_match = match_input_signature(payload)
+        signature_match = match_input_signature(pdf_bytes)
     except (SafeIntakeSignatureError, TypeError) as exc:
         raise SafeIntakePdfError("pdf_structure_invalid") from exc
     if signature_match.format_id != "pdf":
         raise SafeIntakePdfError("pdf_structure_invalid")
-    return payload
+    return pdf_bytes
 
 
 def match_input_signature(
@@ -286,11 +280,11 @@ def measure_input_bytes(
 
 
 def inspect_pdf_pages(
-    pdf_bytes: bytes | bytearray | memoryview,
+    pdf_bytes: bytes,
     *,
     max_pages: int,
 ) -> int:
-    """Strictly inspect exact PDF bytes in a bounded helper and return page count."""
+    """Strictly inspect exact immutable PDF bytes in a bounded helper."""
 
     page_limit = _validate_pdf_page_limit(max_pages)
     payload = _bounded_pdf_bytes(pdf_bytes)
