@@ -98,7 +98,8 @@ def _validate_annots_entry(value: object) -> None:
     if not isinstance(resolved, ArrayObject):
         raise ValueError("invalid page annotations object")
     for item in resolved:
-        if not isinstance(_resolve_indirect(item), DictionaryObject):
+        annotation = _resolve_indirect(item)
+        if isinstance(annotation, StreamObject) or not isinstance(annotation, DictionaryObject):
             raise ValueError("invalid page annotation array item")
 
 
@@ -110,6 +111,8 @@ def _validate_page_parent(
         raise ValueError("missing page parent reference")
 
     parent_value = page.raw_get("/Parent")
+    if not isinstance(parent_value, IndirectObject):
+        raise ValueError("page parent must be an indirect reference")
     parent = _resolve_indirect(parent_value)
     if isinstance(parent, StreamObject) or not isinstance(parent, DictionaryObject):
         raise ValueError("invalid page parent object")
