@@ -88,7 +88,8 @@ def _validate_contents_entry(value: object) -> None:
 
 
 def _validate_resources_entry(value: object) -> None:
-    if not isinstance(_resolve_indirect(value), DictionaryObject):
+    resolved = _resolve_indirect(value)
+    if isinstance(resolved, StreamObject) or not isinstance(resolved, DictionaryObject):
         raise ValueError("invalid page resources object")
 
 
@@ -101,10 +102,45 @@ def _validate_annots_entry(value: object) -> None:
             raise ValueError("invalid page annotation array item")
 
 
+def _validate_page_parent(
+    page: DictionaryObject,
+    seen_indirect_objects: set[tuple[int, int]],
+) -> None:
+    if "/Parent" not in page:
+        raise ValueError("missing page parent reference")
+
+    parent_value = page.raw_get("/Parent")
+    parent = _resolve_indirect(parent_value)
+    if isinstance(parent, StreamObject) or not isinstance(parent, DictionaryObject):
+        raise ValueError("invalid page parent object")
+    if parent.get("/Type") != "/Pages":
+        raise ValueError("invalid page parent type")
+    if "/Kids" not in parent:
+        raise ValueError("missing page parent kids")
+
+    kids = _resolve_indirect(parent.raw_get("/Kids"))
+    if not isinstance(kids, ArrayObject):
+        raise ValueError("invalid page parent kids")
+
+    page_reference = getattr(page, "indirect_reference", None)
+    if not isinstance(page_reference, IndirectObject):
+        raise ValueError("missing page indirect reference")
+    page_identity = (page_reference.idnum, page_reference.generation)
+    if not any(
+        isinstance(kid, IndirectObject)
+        and (kid.idnum, kid.generation) == page_identity
+        for kid in kids
+    ):
+        raise ValueError("page parent does not reference page")
+
+    _validate_referenced_object_graph(parent_value, seen_indirect_objects)
+
+
 def _validate_page_references(
     page: DictionaryObject,
     seen_indirect_objects: set[tuple[int, int]],
 ) -> None:
+    _validate_page_parent(page, seen_indirect_objects)
     for key in _PAGE_GRAPH_ROOT_KEYS:
         if key not in page:
             continue
