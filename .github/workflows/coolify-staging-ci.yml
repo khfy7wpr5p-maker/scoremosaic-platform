@@ -75,7 +75,7 @@ jobs:
           assert values["SCOREMOSAIC_GATEWAY_INTERNAL_HOST"] == "omr-gateway"
           assert values["SCOREMOSAIC_GATEWAY_INTERNAL_PORT"] == "8090"
           assert values["GATEWAY_CPUS"] == "0.50"
-          assert values["GATEWAY_MEMORY_LIMIT"] == "256m"
+          assert values["GATEWAY_MEMORY_LIMIT"] == "512m"
           assert values["GATEWAY_TMPFS_BYTES"] == "16777216"
           assert values["HOMR_CPUS"] == "2.00"
           assert values["HOMR_MEMORY_LIMIT"] == "4096m"
