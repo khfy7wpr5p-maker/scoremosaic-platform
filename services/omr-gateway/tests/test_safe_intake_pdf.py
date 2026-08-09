@@ -129,6 +129,36 @@ def _build_pdf_with_stream_resources() -> bytes:
     )
 
 
+def _build_pdf_with_inline_page_parent() -> bytes:
+    return _serialize_pdf_objects(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            (
+                b"<< /Type /Page /Parent << /Type /Pages /Kids [3 0 R] >> "
+                b"/MediaBox [0 0 612 792] /Resources << >> >>"
+            ),
+        ]
+    )
+
+
+def _build_pdf_with_stream_annotation() -> bytes:
+    return _serialize_pdf_objects(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            (
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                b"/Resources << >> /Annots [4 0 R] >>"
+            ),
+            (
+                b"<< /Type /Annot /Subtype /Text /Rect [0 0 10 10] /Length 0 >>\n"
+                b"stream\n\nendstream"
+            ),
+        ]
+    )
+
+
 def _build_annotated_pdf_with_page_backrefs(page_count: int) -> bytes:
     page_start = 3
     annotation_start = page_start + page_count
@@ -247,6 +277,22 @@ class PdfPageBudgetTests(unittest.TestCase):
         with self.assertRaises(SafeIntakePdfError) as raised:
             inspect_pdf_pages(
                 _build_pdf_with_stream_resources(),
+                max_pages=40,
+            )
+        self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
+    def test_rejects_inline_page_parent_fail_closed(self) -> None:
+        with self.assertRaises(SafeIntakePdfError) as raised:
+            inspect_pdf_pages(
+                _build_pdf_with_inline_page_parent(),
+                max_pages=40,
+            )
+        self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
+    def test_rejects_stream_used_as_annotation_dictionary_fail_closed(self) -> None:
+        with self.assertRaises(SafeIntakePdfError) as raised:
+            inspect_pdf_pages(
+                _build_pdf_with_stream_annotation(),
                 max_pages=40,
             )
         self.assertEqual(raised.exception.code, "pdf_structure_invalid")
