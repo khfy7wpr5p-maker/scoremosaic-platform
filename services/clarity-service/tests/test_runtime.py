@@ -7,10 +7,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
+import scoremosaic_clarity.candidate_safety as candidate_safety
 from scoremosaic_clarity.config import load_config
 from scoremosaic_clarity.runtime import (
     ModelSpec,
@@ -220,6 +222,10 @@ class RuntimeTests(unittest.TestCase):
 
             self.assertEqual(result.return_code, 0)
             self.assertEqual(result.musicxml_artifacts, (output / "result.musicxml",))
+            self.assertEqual(len(result.candidate_handoffs), 1)
+            handoff = result.candidate_handoffs[0]
+            self.assertEqual(handoff.artifact, output / "result.musicxml")
+            self.assertEqual(handoff.evidence.policy_version, "candidate-safety-v1")
 
     def test_transcription_rejects_unsafe_xml_declaration(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -253,6 +259,58 @@ class RuntimeTests(unittest.TestCase):
                         "2.13.0+cpu",
                     ),
                 )
+
+    def test_transcription_fails_closed_if_candidate_changes_after_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            pdf = config.workspace_root / "score.pdf"
+            pdf.parent.mkdir(parents=True)
+            pdf.write_bytes(b"%PDF-1.4\n")
+            output = config.workspace_root / "run"
+
+            def runner(command, **kwargs):
+                output_path = Path(command[command.index("--output") + 1])
+                output_path.write_text(
+                    "<score-partwise version='4.0'/>", encoding="utf-8"
+                )
+                return subprocess.CompletedProcess(command, 0, "done", "")
+
+            real_validate = candidate_safety.validate_musicxml_bytes
+            changed = False
+
+            def validate_then_tamper(document: bytes):
+                nonlocal changed
+                evidence = real_validate(document)
+                if not changed:
+                    changed = True
+                    (output / "result.musicxml").write_text(
+                        "<score-timewise version='4.0'/>", encoding="utf-8"
+                    )
+                return evidence
+
+            with patch(
+                "scoremosaic_clarity.runtime.validate_musicxml_bytes",
+                side_effect=validate_then_tamper,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeExecutionError,
+                    "clarity_candidate_unsafe:candidate_handoff_evidence_mismatch",
+                ):
+                    transcribe_file(
+                        pdf,
+                        output,
+                        config,
+                        runner=runner,
+                        probe=lambda _: RuntimeProbe(
+                            True,
+                            "ready",
+                            config.source_revision,
+                            config.model_revision,
+                            2,
+                            "2.13.0+cpu",
+                        ),
+                    )
 
 
 if __name__ == "__main__":

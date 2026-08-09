@@ -6,10 +6,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
+import scoremosaic_homr.candidate_safety as candidate_safety
 from scoremosaic_homr.config import load_config
 from scoremosaic_homr.runtime import (
     ModelSpec,
@@ -181,6 +183,10 @@ class RuntimeTests(unittest.TestCase):
 
             self.assertEqual(result.return_code, 0)
             self.assertEqual(result.musicxml_artifacts, (output / "score.musicxml",))
+            self.assertEqual(len(result.candidate_handoffs), 1)
+            handoff = result.candidate_handoffs[0]
+            self.assertEqual(handoff.artifact, output / "score.musicxml")
+            self.assertEqual(handoff.evidence.policy_version, "candidate-safety-v1")
 
     def test_transcription_rejects_unsafe_musicxml_candidate(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -209,6 +215,48 @@ class RuntimeTests(unittest.TestCase):
                     runner=runner,
                     probe=lambda _: RuntimeProbe(True, "ready", "0.7.0", 3),
                 )
+
+    def test_transcription_fails_closed_if_candidate_changes_after_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            output = config.workspace_root / "run"
+            output.mkdir(parents=True)
+            image = output / "score.png"
+            image.write_bytes(b"png")
+
+            def runner(command, **kwargs):
+                Path(command[-1]).with_suffix(".musicxml").write_text(
+                    "<score-partwise version='4.0'/>", encoding="utf-8"
+                )
+                return subprocess.CompletedProcess(command, 0, "done", "")
+
+            real_validate = candidate_safety.validate_musicxml_file
+            changed = False
+
+            def validate_then_tamper(path: Path):
+                nonlocal changed
+                evidence = real_validate(path)
+                if not changed:
+                    changed = True
+                    path.write_text("<score-timewise version='4.0'/>", encoding="utf-8")
+                return evidence
+
+            with patch(
+                "scoremosaic_homr.runtime.validate_musicxml_file",
+                side_effect=validate_then_tamper,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeExecutionError,
+                    "homr_candidate_unsafe:candidate_handoff_evidence_mismatch",
+                ):
+                    transcribe_file(
+                        image,
+                        output,
+                        config,
+                        runner=runner,
+                        probe=lambda _: RuntimeProbe(True, "ready", "0.7.0", 3),
+                    )
 
 
 if __name__ == "__main__":
