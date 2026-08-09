@@ -10,6 +10,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN python -m pip install --no-cache-dir --disable-pip-version-check pypdf==6.14.2
+
 COPY src/ ./src/
 
 USER 65532:65532

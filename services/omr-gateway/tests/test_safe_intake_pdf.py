@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -63,6 +64,12 @@ def _build_encrypted_pdf() -> bytes:
 
 
 class PdfPageBudgetTests(unittest.TestCase):
+    def test_parser_dependency_is_exact_pinned(self) -> None:
+        metadata = tomllib.loads(
+            (SERVICE_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        self.assertEqual(metadata["project"]["dependencies"], ["pypdf==6.14.2"])
+
     def test_accepts_one_page_and_exact_page_limit(self) -> None:
         self.assertEqual(inspect_pdf_pages(_build_pdf(1), max_pages=40), 1)
         self.assertEqual(inspect_pdf_pages(_build_pdf(3), max_pages=3), 3)
@@ -106,7 +113,7 @@ class PdfPageBudgetTests(unittest.TestCase):
             side_effect=subprocess.TimeoutExpired(cmd=("python",), timeout=2),
         ):
             with self.assertRaises(SafeIntakePdfError) as raised:
-                inspect_pdf_pages(_build_pdf(1), max_pages=40, timeout_seconds=2)
+                inspect_pdf_pages(_build_pdf(1), max_pages=40)
         self.assertEqual(raised.exception.code, "pdf_inspection_timeout")
 
 

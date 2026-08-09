@@ -18,7 +18,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | Fixed evaluation foundations | Completed | Fixed evaluation datasets/contracts are present. |
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented in this security slice | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
-| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification, B.2 declared MIME consistency, and B.3 observed byte-budget enforcement exist; external PDF/image upload remains disabled. |
+| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification, B.2 declared MIME consistency, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection exist; external PDF/image upload remains disabled. |
 | Service-to-service authentication | Not started | Live engine dispatch remains blocked. |
 | Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
 | Production immutable object storage | Not started | Production persistence remains blocked. |
@@ -50,6 +50,16 @@ Activation effect: none. Public upload/orchestration remains disabled.
 
 Goal: no untrusted PDF/image reaches an engine without a central fail-closed intake decision.
 
+Current slice status:
+
+- B.1 signature classification — completed.
+- B.2 declared MIME/signature consistency — completed.
+- B.3 observed request-byte budget — completed.
+- B.4 strict PDF structure/page-budget inspection — implemented in this slice with exact-pinned `pypdf==6.14.2` in a bounded helper subprocess; encrypted PDFs are rejected in v1.
+- B.5 decoded image/pixel limit — not started.
+- B.6 filename/path safety — not started.
+- Integrated Safe Intake decision and hostile-input convergence — not started.
+
 Requirements:
 
 - signature/MIME verification;
@@ -61,7 +71,7 @@ Requirements:
 - malformed/truncated/oversized hostile fixtures;
 - deterministic stable rejection categories.
 
-Exit rule: Gateway upload remains disabled until these tests and runtime enforcement pass.
+Exit rule: Gateway upload remains disabled until the complete Gate B tests and runtime enforcement pass.
 
 ### Gate C — Internal Dispatch Security
 
@@ -134,6 +144,8 @@ Requirements:
 - encrypted backups and demonstrated restore;
 - rollback/promotion procedure;
 - staging soak and acceptance evidence.
+
+Gate B.4 introduces the first Gateway PDF parser dependency. It is exact-pinned for this slice, while repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G work.
 
 ## Architectural phase mapping
 

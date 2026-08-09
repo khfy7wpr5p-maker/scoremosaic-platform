@@ -2,17 +2,22 @@
 
 This module does not accept uploads or declare a document safe for processing.
 It identifies an allowlisted format from a small caller-supplied header, verifies
-that a bounded declared MIME value matches that signature classification, and can
-measure actually observed byte chunks against a bounded request budget without
-retaining the payload. Later Gate B stages must still verify page/pixel budgets,
-filename safety, and full document structure before producing an intake decision.
+that a bounded declared MIME value matches that signature classification, measures
+actually observed byte chunks against a bounded request budget, and can inspect
+PDF structure/page count in a bounded helper subprocess. Later Gate B stages must
+still verify decoded image/pixel budgets, filename safety, and the integrated
+intake decision before external upload can be enabled.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+import json
+from pathlib import Path
 import re
+import subprocess
+import sys
 
 
 SAFE_INTAKE_POLICY_VERSION = "1.0"
@@ -36,6 +41,14 @@ class SafeIntakeMediaTypeError(ValueError):
 
 class SafeIntakeByteBudgetError(ValueError):
     """Raised when observed input bytes cannot satisfy the bounded byte policy."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
+class SafeIntakePdfError(ValueError):
+    """Raised when PDF structural/page evidence cannot be safely accepted."""
 
     def __init__(self, code: str) -> None:
         self.code = code
@@ -113,6 +126,16 @@ _DECLARED_MEDIA_TYPE_PATTERN = re.compile(
     re.ASCII,
 )
 _ABSOLUTE_MAX_REQUEST_BYTES = 100 * 1024 * 1024
+_ABSOLUTE_MAX_PDF_PAGES = 200
+_PDF_INSPECTION_TIMEOUT_SECONDS = 2
+_PDF_INSPECTOR_MAX_OUTPUT_BYTES = 1024
+_PDF_INSPECTOR_ERROR_CODES = frozenset(
+    {
+        "pdf_structure_invalid",
+        "pdf_encrypted_unsupported",
+        "pdf_page_budget_exceeded",
+    }
+)
 
 
 def _bounded_header(
@@ -165,6 +188,35 @@ def _byte_chunk_size(chunk: bytes | bytearray | memoryview) -> int:
     if view.ndim != 1 or view.itemsize != 1:
         raise SafeIntakeByteBudgetError("byte_chunk_invalid")
     return view.nbytes
+
+
+def _validate_pdf_page_limit(max_pages: int) -> int:
+    if isinstance(max_pages, bool) or not isinstance(max_pages, int):
+        raise SafeIntakePdfError("pdf_page_limit_invalid")
+    if not 1 <= max_pages <= _ABSOLUTE_MAX_PDF_PAGES:
+        raise SafeIntakePdfError("pdf_page_limit_invalid")
+    return max_pages
+
+
+def _bounded_pdf_bytes(
+    pdf_bytes: bytes | bytearray | memoryview,
+) -> bytes:
+    if not isinstance(pdf_bytes, (bytes, bytearray, memoryview)):
+        raise SafeIntakePdfError("pdf_structure_invalid")
+    view = memoryview(pdf_bytes)
+    if view.ndim != 1 or view.itemsize != 1:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+    if view.nbytes == 0 or view.nbytes > _ABSOLUTE_MAX_REQUEST_BYTES:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+
+    payload = bytes(view)
+    try:
+        signature_match = match_input_signature(payload)
+    except (SafeIntakeSignatureError, TypeError) as exc:
+        raise SafeIntakePdfError("pdf_structure_invalid") from exc
+    if signature_match.format_id != "pdf":
+        raise SafeIntakePdfError("pdf_structure_invalid")
+    return payload
 
 
 def match_input_signature(
@@ -231,3 +283,57 @@ def measure_input_bytes(
             raise SafeIntakeByteBudgetError("byte_budget_exceeded")
 
     return observed_bytes
+
+
+def inspect_pdf_pages(
+    pdf_bytes: bytes | bytearray | memoryview,
+    *,
+    max_pages: int,
+) -> int:
+    """Strictly inspect exact PDF bytes in a bounded helper and return page count."""
+
+    page_limit = _validate_pdf_page_limit(max_pages)
+    payload = _bounded_pdf_bytes(pdf_bytes)
+    worker_path = Path(__file__).with_name("pdf_inspector_worker.py")
+
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(worker_path), str(page_limit)],
+            input=payload,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=_PDF_INSPECTION_TIMEOUT_SECONDS,
+            start_new_session=True,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SafeIntakePdfError("pdf_inspection_timeout") from exc
+
+    if completed.returncode != 0:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+    if len(completed.stdout) > _PDF_INSPECTOR_MAX_OUTPUT_BYTES:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+
+    try:
+        result = json.loads(completed.stdout.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SafeIntakePdfError("pdf_structure_invalid") from exc
+
+    if not isinstance(result, dict) or set(result) - {"status", "code", "page_count"}:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+
+    if result.get("status") == "error":
+        code = result.get("code")
+        if code in _PDF_INSPECTOR_ERROR_CODES:
+            raise SafeIntakePdfError(code)
+        raise SafeIntakePdfError("pdf_structure_invalid")
+
+    if result.get("status") != "ok" or set(result) != {"status", "page_count"}:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+
+    page_count = result.get("page_count")
+    if isinstance(page_count, bool) or not isinstance(page_count, int):
+        raise SafeIntakePdfError("pdf_structure_invalid")
+    if not 1 <= page_count <= page_limit:
+        raise SafeIntakePdfError("pdf_structure_invalid")
+    return page_count

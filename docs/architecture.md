@@ -61,6 +61,8 @@ OMR Gateway / job orchestration
 
 The Safe Intake Gate protects the platform from untrusted external documents. The Candidate Safety Gate protects the platform from untrusted **engine output**. These are separate trust boundaries and neither may be skipped.
 
+Gate B.4 does **not** alter this target architecture. It adds one implementation boundary inside Safe Intake: exact PDF bytes are passed to a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True` to derive structural/page evidence. The helper does not render pages, extract text/images/attachments, follow links, execute embedded content, persist bytes, or enable external upload. Encrypted PDFs are rejected in Safe Intake v1.
+
 ## 3. Current activation state
 
 The repository contains substantial runtime and comparison foundations, but the public data plane remains deliberately closed.
@@ -69,6 +71,7 @@ The repository contains substantial runtime and comparison foundations, but the 
 
 - Private HOMR, Clarity-OMR, and Audiveris runtime adapters.
 - Private OMR Gateway health and orchestration contracts.
+- Safe Intake B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -77,6 +80,8 @@ The repository contains substantial runtime and comparison foundations, but the 
 ### Deliberately disabled or not yet implemented
 
 - External upload.
+- Safe Intake B.5 decoded image/pixel enforcement.
+- Safe Intake B.6 filename/path enforcement and the integrated intake decision.
 - Live Gateway engine dispatch/orchestration.
 - Production persistence.
 - Public publication.
@@ -91,6 +96,8 @@ A disabled capability must not be interpreted as implemented merely because conf
 
 - Own the future external OMR job boundary.
 - Enforce the Safe Intake Gate before any live engine dispatch is enabled.
+- Derive PDF page evidence from exact bounded PDF bytes; do not trust caller-supplied page metadata.
+- Keep PDF structural parsing in the bounded B.4 helper subprocess; current v1 rejects encrypted PDFs and does not render or extract document content.
 - Preserve server-owned job and artifact identity.
 - Dispatch only to authenticated private engine endpoints once that capability is enabled.
 - Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules.
@@ -136,7 +143,7 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 ## 5. Data flow and trust transitions
 
 1. **Receive external document** — still disabled in the current runtime.
-2. **Safe Intake Gate** — verify signature/MIME, byte limits, page/pixel budgets, and path/filename safety.
+2. **Safe Intake Gate** — B.1 verifies signature, B.2 binds declared MIME, B.3 measures observed bytes, and B.4 strictly inspects PDF structure/page count. B.5 pixel budgets, B.6 filename/path safety, and the integrated decision remain required.
 3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
 4. **Create durable job** — future persistence boundary; must support idempotency and restart recovery.
 5. **Dispatch private engine runs** — only after service-to-service authentication is implemented.
@@ -216,7 +223,7 @@ Before staging exposure, the integration boundary must demonstrate:
 - idempotency;
 - cancellation and retry semantics;
 - service-to-service authentication;
-- Safe Intake Gate enforcement;
+- complete Safe Intake Gate enforcement;
 - durable job/artifact state;
 - Candidate Safety v1 enforcement;
 - safe error/logging behavior.
@@ -236,6 +243,7 @@ This architecture update does **not** enable:
 
 - public uploads;
 - live Gateway dispatch;
+- image/pixel or filename/path Safe Intake completion;
 - automatic candidate ranking/merging/correction;
 - production storage;
 - teacher approval APIs;
