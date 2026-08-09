@@ -12,15 +12,58 @@ import json
 import sys
 
 from pypdf import PdfReader
+from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
 
 
 _ABSOLUTE_MAX_REQUEST_BYTES = 100 * 1024 * 1024
 _ABSOLUTE_MAX_PDF_PAGES = 200
+_PAGE_GRAPH_ROOT_KEYS = ("/Contents", "/Resources", "/Annots")
+_PAGE_GRAPH_BACK_REFERENCE_KEYS = frozenset({"/Parent", "/P"})
 
 
 def _emit(payload: dict[str, object]) -> int:
     sys.stdout.write(json.dumps(payload, sort_keys=True, separators=(",", ":")))
     return 0
+
+
+def _validate_referenced_object_graph(
+    value: object,
+    seen_indirect_objects: set[tuple[int, int]],
+) -> None:
+    if isinstance(value, IndirectObject):
+        identity = (value.idnum, value.generation)
+        if identity in seen_indirect_objects:
+            return
+        seen_indirect_objects.add(identity)
+        resolved = value.get_object()
+        if resolved is None:
+            raise ValueError("missing referenced PDF object")
+        _validate_referenced_object_graph(resolved, seen_indirect_objects)
+        return
+
+    if isinstance(value, ArrayObject):
+        for item in value:
+            _validate_referenced_object_graph(item, seen_indirect_objects)
+        return
+
+    if isinstance(value, DictionaryObject):
+        for key in value.keys():
+            if str(key) in _PAGE_GRAPH_BACK_REFERENCE_KEYS:
+                continue
+            _validate_referenced_object_graph(
+                value.raw_get(key),
+                seen_indirect_objects,
+            )
+
+
+def _validate_page_references(page: DictionaryObject) -> None:
+    seen_indirect_objects: set[tuple[int, int]] = set()
+    for key in _PAGE_GRAPH_ROOT_KEYS:
+        if key in page:
+            _validate_referenced_object_graph(
+                page.raw_get(key),
+                seen_indirect_objects,
+            )
 
 
 def main() -> int:
@@ -48,6 +91,10 @@ def main() -> int:
             return _emit({"status": "error", "code": "pdf_structure_invalid"})
         if page_count > max_pages:
             return _emit({"status": "error", "code": "pdf_page_budget_exceeded"})
+
+        for page in reader.pages:
+            _validate_page_references(page)
+
         return _emit({"status": "ok", "page_count": page_count})
     except Exception:
         return _emit({"status": "error", "code": "pdf_structure_invalid"})
