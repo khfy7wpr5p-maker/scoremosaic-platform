@@ -101,8 +101,10 @@ def _validate_annots_entry(value: object) -> None:
             raise ValueError("invalid page annotation array item")
 
 
-def _validate_page_references(page: DictionaryObject) -> None:
-    seen_indirect_objects: set[tuple[int, int]] = set()
+def _validate_page_references(
+    page: DictionaryObject,
+    seen_indirect_objects: set[tuple[int, int]],
+) -> None:
     for key in _PAGE_GRAPH_ROOT_KEYS:
         if key not in page:
             continue
@@ -147,8 +149,9 @@ def main() -> int:
         if page_count > max_pages:
             return _emit({"status": "error", "code": "pdf_page_budget_exceeded"})
 
+        seen_indirect_objects: set[tuple[int, int]] = set()
         for page in reader.pages:
-            _validate_page_references(page)
+            _validate_page_references(page, seen_indirect_objects)
 
         return _emit({"status": "ok", "page_count": page_count})
     except Exception:
