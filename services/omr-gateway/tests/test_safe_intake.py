@@ -14,10 +14,12 @@ from scoremosaic_gateway.orchestration import ACCEPTED_SOURCE_MEDIA_TYPES
 from scoremosaic_gateway.safe_intake import (
     SAFE_INTAKE_MEDIA_TYPES,
     SAFE_INTAKE_POLICY_V1,
+    SafeIntakeByteBudgetError,
     SafeIntakeMediaTypeError,
     SafeIntakeSignatureError,
     SignatureMatch,
     match_input_signature,
+    measure_input_bytes,
     verify_signature_media_type,
 )
 
@@ -212,6 +214,68 @@ class DeclaredMediaTypeTests(unittest.TestCase):
                 fabricated,  # type: ignore[arg-type]
                 "image/png",
             )
+
+
+class ByteBudgetTests(unittest.TestCase):
+    def test_accepts_limit_minus_one_and_exact_limit(self) -> None:
+        self.assertEqual(measure_input_bytes((b"abc",), 4), 3)
+        self.assertEqual(measure_input_bytes((b"ab", b"cd"), 4), 4)
+        self.assertEqual(measure_input_bytes((), 4), 0)
+
+    def test_rejects_limit_plus_one_fail_closed(self) -> None:
+        with self.assertRaises(SafeIntakeByteBudgetError) as raised:
+            measure_input_bytes((b"ab", b"cde"), 4)
+        self.assertEqual(raised.exception.code, "byte_budget_exceeded")
+
+    def test_stops_consuming_chunks_immediately_after_budget_exceeded(self) -> None:
+        consumed: list[int] = []
+
+        def chunks():
+            for index, chunk in enumerate((b"ab", b"cd", b"e", b"never-read")):
+                consumed.append(index)
+                yield chunk
+
+        with self.assertRaises(SafeIntakeByteBudgetError) as raised:
+            measure_input_bytes(chunks(), 4)
+
+        self.assertEqual(raised.exception.code, "byte_budget_exceeded")
+        self.assertEqual(consumed, [0, 1, 2])
+
+    def test_accepts_bytearray_and_one_dimensional_byte_memoryview(self) -> None:
+        chunks = (
+            bytearray(b"ab"),
+            memoryview(b"cd"),
+        )
+        self.assertEqual(measure_input_bytes(chunks, 4), 4)
+
+    def test_rejects_invalid_chunk_types_fail_closed(self) -> None:
+        invalid_chunks = (
+            "abc",
+            [0x61, 0x62],
+            memoryview(bytearray(16)).cast("I"),
+        )
+
+        for chunk in invalid_chunks:
+            with self.subTest(chunk=chunk):
+                with self.assertRaises(SafeIntakeByteBudgetError) as raised:
+                    measure_input_bytes((chunk,), 16)  # type: ignore[arg-type]
+                self.assertEqual(raised.exception.code, "byte_chunk_invalid")
+
+    def test_rejects_invalid_byte_limits_fail_closed(self) -> None:
+        invalid_limits = (
+            True,
+            False,
+            0,
+            -1,
+            100 * 1024 * 1024 + 1,
+            "1024",
+        )
+
+        for limit in invalid_limits:
+            with self.subTest(limit=limit):
+                with self.assertRaises(SafeIntakeByteBudgetError) as raised:
+                    measure_input_bytes((b"a",), limit)  # type: ignore[arg-type]
+                self.assertEqual(raised.exception.code, "byte_limit_invalid")
 
 
 if __name__ == "__main__":
