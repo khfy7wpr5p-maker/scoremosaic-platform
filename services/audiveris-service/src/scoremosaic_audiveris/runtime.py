@@ -10,7 +10,12 @@ import re
 import signal
 import subprocess
 
-from .candidate_safety import CandidateSafetyError, validate_mxl_file
+from .candidate_safety import (
+    CandidateSafetyError,
+    CandidateSafetyHandoff,
+    validate_mxl_file,
+    verify_mxl_handoff,
+)
 from .config import ServiceConfig
 
 _SUPPORTED_SUFFIXES = {".pdf", ".jpg", ".jpeg", ".png"}
@@ -41,6 +46,7 @@ class TranscriptionResult:
     musicxml_artifacts: tuple[Path, ...]
     omr_artifacts: tuple[Path, ...]
     diagnostic: str
+    candidate_handoffs: tuple[CandidateSafetyHandoff, ...] = ()
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -327,12 +333,20 @@ def transcribe_file(
     if not musicxml:
         raise RuntimeExecutionError(f"audiveris_musicxml_not_created:{diagnostic}")
 
+    handoffs: list[CandidateSafetyHandoff] = []
     for artifact in musicxml:
         try:
-            validate_mxl_file(artifact)
+            evidence = validate_mxl_file(artifact)
+            handoffs.append(verify_mxl_handoff(artifact, evidence))
         except CandidateSafetyError as exc:
             raise RuntimeExecutionError(
                 f"audiveris_candidate_unsafe:{exc.code}"
             ) from exc
 
-    return TranscriptionResult(completed.returncode, musicxml, omr, diagnostic)
+    return TranscriptionResult(
+        completed.returncode,
+        musicxml,
+        omr,
+        diagnostic,
+        tuple(handoffs),
+    )
