@@ -29,6 +29,16 @@ from .orchestration import (
     build_orchestration_plan,
     verify_orchestration_plan,
 )
+from .safe_intake import (
+    SAFE_INTAKE_MEDIA_TYPES,
+    SAFE_INTAKE_POLICY_V1,
+    SAFE_INTAKE_POLICY_VERSION,
+    SafeIntakeFormat,
+    SafeIntakePolicy,
+    SafeIntakeSignatureError,
+    SignatureMatch,
+    match_input_signature,
+)
 
 __all__ = [
     "ACCEPTED_SOURCE_MEDIA_TYPES",
@@ -40,6 +50,9 @@ __all__ = [
     "ORCHESTRATION_CONTRACT_TYPE",
     "ORCHESTRATION_SCHEMA_VERSION",
     "OUTPUT_ARTIFACT_KINDS",
+    "SAFE_INTAKE_MEDIA_TYPES",
+    "SAFE_INTAKE_POLICY_V1",
+    "SAFE_INTAKE_POLICY_VERSION",
     "ArtifactLifecycleError",
     "ArtifactRecord",
     "CandidateArtifactLifecycle",
@@ -50,8 +63,13 @@ __all__ = [
     "LifecycleEvent",
     "OrchestrationContractError",
     "SourceArtifactPlan",
+    "SafeIntakeFormat",
+    "SafeIntakePolicy",
+    "SafeIntakeSignatureError",
+    "SignatureMatch",
     "build_artifact_lifecycle",
     "build_orchestration_plan",
+    "match_input_signature",
     "transition_artifact",
     "transition_candidate",
     "verify_artifact_lifecycle",

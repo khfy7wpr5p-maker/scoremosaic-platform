@@ -12,12 +12,9 @@ from urllib.parse import urlsplit
 from . import __version__
 from .config import ConfigError, ServiceConfig, load_config
 from .engine_client import ProbeResult, probe_engines
+from .safe_intake import SAFE_INTAKE_MEDIA_TYPES
 
-ACCEPTED_INPUT_FORMATS = (
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-)
+ACCEPTED_INPUT_FORMATS = SAFE_INTAKE_MEDIA_TYPES
 
 
 @dataclass(frozen=True, slots=True)
