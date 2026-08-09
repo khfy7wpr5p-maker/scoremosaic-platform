@@ -302,6 +302,8 @@ def inspect_pdf_pages(
         )
     except subprocess.TimeoutExpired as exc:
         raise SafeIntakePdfError("pdf_inspection_timeout") from exc
+    except OSError as exc:
+        raise SafeIntakePdfError("pdf_structure_invalid") from exc
 
     if completed.returncode != 0:
         raise SafeIntakePdfError("pdf_structure_invalid")
