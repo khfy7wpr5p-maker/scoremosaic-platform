@@ -209,7 +209,7 @@ def _bounded_pdf_bytes(
     if view.nbytes == 0 or view.nbytes > _ABSOLUTE_MAX_REQUEST_BYTES:
         raise SafeIntakePdfError("pdf_structure_invalid")
 
-    payload = bytes(view)
+    payload = pdf_bytes if isinstance(pdf_bytes, bytes) else bytes(view)
     try:
         signature_match = match_input_signature(payload)
     except (SafeIntakeSignatureError, TypeError) as exc:
