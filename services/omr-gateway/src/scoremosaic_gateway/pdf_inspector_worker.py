@@ -98,6 +98,8 @@ def _validate_annots_entry(value: object) -> None:
     if not isinstance(resolved, ArrayObject):
         raise ValueError("invalid page annotations object")
     for item in resolved:
+        if not isinstance(item, IndirectObject):
+            raise ValueError("page annotation must be an indirect reference")
         annotation = _resolve_indirect(item)
         if isinstance(annotation, StreamObject) or not isinstance(annotation, DictionaryObject):
             raise ValueError("invalid page annotation array item")
@@ -110,33 +112,63 @@ def _validate_page_parent(
     if "/Parent" not in page:
         raise ValueError("missing page parent reference")
 
-    parent_value = page.raw_get("/Parent")
-    if not isinstance(parent_value, IndirectObject):
-        raise ValueError("page parent must be an indirect reference")
-    parent = _resolve_indirect(parent_value)
-    if isinstance(parent, StreamObject) or not isinstance(parent, DictionaryObject):
-        raise ValueError("invalid page parent object")
-    if parent.get("/Type") != "/Pages":
-        raise ValueError("invalid page parent type")
-    if "/Kids" not in parent:
-        raise ValueError("missing page parent kids")
-
-    kids = _resolve_indirect(parent.raw_get("/Kids"))
-    if not isinstance(kids, ArrayObject):
-        raise ValueError("invalid page parent kids")
-
     page_reference = getattr(page, "indirect_reference", None)
     if not isinstance(page_reference, IndirectObject):
         raise ValueError("missing page indirect reference")
-    page_identity = (page_reference.idnum, page_reference.generation)
-    if not any(
-        isinstance(kid, IndirectObject)
-        and (kid.idnum, kid.generation) == page_identity
-        for kid in kids
-    ):
-        raise ValueError("page parent does not reference page")
 
-    _validate_referenced_object_graph(parent_value, seen_indirect_objects)
+    reader = getattr(page_reference, "pdf", None)
+    catalog = reader.root_object
+    catalog_pages_value = catalog.raw_get("/Pages")
+    if not isinstance(catalog_pages_value, IndirectObject):
+        raise ValueError("invalid catalog pages reference")
+    catalog_pages_identity = (
+        catalog_pages_value.idnum,
+        catalog_pages_value.generation,
+    )
+
+    child_identity = (page_reference.idnum, page_reference.generation)
+    parent_value = page.raw_get("/Parent")
+    parent_chain: set[tuple[int, int]] = set()
+
+    while True:
+        if not isinstance(parent_value, IndirectObject):
+            raise ValueError("page parent must be an indirect reference")
+
+        parent_identity = (parent_value.idnum, parent_value.generation)
+        if parent_identity in parent_chain:
+            raise ValueError("cyclic page parent chain")
+        parent_chain.add(parent_identity)
+
+        parent = _resolve_indirect(parent_value)
+        if isinstance(parent, StreamObject) or not isinstance(parent, DictionaryObject):
+            raise ValueError("invalid page parent object")
+        if parent.get("/Type") != "/Pages":
+            raise ValueError("invalid page parent type")
+        if "/Kids" not in parent:
+            raise ValueError("missing page parent kids")
+
+        kids = _resolve_indirect(parent.raw_get("/Kids"))
+        if not isinstance(kids, ArrayObject):
+            raise ValueError("invalid page parent kids")
+        if not any(
+            isinstance(kid, IndirectObject)
+            and (kid.idnum, kid.generation) == child_identity
+            for kid in kids
+        ):
+            raise ValueError("page parent does not reference child")
+
+        if parent_identity == catalog_pages_identity:
+            break
+
+        if "/Parent" not in parent:
+            raise ValueError("page parent chain is not anchored to catalog")
+        child_identity = parent_identity
+        parent_value = parent.raw_get("/Parent")
+
+    _validate_referenced_object_graph(
+        page.raw_get("/Parent"),
+        seen_indirect_objects,
+    )
 
 
 def _validate_page_references(
