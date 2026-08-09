@@ -35,7 +35,7 @@ Before any external PDF/image job can be accepted for live processing, the Gatew
 - isolated non-root processing with restricted capabilities;
 - no execution of embedded files, scripts, links, or external resources.
 
-Current runtime foundations implement B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection. B.4 derives page evidence from the exact PDF bytes in a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True`. It rejects encrypted PDFs in v1 and does not render pages, extract text/images/attachments, execute embedded content, follow external resources, or persist the inspected bytes.
+Current runtime foundations implement B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection. B.4 derives page evidence from the exact PDF bytes in a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True`. It rejects encrypted PDFs in v1, validates referenced page objects, and does not render pages, extract text/images/attachments, execute embedded content, follow external resources, or persist the inspected bytes. Immutable PDF `bytes` are forwarded without an additional parent-side payload copy. The Linux inspection worker applies a 256 MiB address-space limit before reading untrusted PDF bytes, and the current private Coolify staging Gateway container is budgeted at 512 MiB so parser growth remains isolated from the service-level memory ceiling.
 
 B.5 decoded image/pixel enforcement, B.6 filename/path enforcement, hostile-input convergence, and the integrated Safe Intake decision remain incomplete. Configuration alone is not an implemented intake gate. **External upload must remain disabled until the complete runtime enforcement and hostile-input regression set pass.**
 
@@ -155,7 +155,9 @@ Required negative coverage includes:
 - path traversal/control characters in filenames;
 - unsupported/ambiguous container formats;
 - encrypted PDF rejection while Safe Intake v1 does not support decryption;
-- bounded failure when PDF structural inspection times out.
+- missing or malformed PDF page-object references;
+- bounded failure when PDF structural inspection times out;
+- bounded PDF inspection memory independent of parser/object-graph growth.
 
 ### Candidate output
 
