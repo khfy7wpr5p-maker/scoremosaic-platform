@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 import os
 import re
+import signal
 import subprocess
 
 from .candidate_safety import (
@@ -23,6 +24,7 @@ _AUDIVERIS_VERSION_RE = re.compile(
     r"([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?)\s*$"
 )
 _MAX_DIAGNOSTIC_CHARS = 16_384
+_PROCESS_TERMINATION_GRACE_SECONDS = 1.0
 
 
 class RuntimeExecutionError(RuntimeError):
@@ -48,6 +50,76 @@ class TranscriptionResult:
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
+
+
+def _signal_process_group(
+    process: subprocess.Popen[str],
+    signal_number: signal.Signals,
+) -> None:
+    if os.name == "posix":
+        try:
+            os.killpg(process.pid, signal_number)
+        except ProcessLookupError:
+            pass
+        return
+
+    if signal_number == signal.SIGTERM:
+        process.terminate()
+    else:
+        process.kill()
+
+
+def _run_bounded_process(
+    command: list[str],
+    *,
+    cwd: Path,
+    env: dict[str, str],
+    capture_output: bool,
+    text: bool,
+    timeout: float,
+    check: bool,
+) -> subprocess.CompletedProcess[str]:
+    """Run one command and contain every descendant within its timeout."""
+
+    if not capture_output or not text:
+        raise ValueError("bounded process execution requires captured text output")
+
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        _signal_process_group(process, signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(
+                timeout=_PROCESS_TERMINATION_GRACE_SECONDS
+            )
+        except subprocess.TimeoutExpired:
+            _signal_process_group(process, signal.SIGKILL)
+            stdout, stderr = process.communicate()
+        raise subprocess.TimeoutExpired(
+            command,
+            timeout,
+            output=stdout,
+            stderr=stderr,
+        ) from exc
+
+    completed = subprocess.CompletedProcess(
+        command,
+        process.returncode,
+        stdout,
+        stderr,
+    )
+    if check:
+        completed.check_returncode()
+    return completed
 
 
 def _native_cache_root(config: ServiceConfig) -> Path:
@@ -116,7 +188,7 @@ def _diagnostic(stdout: str | None, stderr: str | None) -> str:
 def probe_runtime(
     config: ServiceConfig,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = _run_bounded_process,
 ) -> RuntimeProbe:
     """Run the pinned version command without client-controlled arguments."""
 
@@ -223,7 +295,7 @@ def transcribe_file(
     output_dir: Path,
     config: ServiceConfig,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = _run_bounded_process,
 ) -> TranscriptionResult:
     """Execute one private, bounded transcription inside the workspace."""
 
