@@ -16,6 +16,7 @@ from scoremosaic_gateway.safe_intake import (
     SAFE_INTAKE_POLICY_V1,
     SafeIntakeMediaTypeError,
     SafeIntakeSignatureError,
+    SignatureMatch,
     match_input_signature,
     verify_signature_media_type,
 )
@@ -133,27 +134,25 @@ class DeclaredMediaTypeTests(unittest.TestCase):
 
         for header, declared_media_type, expected_format in examples:
             with self.subTest(expected_format):
-                signature_match = match_input_signature(header)
                 verified = verify_signature_media_type(
-                    signature_match,
+                    header,
                     declared_media_type,
                 )
-                self.assertIs(verified, signature_match)
                 self.assertEqual(verified.format_id, expected_format)
 
     def test_rejects_missing_declared_media_type_fail_closed(self) -> None:
-        signature_match = match_input_signature(b"%PDF-1.7\nrest")
+        header = b"%PDF-1.7\nrest"
         for declared_media_type in (None, ""):
             with self.subTest(declared_media_type=declared_media_type):
                 with self.assertRaises(SafeIntakeMediaTypeError) as raised:
                     verify_signature_media_type(
-                        signature_match,
+                        header,
                         declared_media_type,
                     )
                 self.assertEqual(raised.exception.code, "media_type_missing")
 
     def test_rejects_invalid_declared_media_type_fail_closed(self) -> None:
-        signature_match = match_input_signature(b"%PDF-1.7\nrest")
+        header = b"%PDF-1.7\nrest"
         invalid = (
             " application/pdf",
             "application/pdf ",
@@ -171,35 +170,48 @@ class DeclaredMediaTypeTests(unittest.TestCase):
             with self.subTest(declared_media_type=declared_media_type):
                 with self.assertRaises(SafeIntakeMediaTypeError) as raised:
                     verify_signature_media_type(
-                        signature_match,
+                        header,
                         declared_media_type,
                     )
                 self.assertEqual(raised.exception.code, "media_type_invalid")
 
     def test_rejects_unsupported_declared_media_type_fail_closed(self) -> None:
-        signature_match = match_input_signature(b"%PDF-1.7\nrest")
+        header = b"%PDF-1.7\nrest"
         for declared_media_type in ("application/octet-stream", "image/gif"):
             with self.subTest(declared_media_type=declared_media_type):
                 with self.assertRaises(SafeIntakeMediaTypeError) as raised:
                     verify_signature_media_type(
-                        signature_match,
+                        header,
                         declared_media_type,
                     )
                 self.assertEqual(raised.exception.code, "media_type_unsupported")
 
     def test_rejects_signature_media_type_mismatch_fail_closed(self) -> None:
-        signature_match = match_input_signature(b"%PDF-1.7\nrest")
+        header = b"%PDF-1.7\nrest"
         for declared_media_type in ("image/jpeg", "image/png"):
             with self.subTest(declared_media_type=declared_media_type):
                 with self.assertRaises(SafeIntakeMediaTypeError) as raised:
                     verify_signature_media_type(
-                        signature_match,
+                        header,
                         declared_media_type,
                     )
                 self.assertEqual(
                     raised.exception.code,
                     "signature_media_type_mismatch",
                 )
+
+    def test_rejects_fabricated_signature_match_as_byte_evidence(self) -> None:
+        fabricated = SignatureMatch(
+            policy_version="1.0",
+            format_id="png",
+            media_type="image/png",
+        )
+
+        with self.assertRaises(TypeError):
+            verify_signature_media_type(
+                fabricated,  # type: ignore[arg-type]
+                "image/png",
+            )
 
 
 if __name__ == "__main__":

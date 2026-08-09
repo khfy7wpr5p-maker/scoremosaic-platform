@@ -166,15 +166,14 @@ def match_input_signature(
 
 
 def verify_signature_media_type(
-    signature_match: SignatureMatch,
+    header: bytes | bytearray | memoryview,
     declared_media_type: str | None,
 ) -> SignatureMatch:
-    """Require one bounded declared MIME value to agree with signature evidence."""
-
-    if not isinstance(signature_match, SignatureMatch):
-        raise TypeError("signature_match must be a SignatureMatch")
+    """Bind declared MIME evidence to a fresh match of the supplied header bytes."""
 
     normalized_media_type = _normalize_declared_media_type(declared_media_type)
+    signature_match = match_input_signature(header)
+
     if normalized_media_type not in SAFE_INTAKE_MEDIA_TYPES:
         raise SafeIntakeMediaTypeError("media_type_unsupported")
 
