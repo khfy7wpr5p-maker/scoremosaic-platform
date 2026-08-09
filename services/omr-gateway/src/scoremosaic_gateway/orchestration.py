@@ -8,14 +8,12 @@ import json
 import re
 from typing import Any, Iterable, Mapping
 
+from .safe_intake import SAFE_INTAKE_MEDIA_TYPES
+
 ORCHESTRATION_SCHEMA_VERSION = "1.0"
 ORCHESTRATION_CONTRACT_TYPE = "scoremosaic-gateway-orchestration-plan"
 ENGINE_NAMES = ("audiveris", "homr", "clarity")
-ACCEPTED_SOURCE_MEDIA_TYPES = (
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-)
+ACCEPTED_SOURCE_MEDIA_TYPES = SAFE_INTAKE_MEDIA_TYPES
 DEFAULT_ENGINE_TIMEOUT_SECONDS = 3600
 MIN_ENGINE_TIMEOUT_SECONDS = 30
 MAX_ENGINE_TIMEOUT_SECONDS = 7200
