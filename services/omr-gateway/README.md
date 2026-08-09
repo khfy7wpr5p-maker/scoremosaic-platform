@@ -6,14 +6,20 @@ This service remains a private, health-only foundation for the shared ScoreMosai
 
 Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 adds a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or storage. Both libraries are deterministic and perform no file, network, queue, database, or storage operation.
 
+Safe Intake is also being implemented in security-gated slices without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection are now implemented foundations. B.5 decoded image/pixel limits, B.6 filename/path safety, and the integrated Safe Intake decision remain incomplete.
+
 Implemented now:
 
 - Python 3.12 standard-library HTTP service
+- exact-pinned `pypdf==6.14.2` used only by the private B.4 PDF inspection helper
 - `GET /health` returning process health and disabled capabilities
 - `GET /ready` returning HTTP 503 while orchestration remains disabled
 - bounded readiness probes for the three private engine `/ready` endpoints
-- isolated probe results so one unavailable engine does not hide the others
 - declared future PDF, JPEG (`.jpg`/`.jpeg`), and PNG input capability
+- Safe Intake B.1 bounded signature classification
+- Safe Intake B.2 declared MIME/signature consistency
+- Safe Intake B.3 observed byte-budget enforcement
+- Safe Intake B.4 strict PDF structural/page-count inspection in a bounded helper subprocess
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -25,6 +31,8 @@ Implemented now:
 - independent candidate namespaces for Audiveris, HOMR, and Clarity
 - non-root, read-only container foundation
 - no public port or direct browser route
+
+B.4 derives page evidence from the exact bounded PDF bytes rather than caller-supplied page metadata. The helper uses `pypdf` with `strict=True`, rejects encrypted PDFs in Safe Intake v1, has a bounded inspection timeout, suppresses raw parser diagnostics, and returns only a bounded stable result. It does not render pages, extract text/images/attachments, follow links, execute embedded content, persist input bytes, or enable upload.
 
 ## Current endpoints
 
@@ -175,7 +183,7 @@ See `docs/candidate-artifact-lifecycle-v1.md` for the complete state and securit
 
 It does not:
 
-- accept or read a user file
+- accept or read a user file through HTTP
 - create a queue entry
 - start an engine
 - write a database record
@@ -200,9 +208,9 @@ No engine is allowed to overwrite another engine's candidate.
 | `SCOREMOSAIC_GATEWAY_LOG_LEVEL` | `INFO` | DEBUG, INFO, WARNING, ERROR, CRITICAL |
 | `SCOREMOSAIC_GATEWAY_ORCHESTRATION_MODE` | `disabled` | must remain disabled |
 | `SCOREMOSAIC_GATEWAY_PROBE_TIMEOUT_SECONDS` | `1` | 1-10 seconds per engine |
-| `SCOREMOSAIC_GATEWAY_MAX_REQUEST_BYTES` | `20971520` | reserved future limit; 1 KiB-100 MiB |
-| `SCOREMOSAIC_GATEWAY_MAX_PAGES` | `40` | reserved future limit; 1-200 |
-| `SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS` | `80000000` | reserved future limit; 1-200 megapixels |
+| `SCOREMOSAIC_GATEWAY_MAX_REQUEST_BYTES` | `20971520` | B.3 policy input; configuration 1 KiB-100 MiB; HTTP upload still disabled |
+| `SCOREMOSAIC_GATEWAY_MAX_PAGES` | `40` | B.4 policy input; configuration 1-200; HTTP upload still disabled |
+| `SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS` | `80000000` | reserved future B.5 limit; 1-200 megapixels |
 | `SCOREMOSAIC_GATEWAY_WORKSPACE_ROOT` | `/tmp/scoremosaic-gateway` | absolute path only |
 | `SCOREMOSAIC_GATEWAY_AUDIVERIS_BASE_URL` | `http://audiveris-foundation:8082` | administrator-controlled HTTP(S) base URL without credentials/path/query |
 | `SCOREMOSAIC_GATEWAY_HOMR_BASE_URL` | `http://homr-foundation:8080` | same boundary |
@@ -210,39 +218,16 @@ No engine is allowed to overwrite another engine's candidate.
 
 The engine addresses are deployment configuration, never orchestration-plan, lifecycle, or user input. Readiness probes read at most 64 KiB from each response and use a strict timeout.
 
+## Dependency boundary
+
+Gate B.4 introduces the Gateway's first runtime parser dependency: `pypdf==6.14.2`. It is exact-pinned in project metadata, CI, and the Gateway container build. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work.
+
 ## Local checks
 
 From the repository root:
 
 ```bash
+python -m pip install pypdf==6.14.2
 python -m compileall -q services/omr-gateway/src
 python -m unittest discover -s services/omr-gateway/tests -v
 ```
-
-Docker validation is performed in GitHub Actions and later in Coolify staging.
-
-## Required gates before real orchestration and storage
-
-- secure PDF/JPEG/PNG validation by magic bytes and decoded-content limits
-- authenticated service-to-service requests
-- concrete engine adapter request/response contracts
-- server-generated job, run, candidate, and artifact identifiers
-- queue, timeout enforcement, cancellation, cleanup, and restart recovery
-- content-addressed immutable source and candidate artifact storage
-- safe MusicXML validation
-- retention, cleanup, and recovery rules
-- real engine adapters with pinned versions
-- no automatic teacher approval or publication
-
-## Explicit non-goals
-
-- public API or domain
-- real upload or conversion
-- live network dispatch or orchestration execution
-- database, queue, or persistent storage
-- runtime artifact mutation or overwrite
-- automatic Ensemble comparison invocation
-- engine ranking, preferred candidate, or winner selection
-- automatic MusicXML merge or correction
-- user editor, teacher approval, or note tracking
-- ST-OMR implementation or integration
