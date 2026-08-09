@@ -1,14 +1,16 @@
-"""Pure Safe Intake v1 format policy and bounded signature/MIME matching.
+"""Pure Safe Intake v1 format policy and bounded security primitives.
 
 This module does not accept uploads or declare a document safe for processing.
-It identifies an allowlisted format from a small caller-supplied header and can
-verify that a bounded declared MIME value matches that signature classification.
-Later Gate B stages must still verify byte/page/pixel budgets, filename safety,
-and full document structure before producing an intake decision.
+It identifies an allowlisted format from a small caller-supplied header, verifies
+that a bounded declared MIME value matches that signature classification, and can
+measure actually observed byte chunks against a bounded request budget without
+retaining the payload. Later Gate B stages must still verify page/pixel budgets,
+filename safety, and full document structure before producing an intake decision.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 import re
 
@@ -26,6 +28,14 @@ class SafeIntakeSignatureError(ValueError):
 
 class SafeIntakeMediaTypeError(ValueError):
     """Raised when declared MIME evidence cannot be safely accepted."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
+class SafeIntakeByteBudgetError(ValueError):
+    """Raised when observed input bytes cannot satisfy the bounded byte policy."""
 
     def __init__(self, code: str) -> None:
         self.code = code
@@ -102,6 +112,7 @@ _DECLARED_MEDIA_TYPE_PATTERN = re.compile(
     rf"{_MEDIA_TYPE_TOKEN}/{_MEDIA_TYPE_TOKEN}\Z",
     re.ASCII,
 )
+_ABSOLUTE_MAX_REQUEST_BYTES = 100 * 1024 * 1024
 
 
 def _bounded_header(
@@ -136,6 +147,24 @@ def _normalize_declared_media_type(declared_media_type: str | None) -> str:
         raise SafeIntakeMediaTypeError("media_type_invalid")
 
     return declared_media_type.lower()
+
+
+def _validate_byte_limit(max_bytes: int) -> int:
+    if isinstance(max_bytes, bool) or not isinstance(max_bytes, int):
+        raise SafeIntakeByteBudgetError("byte_limit_invalid")
+    if not 1 <= max_bytes <= _ABSOLUTE_MAX_REQUEST_BYTES:
+        raise SafeIntakeByteBudgetError("byte_limit_invalid")
+    return max_bytes
+
+
+def _byte_chunk_size(chunk: bytes | bytearray | memoryview) -> int:
+    if not isinstance(chunk, (bytes, bytearray, memoryview)):
+        raise SafeIntakeByteBudgetError("byte_chunk_invalid")
+
+    view = memoryview(chunk)
+    if view.ndim != 1 or view.itemsize != 1:
+        raise SafeIntakeByteBudgetError("byte_chunk_invalid")
+    return view.nbytes
 
 
 def match_input_signature(
@@ -181,3 +210,24 @@ def verify_signature_media_type(
         raise SafeIntakeMediaTypeError("signature_media_type_mismatch")
 
     return signature_match
+
+
+def measure_input_bytes(
+    chunks: Iterable[bytes | bytearray | memoryview],
+    max_bytes: int,
+) -> int:
+    """Count observed byte chunks and fail immediately when the budget is exceeded."""
+
+    limit = _validate_byte_limit(max_bytes)
+    try:
+        iterator = iter(chunks)
+    except TypeError as exc:
+        raise SafeIntakeByteBudgetError("byte_chunk_invalid") from exc
+
+    observed_bytes = 0
+    for chunk in iterator:
+        observed_bytes += _byte_chunk_size(chunk)
+        if observed_bytes > limit:
+            raise SafeIntakeByteBudgetError("byte_budget_exceeded")
+
+    return observed_bytes

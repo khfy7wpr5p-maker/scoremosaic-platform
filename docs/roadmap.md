@@ -18,7 +18,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | Fixed evaluation foundations | Completed | Fixed evaluation datasets/contracts are present. |
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented in this security slice | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
-| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification and B.2 declared MIME consistency exist; external PDF/image upload remains disabled. |
+| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification, B.2 declared MIME consistency, and B.3 observed byte-budget enforcement exist; external PDF/image upload remains disabled. |
 | Service-to-service authentication | Not started | Live engine dispatch remains blocked. |
 | Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
 | Production immutable object storage | Not started | Production persistence remains blocked. |
