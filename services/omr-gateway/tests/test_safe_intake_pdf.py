@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+import resource
 import subprocess
 import sys
 import tomllib
@@ -9,8 +10,10 @@ import unittest
 from unittest.mock import patch
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = SERVICE_ROOT.parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
+from scoremosaic_gateway import pdf_inspector_worker
 from scoremosaic_gateway.safe_intake import (
     SafeIntakePdfError,
     inspect_pdf_pages,
@@ -157,6 +160,46 @@ class PdfPageBudgetTests(unittest.TestCase):
             with self.assertRaises(SafeIntakePdfError) as raised:
                 inspect_pdf_pages(_build_pdf(1), max_pages=40)
         self.assertEqual(raised.exception.code, "pdf_inspection_timeout")
+
+    def test_forwards_immutable_pdf_bytes_without_parent_copy(self) -> None:
+        pdf_bytes = _build_pdf(1)
+
+        def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            self.assertIs(kwargs["input"], pdf_bytes)
+            return subprocess.CompletedProcess(
+                args[0],
+                0,
+                stdout=b'{"page_count":1,"status":"ok"}',
+            )
+
+        with patch(
+            "scoremosaic_gateway.safe_intake.subprocess.run",
+            side_effect=fake_run,
+        ):
+            self.assertEqual(inspect_pdf_pages(pdf_bytes, max_pages=40), 1)
+
+    def test_worker_address_space_is_bounded_against_staging_container(self) -> None:
+        self.assertEqual(
+            pdf_inspector_worker._PDF_WORKER_MAX_ADDRESS_SPACE_BYTES,
+            256 * 1024 * 1024,
+        )
+        staging_compose = (
+            REPO_ROOT / "deploy" / "coolify" / "staging" / "compose.yaml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            'mem_limit: "${GATEWAY_MEMORY_LIMIT:-512m}"',
+            staging_compose,
+        )
+
+        with patch.object(pdf_inspector_worker.resource, "setrlimit") as setrlimit:
+            self.assertTrue(pdf_inspector_worker._apply_address_space_limit())
+        setrlimit.assert_called_once_with(
+            resource.RLIMIT_AS,
+            (
+                pdf_inspector_worker._PDF_WORKER_MAX_ADDRESS_SPACE_BYTES,
+                pdf_inspector_worker._PDF_WORKER_MAX_ADDRESS_SPACE_BYTES,
+            ),
+        )
 
 
 if __name__ == "__main__":
