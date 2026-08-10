@@ -13,7 +13,7 @@ from unittest import mock
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
-from scoremosaic_gateway import safe_intake
+from scoremosaic_gateway import image_inspector_worker, safe_intake
 
 
 PNG_1X1 = base64.b64decode(
@@ -82,8 +82,12 @@ class GateB5ImagePixelContractTests(unittest.TestCase):
                     "image_dimension_budget_exceeded",
                 )
 
+        # 40,000,001 cannot be expressed as width * height with both
+        # dimensions <= 12,000. The nearest representable value above
+        # the 40,000,000-pixel limit is 5,437 * 7,357 = 40,000,009.
+        self.assertEqual(5_437 * 7_357, 40_000_009)
         with self.assertRaises(error_type) as raised:
-            self._validate_dimensions(8_000, 5_001)
+            self._validate_dimensions(5_437, 7_357)
         self.assertEqual(
             raised.exception.code,
             "image_pixel_budget_exceeded",
@@ -189,6 +193,35 @@ class GateB5ImagePixelContractTests(unittest.TestCase):
             / "image_inspector_worker.py"
         )
         self.assertTrue(worker.is_file())
+
+    def test_private_worker_decoder_allowlist_is_exact(self) -> None:
+        self.assertEqual(
+            image_inspector_worker._ALLOWED_FORMATS,
+            {
+                "jpeg": "JPEG",
+                "png": "PNG",
+            },
+        )
+
+    def test_private_worker_applies_256_mib_address_space_limit(self) -> None:
+        self.assertEqual(
+            image_inspector_worker._IMAGE_WORKER_MAX_ADDRESS_SPACE_BYTES,
+            256 * 1024 * 1024,
+        )
+
+        with mock.patch.object(
+            image_inspector_worker.resource,
+            "setrlimit",
+        ) as setrlimit:
+            self.assertTrue(image_inspector_worker._apply_address_space_limit())
+
+        setrlimit.assert_called_once_with(
+            image_inspector_worker.resource.RLIMIT_AS,
+            (
+                256 * 1024 * 1024,
+                256 * 1024 * 1024,
+            ),
+        )
 
 
 if __name__ == "__main__":

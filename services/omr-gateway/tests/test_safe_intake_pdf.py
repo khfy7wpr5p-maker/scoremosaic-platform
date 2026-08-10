@@ -251,7 +251,7 @@ class PdfPageBudgetTests(unittest.TestCase):
         metadata = tomllib.loads(
             (SERVICE_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         )
-        self.assertEqual(metadata["project"]["dependencies"], ["pypdf==6.14.2"])
+        self.assertIn("pypdf==6.14.2", metadata["project"]["dependencies"])
 
     def test_accepts_one_page_and_exact_page_limit(self) -> None:
         self.assertEqual(inspect_pdf_pages(_build_pdf(1), max_pages=40), 1)

@@ -55,6 +55,14 @@ class SafeIntakePdfError(ValueError):
         super().__init__(code)
 
 
+class SafeIntakeImageError(ValueError):
+    """Raised when image structural/pixel evidence cannot be safely accepted."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
 @dataclass(frozen=True, slots=True)
 class SafeIntakeFormat:
     format_id: str
@@ -77,6 +85,16 @@ class SignatureMatch:
     policy_version: str
     format_id: str
     media_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class ImageInspectionResult:
+    """Server-derived structural and pixel evidence for one static image."""
+
+    format_id: str
+    width: int
+    height: int
+    pixel_count: int
 
 
 _PDF_VERSION_MARKERS = tuple(
@@ -127,13 +145,25 @@ _DECLARED_MEDIA_TYPE_PATTERN = re.compile(
 )
 _ABSOLUTE_MAX_REQUEST_BYTES = 100 * 1024 * 1024
 _ABSOLUTE_MAX_PDF_PAGES = 200
+_ABSOLUTE_MAX_IMAGE_DIMENSION = 12_000
+_ABSOLUTE_MAX_IMAGE_PIXELS = 40_000_000
 _PDF_INSPECTION_TIMEOUT_SECONDS = 2
+_IMAGE_INSPECTION_TIMEOUT_SECONDS = 3
 _PDF_INSPECTOR_MAX_OUTPUT_BYTES = 1024
+_IMAGE_INSPECTOR_MAX_OUTPUT_BYTES = 1024
 _PDF_INSPECTOR_ERROR_CODES = frozenset(
     {
         "pdf_structure_invalid",
         "pdf_encrypted_unsupported",
         "pdf_page_budget_exceeded",
+    }
+)
+_IMAGE_INSPECTOR_ERROR_CODES = frozenset(
+    {
+        "image_structure_invalid",
+        "image_dimension_budget_exceeded",
+        "image_pixel_budget_exceeded",
+        "image_animation_unsupported",
     }
 )
 
@@ -211,6 +241,44 @@ def _bounded_pdf_bytes(pdf_bytes: bytes) -> bytes:
     if signature_match.format_id != "pdf":
         raise SafeIntakePdfError("pdf_structure_invalid")
     return pdf_bytes
+
+
+def _validate_image_dimensions(width: object, height: object) -> int:
+    if (
+        isinstance(width, bool)
+        or isinstance(height, bool)
+        or not isinstance(width, int)
+        or not isinstance(height, int)
+        or width < 1
+        or height < 1
+    ):
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    if width > _ABSOLUTE_MAX_IMAGE_DIMENSION or height > _ABSOLUTE_MAX_IMAGE_DIMENSION:
+        raise SafeIntakeImageError("image_dimension_budget_exceeded")
+
+    pixel_count = width * height
+    if pixel_count > _ABSOLUTE_MAX_IMAGE_PIXELS:
+        raise SafeIntakeImageError("image_pixel_budget_exceeded")
+
+    return pixel_count
+
+
+def _bounded_image_bytes(image_bytes: bytes) -> tuple[bytes, str]:
+    if not isinstance(image_bytes, bytes):
+        raise SafeIntakeImageError("image_structure_invalid")
+    if not image_bytes or len(image_bytes) > _ABSOLUTE_MAX_REQUEST_BYTES:
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    try:
+        signature_match = match_input_signature(image_bytes)
+    except (SafeIntakeSignatureError, TypeError) as exc:
+        raise SafeIntakeImageError("image_structure_invalid") from exc
+
+    if signature_match.format_id not in {"jpeg", "png"}:
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    return image_bytes, signature_match.format_id
 
 
 def match_input_signature(
@@ -333,3 +401,78 @@ def inspect_pdf_pages(
     if not 1 <= page_count <= page_limit:
         raise SafeIntakePdfError("pdf_structure_invalid")
     return page_count
+
+def inspect_image_pixels(image_bytes: bytes) -> ImageInspectionResult:
+    """Inspect exact immutable JPEG/PNG bytes in a bounded private helper."""
+
+    payload, expected_format_id = _bounded_image_bytes(image_bytes)
+    worker_path = Path(__file__).with_name("image_inspector_worker.py")
+
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(worker_path), expected_format_id],
+            input=payload,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=_IMAGE_INSPECTION_TIMEOUT_SECONDS,
+            start_new_session=True,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SafeIntakeImageError("image_inspection_timeout") from exc
+    except OSError as exc:
+        raise SafeIntakeImageError("image_structure_invalid") from exc
+
+    if completed.returncode != 0:
+        raise SafeIntakeImageError("image_structure_invalid")
+    if len(completed.stdout) > _IMAGE_INSPECTOR_MAX_OUTPUT_BYTES:
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    try:
+        result = json.loads(completed.stdout.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SafeIntakeImageError("image_structure_invalid") from exc
+
+    if not isinstance(result, dict):
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    if result.get("status") == "error":
+        if set(result) != {"status", "code"}:
+            raise SafeIntakeImageError("image_structure_invalid")
+        code = result.get("code")
+        if code in _IMAGE_INSPECTOR_ERROR_CODES:
+            raise SafeIntakeImageError(code)
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    expected_keys = {
+        "status",
+        "format_id",
+        "width",
+        "height",
+        "pixel_count",
+    }
+    if result.get("status") != "ok" or set(result) != expected_keys:
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    format_id = result.get("format_id")
+    width = result.get("width")
+    height = result.get("height")
+    pixel_count = result.get("pixel_count")
+
+    if format_id != expected_format_id:
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    calculated_pixel_count = _validate_image_dimensions(width, height)
+    if (
+        isinstance(pixel_count, bool)
+        or not isinstance(pixel_count, int)
+        or pixel_count != calculated_pixel_count
+    ):
+        raise SafeIntakeImageError("image_structure_invalid")
+
+    return ImageInspectionResult(
+        format_id=format_id,
+        width=width,
+        height=height,
+        pixel_count=pixel_count,
+    )
