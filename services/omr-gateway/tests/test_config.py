@@ -21,12 +21,25 @@ class ServiceConfigTests(unittest.TestCase):
         self.assertEqual(config.probe_timeout_seconds, 1)
         self.assertEqual(config.max_request_bytes, 20 * 1024 * 1024)
         self.assertEqual(config.max_pages, 40)
-        self.assertEqual(config.max_image_pixels, 80_000_000)
+        self.assertEqual(config.max_image_pixels, 40_000_000)
         self.assertTrue(config.workspace_root.is_absolute())
         self.assertEqual(
             [endpoint.name for endpoint in config.engine_endpoints],
             ["audiveris", "homr", "clarity"],
         )
+
+    def test_image_pixel_limit_is_fixed_to_gate_b5_policy(self) -> None:
+        config = load_config(
+            {"SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS": "40000000"}
+        )
+        self.assertEqual(config.max_image_pixels, 40_000_000)
+
+        for value in ("39999999", "40000001", "80000000"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ConfigError, "must equal 40000000"):
+                    load_config(
+                        {"SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS": value}
+                    )
 
     def test_container_bind_address_is_allowed(self) -> None:
         config = load_config({"SCOREMOSAIC_GATEWAY_HOST": "0.0.0.0"})
