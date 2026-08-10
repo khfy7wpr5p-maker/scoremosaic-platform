@@ -83,10 +83,7 @@ jobs:
 
           assert scoremosaic_gateway.__version__ == "0.3.0"
           assert project["project"]["version"] == "0.3.0"
-          assert project["project"]["dependencies"] == [
-    "pypdf==6.14.2",
-    "Pillow==12.3.0",
-]
+          assert project["project"]["dependencies"] == ["pypdf==6.14.2", "Pillow==12.3.0"]
           assert ORCHESTRATION_SCHEMA_VERSION == "1.0"
           assert ORCHESTRATION_CONTRACT_TYPE == "scoremosaic-gateway-orchestration-plan"
           assert boundary["orchestration-contract-version"] == "1.0"
