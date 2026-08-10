@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN python -m pip install --no-cache-dir --disable-pip-version-check pypdf==6.14.2
+RUN python -m pip install --no-cache-dir --disable-pip-version-check pypdf==6.14.2 Pillow==12.3.0
 
 COPY src/ ./src/
 
