@@ -35,7 +35,9 @@ Before any external PDF/image job can be accepted for live processing, the Gatew
 - isolated non-root processing with restricted capabilities;
 - no execution of embedded files, scripts, links, or external resources.
 
-The repository already contains related configuration limits, but configuration alone is not an implemented intake gate. **External upload must remain disabled until runtime enforcement and hostile-input regression tests exist.**
+Current runtime foundations implement B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection. B.4 derives page evidence from the exact PDF bytes in a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True`. It rejects encrypted PDFs in v1, validates referenced page objects, and does not render pages, extract text/images/attachments, execute embedded content, follow external resources, or persist the inspected bytes. Immutable PDF `bytes` are forwarded without an additional parent-side payload copy. The Linux inspection worker applies a 256 MiB address-space limit before reading untrusted PDF bytes, and the current private Coolify staging Gateway container is budgeted at 512 MiB so parser growth remains isolated from the service-level memory ceiling.
+
+B.5 decoded image/pixel enforcement, B.6 filename/path enforcement, hostile-input convergence, and the integrated Safe Intake decision remain incomplete. Configuration alone is not an implemented intake gate. **External upload must remain disabled until the complete runtime enforcement and hostile-input regression set pass.**
 
 ## 4. Candidate Safety Gate v1
 
@@ -126,6 +128,8 @@ External error responses must avoid stack traces, raw subprocess output, and int
 - Pin container base images by digest before production promotion.
 - Generate/retain SBOM and provenance evidence for release artifacts when the production release process is introduced.
 
+Gate B.4 introduces the Gateway's first PDF parser dependency and pins it exactly to `pypdf==6.14.2`. Repository-owned dependency/vulnerability scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work; B.4 does not claim those controls are complete.
+
 ## 9. Teacher-review boundary
 
 - Ensemble findings are evidence/recommendations, not final truth.
@@ -149,7 +153,11 @@ Required negative coverage includes:
 - oversized PDF/image;
 - excessive page/pixel count;
 - path traversal/control characters in filenames;
-- unsupported/ambiguous container formats.
+- unsupported/ambiguous container formats;
+- encrypted PDF rejection while Safe Intake v1 does not support decryption;
+- missing or malformed PDF page-object references;
+- bounded failure when PDF structural inspection times out;
+- bounded PDF inspection memory independent of parser/object-graph growth.
 
 ### Candidate output
 
@@ -179,7 +187,7 @@ Required negative coverage includes:
 
 The following capabilities remain blocked until their protecting controls and negative tests pass:
 
-- **External upload** → blocked until Safe Intake Gate runtime enforcement exists.
+- **External upload** → blocked until the complete Safe Intake Gate runtime enforcement exists; B.1-B.4 alone are not sufficient.
 - **Live Gateway dispatch** → blocked until intake enforcement, service-to-service authentication, durable job state, and candidate handling are demonstrated.
 - **Canonical/Ensemble consumption of engine output** → must pass Candidate Safety v1 first.
 - **Teacher approval/publication** → blocked until RBAC, immutable revisions, audit evidence, and approval/publication barriers exist.

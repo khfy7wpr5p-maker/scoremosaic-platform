@@ -161,7 +161,7 @@ services:
     expose:
       - "8090"
     cpus: "${GATEWAY_CPUS:-0.50}"
-    mem_limit: "${GATEWAY_MEMORY_LIMIT:-256m}"
+    mem_limit: "${GATEWAY_MEMORY_LIMIT:-512m}"
     tmpfs:
       - /tmp/scoremosaic-gateway:rw,noexec,nosuid,size=${GATEWAY_TMPFS_BYTES:-16777216},mode=0700
     healthcheck:
