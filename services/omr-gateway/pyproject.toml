@@ -5,6 +5,7 @@ description = "Health-only private OMR Gateway with disabled orchestration and a
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "pypdf==6.14.2",
+  "Pillow==12.3.0",
 ]
 
 [tool.scoremosaic]

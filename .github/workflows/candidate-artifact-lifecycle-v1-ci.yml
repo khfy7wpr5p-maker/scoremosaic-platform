@@ -49,7 +49,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install exact Gateway PDF parser dependency
-        run: python -m pip install --disable-pip-version-check pypdf==6.14.2
+        run: python -m pip install --disable-pip-version-check pypdf==6.14.2 Pillow==12.3.0
 
       - name: Compile Gateway source
         run: python -m compileall -q services/omr-gateway/src
@@ -90,7 +90,7 @@ jobs:
 
           assert scoremosaic_gateway.__version__ == "0.3.0"
           assert project["project"]["version"] == "0.3.0"
-          assert project["project"]["dependencies"] == ["pypdf==6.14.2"]
+          assert project["project"]["dependencies"] == ["pypdf==6.14.2", "Pillow==12.3.0"]
           assert LIFECYCLE_SCHEMA_VERSION == "1.0"
           assert LIFECYCLE_CONTRACT_TYPE == "scoremosaic-gateway-candidate-artifact-lifecycle"
           assert boundary["artifact-lifecycle-contract-version"] == "1.0"
