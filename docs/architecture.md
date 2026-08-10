@@ -63,6 +63,8 @@ The Safe Intake Gate protects the platform from untrusted external documents. Th
 
 Gate B.4 does **not** alter this target architecture. It adds one implementation boundary inside Safe Intake: exact PDF bytes are passed to a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True` to derive structural/page evidence. The helper does not render pages, extract text/images/attachments, follow links, execute embedded content, persist bytes, or enable external upload. Encrypted PDFs are rejected in Safe Intake v1.
 
+Gate B.5 also leaves the target architecture unchanged. Exact immutable JPEG/PNG bytes are inspected in a bounded private helper using exact-pinned `Pillow==12.3.0`; only static JPEG/PNG is accepted, dimensions are server-derived, each dimension is capped at 12,000 px, total pixels are capped at 40,000,000, and the helper is bounded by a 256 MiB address-space limit and a 3-second timeout. The helper persists nothing and does not enable upload or orchestration.
+
 ## 3. Current activation state
 
 The repository contains substantial runtime and comparison foundations, but the public data plane remains deliberately closed.
@@ -71,7 +73,7 @@ The repository contains substantial runtime and comparison foundations, but the 
 
 - Private HOMR, Clarity-OMR, and Audiveris runtime adapters.
 - Private OMR Gateway health and orchestration contracts.
-- Safe Intake B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection.
+- Safe Intake B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded static JPEG/PNG image/pixel enforcement.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -80,7 +82,6 @@ The repository contains substantial runtime and comparison foundations, but the 
 ### Deliberately disabled or not yet implemented
 
 - External upload.
-- Safe Intake B.5 decoded image/pixel enforcement.
 - Safe Intake B.6 filename/path enforcement and the integrated intake decision.
 - Live Gateway engine dispatch/orchestration.
 - Production persistence.
@@ -98,6 +99,7 @@ A disabled capability must not be interpreted as implemented merely because conf
 - Enforce the Safe Intake Gate before any live engine dispatch is enabled.
 - Derive PDF page evidence from exact bounded PDF bytes; do not trust caller-supplied page metadata.
 - Keep PDF structural parsing in the bounded B.4 helper subprocess; current v1 rejects encrypted PDFs and does not render or extract document content.
+- Derive JPEG/PNG dimensions and total pixel evidence from exact immutable bytes in the bounded B.5 helper; do not trust caller-supplied dimensions or permit animated image input.
 - Preserve server-owned job and artifact identity.
 - Dispatch only to authenticated private engine endpoints once that capability is enabled.
 - Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules.
@@ -143,7 +145,7 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 ## 5. Data flow and trust transitions
 
 1. **Receive external document** — still disabled in the current runtime.
-2. **Safe Intake Gate** — B.1 verifies signature, B.2 binds declared MIME, B.3 measures observed bytes, and B.4 strictly inspects PDF structure/page count. B.5 pixel budgets, B.6 filename/path safety, and the integrated decision remain required.
+2. **Safe Intake Gate** — B.1 verifies signature, B.2 binds declared MIME, B.3 measures observed bytes, B.4 strictly inspects PDF structure/page count, and B.5 derives and bounds static JPEG/PNG dimensions/pixel count. B.6 filename/path safety and the integrated decision remain required.
 3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
 4. **Create durable job** — future persistence boundary; must support idempotency and restart recovery.
 5. **Dispatch private engine runs** — only after service-to-service authentication is implemented.
@@ -243,7 +245,7 @@ This architecture update does **not** enable:
 
 - public uploads;
 - live Gateway dispatch;
-- image/pixel or filename/path Safe Intake completion;
+- filename/path Safe Intake completion or the integrated Safe Intake decision;
 - automatic candidate ranking/merging/correction;
 - production storage;
 - teacher approval APIs;
