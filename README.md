@@ -14,7 +14,7 @@ The public data plane is intentionally **not enabled**:
 - Engine services remain private to the container network.
 - Teacher approval and publication are not yet production APIs.
 
-Safe Intake is being implemented in security-gated slices. B.1 signature classification, B.2 declared MIME binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection are implemented foundations. B.5 decoded image/pixel limits, B.6 filename/path safety, and the integrated Safe Intake decision remain required before external upload can be enabled.
+Safe Intake is being implemented in security-gated slices. B.1 signature classification, B.2 declared MIME binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded JPEG/PNG image/pixel enforcement are implemented foundations. B.6 filename/path safety and the integrated Safe Intake decision remain required before external upload can be enabled.
 
 ## Secure target flow
 
@@ -68,18 +68,20 @@ A successful engine process does **not** make its output trusted. HOMR, Clarity,
 - Pinned engine/model revisions and checksum verification where applicable.
 - GitHub Actions references pinned to immutable commit SHAs.
 - Gateway health/orchestration contracts with upload and execution disabled.
-- Safe Intake B.1-B.4 foundations: signature classification, MIME/signature binding, observed byte budgets, and strict PDF page-budget inspection using exact-pinned `pypdf==6.14.2` in a bounded helper subprocess.
+- Safe Intake B.1-B.5 foundations: signature classification, MIME/signature binding, observed byte budgets, strict PDF page-budget inspection using exact-pinned `pypdf==6.14.2`, and static JPEG/PNG image inspection using exact-pinned `Pillow==12.3.0` with a 12,000 px per-dimension and 40,000,000 total-pixel ceiling.
 - Immutable candidate/artifact lifecycle contracts.
 - Canonical Score, Ensemble comparator/report, and fixed evaluation foundations.
 - Candidate Safety v1 for HOMR, Clarity, and Audiveris engine outputs.
 
 The B.4 PDF inspector parses only structural/page evidence. It does not render pages, extract text/images/attachments, execute embedded content, or enable upload. Encrypted PDFs are rejected in the current Safe Intake v1 slice. Immutable PDF `bytes` are passed to the helper without an additional parent-side payload copy; the Linux helper applies a 256 MiB address-space limit and the private Coolify staging Gateway is budgeted at 512 MiB.
 
+The B.5 image inspector accepts only immutable JPEG/PNG bytes, rejects malformed/truncated or animated inputs, derives dimensions from decoded evidence rather than caller metadata, and enforces a 12,000 px per-dimension and 40,000,000 total-pixel ceiling inside a private helper subprocess with a 256 MiB address-space limit and a 3-second timeout. B.5 does not enable upload or orchestration.
+
 ## Activation gates still required
 
 Before any external upload or live orchestration is enabled, the platform still requires at minimum:
 
-1. Completion of Runtime Safe Intake Gate enforcement: B.5 decoded image/pixel limits, B.6 filename/path safety, hostile-input convergence, and the integrated fail-closed intake decision. B.1-B.4 are implemented foundations.
+1. Completion of Runtime Safe Intake Gate enforcement: B.6 filename/path safety, hostile-input convergence, and the integrated fail-closed intake decision. B.1-B.5 are implemented foundations.
 2. Authenticated service-to-service engine requests.
 3. Durable job state, idempotency, retry/cancellation, and restart recovery.
 4. Production immutable object storage and provenance retention.
