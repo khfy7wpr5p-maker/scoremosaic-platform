@@ -18,7 +18,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | Fixed evaluation foundations | Completed | Fixed evaluation datasets/contracts are present. |
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented in this security slice | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
-| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification, B.2 declared MIME consistency, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection exist; external PDF/image upload remains disabled. |
+| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification, B.2 declared MIME consistency, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded JPEG/PNG image/pixel enforcement exist; external PDF/image upload remains disabled. |
 | Service-to-service authentication | Not started | Live engine dispatch remains blocked. |
 | Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
 | Production immutable object storage | Not started | Production persistence remains blocked. |
@@ -55,8 +55,8 @@ Current slice status:
 - B.1 signature classification — completed.
 - B.2 declared MIME/signature consistency — completed.
 - B.3 observed request-byte budget — completed.
-- B.4 strict PDF structure/page-budget inspection — implemented in this slice with exact-pinned `pypdf==6.14.2` in a bounded helper subprocess; encrypted PDFs are rejected in v1.
-- B.5 decoded image/pixel limit — not started.
+- B.4 strict PDF structure/page-budget inspection — completed with exact-pinned `pypdf==6.14.2` in a bounded helper subprocess; encrypted PDFs are rejected in v1.
+- B.5 decoded image/pixel limit — completed for static JPEG/PNG with exact-pinned `Pillow==12.3.0`, a 12,000 px per-dimension ceiling, a 40,000,000 total-pixel ceiling, a 256 MiB helper address-space limit, and a 3-second timeout.
 - B.6 filename/path safety — not started.
 - Integrated Safe Intake decision and hostile-input convergence — not started.
 
@@ -145,7 +145,7 @@ Requirements:
 - rollback/promotion procedure;
 - staging soak and acceptance evidence.
 
-Gate B.4 introduces the first Gateway PDF parser dependency. It is exact-pinned for this slice, while repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G work.
+Gate B.4 introduced the Gateway PDF parser dependency `pypdf==6.14.2`; Gate B.5 adds exact-pinned `Pillow==12.3.0` only for bounded JPEG/PNG inspection. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G work.
 
 ## Architectural phase mapping
 

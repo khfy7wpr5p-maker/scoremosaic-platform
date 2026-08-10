@@ -3,10 +3,10 @@
 This module does not accept uploads or declare a document safe for processing.
 It identifies an allowlisted format from a small caller-supplied header, verifies
 that a bounded declared MIME value matches that signature classification, measures
-actually observed byte chunks against a bounded request budget, and can inspect
-PDF structure/page count in a bounded helper subprocess. Later Gate B stages must
-still verify decoded image/pixel budgets, filename safety, and the integrated
-intake decision before external upload can be enabled.
+actually observed byte chunks against a bounded request budget, inspects PDF
+structure/page count, and inspects decoded static JPEG/PNG pixel evidence in
+bounded helper subprocesses. Gate B.6 filename safety and the integrated intake
+decision remain required before external upload can be enabled.
 """
 
 from __future__ import annotations
@@ -401,6 +401,7 @@ def inspect_pdf_pages(
     if not 1 <= page_count <= page_limit:
         raise SafeIntakePdfError("pdf_structure_invalid")
     return page_count
+
 
 def inspect_image_pixels(image_bytes: bytes) -> ImageInspectionResult:
     """Inspect exact immutable JPEG/PNG bytes in a bounded private helper."""

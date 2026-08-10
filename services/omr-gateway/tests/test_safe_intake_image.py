@@ -13,6 +13,7 @@ from unittest import mock
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
+import scoremosaic_gateway
 from scoremosaic_gateway import image_inspector_worker, safe_intake
 
 
@@ -60,6 +61,30 @@ class GateB5ImagePixelContractTests(unittest.TestCase):
         self.assertEqual(
             getattr(safe_intake, "_IMAGE_INSPECTION_TIMEOUT_SECONDS", None),
             3,
+        )
+
+    def test_worker_and_parent_b5_limits_cannot_drift(self) -> None:
+        self.assertEqual(
+            image_inspector_worker._ABSOLUTE_MAX_IMAGE_DIMENSION,
+            safe_intake._ABSOLUTE_MAX_IMAGE_DIMENSION,
+        )
+        self.assertEqual(
+            image_inspector_worker._ABSOLUTE_MAX_IMAGE_PIXELS,
+            safe_intake._ABSOLUTE_MAX_IMAGE_PIXELS,
+        )
+
+    def test_package_exports_b5_public_primitives(self) -> None:
+        self.assertIs(
+            scoremosaic_gateway.SafeIntakeImageError,
+            safe_intake.SafeIntakeImageError,
+        )
+        self.assertIs(
+            scoremosaic_gateway.ImageInspectionResult,
+            safe_intake.ImageInspectionResult,
+        )
+        self.assertIs(
+            scoremosaic_gateway.inspect_image_pixels,
+            safe_intake.inspect_image_pixels,
         )
 
     def test_dimension_and_pixel_exact_boundaries(self) -> None:

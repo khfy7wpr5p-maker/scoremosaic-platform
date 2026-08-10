@@ -51,6 +51,21 @@ def _read_int(
     return value
 
 
+def _read_fixed_int(
+    environ: Mapping[str, str],
+    name: str,
+    required: int,
+) -> int:
+    raw = environ.get(name, str(required)).strip()
+    try:
+        value = int(raw, 10)
+    except ValueError as exc:
+        raise ConfigError(f"{name} must be an integer") from exc
+    if value != required:
+        raise ConfigError(f"{name} must equal {required}")
+    return value
+
+
 def _read_base_url(
     environ: Mapping[str, str],
     name: str,
@@ -167,12 +182,10 @@ def load_config(environ: Mapping[str, str] | None = None) -> ServiceConfig:
             minimum=1,
             maximum=200,
         ),
-        max_image_pixels=_read_int(
+        max_image_pixels=_read_fixed_int(
             values,
             "SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS",
-            80_000_000,
-            minimum=1_000_000,
-            maximum=200_000_000,
+            40_000_000,
         ),
         workspace_root=workspace_root,
         engine_endpoints=endpoints,

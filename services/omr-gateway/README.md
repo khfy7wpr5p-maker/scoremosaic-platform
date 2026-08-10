@@ -6,12 +6,13 @@ This service remains a private, health-only foundation for the shared ScoreMosai
 
 Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 adds a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or storage. Both libraries are deterministic and perform no file, network, queue, database, or storage operation.
 
-Safe Intake is also being implemented in security-gated slices without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, and B.4 strict PDF structure/page-budget inspection are now implemented foundations. B.5 decoded image/pixel limits, B.6 filename/path safety, and the integrated Safe Intake decision remain incomplete.
+Safe Intake is also being implemented in security-gated slices without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded static JPEG/PNG image/pixel enforcement are now implemented foundations. B.6 filename/path safety and the integrated Safe Intake decision remain incomplete.
 
 Implemented now:
 
 - Python 3.12 standard-library HTTP service
 - exact-pinned `pypdf==6.14.2` used only by the private B.4 PDF inspection helper
+- exact-pinned `Pillow==12.3.0` used only by the private B.5 JPEG/PNG inspection helper
 - `GET /health` returning process health and disabled capabilities
 - `GET /ready` returning HTTP 503 while orchestration remains disabled
 - bounded readiness probes for the three private engine `/ready` endpoints
@@ -21,6 +22,7 @@ Implemented now:
 - Safe Intake B.2 declared MIME/signature consistency
 - Safe Intake B.3 observed byte-budget enforcement
 - Safe Intake B.4 strict PDF structural/page-count inspection in a bounded helper subprocess
+- Safe Intake B.5 immutable static JPEG/PNG inspection with server-derived dimensions, a 12,000 px per-dimension ceiling, a 40,000,000 total-pixel ceiling, animation rejection, a 256 MiB helper address-space limit, and a 3-second timeout
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -34,6 +36,8 @@ Implemented now:
 - no public port or direct browser route
 
 B.4 derives page evidence from the exact bounded PDF bytes rather than caller-supplied page metadata. The helper uses `pypdf` with `strict=True`, rejects encrypted PDFs in Safe Intake v1, validates referenced page objects, has a bounded inspection timeout, suppresses raw parser diagnostics, and returns only a bounded stable result. Immutable `bytes` are forwarded to the helper without creating a second parent-side payload copy. On the Linux container boundary the worker applies a 256 MiB address-space limit before reading untrusted PDF bytes, while the private Coolify staging Gateway container is budgeted at 512 MiB. It does not render pages, extract text/images/attachments, follow links, execute embedded content, persist input bytes, or enable upload.
+
+B.5 derives image evidence from exact immutable JPEG/PNG bytes. The helper rejects malformed/truncated content, rejects animated/APNG input, validates the decoded format against the signature-derived format, enforces a 12,000 px per-dimension and 40,000,000 total-pixel ceiling, fully decodes only inside the bounded subprocess, and returns only stable structural evidence. The worker has a 256 MiB address-space limit and a 3-second wall timeout. The Gateway `SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS` setting is fixed to `40000000` so deployment configuration cannot drift from the enforced B.5 policy.
 
 ## Current endpoints
 
@@ -211,7 +215,7 @@ No engine is allowed to overwrite another engine's candidate.
 | `SCOREMOSAIC_GATEWAY_PROBE_TIMEOUT_SECONDS` | `1` | 1-10 seconds per engine |
 | `SCOREMOSAIC_GATEWAY_MAX_REQUEST_BYTES` | `20971520` | B.3 policy input; configuration 1 KiB-100 MiB; HTTP upload still disabled |
 | `SCOREMOSAIC_GATEWAY_MAX_PAGES` | `40` | B.4 policy input; configuration 1-200; HTTP upload still disabled |
-| `SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS` | `80000000` | reserved future B.5 limit; 1-200 megapixels |
+| `SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS` | `40000000` | B.5 fixed security ceiling; values other than 40,000,000 are rejected |
 | `SCOREMOSAIC_GATEWAY_WORKSPACE_ROOT` | `/tmp/scoremosaic-gateway` | absolute path only |
 | `SCOREMOSAIC_GATEWAY_AUDIVERIS_BASE_URL` | `http://audiveris-foundation:8082` | administrator-controlled HTTP(S) base URL without credentials/path/query |
 | `SCOREMOSAIC_GATEWAY_HOMR_BASE_URL` | `http://homr-foundation:8080` | same boundary |
@@ -221,14 +225,14 @@ The engine addresses are deployment configuration, never orchestration-plan, lif
 
 ## Dependency boundary
 
-Gate B.4 introduces the Gateway's first runtime parser dependency: `pypdf==6.14.2`. It is exact-pinned in project metadata, CI, and the Gateway container build. The B.4 helper is additionally memory-isolated with a 256 MiB address-space limit inside the current 512 MiB private staging Gateway container. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work.
+Gate B.4 introduced the Gateway PDF parser dependency `pypdf==6.14.2`; Gate B.5 adds exact-pinned `Pillow==12.3.0` only for bounded static JPEG/PNG inspection. Both inspection helpers are subprocess-isolated with 256 MiB address-space limits inside the current 512 MiB private staging Gateway container. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work.
 
 ## Local checks
 
 From the repository root:
 
 ```bash
-python -m pip install pypdf==6.14.2
+python -m pip install pypdf==6.14.2 Pillow==12.3.0
 python -m compileall -q services/omr-gateway/src
 python -m unittest discover -s services/omr-gateway/tests -v
 ```
@@ -237,7 +241,7 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 ## Required gates before real orchestration and storage
 
-- complete Safe Intake Gate enforcement: B.1-B.4 are implemented foundations; B.5 decoded image/pixel limits, B.6 filename/path safety, hostile-input convergence, and the integrated fail-closed intake decision remain required
+- complete Safe Intake Gate enforcement: B.1-B.5 are implemented foundations; B.6 filename/path safety, hostile-input convergence, and the integrated fail-closed intake decision remain required
 - authenticated service-to-service requests
 - concrete engine adapter request/response contracts
 - server-generated job, run, candidate, and artifact identifiers
