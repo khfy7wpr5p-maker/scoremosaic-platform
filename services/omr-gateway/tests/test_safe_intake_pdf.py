@@ -159,6 +159,21 @@ def _build_pdf_with_stream_annotation() -> bytes:
     )
 
 
+
+def _build_pdf_with_non_catalog_root() -> bytes:
+    return _serialize_pdf_objects(
+        [
+            b"<< /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            (
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                b"/Resources << >> >>"
+            ),
+        ]
+    )
+
+
+
 def _build_pdf_with_orphan_declared_page_parent() -> bytes:
     return _serialize_pdf_objects(
         [
@@ -324,6 +339,16 @@ class PdfPageBudgetTests(unittest.TestCase):
                 max_pages=40,
             )
         self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
+
+    def test_rejects_non_catalog_trailer_root_fail_closed(self) -> None:
+        with self.assertRaises(SafeIntakePdfError) as raised:
+            inspect_pdf_pages(
+                _build_pdf_with_non_catalog_root(),
+                max_pages=40,
+            )
+        self.assertEqual(raised.exception.code, "pdf_structure_invalid")
+
 
     def test_rejects_page_parent_not_anchored_to_catalog_tree_fail_closed(self) -> None:
         with self.assertRaises(SafeIntakePdfError) as raised:

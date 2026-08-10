@@ -117,7 +117,21 @@ def _validate_page_parent(
         raise ValueError("missing page indirect reference")
 
     reader = getattr(page_reference, "pdf", None)
-    catalog = reader.root_object
+    if not isinstance(reader, PdfReader):
+        raise ValueError("missing page reader")
+
+    if "/Root" not in reader.trailer:
+        raise ValueError("missing trailer root reference")
+    catalog_value = reader.trailer.raw_get("/Root")
+    if not isinstance(catalog_value, IndirectObject):
+        raise ValueError("trailer root must be an indirect reference")
+
+    catalog = _resolve_indirect(catalog_value)
+    if isinstance(catalog, StreamObject) or not isinstance(catalog, DictionaryObject):
+        raise ValueError("invalid trailer root object")
+    if catalog.get("/Type") != "/Catalog":
+        raise ValueError("trailer root is not a catalog")
+
     catalog_pages_value = catalog.raw_get("/Pages")
     if not isinstance(catalog_pages_value, IndirectObject):
         raise ValueError("invalid catalog pages reference")
