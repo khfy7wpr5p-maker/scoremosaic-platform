@@ -85,6 +85,25 @@ jobs:
           test "$(docker exec "$container_id" python -c 'import os; print(os.getuid())')" = "65532"
 
           docker exec -i "$container_id" python - <<'PY'
+          import base64
+          import PIL
+
+          from scoremosaic_gateway.safe_intake import inspect_image_pixels
+
+          assert PIL.__version__ == "12.3.0"
+          image_bytes = base64.b64decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg=="
+          )
+          result = inspect_image_pixels(image_bytes)
+          assert (result.format_id, result.width, result.height, result.pixel_count) == (
+              "png",
+              1,
+              1,
+              1,
+          )
+          PY
+
+          docker exec -i "$container_id" python - <<'PY'
           import json
           import urllib.request
 
