@@ -50,7 +50,16 @@ OMR Gateway / job orchestration
                   Review report/evidence
                             |
                             v
-                    Teacher Review API
+              Teacher Review Score Editor
+                            |
+                            v
+              Immutable TeacherScoreRevision
+                            |
+                            v
+          Musical + structural validation
+                            |
+                            v
+              Corrected MusicXML derivative
                             |
                             v
                    Approval barrier
@@ -67,6 +76,10 @@ Gate B.5 likewise leaves the target architecture unchanged. Exact immutable JPEG
 
 Gate B.6 validates original filename metadata without deriving caller-controlled filesystem paths. The integrated `decide_safe_intake()` boundary then composes B.1-B.6 over one exact immutable payload and returns only bounded server-derived evidence after all required checks pass. The hostile-input convergence suite verifies representative fail-closed categories through that integrated decision. None of these Gate B slices enables HTTP upload, storage, or engine dispatch.
 
+Gate C.1 service identity/environment credential binding, Gate C.2-A authenticated HMAC request-envelope/receiver-verification foundations, and Gate C.2-B immutable exact test/staging dispatch-target allowlisting are present on `main`. Production has no authorized dispatch origin. The reserved future `POST /internal/transcribe` target is not registered by these foundations, and live receiver wiring/network orchestration remain disabled pending the remaining Gate C controls and separate activation approval.
+
+The Teacher Review Score Editor architecture is defined by [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). That contract refines the future Gate F boundary without changing the Gate C -> D -> E -> F -> G security order. It does not activate a Teacher Review API, editor, storage, playback, approval, or publication capability.
+
 ## 3. Current activation state
 
 The repository contains substantial runtime and comparison foundations, but the public data plane remains deliberately closed.
@@ -76,23 +89,26 @@ The repository contains substantial runtime and comparison foundations, but the 
 - Private HOMR, Clarity-OMR, and Audiveris runtime adapters.
 - Private OMR Gateway health and orchestration contracts.
 - Safe Intake Gate B foundation: B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed intake decision, and hostile-input convergence coverage.
+- Gate C.1 service identity/environment-scoped credential foundation.
+- Gate C.2-A deterministic HMAC-SHA256 authenticated request-envelope and receiver-verification foundation.
+- Gate C.2-B immutable exact test/staging engine-origin plus method/path dispatch-target allowlist foundation; production remains fail-closed and live dispatch remains disabled.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
+- Teacher Review Score Editor TR-0A architecture contract foundation; no runtime capability is activated by the document.
 - ST-OMR development foundations isolated from the production candidate path.
 
 ### Deliberately disabled or not yet implemented
 
 - External upload and a public upload endpoint.
-- Live Gateway engine dispatch/orchestration.
+- Live authenticated Gateway engine dispatch/orchestration and receiver wiring.
 - Production persistence.
 - Public publication.
-- Teacher Review production API.
-- Authenticated service-to-service dispatch.
+- Teacher Review production API and writable editor runtime.
 - Durable job queue/state/restart recovery.
 - External API authentication/authorization and rate/abuse controls.
 
-A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation.
+A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation, Gate C contract foundations do not authorize live dispatch, and TR-0A does not authorize Teacher Review runtime activation.
 
 ## 4. Service responsibilities
 
@@ -105,7 +121,7 @@ A disabled capability must not be interpreted as implemented merely because its 
 - Derive JPEG/PNG dimensions and total pixel evidence from exact immutable bytes in the bounded B.5 helper; do not trust caller-supplied dimensions or permit animated image input.
 - Validate original filename metadata through B.6 without converting it into a caller-controlled filesystem/storage path.
 - Preserve server-owned job and artifact identity.
-- Dispatch only to authenticated private engine endpoints once that capability is enabled.
+- Dispatch only to authenticated, allowlisted private engine endpoints after all remaining Gate C live-dispatch controls pass and activation is separately approved.
 - Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules.
 - Never bypass Candidate Safety v1 when accepting engine results.
 
@@ -152,14 +168,17 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 2. **Safe Intake Gate** — the completed Gate B foundation applies B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page inspection, B.5 static JPEG/PNG dimension/pixel inspection, B.6 filename safety, and one integrated fail-closed decision over the exact immutable bytes. Hostile-input convergence validates the central boundary.
 3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
 4. **Create durable job** — future persistence boundary; must support idempotency and restart recovery.
-5. **Dispatch private engine runs** — only after service-to-service authentication is implemented.
+5. **Dispatch private engine runs** — only after the remaining Gate C live receiver, replay/rotation, identity-binding, timeout/cancellation, retry, and safe-diagnostic controls pass and activation is separately approved.
 6. **Preserve raw engine output** — raw artifacts remain distinct and immutable after sealing.
 7. **Candidate Safety Gate v1** — validate MXL/ZIP and MusicXML before canonical/ensemble parsing.
 8. **Canonicalize safe candidates** — retain provenance.
 9. **Compare candidates** — disagreements remain evidence, not automatic corrections.
-10. **Teacher review** — corrections create immutable revisions.
-11. **Approval barrier** — teacher identity/revision hash/unresolved blocking issues are checked.
-12. **Publication** — only the explicitly approved revision may become learner-facing output.
+10. **Teacher review** — the future authorized Teacher Review Score Editor consumes source/candidate/canonical/report evidence and emits new immutable `TeacherScoreRevision` artifacts; it never mutates upstream artifacts.
+11. **Revision validation and corrected MusicXML derivation** — materialize only from an exact immutable teacher revision, re-run structural/security checks, and verify canonical/revision consistency before approval eligibility.
+12. **Approval barrier** — bind approval to exact revision/artifact hashes, reviewer identity, and blocking-issue/waiver state.
+13. **Publication** — only the explicitly eligible approved artifact may become learner-facing output.
+
+The detailed Teacher Review authority, adapter boundaries, immutable revision direction, and secure implementation sequence are defined in [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). The product-level review behavior remains documented in [`teacher-review-workflow.md`](teacher-review-workflow.md).
 
 ## 6. Candidate Safety v1
 
@@ -190,11 +209,13 @@ engines/audiveris/raw.mxl
 engines/audiveris/project.omr
 canonical/<candidate-id>.json
 ensemble/review-report.json
-revisions/revision-0001.musicxml
+revisions/teacher-revision-0001
+revisions/teacher-revision-0002
+corrected/<revision-id>.musicxml
 approved/approved.musicxml
 ```
 
-Raw output is never silently overwritten by a corrected revision. Sanitized/normalized derivatives must be separate logical artifacts with provenance back to the raw source.
+Raw output is never silently overwritten by a corrected revision. Sanitized/normalized derivatives must be separate logical artifacts with provenance back to the raw source. The concrete durable storage layout remains future Gate D work; these paths are architectural examples, not an activated persistence contract.
 
 ## 8. Job lifecycle
 
@@ -228,11 +249,13 @@ Before external or staging upload exposure, the integration boundary must demons
 - rate limiting and abuse controls;
 - idempotency;
 - cancellation and retry semantics;
-- service-to-service authentication;
+- the remaining Gate C live receiver/dispatch controls on top of the completed C.1/C.2-A/C.2-B contract foundations;
 - the completed Safe Intake decision wired as a mandatory pre-processing boundary;
 - durable job/artifact state;
 - Candidate Safety v1 enforcement;
 - safe error/logging behavior.
+
+A live writable Teacher Review surface additionally requires Gate D durable state, Gate E external/API security, and the TR-8A reviewer RBAC/audit authorization foundation before TR-4 may be activated. This dependency is normative in the TR-0A architecture contract.
 
 ## 10. Deployment environments
 
@@ -243,14 +266,16 @@ Before external or staging upload exposure, the integration boundary must demons
 
 Engine containers remain private in all environments. Staging availability does not itself authorize public upload or production publication.
 
-## 11. Non-goals of the current security slice
+## 11. Non-goals of the current architecture foundations
 
-Gate B documentation convergence does **not** enable:
+The current architecture and documentation foundations do **not** enable:
 
 - public uploads or an upload endpoint;
 - live Gateway dispatch;
 - automatic candidate ranking/merging/correction;
 - production storage;
-- teacher approval APIs;
+- Teacher Review API or writable editor runtime;
+- playback/cursor runtime;
+- teacher approval endpoints;
 - learner-facing publication;
 - ST-OMR production integration.
