@@ -34,6 +34,7 @@ NONCE_HEX_LENGTH = 32
 SHA256_HEX_LENGTH = 64
 _ALLOWED_METHODS = frozenset({"POST"})
 _LOWER_HEX_RE = re.compile(r"^[0-9a-f]+$")
+_HTTP_METHOD_RE = re.compile(r"^[A-Z]{1,16}$")
 
 
 class RequestAuthError(ValueError):
@@ -111,6 +112,12 @@ def _require_exact_payload(payload: bytes) -> bytes:
 def _require_method(method: str) -> str:
     if type(method) is not str or method not in _ALLOWED_METHODS:
         raise RequestAuthError("method_not_allowed")
+    return method
+
+
+def _require_observed_method(method: str) -> str:
+    if type(method) is not str or _HTTP_METHOD_RE.fullmatch(method) is None:
+        raise RequestAuthError("observed_method_invalid")
     return method
 
 
@@ -310,15 +317,23 @@ def verify_authenticated_request(
     credential: EngineCredential,
     envelope: AuthenticatedRequestEnvelope,
     *,
+    observed_method: str,
+    observed_path: str,
     payload: bytes,
     now_seconds: int,
     replay_checker: ReplayChecker,
 ) -> None:
-    """Verify exact request integrity and reserve the nonce only after auth passes."""
+    """Verify the received request target/integrity before reserving its nonce."""
 
     secret = _credential_secret(credential)
     _require_envelope_structure(envelope)
     _require_binding_match(envelope, credential.binding)
+    received_method = _require_observed_method(observed_method)
+    received_path = _require_path(observed_path)
+    if received_method != envelope.method:
+        raise RequestAuthError("request_method_mismatch")
+    if received_path != envelope.path:
+        raise RequestAuthError("request_path_mismatch")
     body = _require_exact_payload(payload)
     now = _require_timestamp(now_seconds)
 

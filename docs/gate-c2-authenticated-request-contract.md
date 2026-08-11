@@ -56,6 +56,8 @@ This foundation authorizes only the `POST` method for a future authenticated int
 
 Authenticated paths must be ASCII absolute paths and are rejected if they contain query strings, fragments, backslashes, percent encoding, control characters, or dot-segments. The exact engine route allowlist is a later Gate C slice; C.2-A does not create or activate any route.
 
+Receiver verification must be given the HTTP method and canonical path actually observed by the receiving handler. Those observed values are validated independently and must exactly match the signed envelope method and path before payload/signature success can reach replay reservation. A valid signed envelope therefore cannot be redirected to a different method or canonical route and still authenticate.
+
 ## Payload boundary
 
 The contract accepts only exact immutable `bytes` and applies a 20 MiB upper bound before hashing. The envelope binds both payload byte length and SHA-256 digest. Receiver verification rejects size mismatch or digest mismatch before signature success can reach replay-state handling.
@@ -76,12 +78,13 @@ Verification order is deliberately:
 1. credential binding validation;
 2. envelope structure/version/algorithm validation;
 3. envelope-to-credential identity binding;
-4. timestamp window;
-5. payload byte length and SHA-256;
-6. HMAC signature using constant-time comparison;
-7. replay check-and-reserve.
+4. receiver-observed method/path validation and exact match to the signed target;
+5. timestamp window;
+6. payload byte length and SHA-256;
+7. HMAC signature using constant-time comparison;
+8. replay check-and-reserve.
 
-The replay store is touched only after cryptographic verification succeeds so unauthenticated traffic cannot consume replay-state entries. Missing, failed, or non-accepting replay checks fail closed with stable bounded categories.
+The replay store is touched only after cryptographic verification and observed-target verification succeed so unauthenticated or redirected traffic cannot consume replay-state entries. Missing, failed, or non-accepting replay checks fail closed with stable bounded categories.
 
 Gate C.2-A does not implement durable replay persistence. Durable state remains Gate D work; the live receiver integration must select an appropriate atomic replay-store implementation before authenticated dispatch can be activated.
 
@@ -96,8 +99,11 @@ Credential rotation semantics are therefore still required before Gate C can be 
 Negative regression evidence for this slice must demonstrate at least:
 
 - modified payload rejection;
-- modified path rejection;
-- unsupported method rejection;
+- modified signed path rejection;
+- receiver-observed method mismatch rejection;
+- receiver-observed path mismatch rejection;
+- invalid receiver-observed target rejection before replay reservation;
+- unsupported signing method rejection;
 - ambiguous/encoded path rejection;
 - request contract version mismatch rejection;
 - algorithm mismatch rejection;

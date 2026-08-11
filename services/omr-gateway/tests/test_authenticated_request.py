@@ -36,6 +36,8 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
                 "clarity", "http://clarity-foundation:8081"
             ),
         }
+        self.method = "POST"
+        self.path = "/internal/v1/engine-request"
         self.timestamp = 1_800_000_000
         self.nonce = "0123456789abcdef0123456789abcdef"
         self.payload = b"deterministic-safe-intake-payload"
@@ -51,19 +53,40 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
     def sign(self, *, engine: str = "homr", environment: str = "staging"):
         return sign_authenticated_request(
             self.credential(engine, environment),
-            method="POST",
-            path="/internal/v1/engine-request",
+            method=self.method,
+            path=self.path,
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
+        )
+
+    def verify(
+        self,
+        credential,
+        envelope,
+        *,
+        payload: bytes | None = None,
+        now_seconds: int | None = None,
+        replay_checker,
+        observed_method: str | None = None,
+        observed_path: str | None = None,
+    ) -> None:
+        verify_authenticated_request(
+            credential,
+            envelope,
+            observed_method=self.method if observed_method is None else observed_method,
+            observed_path=self.path if observed_path is None else observed_path,
+            payload=self.payload if payload is None else payload,
+            now_seconds=self.timestamp if now_seconds is None else now_seconds,
+            replay_checker=replay_checker,
         )
 
     def test_valid_envelope_verifies_and_reserves_nonce_after_auth(self) -> None:
         credential = self.credential()
         envelope = sign_authenticated_request(
             credential,
-            method="POST",
-            path="/internal/v1/engine-request",
+            method=self.method,
+            path=self.path,
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
@@ -75,11 +98,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
             seen.append((nonce, timestamp))
             return True
 
-        verify_authenticated_request(
+        self.verify(
             credential,
             envelope,
-            payload=self.payload,
-            now_seconds=self.timestamp,
             replay_checker=replay_checker,
         )
 
@@ -91,8 +112,8 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         credential = self.credential()
         envelope = sign_authenticated_request(
             credential,
-            method="POST",
-            path="/internal/v1/engine-request",
+            method=self.method,
+            path=self.path,
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
@@ -107,11 +128,10 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         changed = b"deterministic-safe-intake-payloae"
         self.assertEqual(len(changed), len(self.payload))
         with self.assertRaisesRegex(RequestAuthError, "payload_digest_mismatch"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 envelope,
                 payload=changed,
-                now_seconds=self.timestamp,
                 replay_checker=replay_checker,
             )
 
@@ -120,7 +140,8 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
     def test_path_change_invalidates_signature_before_replay_reservation(self) -> None:
         credential = self.credential()
         envelope = self.sign()
-        tampered = replace(envelope, path="/internal/v1/other-request")
+        tampered_path = "/internal/v1/other-request"
+        tampered = replace(envelope, path=tampered_path)
         replay_calls = 0
 
         def replay_checker(binding, nonce: str, timestamp: int) -> bool:
@@ -129,13 +150,78 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
             return True
 
         with self.assertRaisesRegex(RequestAuthError, "signature_invalid"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 tampered,
-                payload=self.payload,
-                now_seconds=self.timestamp,
+                observed_path=tampered_path,
                 replay_checker=replay_checker,
             )
+
+        self.assertEqual(replay_calls, 0)
+
+    def test_received_path_mismatch_is_rejected_before_replay_reservation(self) -> None:
+        credential = self.credential()
+        envelope = self.sign()
+        replay_calls = 0
+
+        def replay_checker(binding, nonce: str, timestamp: int) -> bool:
+            nonlocal replay_calls
+            replay_calls += 1
+            return True
+
+        with self.assertRaisesRegex(RequestAuthError, "request_path_mismatch"):
+            self.verify(
+                credential,
+                envelope,
+                observed_path="/internal/v1/other-request",
+                replay_checker=replay_checker,
+            )
+
+        self.assertEqual(replay_calls, 0)
+
+    def test_received_method_mismatch_is_rejected_before_replay_reservation(self) -> None:
+        credential = self.credential()
+        envelope = self.sign()
+        replay_calls = 0
+
+        def replay_checker(binding, nonce: str, timestamp: int) -> bool:
+            nonlocal replay_calls
+            replay_calls += 1
+            return True
+
+        with self.assertRaisesRegex(RequestAuthError, "request_method_mismatch"):
+            self.verify(
+                credential,
+                envelope,
+                observed_method="GET",
+                replay_checker=replay_checker,
+            )
+
+        self.assertEqual(replay_calls, 0)
+
+    def test_invalid_received_target_is_rejected_before_replay_reservation(self) -> None:
+        credential = self.credential()
+        envelope = self.sign()
+        replay_calls = 0
+
+        def replay_checker(binding, nonce: str, timestamp: int) -> bool:
+            nonlocal replay_calls
+            replay_calls += 1
+            return True
+
+        cases = (
+            ({"observed_method": "post"}, "observed_method_invalid"),
+            ({"observed_path": "/internal/request?x=1"}, "path_invalid"),
+        )
+        for kwargs, category in cases:
+            with self.subTest(category=category):
+                with self.assertRaisesRegex(RequestAuthError, category):
+                    self.verify(
+                        credential,
+                        envelope,
+                        replay_checker=replay_checker,
+                        **kwargs,
+                    )
 
         self.assertEqual(replay_calls, 0)
 
@@ -144,7 +230,7 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
             sign_authenticated_request(
                 self.credential(),
                 method="GET",
-                path="/internal/v1/engine-request",
+                path=self.path,
                 timestamp=self.timestamp,
                 nonce=self.nonce,
                 payload=self.payload,
@@ -165,7 +251,7 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(RequestAuthError, "path_invalid"):
                     sign_authenticated_request(
                         self.credential(),
-                        method="POST",
+                        method=self.method,
                         path=path,
                         timestamp=self.timestamp,
                         nonce=self.nonce,
@@ -179,22 +265,18 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         with self.assertRaisesRegex(
             RequestAuthError, "request_auth_version_mismatch"
         ):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 replace(envelope, version="scoremosaic-s2s-request-v0"),
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=lambda binding, nonce, timestamp: True,
             )
 
         with self.assertRaisesRegex(
             RequestAuthError, "request_auth_algorithm_mismatch"
         ):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 replace(envelope, algorithm="none"),
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=lambda binding, nonce, timestamp: True,
             )
 
@@ -213,11 +295,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         for tampered, category in cases:
             with self.subTest(category=category):
                 with self.assertRaisesRegex(RequestAuthError, category):
-                    verify_authenticated_request(
+                    self.verify(
                         credential,
                         tampered,
-                        payload=self.payload,
-                        now_seconds=self.timestamp,
                         replay_checker=lambda binding, nonce, timestamp: True,
                     )
 
@@ -226,11 +306,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         production_envelope = self.sign(environment="production")
 
         with self.assertRaisesRegex(RequestAuthError, "environment_mismatch"):
-            verify_authenticated_request(
+            self.verify(
                 staging_credential,
                 production_envelope,
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=lambda binding, nonce, timestamp: True,
             )
 
@@ -240,11 +318,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         tampered = replace(envelope, credential_key="foreign-key")
 
         with self.assertRaisesRegex(RequestAuthError, "credential_key_mismatch"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 tampered,
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=lambda binding, nonce, timestamp: True,
             )
 
@@ -253,19 +329,17 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         envelope = self.sign()
 
         with self.assertRaisesRegex(RequestAuthError, "timestamp_expired"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 envelope,
-                payload=self.payload,
                 now_seconds=self.timestamp + MAX_REQUEST_AGE_SECONDS + 1,
                 replay_checker=lambda binding, nonce, timestamp: True,
             )
 
         with self.assertRaisesRegex(RequestAuthError, "timestamp_in_future"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 envelope,
-                payload=self.payload,
                 now_seconds=self.timestamp - MAX_FUTURE_SKEW_SECONDS - 1,
                 replay_checker=lambda binding, nonce, timestamp: True,
             )
@@ -283,8 +357,8 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(RequestAuthError, "nonce_invalid"):
                     sign_authenticated_request(
                         self.credential(),
-                        method="POST",
-                        path="/internal/v1/engine-request",
+                        method=self.method,
+                        path=self.path,
                         timestamp=self.timestamp,
                         nonce=nonce,
                         payload=self.payload,
@@ -295,11 +369,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         envelope = self.sign()
 
         with self.assertRaisesRegex(RequestAuthError, "replay_detected"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 envelope,
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=lambda binding, nonce, timestamp: False,
             )
 
@@ -312,11 +384,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
             raise RuntimeError(leaked_value)
 
         with self.assertRaises(RequestAuthError) as context:
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 envelope,
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=replay_checker,
             )
 
@@ -335,11 +405,9 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
             return True
 
         with self.assertRaisesRegex(RequestAuthError, "signature_invalid"):
-            verify_authenticated_request(
+            self.verify(
                 credential,
                 invalid,
-                payload=self.payload,
-                now_seconds=self.timestamp,
                 replay_checker=replay_checker,
             )
 
@@ -359,16 +427,16 @@ class AuthenticatedRequestContractTests(unittest.TestCase):
         credential = self.credential()
         first = sign_authenticated_request(
             credential,
-            method="POST",
-            path="/internal/v1/engine-request",
+            method=self.method,
+            path=self.path,
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
         )
         second = sign_authenticated_request(
             credential,
-            method="POST",
-            path="/internal/v1/engine-request",
+            method=self.method,
+            path=self.path,
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
