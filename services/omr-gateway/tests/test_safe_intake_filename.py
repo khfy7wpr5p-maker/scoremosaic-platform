@@ -45,6 +45,12 @@ class SafeIntakeFilenameTests(unittest.TestCase):
             "CON.pdf",
             "AUX.jpeg",
             "LPT1.png",
+            "COM¹.pdf",
+            "COM².pdf",
+            "COM³.pdf",
+            "LPT¹.pdf",
+            "LPT².pdf",
+            "LPT³.pdf",
             ".hidden.pdf",
         )
 
