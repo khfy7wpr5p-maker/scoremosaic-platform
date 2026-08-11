@@ -52,6 +52,24 @@ class EngineDispatchTargetContractTests(unittest.TestCase):
                 self.assertEqual(target.path, DISPATCH_PATH)
                 self.assertEqual(target.environment, "staging")
 
+    def test_dispatch_origin_allowlist_top_level_is_immutable(self) -> None:
+        with self.assertRaises(TypeError):
+            APPROVED_ENGINE_ORIGINS["production"] = APPROVED_ENGINE_ORIGINS[
+                "staging"
+            ]
+
+        self.assertNotIn("production", APPROVED_ENGINE_ORIGINS)
+
+    def test_dispatch_origin_allowlist_nested_mappings_are_immutable(self) -> None:
+        original = APPROVED_ENGINE_ORIGINS["staging"]["homr"]
+
+        with self.assertRaises(TypeError):
+            APPROVED_ENGINE_ORIGINS["staging"]["homr"] = (
+                "http://unexpected-foundation:8080"
+            )
+
+        self.assertEqual(APPROVED_ENGINE_ORIGINS["staging"]["homr"], original)
+
     def test_unknown_engine_is_rejected(self) -> None:
         endpoint = EngineEndpoint("unknown", "http://unknown-foundation:8099")
         with self.assertRaisesRegex(DispatchTargetError, "engine_not_allowed"):
