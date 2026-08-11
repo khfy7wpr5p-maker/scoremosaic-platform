@@ -199,9 +199,17 @@ def resolve_engine_credential(
     if type(raw) not in (bytes, bytearray, memoryview):
         raise ServiceAuthError("credential_invalid")
 
-    raw_size = raw.nbytes if type(raw) is memoryview else len(raw)
+    try:
+        raw_size = raw.nbytes if type(raw) is memoryview else len(raw)
+    except (BufferError, TypeError, ValueError):
+        raise ServiceAuthError("credential_invalid") from None
+
     if not MIN_CREDENTIAL_BYTES <= raw_size <= MAX_CREDENTIAL_BYTES:
         raise ServiceAuthError("credential_invalid")
 
-    secret = bytes(raw)
+    try:
+        secret = bytes(raw)
+    except (BufferError, TypeError, ValueError):
+        raise ServiceAuthError("credential_invalid") from None
+
     return EngineCredential(binding=binding, _secret=secret)
