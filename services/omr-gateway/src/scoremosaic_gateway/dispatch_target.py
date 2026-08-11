@@ -94,6 +94,8 @@ class EngineDispatchTarget:
 def _require_endpoint_shape(endpoint: EngineEndpoint) -> None:
     if type(endpoint) is not EngineEndpoint:
         raise DispatchTargetError("endpoint_invalid")
+    if type(endpoint.name) is not str:
+        raise DispatchTargetError("engine_not_allowed")
     if endpoint.name not in ENGINE_SERVICE_IDENTITIES:
         raise DispatchTargetError("engine_not_allowed")
     if type(endpoint.base_url) is not str:
