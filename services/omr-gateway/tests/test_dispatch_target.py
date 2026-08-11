@@ -78,6 +78,13 @@ class EngineDispatchTargetContractTests(unittest.TestCase):
                 endpoint,
             )
 
+    def test_non_string_engine_name_fails_closed(self) -> None:
+        binding = build_engine_auth_binding(self.endpoints["homr"], "staging")
+        endpoint = EngineEndpoint(["homr"], self.endpoints["homr"].base_url)
+
+        with self.assertRaisesRegex(DispatchTargetError, "engine_not_allowed"):
+            build_engine_dispatch_target(binding, endpoint)
+
     def test_cross_engine_binding_is_rejected(self) -> None:
         homr_binding = build_engine_auth_binding(self.endpoints["homr"], "staging")
 
