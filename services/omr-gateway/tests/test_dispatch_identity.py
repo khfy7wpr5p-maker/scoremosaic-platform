@@ -162,7 +162,13 @@ class DispatchIdentityContractTests(unittest.TestCase):
         clarity = build_dispatch_identity(self.plan, "clarity")
         forged_variants = (
             replace(homr, run_id=clarity.run_id),
-            replace(homr, candidate_id=clarity.candidate_id),
+            replace(
+                homr,
+                candidate_id=clarity.candidate_id,
+                candidate_namespace=(
+                    f"candidates/{homr.job_id}/homr/{clarity.candidate_id}"
+                ),
+            ),
             replace(homr, musicxml_artifact_id=clarity.musicxml_artifact_id),
             replace(homr, diagnostic_artifact_id=clarity.diagnostic_artifact_id),
         )
