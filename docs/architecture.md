@@ -61,9 +61,11 @@ OMR Gateway / job orchestration
 
 The Safe Intake Gate protects the platform from untrusted external documents. The Candidate Safety Gate protects the platform from untrusted **engine output**. These are separate trust boundaries and neither may be skipped.
 
-Gate B.4 does **not** alter this target architecture. It adds one implementation boundary inside Safe Intake: exact PDF bytes are passed to a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True` to derive structural/page evidence. The helper does not render pages, extract text/images/attachments, follow links, execute embedded content, persist bytes, or enable external upload. Encrypted PDFs are rejected in Safe Intake v1.
+Gate B.4 adds one implementation boundary inside Safe Intake: exact PDF bytes are passed to a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True` to derive structural/page evidence. The helper does not render pages, extract text/images/attachments, follow links, execute embedded content, persist bytes, or enable external upload. Encrypted PDFs are rejected in Safe Intake v1.
 
-Gate B.5 also leaves the target architecture unchanged. Exact immutable JPEG/PNG bytes are inspected in a bounded private helper using exact-pinned `Pillow==12.3.0`; only static JPEG/PNG is accepted, dimensions are server-derived, each dimension is capped at 12,000 px, total pixels are capped at 40,000,000, and the helper is bounded by a 256 MiB address-space limit and a 3-second timeout. The helper persists nothing and does not enable upload or orchestration.
+Gate B.5 likewise leaves the target architecture unchanged. Exact immutable JPEG/PNG bytes are inspected in a bounded private helper using exact-pinned `Pillow==12.3.0`; only static JPEG/PNG is accepted, dimensions are server-derived, each dimension is capped at 12,000 px, total pixels are capped at 40,000,000, and the helper is bounded by a 256 MiB address-space limit and a 3-second timeout. The helper persists nothing and does not enable upload or orchestration.
+
+Gate B.6 validates original filename metadata without deriving caller-controlled filesystem paths. The integrated `decide_safe_intake()` boundary then composes B.1-B.6 over one exact immutable payload and returns only bounded server-derived evidence after all required checks pass. The hostile-input convergence suite verifies representative fail-closed categories through that integrated decision. None of these Gate B slices enables HTTP upload, storage, or engine dispatch.
 
 ## 3. Current activation state
 
@@ -73,7 +75,7 @@ The repository contains substantial runtime and comparison foundations, but the 
 
 - Private HOMR, Clarity-OMR, and Audiveris runtime adapters.
 - Private OMR Gateway health and orchestration contracts.
-- Safe Intake B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded static JPEG/PNG image/pixel enforcement.
+- Safe Intake Gate B foundation: B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed intake decision, and hostile-input convergence coverage.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -81,25 +83,27 @@ The repository contains substantial runtime and comparison foundations, but the 
 
 ### Deliberately disabled or not yet implemented
 
-- External upload.
-- Safe Intake B.6 filename/path enforcement and the integrated intake decision.
+- External upload and a public upload endpoint.
 - Live Gateway engine dispatch/orchestration.
 - Production persistence.
 - Public publication.
 - Teacher Review production API.
 - Authenticated service-to-service dispatch.
+- Durable job queue/state/restart recovery.
+- External API authentication/authorization and rate/abuse controls.
 
-A disabled capability must not be interpreted as implemented merely because configuration limits or contracts already exist.
+A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation.
 
 ## 4. Service responsibilities
 
 ### omr-gateway
 
 - Own the future external OMR job boundary.
-- Enforce the Safe Intake Gate before any live engine dispatch is enabled.
+- Require the integrated Safe Intake decision before any future external document can enter later processing.
 - Derive PDF page evidence from exact bounded PDF bytes; do not trust caller-supplied page metadata.
 - Keep PDF structural parsing in the bounded B.4 helper subprocess; current v1 rejects encrypted PDFs and does not render or extract document content.
 - Derive JPEG/PNG dimensions and total pixel evidence from exact immutable bytes in the bounded B.5 helper; do not trust caller-supplied dimensions or permit animated image input.
+- Validate original filename metadata through B.6 without converting it into a caller-controlled filesystem/storage path.
 - Preserve server-owned job and artifact identity.
 - Dispatch only to authenticated private engine endpoints once that capability is enabled.
 - Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules.
@@ -144,8 +148,8 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 
 ## 5. Data flow and trust transitions
 
-1. **Receive external document** — still disabled in the current runtime.
-2. **Safe Intake Gate** — B.1 verifies signature, B.2 binds declared MIME, B.3 measures observed bytes, B.4 strictly inspects PDF structure/page count, and B.5 derives and bounds static JPEG/PNG dimensions/pixel count. B.6 filename/path safety and the integrated decision remain required.
+1. **Receive external document** — still disabled in the current runtime; no upload endpoint exists.
+2. **Safe Intake Gate** — the completed Gate B foundation applies B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page inspection, B.5 static JPEG/PNG dimension/pixel inspection, B.6 filename safety, and one integrated fail-closed decision over the exact immutable bytes. Hostile-input convergence validates the central boundary.
 3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
 4. **Create durable job** — future persistence boundary; must support idempotency and restart recovery.
 5. **Dispatch private engine runs** — only after service-to-service authentication is implemented.
@@ -218,14 +222,14 @@ Implementation may introduce internal substates, but public transitions must rem
 
 External applications integrate through a versioned API and never access engine containers, local storage paths, or model files directly.
 
-Before staging exposure, the integration boundary must demonstrate:
+Before external or staging upload exposure, the integration boundary must demonstrate:
 
 - authentication and authorization;
 - rate limiting and abuse controls;
 - idempotency;
 - cancellation and retry semantics;
 - service-to-service authentication;
-- complete Safe Intake Gate enforcement;
+- the completed Safe Intake decision wired as a mandatory pre-processing boundary;
 - durable job/artifact state;
 - Candidate Safety v1 enforcement;
 - safe error/logging behavior.
@@ -241,11 +245,10 @@ Engine containers remain private in all environments. Staging availability does 
 
 ## 11. Non-goals of the current security slice
 
-This architecture update does **not** enable:
+Gate B documentation convergence does **not** enable:
 
-- public uploads;
+- public uploads or an upload endpoint;
 - live Gateway dispatch;
-- filename/path Safe Intake completion or the integrated Safe Intake decision;
 - automatic candidate ranking/merging/correction;
 - production storage;
 - teacher approval APIs;
