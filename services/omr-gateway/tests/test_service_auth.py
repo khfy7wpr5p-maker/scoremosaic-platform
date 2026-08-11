@@ -199,6 +199,32 @@ class ServiceAuthContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ServiceAuthError, "credential_invalid"):
             resolve_engine_credential(binding, lambda key: oversized)
 
+    def test_credential_buffer_subclasses_are_rejected(self) -> None:
+        binding = build_engine_auth_binding(
+            self.endpoints["homr"], "staging"
+        )
+
+        class MisleadingBytes(bytes):
+            def __len__(self) -> int:
+                return MIN_CREDENTIAL_BYTES
+
+        class MisleadingBytearray(bytearray):
+            def __len__(self) -> int:
+                return MIN_CREDENTIAL_BYTES
+
+        misleading_values = (
+            MisleadingBytes(b"x" * (MAX_CREDENTIAL_BYTES + 1)),
+            MisleadingBytearray(b"x" * (MAX_CREDENTIAL_BYTES + 1)),
+        )
+
+        for value in misleading_values:
+            with self.subTest(value_type=type(value).__name__):
+                self.assertEqual(len(value), MIN_CREDENTIAL_BYTES)
+                with self.assertRaisesRegex(
+                    ServiceAuthError, "credential_invalid"
+                ):
+                    resolve_engine_credential(binding, lambda key, v=value: v)
+
     def test_valid_credential_is_scoped_and_repr_is_redacted(self) -> None:
         binding = build_engine_auth_binding(
             self.endpoints["audiveris"], "staging"
