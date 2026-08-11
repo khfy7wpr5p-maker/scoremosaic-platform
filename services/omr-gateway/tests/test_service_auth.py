@@ -199,6 +199,19 @@ class ServiceAuthContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ServiceAuthError, "credential_invalid"):
             resolve_engine_credential(binding, lambda key: oversized)
 
+    def test_released_memoryview_is_rejected_with_stable_error(self) -> None:
+        binding = build_engine_auth_binding(
+            self.endpoints["homr"], "staging"
+        )
+        released = memoryview(b"x" * MIN_CREDENTIAL_BYTES)
+        released.release()
+
+        with self.assertRaises(ServiceAuthError) as context:
+            resolve_engine_credential(binding, lambda key: released)
+
+        self.assertEqual(context.exception.category, "credential_invalid")
+        self.assertEqual(str(context.exception), "credential_invalid")
+
     def test_credential_buffer_subclasses_are_rejected(self) -> None:
         binding = build_engine_auth_binding(
             self.endpoints["homr"], "staging"
