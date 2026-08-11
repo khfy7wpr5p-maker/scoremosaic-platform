@@ -6,7 +6,7 @@ This service remains a private, health-only foundation for the shared ScoreMosai
 
 Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 adds a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or storage. Both libraries are deterministic and perform no file, network, queue, database, or storage operation.
 
-Safe Intake is also being implemented in security-gated slices without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded static JPEG/PNG image/pixel enforcement are now implemented foundations. B.6 filename/path safety and the integrated Safe Intake decision remain incomplete.
+Safe Intake Gate B is now a completed foundation without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed Safe Intake decision, and hostile-input convergence coverage are present on `main` with post-merge CI evidence.
 
 Implemented now:
 
@@ -23,6 +23,9 @@ Implemented now:
 - Safe Intake B.3 observed byte-budget enforcement
 - Safe Intake B.4 strict PDF structural/page-count inspection in a bounded helper subprocess
 - Safe Intake B.5 immutable static JPEG/PNG inspection with server-derived dimensions, a 12,000 px per-dimension ceiling, a 40,000,000 total-pixel ceiling, animation rejection, a 256 MiB helper address-space limit, and a 3-second timeout
+- Safe Intake B.6 original filename metadata safety bound to fresh signature-derived format evidence
+- integrated `decide_safe_intake()` composition over one exact immutable payload
+- dedicated hostile-input convergence coverage through the integrated decision boundary
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -39,6 +42,12 @@ B.4 derives page evidence from the exact bounded PDF bytes rather than caller-su
 
 B.5 derives image evidence from exact immutable JPEG/PNG bytes. The helper rejects malformed/truncated content, rejects animated/APNG input, validates the decoded format against the signature-derived format, enforces a 12,000 px per-dimension and 40,000,000 total-pixel ceiling, fully decodes only inside the bounded subprocess, and returns only stable structural evidence. The worker has a 256 MiB address-space limit and a 3-second wall timeout. The Gateway `SCOREMOSAIC_GATEWAY_MAX_IMAGE_PIXELS` setting is fixed to `40000000` so deployment configuration cannot drift from the enforced B.5 policy.
 
+B.6 validates the caller-supplied original filename as metadata only. It rejects invalid or overlong names, unsafe path forms, control/format/surrogate Unicode categories, Windows reserved device aliases, and final extensions that disagree with fresh B.1 signature evidence. The primitive never turns the filename into a filesystem or storage path.
+
+`decide_safe_intake()` accepts only a complete immutable `bytes` payload, measures the byte budget before downstream inspection, verifies signature/MIME consistency, applies B.6 to the same bytes, dispatches only the verified PDF or JPEG/PNG format to the corresponding bounded inspector, and returns a frozen record containing only bounded server-derived evidence. Existing primitive error categories propagate unchanged. It does not persist bytes, derive storage paths, create jobs, accept HTTP uploads, or dispatch engines.
+
+The hostile-input convergence layer verifies representative renamed/unsupported content, MIME mismatch, byte-budget rejection, traversal/control/device filename cases, malformed/missing-reference/encrypted PDF cases, PDF page-budget rejection, malformed/truncated JPEG/PNG, animated/APNG rejection, dimension/pixel limits, and bounded inspector timeout/memory categories through the integrated decision boundary.
+
 ## Current endpoints
 
 ```text
@@ -46,7 +55,7 @@ GET /health -> 200; gateway process is running
 GET /ready  -> 503; orchestration and upload are disabled
 ```
 
-All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an orchestration endpoint, and an artifact lifecycle endpoint do not exist in this foundation.
+All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, and an artifact lifecycle endpoint do not exist in this foundation.
 
 The health payload declares:
 
@@ -241,14 +250,16 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 ## Required gates before real orchestration and storage
 
-- complete Safe Intake Gate enforcement: B.1-B.5 are implemented foundations; B.6 filename/path safety, hostile-input convergence, and the integrated fail-closed intake decision remain required
+Gate B Safe Intake is complete as a foundation but does not activate an upload surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
+
 - authenticated service-to-service requests
 - concrete engine adapter request/response contracts
-- server-generated job, run, candidate, and artifact identifiers
+- server-generated job, run, candidate, and artifact identifiers bound to durable state
 - queue, timeout enforcement, cancellation, cleanup, and restart recovery
 - content-addressed immutable source and candidate artifact storage
-- safe MusicXML validation
+- safe MusicXML validation through Candidate Safety v1
 - retention, cleanup, and recovery rules
+- a versioned authenticated external API with rate/abuse controls and an upload path that must pass `decide_safe_intake()` before later processing
 - real engine adapters with pinned versions
 - no automatic teacher approval or publication
 
