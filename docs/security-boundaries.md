@@ -35,11 +35,19 @@ Before any external PDF/image job can be accepted for live processing, the Gatew
 - isolated non-root processing with restricted capabilities;
 - no execution of embedded files, scripts, links, or external resources.
 
-Current runtime foundations implement B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded static JPEG/PNG image/pixel enforcement. B.4 derives page evidence from the exact PDF bytes in a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True`. It rejects encrypted PDFs in v1, validates referenced page objects, and does not render pages, extract text/images/attachments, execute embedded content, follow external resources, or persist the inspected bytes. Immutable PDF `bytes` are forwarded without an additional parent-side payload copy. The Linux inspection worker applies a 256 MiB address-space limit before reading untrusted PDF bytes, and the current private Coolify staging Gateway container is budgeted at 512 MiB so parser growth remains isolated from the service-level memory ceiling.
+The Safe Intake Gate B foundation now implements B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, one integrated fail-closed Safe Intake decision, and a dedicated hostile-input convergence regression layer.
+
+B.4 derives page evidence from the exact PDF bytes in a bounded private helper subprocess using exact-pinned `pypdf==6.14.2` with `strict=True`. It rejects encrypted PDFs in v1, validates referenced page objects, and does not render pages, extract text/images/attachments, execute embedded content, follow external resources, or persist the inspected bytes. Immutable PDF `bytes` are forwarded without an additional parent-side payload copy. The Linux inspection worker applies a 256 MiB address-space limit before reading untrusted PDF bytes, and the current private Coolify staging Gateway container is budgeted at 512 MiB so parser growth remains isolated from the service-level memory ceiling.
 
 B.5 derives image dimensions from exact immutable JPEG/PNG bytes using exact-pinned `Pillow==12.3.0` in a private helper subprocess. It rejects malformed/truncated inputs and animated/APNG inputs, enforces a 12,000 px ceiling on each dimension and a 40,000,000 total-pixel ceiling, applies a 256 MiB worker address-space limit and a 3-second wall timeout, and returns only bounded structural evidence. The Gateway configuration is fixed to the same 40,000,000-pixel security ceiling so deployment configuration cannot advertise a weaker or stronger policy than the enforced B.5 contract.
 
-B.6 filename/path enforcement, hostile-input convergence, and the integrated Safe Intake decision remain incomplete. Configuration alone is not an implemented intake gate. **External upload must remain disabled until the complete runtime enforcement and hostile-input regression set pass.**
+B.6 treats the original filename as metadata only. It rejects empty/overlong or whitespace-altered names, dot-path forms, drive prefixes, unsafe Windows filename characters, trailing dot/space forms, Unicode control/format/surrogate categories, Windows reserved device stems including the supported superscript aliases, and final extensions that disagree with a fresh B.1 signature classification. B.6 never converts caller filename metadata into a filesystem or storage path.
+
+`decide_safe_intake()` accepts only the complete immutable `bytes` payload and composes the existing B.1-B.6 primitives over that same payload. It measures the byte budget first, verifies signature/MIME binding, validates the original filename against fresh signature evidence, routes PDF input only to the bounded PDF inspector, routes JPEG/PNG only to the bounded image inspector, verifies format evidence consistency, and returns only a frozen bounded decision record. Existing primitive rejection categories propagate unchanged. The decision does not persist bytes, derive a storage path, accept an HTTP upload, or dispatch work to an engine.
+
+The hostile-input convergence layer exercises representative renamed/unsupported input, MIME mismatch, byte-budget rejection, traversal/control/device filename cases, malformed/missing-reference/encrypted PDFs, PDF page-budget rejection, malformed/truncated JPEG/PNG, animated/APNG rejection, dimension/pixel rejection, and bounded inspector timeout categories through the integrated decision boundary. The 256 MiB worker address-space limits are verified separately without allocating hostile-sized inputs.
+
+Gate B completion is a security-foundation milestone, not an activation event. **External upload remains disabled.** There is no upload endpoint, and later durable-job/storage, external API authentication/authorization, rate/abuse, and production-readiness controls still have to pass before public traffic may be enabled.
 
 ## 4. Candidate Safety Gate v1
 
@@ -130,7 +138,7 @@ External error responses must avoid stack traces, raw subprocess output, and int
 - Pin container base images by digest before production promotion.
 - Generate/retain SBOM and provenance evidence for release artifacts when the production release process is introduced.
 
-Gate B.4 introduced the Gateway's first PDF parser dependency and pins it exactly to `pypdf==6.14.2`. Gate B.5 adds exact-pinned `Pillow==12.3.0` only for bounded static JPEG/PNG inspection. Repository-owned dependency/vulnerability scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work; B.4/B.5 do not claim those controls are complete.
+Gate B.4 introduced the Gateway's first PDF parser dependency and pins it exactly to `pypdf==6.14.2`. Gate B.5 adds exact-pinned `Pillow==12.3.0` only for bounded static JPEG/PNG inspection. Repository-owned dependency/vulnerability scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work; Gate B completion does not claim those controls are complete.
 
 ## 9. Teacher-review boundary
 
@@ -164,6 +172,8 @@ Required negative coverage includes:
 - bounded failure when PDF structural inspection times out;
 - bounded PDF inspection memory independent of parser/object-graph growth.
 
+These intake categories are covered across the B.1-B.6 primitive suites and the integrated hostile-input convergence layer. The convergence layer verifies that the central decision preserves the stable fail-closed categories rather than replacing the lower-level safety evidence.
+
 ### Candidate output
 
 - XML external/internal entity declarations;
@@ -192,8 +202,8 @@ Required negative coverage includes:
 
 The following capabilities remain blocked until their protecting controls and negative tests pass:
 
-- **External upload** → blocked until the complete Safe Intake Gate runtime enforcement exists; B.1-B.5 alone are not sufficient.
-- **Live Gateway dispatch** → blocked until intake enforcement, service-to-service authentication, durable job state, and candidate handling are demonstrated.
+- **External upload** → Safe Intake Gate B is complete as a foundation, but upload remains blocked because no upload endpoint or external API security boundary is enabled; later durable job/storage, auth/authz, rate/abuse, privacy, and explicit activation controls remain required.
+- **Live Gateway dispatch** → blocked until service-to-service authentication, durable job state, candidate handling, and the remaining execution controls are demonstrated.
 - **Canonical/Ensemble consumption of engine output** → must pass Candidate Safety v1 first.
 - **Teacher approval/publication** → blocked until RBAC, immutable revisions, audit evidence, and approval/publication barriers exist.
 - **Production promotion** → blocked until supply-chain scanning/pinning, monitoring, backup/restore, rollback, and acceptance evidence exist.

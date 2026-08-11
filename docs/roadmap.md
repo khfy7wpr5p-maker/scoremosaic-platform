@@ -17,8 +17,8 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | Canonical Score / Ensemble comparator/report | Completed foundation | Deterministic normalization/comparison/report foundations exist. |
 | Fixed evaluation foundations | Completed | Fixed evaluation datasets/contracts are present. |
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
-| Candidate Safety Gate v1 | Implemented in this security slice | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
-| Safe Intake Gate runtime enforcement | Partially implemented | B.1 signature classification, B.2 declared MIME consistency, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, and B.5 decoded JPEG/PNG image/pixel enforcement exist; external PDF/image upload remains disabled. |
+| Candidate Safety Gate v1 | Implemented | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
+| Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; external upload remains disabled. |
 | Service-to-service authentication | Not started | Live engine dispatch remains blocked. |
 | Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
 | Production immutable object storage | Not started | Production persistence remains blocked. |
@@ -31,6 +31,8 @@ Every capability is gated. Code presence alone does not authorize activation; th
 ## Security-first sequence from this point
 
 ### Gate A — Candidate Safety Convergence
+
+Status: completed foundation.
 
 Goal: engine success must never bypass candidate validation.
 
@@ -48,17 +50,20 @@ Activation effect: none. Public upload/orchestration remains disabled.
 
 ### Gate B — Safe Intake Foundation
 
-Goal: no untrusted PDF/image reaches an engine without a central fail-closed intake decision.
+Status: completed foundation.
 
-Current slice status:
+Goal: no untrusted PDF/image reaches a later processing boundary without one central fail-closed intake decision.
+
+Completed slices:
 
 - B.1 signature classification — completed.
 - B.2 declared MIME/signature consistency — completed.
 - B.3 observed request-byte budget — completed.
 - B.4 strict PDF structure/page-budget inspection — completed with exact-pinned `pypdf==6.14.2` in a bounded helper subprocess; encrypted PDFs are rejected in v1.
 - B.5 decoded image/pixel limit — completed for static JPEG/PNG with exact-pinned `Pillow==12.3.0`, a 12,000 px per-dimension ceiling, a 40,000,000 total-pixel ceiling, a 256 MiB helper address-space limit, and a 3-second timeout.
-- B.6 filename/path safety — not started.
-- Integrated Safe Intake decision and hostile-input convergence — not started.
+- B.6 original filename safety — completed; filename metadata is validated against fresh signature-derived format evidence and is never converted into a filesystem/storage path.
+- Integrated Safe Intake decision — completed over the exact immutable payload, composing B.1-B.6 and returning bounded server-derived evidence only after every required check passes.
+- Hostile-input convergence — completed as a dedicated integrated regression layer covering representative renamed/unsupported input, MIME mismatch, byte limits, filename attacks, malformed/encrypted PDF cases, page limits, malformed/animated image cases, dimension/pixel limits, and bounded inspector failures.
 
 Requirements:
 
@@ -71,7 +76,7 @@ Requirements:
 - malformed/truncated/oversized hostile fixtures;
 - deterministic stable rejection categories.
 
-Exit rule: Gateway upload remains disabled until the complete Gate B tests and runtime enforcement pass.
+Gate B completion has no activation effect by itself. The Gateway still has no external upload endpoint, and upload remains disabled until later job/storage, external API authentication/authorization, rate/abuse, and production-readiness controls are implemented and explicitly approved.
 
 ### Gate C — Internal Dispatch Security
 
@@ -86,7 +91,7 @@ Requirements:
 - bounded retry policy;
 - safe diagnostic/error mapping.
 
-Exit rule: `orchestrationMode` must remain disabled until Gate B and Gate C pass.
+Exit rule: `orchestrationMode` must remain disabled until the required intake and Gate C controls pass and activation is separately approved.
 
 ### Gate D — Durable Job and Artifact State
 
@@ -110,7 +115,7 @@ Requirements:
 - authentication and authorization;
 - tenant/user scope enforcement where applicable;
 - rate limiting and abuse protection;
-- safe upload session semantics;
+- safe upload session semantics wired through the completed Safe Intake decision;
 - request/idempotency binding;
 - privacy-safe logs/errors.
 
@@ -151,7 +156,7 @@ Gate B.4 introduced the Gateway PDF parser dependency `pypdf==6.14.2`; Gate B.5 
 
 The original phase intent remains, but implementation has progressed through isolated foundations out of strict numerical order. The authoritative rule is now the security gate sequence above:
 
-- Original Phase 0/1 concepts → repository/contracts/security foundations plus Gates A-B.
+- Original Phase 0/1 concepts → repository/contracts/security foundations plus completed Gates A-B foundations.
 - Original Phase 2/3/6 engine work → current HOMR/Clarity/Audiveris private runtime foundations.
 - Original Phase 4 → current Canonical/Ensemble foundations.
 - Original Phase 5 → future Gate F.
@@ -159,4 +164,4 @@ The original phase intent remains, but implementation has progressed through iso
 
 ## Change-control rule
 
-Each security or capability slice uses a dedicated branch and pull request. Direct feature work on `main` is prohibited by project policy. A new capability remains disabled until its protecting gate has fresh negative-test and CI evidence.
+Each security or capability slice uses a dedicated branch and pull request. Direct feature work on `main` is prohibited by project policy. A new capability remains disabled until its protecting gate has fresh negative-test and CI evidence and the activation itself is separately approved.
