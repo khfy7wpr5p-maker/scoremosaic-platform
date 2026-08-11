@@ -46,7 +46,7 @@ B.6 validates the caller-supplied original filename as metadata only. It rejects
 
 `decide_safe_intake()` accepts only a complete immutable `bytes` payload, measures the byte budget before downstream inspection, verifies signature/MIME consistency, applies B.6 to the same bytes, dispatches only the verified PDF or JPEG/PNG format to the corresponding bounded inspector, and returns a frozen record containing only bounded server-derived evidence. Existing primitive error categories propagate unchanged. It does not persist bytes, derive storage paths, create jobs, accept HTTP uploads, or dispatch engines.
 
-The hostile-input convergence layer verifies representative renamed/unsupported content, MIME mismatch, byte-budget rejection, traversal/control/device filename cases, malformed/missing-reference/encrypted PDF cases, PDF page-budget rejection, malformed/truncated JPEG/PNG, animated/APNG rejection, dimension/pixel limits, and bounded inspector timeout/memory categories through the integrated decision boundary.
+The hostile-input convergence layer verifies representative renamed/unsupported content, MIME mismatch, byte-budget rejection, traversal/control/device filename cases, malformed/missing-reference/encrypted PDF cases, PDF page-budget rejection, malformed/truncated JPEG/PNG, animated/APNG rejection, dimension/pixel limits, and bounded inspector timeout categories through the integrated decision boundary. The 256 MiB PDF and image worker address-space limits are verified separately without allocating hostile-sized inputs.
 
 ## Current endpoints
 
