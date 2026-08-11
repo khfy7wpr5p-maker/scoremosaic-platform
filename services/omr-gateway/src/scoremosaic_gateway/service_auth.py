@@ -75,6 +75,52 @@ class EngineCredential:
 CredentialResolver = Callable[[str], bytes | bytearray | memoryview | None]
 
 
+def _credential_key(
+    *,
+    version: str,
+    environment: str,
+    caller_identity: str,
+    engine: str,
+    audience_identity: str,
+) -> str:
+    return ":".join(
+        (
+            version,
+            environment,
+            caller_identity,
+            engine,
+            audience_identity,
+        )
+    )
+
+
+def _validated_resolver_key(binding: EngineAuthBinding) -> str:
+    """Re-derive the resolver key only from validated non-secret binding fields."""
+
+    if binding.version != AUTH_CONTRACT_VERSION:
+        raise ServiceAuthError("auth_contract_version_mismatch")
+    expected_audience = ENGINE_SERVICE_IDENTITIES.get(binding.engine)
+    if expected_audience is None:
+        raise ServiceAuthError("engine_not_allowed")
+    if binding.audience_identity != expected_audience:
+        raise ServiceAuthError("audience_identity_mismatch")
+    if binding.caller_identity != CALLER_SERVICE_IDENTITY:
+        raise ServiceAuthError("caller_identity_mismatch")
+    if binding.environment not in ALLOWED_ENVIRONMENTS:
+        raise ServiceAuthError("environment_not_allowed")
+
+    expected_key = _credential_key(
+        version=AUTH_CONTRACT_VERSION,
+        environment=binding.environment,
+        caller_identity=CALLER_SERVICE_IDENTITY,
+        engine=binding.engine,
+        audience_identity=expected_audience,
+    )
+    if binding.credential_key != expected_key:
+        raise ServiceAuthError("credential_key_mismatch")
+    return expected_key
+
+
 def build_engine_auth_binding(
     endpoint: EngineEndpoint,
     environment: str,
@@ -87,14 +133,12 @@ def build_engine_auth_binding(
         raise ServiceAuthError("environment_not_allowed")
 
     audience_identity = ENGINE_SERVICE_IDENTITIES[endpoint.name]
-    credential_key = ":".join(
-        (
-            AUTH_CONTRACT_VERSION,
-            environment,
-            CALLER_SERVICE_IDENTITY,
-            endpoint.name,
-            audience_identity,
-        )
+    credential_key = _credential_key(
+        version=AUTH_CONTRACT_VERSION,
+        environment=environment,
+        caller_identity=CALLER_SERVICE_IDENTITY,
+        engine=endpoint.name,
+        audience_identity=audience_identity,
     )
     return EngineAuthBinding(
         version=AUTH_CONTRACT_VERSION,
@@ -110,7 +154,7 @@ def require_binding_for_endpoint(
     binding: EngineAuthBinding,
     endpoint: EngineEndpoint,
 ) -> None:
-    """Reject cross-engine or cross-audience binding confusion."""
+    """Reject cross-engine, cross-audience, or resolver-key binding confusion."""
 
     expected_audience = ENGINE_SERVICE_IDENTITIES.get(endpoint.name)
     if expected_audience is None:
@@ -126,6 +170,16 @@ def require_binding_for_endpoint(
     if binding.environment not in ALLOWED_ENVIRONMENTS:
         raise ServiceAuthError("environment_not_allowed")
 
+    expected_key = _credential_key(
+        version=AUTH_CONTRACT_VERSION,
+        environment=binding.environment,
+        caller_identity=CALLER_SERVICE_IDENTITY,
+        engine=endpoint.name,
+        audience_identity=expected_audience,
+    )
+    if binding.credential_key != expected_key:
+        raise ServiceAuthError("credential_key_mismatch")
+
 
 def resolve_engine_credential(
     binding: EngineAuthBinding,
@@ -133,8 +187,9 @@ def resolve_engine_credential(
 ) -> EngineCredential:
     """Resolve one environment- and engine-scoped opaque credential fail-closed."""
 
+    resolver_key = _validated_resolver_key(binding)
     try:
-        raw = resolver(binding.credential_key)
+        raw = resolver(resolver_key)
     except Exception:
         # Provider diagnostics can contain secret material. Never propagate them.
         raise ServiceAuthError("credential_unavailable") from None
@@ -144,8 +199,9 @@ def resolve_engine_credential(
     if not isinstance(raw, (bytes, bytearray, memoryview)):
         raise ServiceAuthError("credential_invalid")
 
-    secret = bytes(raw)
-    if not MIN_CREDENTIAL_BYTES <= len(secret) <= MAX_CREDENTIAL_BYTES:
+    raw_size = raw.nbytes if isinstance(raw, memoryview) else len(raw)
+    if not MIN_CREDENTIAL_BYTES <= raw_size <= MAX_CREDENTIAL_BYTES:
         raise ServiceAuthError("credential_invalid")
 
+    secret = bytes(raw)
     return EngineCredential(binding=binding, _secret=secret)

@@ -119,6 +119,31 @@ class ServiceAuthContractTests(unittest.TestCase):
                 replace(binding, version="scoremosaic-s2s-auth-v0"), endpoint
             )
 
+    def test_credential_key_tampering_is_rejected_before_provider_lookup(self) -> None:
+        endpoint = self.endpoints["homr"]
+        binding = build_engine_auth_binding(endpoint, "staging")
+        foreign_binding = build_engine_auth_binding(
+            self.endpoints["clarity"], "production"
+        )
+        tampered = replace(binding, credential_key=foreign_binding.credential_key)
+        requested_keys: list[str] = []
+
+        with self.assertRaisesRegex(
+            ServiceAuthError, "credential_key_mismatch"
+        ):
+            require_binding_for_endpoint(tampered, endpoint)
+
+        def resolver(key: str) -> bytes:
+            requested_keys.append(key)
+            return b"X" * MIN_CREDENTIAL_BYTES
+
+        with self.assertRaisesRegex(
+            ServiceAuthError, "credential_key_mismatch"
+        ):
+            resolve_engine_credential(tampered, resolver)
+
+        self.assertEqual(requested_keys, [])
+
     def test_missing_credential_fails_closed(self) -> None:
         binding = build_engine_auth_binding(
             self.endpoints["homr"], "staging"
@@ -152,6 +177,8 @@ class ServiceAuthContractTests(unittest.TestCase):
             "not-bytes",
             b"x" * (MIN_CREDENTIAL_BYTES - 1),
             b"x" * (MAX_CREDENTIAL_BYTES + 1),
+            bytearray(b"x" * (MAX_CREDENTIAL_BYTES + 1)),
+            memoryview(bytearray(MAX_CREDENTIAL_BYTES + 4)).cast("I"),
         )
 
         for value in invalid_values:
@@ -160,6 +187,17 @@ class ServiceAuthContractTests(unittest.TestCase):
                     ServiceAuthError, "credential_invalid"
                 ):
                     resolve_engine_credential(binding, lambda key, v=value: v)
+
+    def test_memoryview_byte_size_is_checked_not_element_count(self) -> None:
+        binding = build_engine_auth_binding(
+            self.endpoints["homr"], "staging"
+        )
+        oversized = memoryview(bytearray(MAX_CREDENTIAL_BYTES + 4)).cast("I")
+
+        self.assertLessEqual(len(oversized), MAX_CREDENTIAL_BYTES)
+        self.assertGreater(oversized.nbytes, MAX_CREDENTIAL_BYTES)
+        with self.assertRaisesRegex(ServiceAuthError, "credential_invalid"):
+            resolve_engine_credential(binding, lambda key: oversized)
 
     def test_valid_credential_is_scoped_and_repr_is_redacted(self) -> None:
         binding = build_engine_auth_binding(
