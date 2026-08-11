@@ -2,17 +2,19 @@
 
 This module deliberately does not send network requests, register engine routes,
 resolve credentials, persist replay state, or enable orchestration. It derives
-one closed dispatch-control identity from an already-verified orchestration plan
-and requires the exact canonical identity bytes to be the payload covered by the
-existing C.2-A authenticated envelope and C.2-B target binding.
+one closed dispatch-control identity from one detached, verified orchestration
+plan snapshot and requires the exact canonical identity bytes to be covered by
+the existing C.2-A authenticated envelope and C.2-B target binding.
 
 At a receiver, C.2-A cryptographic verification and replay checking remain a
-separate mandatory step. The helpers here add semantic job/source/run/candidate
-binding; they do not authenticate an envelope by themselves.
+separate mandatory step. Result identity claims are additionally authenticated
+with the same engine-scoped credential binding so an unkeyed digest cannot be
+substituted together with modified result bytes.
 """
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
 import hmac
@@ -33,9 +35,19 @@ from .orchestration import (
     OrchestrationContractError,
     verify_orchestration_plan,
 )
+from .service_auth import (
+    EngineAuthBinding,
+    EngineCredential,
+    MAX_CREDENTIAL_BYTES,
+    MIN_CREDENTIAL_BYTES,
+    ServiceAuthError,
+    _validated_resolver_key,
+)
 
 DISPATCH_IDENTITY_CONTRACT_VERSION = "scoremosaic-dispatch-identity-v1"
 DISPATCH_RESULT_IDENTITY_CONTRACT_VERSION = "scoremosaic-dispatch-result-identity-v1"
+DISPATCH_RESULT_AUTH_VERSION = "scoremosaic-dispatch-result-auth-v1"
+DISPATCH_RESULT_AUTH_ALGORITHM = "hmac-sha256"
 MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES = 4096
 MAX_RESULT_PAYLOAD_BYTES = 200 * 1024 * 1024
 
@@ -96,6 +108,19 @@ def _require_bytes(
     return payload
 
 
+def _snapshot_orchestration_plan(
+    orchestration_plan: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Detach one complete plan snapshot before verification and derivation."""
+
+    if not isinstance(orchestration_plan, Mapping):
+        raise DispatchIdentityError("orchestration_plan_invalid")
+    try:
+        return deepcopy(dict(orchestration_plan))
+    except Exception:
+        raise DispatchIdentityError("orchestration_plan_invalid") from None
+
+
 @dataclass(frozen=True, slots=True)
 class DispatchIdentityBinding:
     """Immutable semantic identity for exactly one planned engine dispatch."""
@@ -141,11 +166,18 @@ class DispatchIdentityBinding:
         }
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, repr=False)
 class DispatchResultIdentity:
-    """Identity claim for exact bytes returned for one planned dispatch."""
+    """Authenticated identity claim for exact bytes returned by one engine run."""
 
     version: str
+    auth_version: str
+    auth_algorithm: str
+    binding_version: str
+    caller_identity: str
+    audience_identity: str
+    environment: str
+    credential_key: str
     dispatch_identity_sha256: str
     plan_id: str
     plan_sha256: str
@@ -160,10 +192,30 @@ class DispatchResultIdentity:
     diagnostic_artifact_id: str
     result_payload_bytes: int
     result_payload_sha256: str
+    signature: str
+
+    def __repr__(self) -> str:
+        return (
+            "DispatchResultIdentity("
+            f"version={self.version!r}, auth_version={self.auth_version!r}, "
+            f"auth_algorithm={self.auth_algorithm!r}, engine={self.engine!r}, "
+            f"environment={self.environment!r}, job_id={self.job_id!r}, "
+            f"run_id={self.run_id!r}, candidate_id={self.candidate_id!r}, "
+            f"result_payload_bytes={self.result_payload_bytes!r}, "
+            f"result_payload_sha256={self.result_payload_sha256!r}, "
+            "signature=<redacted>)"
+        )
 
     def as_safe_dict(self) -> dict[str, object]:
         return {
             "version": self.version,
+            "authVersion": self.auth_version,
+            "authAlgorithm": self.auth_algorithm,
+            "bindingVersion": self.binding_version,
+            "callerIdentity": self.caller_identity,
+            "audienceIdentity": self.audience_identity,
+            "environment": self.environment,
+            "credentialKey": self.credential_key,
             "dispatchIdentitySha256": self.dispatch_identity_sha256,
             "planId": self.plan_id,
             "planSha256": self.plan_sha256,
@@ -178,6 +230,7 @@ class DispatchResultIdentity:
             "diagnosticArtifactId": self.diagnostic_artifact_id,
             "resultPayloadBytes": self.result_payload_bytes,
             "resultPayloadSha256": self.result_payload_sha256,
+            "signaturePresent": bool(self.signature),
         }
 
 
@@ -278,19 +331,17 @@ def build_dispatch_identity(
     orchestration_plan: Mapping[str, Any],
     engine: str,
 ) -> DispatchIdentityBinding:
-    """Derive exactly one dispatch identity from a verified immutable plan."""
+    """Derive one identity from the exact detached plan snapshot that was verified."""
 
-    if not isinstance(orchestration_plan, Mapping):
-        raise DispatchIdentityError("orchestration_plan_invalid")
     if type(engine) is not str or engine not in ENGINE_NAMES:
         raise DispatchIdentityError("engine_invalid")
 
+    plan = _snapshot_orchestration_plan(orchestration_plan)
     try:
-        verify_orchestration_plan(orchestration_plan)
+        verify_orchestration_plan(plan)
     except (OrchestrationContractError, TypeError, ValueError, KeyError):
         raise DispatchIdentityError("orchestration_plan_invalid") from None
 
-    plan = dict(orchestration_plan)
     runs = [run for run in plan["engineRuns"] if run["engine"] == engine]
     if len(runs) != 1:
         raise DispatchIdentityError("engine_not_planned")
@@ -364,11 +415,36 @@ def require_authenticated_dispatch_identity(
     return expected
 
 
+def _credential_secret_for_result(
+    credential: EngineCredential,
+    expected_engine: str,
+) -> tuple[EngineAuthBinding, bytes]:
+    if type(credential) is not EngineCredential:
+        raise DispatchIdentityError("credential_invalid")
+    try:
+        _validated_resolver_key(credential.binding)
+    except ServiceAuthError:
+        raise DispatchIdentityError("credential_binding_invalid") from None
+    if credential.binding.engine != expected_engine:
+        raise DispatchIdentityError("credential_engine_mismatch")
+
+    secret = credential.secret_bytes_for_transport()
+    if type(secret) is not bytes:
+        raise DispatchIdentityError("credential_invalid")
+    if not MIN_CREDENTIAL_BYTES <= len(secret) <= MAX_CREDENTIAL_BYTES:
+        raise DispatchIdentityError("credential_invalid")
+    return credential.binding, secret
+
+
 def _require_result_identity_shape(result: DispatchResultIdentity) -> None:
     if type(result) is not DispatchResultIdentity:
         raise DispatchIdentityError("result_identity_invalid")
     if result.version != DISPATCH_RESULT_IDENTITY_CONTRACT_VERSION:
         raise DispatchIdentityError("result_identity_version_mismatch")
+    if result.auth_version != DISPATCH_RESULT_AUTH_VERSION:
+        raise DispatchIdentityError("result_auth_version_mismatch")
+    if result.auth_algorithm != DISPATCH_RESULT_AUTH_ALGORITHM:
+        raise DispatchIdentityError("result_auth_algorithm_mismatch")
 
     _require_pattern(
         result.dispatch_identity_sha256,
@@ -419,15 +495,64 @@ def _require_result_identity_shape(result: DispatchResultIdentity) -> None:
         _SHA256_RE,
         "result_payload_sha256_invalid",
     )
+    _require_pattern(result.signature, _SHA256_RE, "result_signature_invalid")
+
+
+def _result_auth_bytes(
+    *,
+    binding: EngineAuthBinding,
+    dispatch_identity_sha256: str,
+    plan_id: str,
+    plan_sha256: str,
+    job_id: str,
+    source_artifact_id: str,
+    source_sha256: str,
+    run_id: str,
+    engine: str,
+    candidate_id: str,
+    candidate_namespace: str,
+    musicxml_artifact_id: str,
+    diagnostic_artifact_id: str,
+    result_payload_bytes: int,
+    result_payload_sha256: str,
+) -> bytes:
+    return _canonical_json(
+        {
+            "authVersion": DISPATCH_RESULT_AUTH_VERSION,
+            "authAlgorithm": DISPATCH_RESULT_AUTH_ALGORITHM,
+            "bindingVersion": binding.version,
+            "callerIdentity": binding.caller_identity,
+            "audienceIdentity": binding.audience_identity,
+            "environment": binding.environment,
+            "credentialKey": binding.credential_key,
+            "resultIdentityVersion": DISPATCH_RESULT_IDENTITY_CONTRACT_VERSION,
+            "dispatchIdentitySha256": dispatch_identity_sha256,
+            "planId": plan_id,
+            "planSha256": plan_sha256,
+            "jobId": job_id,
+            "sourceArtifactId": source_artifact_id,
+            "sourceSha256": source_sha256,
+            "runId": run_id,
+            "engine": engine,
+            "candidateId": candidate_id,
+            "candidateNamespace": candidate_namespace,
+            "musicxmlArtifactId": musicxml_artifact_id,
+            "diagnosticArtifactId": diagnostic_artifact_id,
+            "resultPayloadBytes": result_payload_bytes,
+            "resultPayloadSha256": result_payload_sha256,
+        }
+    )
 
 
 def build_dispatch_result_identity(
+    credential: EngineCredential,
     identity: DispatchIdentityBinding,
     result_payload: bytes,
 ) -> DispatchResultIdentity:
-    """Build a deterministic identity claim for exact returned engine bytes."""
+    """Authenticate exact returned bytes and lineage with one engine credential."""
 
     _require_dispatch_identity_shape(identity)
+    binding, secret = _credential_secret_for_result(credential, identity.engine)
     body = _require_bytes(
         result_payload,
         empty_allowed=False,
@@ -435,8 +560,9 @@ def build_dispatch_result_identity(
         invalid_category="result_payload_invalid",
         size_category="result_payload_size_invalid",
     )
-    result = DispatchResultIdentity(
-        version=DISPATCH_RESULT_IDENTITY_CONTRACT_VERSION,
+    result_payload_sha256 = hashlib.sha256(body).hexdigest()
+    auth_bytes = _result_auth_bytes(
+        binding=binding,
         dispatch_identity_sha256=identity.identity_sha256,
         plan_id=identity.plan_id,
         plan_sha256=identity.plan_sha256,
@@ -450,18 +576,45 @@ def build_dispatch_result_identity(
         musicxml_artifact_id=identity.musicxml_artifact_id,
         diagnostic_artifact_id=identity.diagnostic_artifact_id,
         result_payload_bytes=len(body),
-        result_payload_sha256=hashlib.sha256(body).hexdigest(),
+        result_payload_sha256=result_payload_sha256,
+    )
+    signature = hmac.new(secret, auth_bytes, hashlib.sha256).hexdigest()
+    result = DispatchResultIdentity(
+        version=DISPATCH_RESULT_IDENTITY_CONTRACT_VERSION,
+        auth_version=DISPATCH_RESULT_AUTH_VERSION,
+        auth_algorithm=DISPATCH_RESULT_AUTH_ALGORITHM,
+        binding_version=binding.version,
+        caller_identity=binding.caller_identity,
+        audience_identity=binding.audience_identity,
+        environment=binding.environment,
+        credential_key=binding.credential_key,
+        dispatch_identity_sha256=identity.identity_sha256,
+        plan_id=identity.plan_id,
+        plan_sha256=identity.plan_sha256,
+        job_id=identity.job_id,
+        source_artifact_id=identity.source_artifact_id,
+        source_sha256=identity.source_sha256,
+        run_id=identity.run_id,
+        engine=identity.engine,
+        candidate_id=identity.candidate_id,
+        candidate_namespace=identity.candidate_namespace,
+        musicxml_artifact_id=identity.musicxml_artifact_id,
+        diagnostic_artifact_id=identity.diagnostic_artifact_id,
+        result_payload_bytes=len(body),
+        result_payload_sha256=result_payload_sha256,
+        signature=signature,
     )
     _require_result_identity_shape(result)
     return result
 
 
 def require_dispatch_result_identity(
+    credential: EngineCredential,
     expected_identity: DispatchIdentityBinding,
     result: DispatchResultIdentity,
     result_payload: bytes,
 ) -> None:
-    """Fail closed unless result metadata and exact bytes match one dispatch."""
+    """Fail closed unless result lineage, bytes, credential binding, and MAC match."""
 
     _require_dispatch_identity_shape(expected_identity)
     _require_result_identity_shape(result)
@@ -500,3 +653,38 @@ def require_dispatch_result_identity(
     observed_digest = hashlib.sha256(body).hexdigest()
     if not hmac.compare_digest(result.result_payload_sha256, observed_digest):
         raise DispatchIdentityError("result_payload_digest_mismatch")
+
+    binding, secret = _credential_secret_for_result(
+        credential,
+        expected_identity.engine,
+    )
+    binding_checks = (
+        (result.binding_version, binding.version),
+        (result.caller_identity, binding.caller_identity),
+        (result.audience_identity, binding.audience_identity),
+        (result.environment, binding.environment),
+        (result.credential_key, binding.credential_key),
+    )
+    if any(observed != expected for observed, expected in binding_checks):
+        raise DispatchIdentityError("result_auth_binding_mismatch")
+
+    auth_bytes = _result_auth_bytes(
+        binding=binding,
+        dispatch_identity_sha256=result.dispatch_identity_sha256,
+        plan_id=result.plan_id,
+        plan_sha256=result.plan_sha256,
+        job_id=result.job_id,
+        source_artifact_id=result.source_artifact_id,
+        source_sha256=result.source_sha256,
+        run_id=result.run_id,
+        engine=result.engine,
+        candidate_id=result.candidate_id,
+        candidate_namespace=result.candidate_namespace,
+        musicxml_artifact_id=result.musicxml_artifact_id,
+        diagnostic_artifact_id=result.diagnostic_artifact_id,
+        result_payload_bytes=result.result_payload_bytes,
+        result_payload_sha256=result.result_payload_sha256,
+    )
+    expected_signature = hmac.new(secret, auth_bytes, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(result.signature, expected_signature):
+        raise DispatchIdentityError("result_signature_invalid")
