@@ -432,25 +432,25 @@ Production readiness still requires supply-chain evidence, secrets, monitoring, 
 
 ## 17. Safe development sequence
 
-The proposed Teacher Review sequence is:
+The authoritative Teacher Review implementation order is:
 
 1. **TR-0 — Documentation/Architecture Contract**
-2. **TR-1 — Immutable TeacherScoreRevision and ScoreEditCommand contracts**
-3. **TR-2 — Revision validation and MusicXML regeneration contract**
-4. **TR-3 — Read-only score viewer and issue-focus mapping**
-5. **TR-4 — Draft structured teacher correction panel**
-6. **TR-5 — Measure/beat/event cursor**
-7. **TR-6 — Isolated playback adapter and Play/Pause/Stop**
-8. **TR-7 — Corrected MusicXML export contract**
-9. **TR-8 — RBAC, audit, approval, and publication barrier**
-10. **TR-9 — Controlled staging E2E and teacher acceptance**
+2. **Gate D — Durable Job and Artifact State**
+3. **Gate E — External/API Security Foundation**
+4. **TR-8A — Reviewer RBAC, audit identity, authorized read/write scope, and stale-target protection**
+5. **TR-1 — Immutable TeacherScoreRevision and ScoreEditCommand contracts**
+6. **TR-2 — Revision validation and MusicXML regeneration contract**
+7. **TR-3 — Read-only score viewer and issue-focus mapping**
+8. **TR-4 — Draft structured teacher correction panel**
+9. **TR-5 — Measure/beat/event cursor**
+10. **TR-6 — Isolated playback adapter and Play/Pause/Stop**
+11. **TR-7 — Corrected MusicXML export contract**
+12. **TR-8B — Exact revision/hash approval and publication barrier**
+13. **TR-9 — Controlled staging E2E and teacher acceptance**
 
-Security dependency refinement:
+This order is authoritative for implementation and activation. In particular, TR-4 must never become a live writable surface before Gate D, Gate E, and TR-8A have passed their own separately approved evidence gates.
 
-- Gate D and Gate E must precede activation of persistent/writable Teacher Review behavior.
-- TR-8A authorization/audit must be demonstrated before TR-4 is enabled as a live write surface.
-- TR-8B approval/publication remains after validated export capability.
-- TR-3 may use repository-owned static fixtures for a non-production compatibility experiment before live API/storage dependencies exist, but such an experiment does not count as a completed Gate F runtime capability.
+A repository-owned, static, non-production TR-3 renderer compatibility experiment may occur earlier for technology evaluation, but it does not advance Gate F, does not authorize live review data, and does not change the authoritative implementation/activation order above.
 
 ## 18. Minimum evidence expectations by stage
 
