@@ -8,7 +8,9 @@ Phase 11 added a **versioned orchestration-plan contract library** without enabl
 
 Safe Intake Gate B is now a completed foundation without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed Safe Intake decision, and hostile-input convergence coverage are present on `main` with post-merge CI evidence.
 
-Gate C.1 service-to-service authentication contract foundation is now present on `main`. It defines fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed credential resolution, bounded opaque credential material, and negative regression evidence. It does not select or activate a network authentication mechanism, add receiver-side verification, or enable live engine dispatch.
+Gate C.1 service-to-service authentication contract foundation is present on `main`. It defines fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed credential resolution, bounded opaque credential material, and negative regression evidence.
+
+Gate C.2-A authenticated request envelope and receiver verification contract foundation is also present on `main`. It selects deterministic HMAC-SHA256 over the existing C.1 engine/environment credential, binds the caller/engine/audience/environment relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256, and defines fail-closed receiver verification including receiver-observed target matching and replay-check ordering. It remains contract-only: engine HTTP handlers are not wired to the verifier, the exact dispatch route/endpoint allowlist is not yet defined, replay persistence and credential-rotation grace semantics remain incomplete, and live engine dispatch remains disabled.
 
 Implemented now:
 
@@ -28,7 +30,8 @@ Implemented now:
 - Safe Intake B.6 original filename metadata safety bound to fresh signature-derived format evidence
 - integrated `decide_safe_intake()` composition over one exact immutable payload
 - dedicated hostile-input convergence coverage through the integrated decision boundary
-- Gate C.1 fail-closed service identity, environment-scoped credential binding, and credential-resolution contract; authenticated transport and receiver verification are not yet implemented
+- Gate C.1 fail-closed service identity, environment-scoped credential binding, and credential-resolution contract
+- Gate C.2-A deterministic HMAC-SHA256 authenticated request envelope plus fail-closed receiver-verification contract; live handler wiring, exact endpoint allowlisting, persistent replay state, credential-rotation grace, and network dispatch remain disabled or incomplete
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -255,7 +258,7 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 Gate B Safe Intake is complete as a foundation but does not activate an upload surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
 
-- authenticated service-to-service transport and receiver-side verification; Gate C.1 identity/credential contract foundation exists, but live request authentication is not yet implemented
+- authenticated service-to-service transport and receiver-side verification wiring; Gate C.1 identity/credential binding and Gate C.2-A signed-request/verification foundations exist, but exact engine endpoint allowlisting, live handler wiring, persistent replay/rotation semantics, and activation remain incomplete
 - concrete engine adapter request/response contracts
 - server-generated job, run, candidate, and artifact identifiers bound to durable state
 - queue, timeout enforcement, cancellation, cleanup, and restart recovery

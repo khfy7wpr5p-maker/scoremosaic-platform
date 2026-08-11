@@ -19,7 +19,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
 | Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; external upload remains disabled. |
-| Service-to-service authentication | C.1 contract foundation completed | Fail-closed service identity and environment-scoped credential binding exist; authenticated transport and receiver verification remain unimplemented, so live engine dispatch stays blocked. |
+| Service-to-service authentication | C.2-A authenticated-request contract foundation completed | C.1 fail-closed service identity/environment-scoped credential binding and C.2-A deterministic HMAC-SHA256 request-envelope/receiver-verification contracts exist; exact endpoint allowlisting and live receiver wiring remain unimplemented, so live engine dispatch stays blocked. |
 | Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
 | Production immutable object storage | Not started | Production persistence remains blocked. |
 | External API auth/authz + rate/abuse controls | Not started | Public API exposure remains blocked. |
@@ -84,7 +84,8 @@ Goal: enable private orchestration without creating an unauthenticated lateral-m
 
 Completed slices:
 
-- C.1 service-to-service authentication contract foundation — completed. Fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed resolver behavior, bounded opaque credential material, and negative regression evidence are on `main`. This slice does not select or activate a network authentication mechanism and does not enable dispatch.
+- C.1 service-to-service authentication contract foundation — completed. Fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed resolver behavior, bounded opaque credential material, and negative regression evidence are on `main`. C.1 itself did not select or activate a network authentication mechanism and did not enable dispatch.
+- C.2-A authenticated request envelope and receiver verification contract foundation — completed. Deterministic HMAC-SHA256 binds the C.1 caller/engine/audience/environment/credential-key relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256. Receiver verification independently validates the observed method/path, request freshness, signature, and replay-check ordering before acceptance. This slice does not register engine execution routes, wire live receiver handlers, persist replay state, provision production credentials, or enable network dispatch.
 
 Requirements:
 
