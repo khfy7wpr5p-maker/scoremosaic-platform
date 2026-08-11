@@ -16,6 +16,10 @@ from .artifact_lifecycle import (
     transition_candidate,
     verify_artifact_lifecycle,
 )
+from .filename_safety import (
+    SafeIntakeFilenameError,
+    validate_original_filename,
+)
 from .orchestration import (
     ACCEPTED_SOURCE_MEDIA_TYPES,
     ENGINE_NAMES,
@@ -74,6 +78,7 @@ __all__ = [
     "OrchestrationContractError",
     "SourceArtifactPlan",
     "SafeIntakeByteBudgetError",
+    "SafeIntakeFilenameError",
     "SafeIntakeFormat",
     "SafeIntakeImageError",
     "SafeIntakeMediaTypeError",
@@ -89,6 +94,7 @@ __all__ = [
     "measure_input_bytes",
     "transition_artifact",
     "transition_candidate",
+    "validate_original_filename",
     "verify_artifact_lifecycle",
     "verify_orchestration_plan",
     "verify_signature_media_type",
