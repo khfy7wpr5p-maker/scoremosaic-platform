@@ -9,6 +9,7 @@ request target before C.2-A signing is allowed.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 from urllib.parse import urlsplit
 
 from .authenticated_request import (
@@ -30,19 +31,26 @@ DISPATCH_PATH = "/internal/transcribe"
 
 # Production is deliberately absent. Gate C.2-B only records the exact private
 # origins used by current test/staging foundations; production activation needs
-# a separate reviewed allowlist update.
-APPROVED_ENGINE_ORIGINS = {
-    "test": {
-        "audiveris": "http://audiveris-foundation:8082",
-        "homr": "http://homr-foundation:8080",
-        "clarity": "http://clarity-foundation:8081",
-    },
-    "staging": {
-        "audiveris": "http://audiveris-foundation:8082",
-        "homr": "http://homr-foundation:8080",
-        "clarity": "http://clarity-foundation:8081",
-    },
-}
+# a separate reviewed allowlist update. Both mapping levels are immutable so an
+# importing caller cannot alter this security policy in place at runtime.
+APPROVED_ENGINE_ORIGINS = MappingProxyType(
+    {
+        "test": MappingProxyType(
+            {
+                "audiveris": "http://audiveris-foundation:8082",
+                "homr": "http://homr-foundation:8080",
+                "clarity": "http://clarity-foundation:8081",
+            }
+        ),
+        "staging": MappingProxyType(
+            {
+                "audiveris": "http://audiveris-foundation:8082",
+                "homr": "http://homr-foundation:8080",
+                "clarity": "http://clarity-foundation:8081",
+            }
+        ),
+    }
+)
 
 
 class DispatchTargetError(ValueError):
