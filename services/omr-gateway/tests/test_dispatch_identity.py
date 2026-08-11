@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import replace
+import hashlib
 from pathlib import Path
 import sys
 import unittest
@@ -31,6 +33,27 @@ from scoremosaic_gateway.service_auth import (
     MIN_CREDENTIAL_BYTES,
     build_engine_auth_binding,
 )
+
+
+class _SwitchingPlanMapping(Mapping):
+    """Expose a different valid mapping snapshot on each top-level iteration."""
+
+    def __init__(self, first: dict, second: dict) -> None:
+        self._snapshots = (first, second)
+        self._iteration = 0
+        self._active = first
+
+    def __iter__(self):
+        index = min(self._iteration, len(self._snapshots) - 1)
+        self._active = self._snapshots[index]
+        self._iteration += 1
+        return iter(self._active)
+
+    def __len__(self) -> int:
+        return len(self._active)
+
+    def __getitem__(self, key):
+        return self._active[key]
 
 
 class DispatchIdentityContractTests(unittest.TestCase):
@@ -85,6 +108,22 @@ class DispatchIdentityContractTests(unittest.TestCase):
                 self.assertEqual(identity.source_sha256, "1" * 64)
                 self.assertEqual(payload, dispatch_identity_payload(rebuilt))
                 self.assertEqual(identity.identity_sha256, rebuilt.identity_sha256)
+
+    def test_plan_is_snapshotted_once_before_verification_and_derivation(self) -> None:
+        other_plan = build_orchestration_plan(
+            "job_c2cbind02",
+            source_artifact_ref="sources/job_c2cbind02/source.pdf",
+            source_sha256="2" * 64,
+            source_size_bytes=8192,
+            source_media_type="application/pdf",
+        ).as_dict()
+        switching = _SwitchingPlanMapping(self.plan, other_plan)
+
+        identity = build_dispatch_identity(switching, "homr")
+
+        self.assertEqual(identity.job_id, self.plan["jobId"])
+        self.assertEqual(identity.plan_id, self.plan["planId"])
+        self.assertEqual(identity.source_sha256, self.plan["sourceArtifact"]["sha256"])
 
     def test_signed_identity_payload_matches_exact_plan_run(self) -> None:
         identity = build_dispatch_identity(self.plan, "homr")
@@ -231,21 +270,36 @@ class DispatchIdentityContractTests(unittest.TestCase):
                 payload,
             )
 
-    def test_result_identity_binds_exact_dispatch_and_exact_result_bytes(self) -> None:
+    def test_result_identity_is_authenticated_and_binds_exact_result_bytes(self) -> None:
+        credential = self._credential("audiveris")
         identity = build_dispatch_identity(self.plan, "audiveris")
         result_payload = b"immutable-engine-result"
-        result = build_dispatch_result_identity(identity, result_payload)
+        result = build_dispatch_result_identity(
+            credential,
+            identity,
+            result_payload,
+        )
 
         self.assertEqual(
             result.version,
             DISPATCH_RESULT_IDENTITY_CONTRACT_VERSION,
         )
-        require_dispatch_result_identity(identity, result, result_payload)
+        self.assertTrue(result.signature)
+        self.assertNotIn("signature", result.as_safe_dict())
+        self.assertTrue(result.as_safe_dict()["signaturePresent"])
+        require_dispatch_result_identity(
+            credential,
+            identity,
+            result,
+            result_payload,
+        )
 
     def test_result_from_other_run_is_rejected(self) -> None:
         homr = build_dispatch_identity(self.plan, "homr")
         clarity = build_dispatch_identity(self.plan, "clarity")
+        clarity_credential = self._credential("clarity")
         clarity_result = build_dispatch_result_identity(
+            clarity_credential,
             clarity,
             b"clarity-result",
         )
@@ -255,15 +309,17 @@ class DispatchIdentityContractTests(unittest.TestCase):
             "result_dispatch_identity_mismatch",
         ):
             require_dispatch_result_identity(
+                self._credential("homr"),
                 homr,
                 clarity_result,
                 b"clarity-result",
             )
 
     def test_result_artifact_identity_tamper_is_rejected(self) -> None:
+        credential = self._credential("homr")
         homr = build_dispatch_identity(self.plan, "homr")
         result_payload = b"homr-result"
-        result = build_dispatch_result_identity(homr, result_payload)
+        result = build_dispatch_result_identity(credential, homr, result_payload)
         clarity = build_dispatch_identity(self.plan, "clarity")
 
         with self.assertRaisesRegex(
@@ -271,6 +327,7 @@ class DispatchIdentityContractTests(unittest.TestCase):
             "result_artifact_identity_mismatch",
         ):
             require_dispatch_result_identity(
+                credential,
                 homr,
                 replace(
                     result,
@@ -280,17 +337,80 @@ class DispatchIdentityContractTests(unittest.TestCase):
             )
 
     def test_result_payload_tamper_is_rejected(self) -> None:
+        credential = self._credential("clarity")
         identity = build_dispatch_identity(self.plan, "clarity")
-        result = build_dispatch_result_identity(identity, b"original-result")
+        result = build_dispatch_result_identity(
+            credential,
+            identity,
+            b"original-result",
+        )
 
         with self.assertRaisesRegex(
             DispatchIdentityError,
             "result_payload_digest_mismatch",
         ):
             require_dispatch_result_identity(
+                credential,
                 identity,
                 result,
                 b"tampered-result",
+            )
+
+    def test_recomputed_result_digest_without_valid_mac_is_rejected(self) -> None:
+        credential = self._credential("homr")
+        identity = build_dispatch_identity(self.plan, "homr")
+        result = build_dispatch_result_identity(
+            credential,
+            identity,
+            b"original-result",
+        )
+        tampered_payload = b"attacker-replacement"
+        forged = replace(
+            result,
+            result_payload_bytes=len(tampered_payload),
+            result_payload_sha256=hashlib.sha256(tampered_payload).hexdigest(),
+        )
+
+        with self.assertRaisesRegex(
+            DispatchIdentityError,
+            "result_signature_invalid",
+        ):
+            require_dispatch_result_identity(
+                credential,
+                identity,
+                forged,
+                tampered_payload,
+            )
+
+    def test_result_signature_tamper_is_rejected(self) -> None:
+        credential = self._credential("homr")
+        identity = build_dispatch_identity(self.plan, "homr")
+        payload = b"homr-result"
+        result = build_dispatch_result_identity(credential, identity, payload)
+
+        with self.assertRaisesRegex(
+            DispatchIdentityError,
+            "result_signature_invalid",
+        ):
+            require_dispatch_result_identity(
+                credential,
+                identity,
+                replace(result, signature="f" * 64),
+                payload,
+            )
+
+    def test_cross_engine_result_credential_is_rejected(self) -> None:
+        homr = build_dispatch_identity(self.plan, "homr")
+        payload = b"homr-result"
+
+        with self.assertRaisesRegex(
+            DispatchIdentityError,
+            "credential_engine_mismatch",
+        ):
+            build_dispatch_result_identity(
+                self._credential("clarity"),
+                homr,
+                payload,
             )
 
 
