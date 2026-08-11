@@ -20,6 +20,11 @@ from .filename_safety import (
     SafeIntakeFilenameError,
     validate_original_filename,
 )
+from .intake_decision import (
+    SafeIntakeDecision,
+    SafeIntakeDecisionError,
+    decide_safe_intake,
+)
 from .orchestration import (
     ACCEPTED_SOURCE_MEDIA_TYPES,
     ENGINE_NAMES,
@@ -78,6 +83,8 @@ __all__ = [
     "OrchestrationContractError",
     "SourceArtifactPlan",
     "SafeIntakeByteBudgetError",
+    "SafeIntakeDecision",
+    "SafeIntakeDecisionError",
     "SafeIntakeFilenameError",
     "SafeIntakeFormat",
     "SafeIntakeImageError",
@@ -88,6 +95,7 @@ __all__ = [
     "SignatureMatch",
     "build_artifact_lifecycle",
     "build_orchestration_plan",
+    "decide_safe_intake",
     "inspect_image_pixels",
     "inspect_pdf_pages",
     "match_input_signature",
