@@ -228,6 +228,26 @@ class EngineDispatchTargetContractTests(unittest.TestCase):
                 clarity_envelope,
             )
 
+    def test_forged_dispatch_target_origin_is_rejected(self) -> None:
+        credential = self._credential("homr")
+        target = build_engine_dispatch_target(
+            credential.binding,
+            self.endpoints["homr"],
+        )
+        envelope = sign_authenticated_dispatch_request(
+            credential,
+            self.endpoints["homr"],
+            timestamp=1_700_000_000,
+            nonce="f" * 32,
+            payload=b"payload",
+        )
+
+        with self.assertRaisesRegex(DispatchTargetError, "engine_origin_mismatch"):
+            require_envelope_for_dispatch_target(
+                replace(target, origin="http://unexpected-foundation:8080"),
+                envelope,
+            )
+
     def test_safe_diagnostics_contain_no_credential_secret(self) -> None:
         credential = self._credential("clarity")
         target = build_engine_dispatch_target(

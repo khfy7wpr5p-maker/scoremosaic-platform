@@ -107,6 +107,46 @@ def _require_endpoint_shape(endpoint: EngineEndpoint) -> None:
         raise DispatchTargetError("engine_origin_invalid")
 
 
+def _require_allowlisted_origin(binding: EngineAuthBinding, endpoint: EngineEndpoint) -> str:
+    environment_origins = APPROVED_ENGINE_ORIGINS.get(binding.environment)
+    if environment_origins is None:
+        raise DispatchTargetError("dispatch_environment_not_configured")
+
+    expected_origin = environment_origins.get(endpoint.name)
+    if expected_origin is None:
+        raise DispatchTargetError("engine_not_allowed")
+    if endpoint.base_url != expected_origin:
+        raise DispatchTargetError("engine_origin_mismatch")
+    return expected_origin
+
+
+def _require_target_integrity(target: EngineDispatchTarget) -> None:
+    if type(target) is not EngineDispatchTarget:
+        raise DispatchTargetError("dispatch_target_invalid")
+    if target.version != DISPATCH_TARGET_CONTRACT_VERSION:
+        raise DispatchTargetError("dispatch_target_version_mismatch")
+    if target.method != DISPATCH_METHOD:
+        raise DispatchTargetError("dispatch_method_mismatch")
+    if target.path != DISPATCH_PATH:
+        raise DispatchTargetError("dispatch_path_mismatch")
+
+    endpoint = EngineEndpoint(target.engine, target.origin)
+    _require_endpoint_shape(endpoint)
+    binding = EngineAuthBinding(
+        version=target.binding_version,
+        environment=target.environment,
+        caller_identity=target.caller_identity,
+        engine=target.engine,
+        audience_identity=target.audience_identity,
+        credential_key=target.credential_key,
+    )
+    try:
+        require_binding_for_endpoint(binding, endpoint)
+    except ServiceAuthError as exc:
+        raise DispatchTargetError(exc.category) from None
+    _require_allowlisted_origin(binding, endpoint)
+
+
 def build_engine_dispatch_target(
     binding: EngineAuthBinding,
     endpoint: EngineEndpoint,
@@ -122,17 +162,8 @@ def build_engine_dispatch_target(
     except ServiceAuthError as exc:
         raise DispatchTargetError(exc.category) from None
 
-    environment_origins = APPROVED_ENGINE_ORIGINS.get(binding.environment)
-    if environment_origins is None:
-        raise DispatchTargetError("dispatch_environment_not_configured")
-
-    expected_origin = environment_origins.get(endpoint.name)
-    if expected_origin is None:
-        raise DispatchTargetError("engine_not_allowed")
-    if endpoint.base_url != expected_origin:
-        raise DispatchTargetError("engine_origin_mismatch")
-
-    return EngineDispatchTarget(
+    expected_origin = _require_allowlisted_origin(binding, endpoint)
+    target = EngineDispatchTarget(
         version=DISPATCH_TARGET_CONTRACT_VERSION,
         binding_version=binding.version,
         caller_identity=binding.caller_identity,
@@ -144,6 +175,8 @@ def build_engine_dispatch_target(
         method=DISPATCH_METHOD,
         path=DISPATCH_PATH,
     )
+    _require_target_integrity(target)
+    return target
 
 
 def require_envelope_for_dispatch_target(
@@ -152,10 +185,7 @@ def require_envelope_for_dispatch_target(
 ) -> None:
     """Require a C.2-A envelope to match the exact C.2-B target metadata."""
 
-    if type(target) is not EngineDispatchTarget:
-        raise DispatchTargetError("dispatch_target_invalid")
-    if target.version != DISPATCH_TARGET_CONTRACT_VERSION:
-        raise DispatchTargetError("dispatch_target_version_mismatch")
+    _require_target_integrity(target)
     if type(envelope) is not AuthenticatedRequestEnvelope:
         raise DispatchTargetError("envelope_invalid")
 
