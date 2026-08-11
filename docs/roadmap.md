@@ -19,7 +19,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
 | Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; external upload remains disabled. |
-| Service-to-service authentication | Not started | Live engine dispatch remains blocked. |
+| Service-to-service authentication | C.1 contract foundation completed | Fail-closed service identity and environment-scoped credential binding exist; authenticated transport and receiver verification remain unimplemented, so live engine dispatch stays blocked. |
 | Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
 | Production immutable object storage | Not started | Production persistence remains blocked. |
 | External API auth/authz + rate/abuse controls | Not started | Public API exposure remains blocked. |
@@ -81,6 +81,10 @@ Gate B completion has no activation effect by itself. The Gateway still has no e
 ### Gate C — Internal Dispatch Security
 
 Goal: enable private orchestration without creating an unauthenticated lateral-movement path.
+
+Completed slices:
+
+- C.1 service-to-service authentication contract foundation — completed. Fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed resolver behavior, bounded opaque credential material, and negative regression evidence are on `main`. This slice does not select or activate a network authentication mechanism and does not enable dispatch.
 
 Requirements:
 
