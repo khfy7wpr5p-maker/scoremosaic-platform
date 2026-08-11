@@ -62,6 +62,15 @@ OMR Gateway / job orchestration
               Corrected MusicXML derivative
                             |
                             v
+              MusicXML safety validation
+                            |
+                            v
+              Canonical re-normalization
+                            |
+                            v
+        Revision/semantic consistency check
+                            |
+                            v
                    Approval barrier
                             |
                             v
