@@ -79,8 +79,6 @@ def route_request(
             },
             "capabilities": _capabilities(config),
         }
-        if runtime.diagnostic and not runtime.ready:
-            payload["diagnostic"] = runtime.diagnostic
         return RouteResponse(status=200 if runtime.ready else 503, payload=payload)
 
     if method != "GET":
