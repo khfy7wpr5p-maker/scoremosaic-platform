@@ -333,7 +333,7 @@ def evaluate_dispatch_deadline(
                 cleanup_deadline_monotonic_ns=prior_decision.cleanup_deadline_monotonic_ns,
                 accepts_result=False,
             )
-        if cancellation is not None and cancellation <= prior_decision.observed_monotonic_ns:
+        if cancellation is not None and cancellation < prior_decision.observed_monotonic_ns:
             raise DispatchDeadlineError("cancellation_time_regression")
 
     timeout_deadline = context.timeout_deadline_monotonic_ns
