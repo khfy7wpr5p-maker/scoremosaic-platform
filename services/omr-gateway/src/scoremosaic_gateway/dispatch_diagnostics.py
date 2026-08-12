@@ -51,8 +51,15 @@ class SafeDispatchDiagnostic:
     reason: str
 
     def __post_init__(self) -> None:
-        if self.version != DISPATCH_DIAGNOSTIC_CONTRACT_VERSION:
+        if (
+            type(self.version) is not str
+            or self.version != DISPATCH_DIAGNOSTIC_CONTRACT_VERSION
+        ):
             raise ValueError("dispatch diagnostic version is invalid")
+        if type(self.stage) is not str:
+            raise ValueError("dispatch diagnostic stage is invalid")
+        if type(self.reason) is not str:
+            raise ValueError("dispatch diagnostic reason is invalid")
         if (self.stage, self.reason) not in _ALLOWED_DIAGNOSTICS:
             raise ValueError("dispatch diagnostic value is invalid")
 
