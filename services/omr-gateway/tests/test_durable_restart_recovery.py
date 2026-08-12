@@ -8,9 +8,14 @@ import unittest
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
-from scoremosaic_gateway.artifact_lifecycle import build_artifact_lifecycle
+from scoremosaic_gateway.artifact_lifecycle import (
+    build_artifact_lifecycle,
+    transition_artifact,
+    transition_candidate,
+)
 from scoremosaic_gateway.dispatch_identity import build_dispatch_identity
 from scoremosaic_gateway.durable_artifact_storage import (
+    bind_sealed_artifact_idempotently,
     build_durable_artifact_storage_manifest,
 )
 from scoremosaic_gateway.durable_idempotency import (
@@ -33,6 +38,15 @@ from scoremosaic_gateway.orchestration import build_orchestration_plan
 
 
 SOURCE_SHA = "a" * 64
+_TERMINAL_CONTENT = {
+    "raw_engine_result": ("b" * 64, 111, "application/octet-stream"),
+    "musicxml": (
+        "c" * 64,
+        222,
+        "application/vnd.recordare.musicxml+xml",
+    ),
+    "diagnostic": ("d" * 64, 333, "application/json"),
+}
 
 
 class DurableRestartRecoveryContractTests(unittest.TestCase):
@@ -79,6 +93,52 @@ class DurableRestartRecoveryContractTests(unittest.TestCase):
         )
         return applied.snapshot, applied.ledger, provenance_result.chain
 
+    def _homr_candidate(self, lifecycle):
+        return next(candidate for candidate in lifecycle.candidates if candidate.engine == "homr")
+
+    def _seal_homr_candidate(self, lifecycle):
+        candidate = self._homr_candidate(lifecycle)
+        lifecycle = transition_candidate(lifecycle, candidate.candidate_id, "collecting")
+        for artifact in candidate.artifacts:
+            lifecycle = transition_artifact(lifecycle, artifact.artifact_id, "writing")
+            sha256, size_bytes, media_type = _TERMINAL_CONTENT[artifact.kind]
+            lifecycle = transition_artifact(
+                lifecycle,
+                artifact.artifact_id,
+                "sealed",
+                sha256=sha256,
+                size_bytes=size_bytes,
+                media_type=media_type,
+            )
+        return transition_candidate(lifecycle, candidate.candidate_id, "sealed")
+
+    def _terminate_homr_candidate(self, lifecycle, state: str):
+        candidate = self._homr_candidate(lifecycle)
+        reason_code = f"run_{state}"
+        for artifact in candidate.artifacts:
+            lifecycle = transition_artifact(
+                lifecycle,
+                artifact.artifact_id,
+                "abandoned",
+                reason_code=reason_code,
+            )
+        return transition_candidate(
+            lifecycle,
+            candidate.candidate_id,
+            state,
+            reason_code=reason_code,
+        )
+
+    def _bind_homr_artifacts(self, manifest, lifecycle):
+        candidate = self._homr_candidate(lifecycle)
+        for artifact in candidate.artifacts:
+            manifest = bind_sealed_artifact_idempotently(
+                manifest,
+                lifecycle,
+                artifact.artifact_id,
+            ).manifest
+        return manifest
+
     def _decision_for_state(self, state: str):
         snapshot, ledger, lifecycle, manifest, provenance = self._context()
         path = {
@@ -86,10 +146,6 @@ class DurableRestartRecoveryContractTests(unittest.TestCase):
             "queued": ("queued",),
             "dispatching": ("queued", "dispatching"),
             "running": ("queued", "dispatching", "running"),
-            "completed": ("queued", "dispatching", "running", "completed"),
-            "failed": ("queued", "dispatching", "failed"),
-            "cancelled": ("cancelled",),
-            "timed_out": ("queued", "timed_out"),
         }[state]
         for next_state in path:
             snapshot, ledger, provenance = self._advance(
@@ -100,14 +156,59 @@ class DurableRestartRecoveryContractTests(unittest.TestCase):
                 provenance,
                 next_state,
             )
-        decision = evaluate_durable_restart_recovery(
+        return evaluate_durable_restart_recovery(
             snapshot,
             ledger,
             manifest,
             lifecycle=lifecycle,
             provenance=provenance,
         )
-        return decision
+
+    def _decision_for_terminal_state(self, state: str):
+        snapshot, ledger, lifecycle, manifest, provenance = self._context()
+        prefix = {
+            "completed": ("queued", "dispatching", "running"),
+            "failed": ("queued", "dispatching"),
+            "cancelled": (),
+            "timed_out": ("queued",),
+        }[state]
+        for next_state in prefix:
+            snapshot, ledger, provenance = self._advance(
+                snapshot,
+                ledger,
+                lifecycle,
+                manifest,
+                provenance,
+                next_state,
+            )
+
+        if state == "completed":
+            lifecycle = self._seal_homr_candidate(lifecycle)
+            manifest = self._bind_homr_artifacts(manifest, lifecycle)
+            provenance = append_durable_provenance_record_idempotently(
+                provenance,
+                snapshot,
+                manifest,
+                lifecycle=lifecycle,
+            ).chain
+        else:
+            lifecycle = self._terminate_homr_candidate(lifecycle, state)
+
+        snapshot, ledger, provenance = self._advance(
+            snapshot,
+            ledger,
+            lifecycle,
+            manifest,
+            provenance,
+            state,
+        )
+        return evaluate_durable_restart_recovery(
+            snapshot,
+            ledger,
+            manifest,
+            lifecycle=lifecycle,
+            provenance=provenance,
+        )
 
     def test_planned_and_queued_are_pre_dispatch_candidates_without_execution_authority(self) -> None:
         for state in ("planned", "queued"):
@@ -142,7 +243,7 @@ class DurableRestartRecoveryContractTests(unittest.TestCase):
     def test_all_terminal_states_are_preserved_and_cannot_reopen(self) -> None:
         for state in ("completed", "failed", "cancelled", "timed_out"):
             with self.subTest(state=state):
-                decision = self._decision_for_state(state)
+                decision = self._decision_for_terminal_state(state)
                 self.assertEqual(decision.state, state)
                 self.assertEqual(decision.disposition, "terminal_preserved")
                 self.assertTrue(decision.terminal)
