@@ -8,26 +8,22 @@ import unittest
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
-from scoremosaic_gateway.authenticated_request import (
-    MAX_REQUEST_AGE_SECONDS,
-    RequestAuthError,
-    sign_authenticated_request,
-    verify_authenticated_request,
-)
+from scoremosaic_gateway.authenticated_request import MAX_REQUEST_AGE_SECONDS
 from scoremosaic_gateway.config import EngineEndpoint
 from scoremosaic_gateway.credential_rotation import (
+    MAX_ROTATION_GRACE_SECONDS,
     CredentialRotationError,
     build_replay_reservation,
+    build_rotation_dispatch_result_identity,
     build_rotation_set,
+    require_rotation_dispatch_result_identity,
     resolve_engine_credential_generation,
     select_signing_credential,
     select_verification_credential,
+    sign_rotation_authenticated_request,
+    verify_rotation_authenticated_request,
 )
-from scoremosaic_gateway.dispatch_identity import (
-    build_dispatch_identity,
-    build_dispatch_result_identity,
-    require_dispatch_result_identity,
-)
+from scoremosaic_gateway.dispatch_identity import build_dispatch_identity
 from scoremosaic_gateway.orchestration import build_orchestration_plan
 from scoremosaic_gateway.service_auth import (
     MIN_CREDENTIAL_BYTES,
@@ -66,6 +62,7 @@ class CredentialRotationContractTests(unittest.TestCase):
         return build_rotation_set(
             current=self.credential(self.current_generation),
             previous=self.credential(self.previous_generation),
+            rotation_started_at=self.timestamp,
             previous_valid_until=(
                 self.timestamp + 60
                 if previous_valid_until is None
@@ -124,6 +121,23 @@ class CredentialRotationContractTests(unittest.TestCase):
         self.assertEqual(credential.binding, self.binding)
         self.assertEqual(credential.generation_id, self.current_generation)
         self.assertNotIn(self.current_secret.decode("ascii"), repr(credential))
+        self.assertIn("<redacted>", repr(credential))
+
+    def test_provider_failure_is_mapped_without_diagnostic_leakage(self) -> None:
+        leaked = "provider-secret-diagnostic"
+
+        def resolver(credential_key: str, generation_id: str):
+            raise RuntimeError(leaked)
+
+        with self.assertRaises(CredentialRotationError) as context:
+            resolve_engine_credential_generation(
+                self.binding,
+                self.current_generation,
+                resolver,
+            )
+
+        self.assertEqual(context.exception.category, "credential_unavailable")
+        self.assertNotIn(leaked, str(context.exception))
 
     def test_rotation_set_requires_distinct_current_and_previous_generations(self) -> None:
         current = self.credential(self.current_generation)
@@ -135,6 +149,7 @@ class CredentialRotationContractTests(unittest.TestCase):
             build_rotation_set(
                 current=current,
                 previous=current,
+                rotation_started_at=self.timestamp,
                 previous_valid_until=self.timestamp + 60,
             )
 
@@ -149,6 +164,7 @@ class CredentialRotationContractTests(unittest.TestCase):
             build_rotation_set(
                 current=current,
                 previous=previous,
+                rotation_started_at=self.timestamp,
                 previous_valid_until=None,
             )
 
@@ -159,12 +175,29 @@ class CredentialRotationContractTests(unittest.TestCase):
             build_rotation_set(
                 current=current,
                 previous=None,
+                rotation_started_at=self.timestamp,
                 previous_valid_until=self.timestamp + 60,
+            )
+
+        with self.assertRaisesRegex(
+            CredentialRotationError,
+            "rotation_grace_too_large",
+        ):
+            build_rotation_set(
+                current=current,
+                previous=previous,
+                rotation_started_at=self.timestamp,
+                previous_valid_until=(
+                    self.timestamp + MAX_ROTATION_GRACE_SECONDS + 1
+                ),
             )
 
     def test_new_signatures_always_use_current_generation(self) -> None:
         rotation = self.rotation_set()
-        selected = select_signing_credential(rotation)
+        selected = select_signing_credential(
+            rotation,
+            now_seconds=self.timestamp,
+        )
 
         self.assertEqual(selected.generation_id, self.current_generation)
         self.assertEqual(selected.secret_bytes_for_transport(), self.current_secret)
@@ -217,37 +250,39 @@ class CredentialRotationContractTests(unittest.TestCase):
                 now_seconds=deadline,
             )
 
-    def test_request_signature_binds_credential_generation(self) -> None:
-        credential = self.credential(self.current_generation)
-        envelope = sign_authenticated_request(
-            credential,
+    def test_request_generation_proof_binds_complete_authenticated_envelope(self) -> None:
+        rotation = self.rotation_set()
+        request = sign_rotation_authenticated_request(
+            rotation,
             method="POST",
             path="/internal/transcribe",
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
+            now_seconds=self.timestamp,
         )
 
         self.assertEqual(
-            envelope.credential_generation_id,
+            request.credential_generation_id,
             self.current_generation,
         )
-        safe = envelope.as_safe_dict()
+        safe = request.as_safe_dict()
         self.assertEqual(
             safe["credentialGenerationId"],
             self.current_generation,
         )
+        self.assertNotIn(request.generation_signature, repr(request))
 
         tampered = replace(
-            envelope,
+            request,
             credential_generation_id=self.previous_generation,
         )
         with self.assertRaisesRegex(
-            RequestAuthError,
-            "credential_generation_mismatch",
+            CredentialRotationError,
+            "generation_request_signature_invalid",
         ):
-            verify_authenticated_request(
-                credential,
+            verify_rotation_authenticated_request(
+                rotation,
                 tampered,
                 observed_method="POST",
                 observed_path="/internal/transcribe",
@@ -256,15 +291,16 @@ class CredentialRotationContractTests(unittest.TestCase):
                 replay_checker=lambda binding, generation_id, nonce, timestamp: True,
             )
 
-    def test_replay_checker_receives_generation_and_nonce(self) -> None:
-        credential = self.credential(self.current_generation)
-        envelope = sign_authenticated_request(
-            credential,
+    def test_replay_checker_receives_generation_and_nonce_after_both_proofs(self) -> None:
+        rotation = self.rotation_set()
+        request = sign_rotation_authenticated_request(
+            rotation,
             method="POST",
             path="/internal/transcribe",
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=self.payload,
+            now_seconds=self.timestamp,
         )
         seen: list[tuple[str, str, int]] = []
 
@@ -273,9 +309,9 @@ class CredentialRotationContractTests(unittest.TestCase):
             seen.append((generation_id, nonce, timestamp))
             return True
 
-        verify_authenticated_request(
-            credential,
-            envelope,
+        selected = verify_rotation_authenticated_request(
+            rotation,
+            request,
             observed_method="POST",
             observed_path="/internal/transcribe",
             payload=self.payload,
@@ -283,10 +319,46 @@ class CredentialRotationContractTests(unittest.TestCase):
             replay_checker=replay_checker,
         )
 
+        self.assertEqual(selected.generation_id, self.current_generation)
         self.assertEqual(
             seen,
             [(self.current_generation, self.nonce, self.timestamp)],
         )
+
+    def test_generation_proof_failure_occurs_before_replay_reservation(self) -> None:
+        rotation = self.rotation_set()
+        request = sign_rotation_authenticated_request(
+            rotation,
+            method="POST",
+            path="/internal/transcribe",
+            timestamp=self.timestamp,
+            nonce=self.nonce,
+            payload=self.payload,
+            now_seconds=self.timestamp,
+        )
+        invalid = replace(request, generation_signature="0" * 64)
+        replay_calls = 0
+
+        def replay_checker(binding, generation_id: str, nonce: str, timestamp: int):
+            nonlocal replay_calls
+            replay_calls += 1
+            return True
+
+        with self.assertRaisesRegex(
+            CredentialRotationError,
+            "generation_request_signature_invalid",
+        ):
+            verify_rotation_authenticated_request(
+                rotation,
+                invalid,
+                observed_method="POST",
+                observed_path="/internal/transcribe",
+                payload=self.payload,
+                now_seconds=self.timestamp,
+                replay_checker=replay_checker,
+            )
+
+        self.assertEqual(replay_calls, 0)
 
     def test_replay_reservation_key_excludes_timestamp_and_is_generation_scoped(self) -> None:
         first = build_replay_reservation(
@@ -322,45 +394,100 @@ class CredentialRotationContractTests(unittest.TestCase):
             self.timestamp + 1 + MAX_REQUEST_AGE_SECONDS,
         )
 
-    def test_result_identity_binds_same_credential_generation(self) -> None:
-        plan = build_orchestration_plan(
-            job_id="job-c2d-rotation-0001",
-            source_artifact_id="artifact-source-c2d-0001",
-            source_sha256="1" * 64,
+    def test_previous_generation_request_can_return_same_generation_during_grace(self) -> None:
+        previous_only = build_rotation_set(
+            current=self.credential(self.previous_generation),
+            previous=None,
+            rotation_started_at=self.timestamp - 30,
+            previous_valid_until=None,
         )
-        identity = build_dispatch_identity(plan, "homr")
-        credential = self.credential(self.current_generation)
+        old_request = sign_rotation_authenticated_request(
+            previous_only,
+            method="POST",
+            path="/internal/transcribe",
+            timestamp=self.timestamp,
+            nonce=self.nonce,
+            payload=self.payload,
+            now_seconds=self.timestamp,
+        )
+        active_rotation = self.rotation_set()
+        selected = verify_rotation_authenticated_request(
+            active_rotation,
+            old_request,
+            observed_method="POST",
+            observed_path="/internal/transcribe",
+            payload=self.payload,
+            now_seconds=self.timestamp,
+            replay_checker=lambda binding, generation_id, nonce, timestamp: True,
+        )
+
+        self.assertEqual(selected.generation_id, self.previous_generation)
+
+        plan = build_orchestration_plan(
+            "job_c2d_rotation_0001",
+            source_artifact_ref="sources/job_c2d_rotation_0001/input.pdf",
+            source_sha256="1" * 64,
+            source_size_bytes=128,
+            source_media_type="application/pdf",
+            requested_engines=("homr",),
+        )
+        identity = build_dispatch_identity(plan.as_dict(), "homr")
         result_payload = b"<score-partwise version='4.0'/>"
-        result = build_dispatch_result_identity(
-            credential,
+        result = build_rotation_dispatch_result_identity(
+            selected,
             identity,
             result_payload,
         )
 
         self.assertEqual(
             result.credential_generation_id,
-            self.current_generation,
+            self.previous_generation,
         )
-        require_dispatch_result_identity(
-            credential,
+        verified = require_rotation_dispatch_result_identity(
+            active_rotation,
             identity,
             result,
             result_payload,
+            now_seconds=self.timestamp,
         )
+        self.assertEqual(verified.generation_id, self.previous_generation)
 
+    def test_result_generation_proof_rejects_generation_label_tamper(self) -> None:
+        plan = build_orchestration_plan(
+            "job_c2d_rotation_0002",
+            source_artifact_ref="sources/job_c2d_rotation_0002/input.pdf",
+            source_sha256="2" * 64,
+            source_size_bytes=128,
+            source_media_type="application/pdf",
+            requested_engines=("homr",),
+        )
+        identity = build_dispatch_identity(plan.as_dict(), "homr")
+        rotation = self.rotation_set()
+        selected = select_signing_credential(
+            rotation,
+            now_seconds=self.timestamp,
+        )
+        result_payload = b"<score-partwise version='4.0'/>"
+        result = build_rotation_dispatch_result_identity(
+            selected,
+            identity,
+            result_payload,
+        )
         forged = replace(
             result,
             credential_generation_id=self.previous_generation,
         )
+
         with self.assertRaisesRegex(
-            Exception,
-            "result_auth_binding_mismatch",
+            CredentialRotationError,
+            "generation_result_signature_invalid",
         ):
-            require_dispatch_result_identity(
-                credential,
+            require_rotation_dispatch_result_identity(
+                rotation,
                 identity,
                 forged,
                 result_payload,
+                now_seconds=self.timestamp,
             )
 
 
