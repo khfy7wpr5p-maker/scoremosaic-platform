@@ -85,9 +85,11 @@ Gate B.5 likewise leaves the target architecture unchanged. Exact immutable JPEG
 
 Gate B.6 validates original filename metadata without deriving caller-controlled filesystem paths. The integrated `decide_safe_intake()` boundary then composes B.1-B.6 over one exact immutable payload and returns only bounded server-derived evidence after all required checks pass. The hostile-input convergence suite verifies representative fail-closed categories through that integrated decision. None of these Gate B slices enables HTTP upload, storage, or engine dispatch.
 
-Gate C.1 service identity/environment credential binding, Gate C.2-A authenticated HMAC request-envelope/receiver-verification foundations, and Gate C.2-B immutable exact test/staging dispatch-target allowlisting are present on `main`. Production has no authorized dispatch origin. The reserved future `POST /internal/transcribe` target is not registered by these foundations, and live receiver wiring/network orchestration remain disabled pending the remaining Gate C controls and separate activation approval.
+Gate C.1 and Gate C.2-A through C.2-G contract foundations are present on `main`. Together they define service identity/environment credential binding, authenticated request envelopes, exact test/staging target allowlisting, job/source/run/result identity binding, credential-generation/rotation and replay-reservation semantics, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. Production has no authorized dispatch origin. The reserved future `POST /internal/transcribe` target is not registered, no live engine receiver route or network dispatch is enabled, and durable replay persistence/job state remain later Gate D work. Safe diagnostic/error convergence remains Gate C work before any activation decision.
 
 The Teacher Review Score Editor architecture is defined by [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). That contract refines the future Gate F boundary without changing the Gate C -> D -> E -> F -> G security order. It does not activate a Teacher Review API, editor, storage, playback, approval, or publication capability.
+
+UI-0A is a documentation-only visual/application-shell foundation. UI-0B is an isolated repository-owned static HTML/CSS prototype built on that visual contract; it remains disconnected and non-production, with no backend, rendering authority, editor writes, playback runtime, authentication, approval, or publication capability. Neither UI foundation changes the Teacher Review or security-gate authority model.
 
 ## 3. Current activation state
 
@@ -101,23 +103,32 @@ The repository contains substantial runtime and comparison foundations, but the 
 - Gate C.1 service identity/environment-scoped credential foundation.
 - Gate C.2-A deterministic HMAC-SHA256 authenticated request-envelope and receiver-verification foundation.
 - Gate C.2-B immutable exact test/staging engine-origin plus method/path dispatch-target allowlist foundation; production remains fail-closed and live dispatch remains disabled.
+- Gate C.2-C exact dispatch job/source/run/candidate/artifact/result identity-binding foundation.
+- Gate C.2-D credential-generation, bounded rotation, and persistence-neutral replay-reservation semantics foundation; no durable replay store is activated.
+- Gate C.2-E fail-closed receiver verification adapter foundation producing immutable verified dispatch evidence without registering a live route.
+- Gate C.2-F deterministic timeout/cancellation decision foundation with fresh result-arrival evaluation and terminal non-reopening behavior; no timers/process control are activated.
+- Gate C.2-G bounded retry/attempt-budget foundation preserving one total v1 attempt and zero retries; it cannot create or start another run.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
 - Teacher Review Score Editor TR-0A architecture contract foundation; no runtime capability is activated by the document.
+- UI-0A documentation-only visual/application-shell foundation.
+- UI-0B isolated static application-shell prototype; disconnected, non-production, and non-authoritative.
 - ST-OMR development foundations isolated from the production candidate path.
 
 ### Deliberately disabled or not yet implemented
 
 - External upload and a public upload endpoint.
-- Live authenticated Gateway engine dispatch/orchestration and receiver wiring.
+- Live authenticated Gateway engine dispatch/orchestration and receiver route wiring.
+- Durable replay persistence and durable job/artifact state.
 - Production persistence.
 - Public publication.
 - Teacher Review production API and writable editor runtime.
 - Durable job queue/state/restart recovery.
 - External API authentication/authorization and rate/abuse controls.
+- Production approval/publication runtime.
 
-A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation, Gate C contract foundations do not authorize live dispatch, and TR-0A does not authorize Teacher Review runtime activation.
+A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation, Gate C contract foundations do not authorize live dispatch, UI-0B does not constitute a working Teacher Review editor, and TR-0A does not authorize Teacher Review runtime activation.
 
 ## 4. Service responsibilities
 
@@ -130,8 +141,8 @@ A disabled capability must not be interpreted as implemented merely because its 
 - Derive JPEG/PNG dimensions and total pixel evidence from exact immutable bytes in the bounded B.5 helper; do not trust caller-supplied dimensions or permit animated image input.
 - Validate original filename metadata through B.6 without converting it into a caller-controlled filesystem/storage path.
 - Preserve server-owned job and artifact identity.
-- Dispatch only to authenticated, allowlisted private engine endpoints after all remaining Gate C live-dispatch controls pass and activation is separately approved.
-- Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules.
+- Dispatch only to authenticated, allowlisted private engine endpoints after the remaining Gate C safe-diagnostic work, Gate D durable-state prerequisites, and any later activation prerequisites pass and activation is separately approved.
+- Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules without widening the current v1 one-attempt/zero-retry contract by implication.
 - Never bypass Candidate Safety v1 when accepting engine results.
 
 ### homr-service
@@ -176,13 +187,13 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 1. **Receive external document** — still disabled in the current runtime; no upload endpoint exists.
 2. **Safe Intake Gate** — the completed Gate B foundation applies B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page inspection, B.5 static JPEG/PNG dimension/pixel inspection, B.6 filename safety, and one integrated fail-closed decision over the exact immutable bytes. Hostile-input convergence validates the central boundary.
 3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
-4. **Create durable job** — future persistence boundary; must support idempotency and restart recovery.
-5. **Dispatch private engine runs** — only after the remaining Gate C live receiver, replay/rotation, identity-binding, timeout/cancellation, retry, and safe-diagnostic controls pass and activation is separately approved.
+4. **Create durable job** — future Gate D persistence boundary; must support idempotency, durable replay/state evidence, and restart recovery before live dispatch is activated.
+5. **Dispatch private engine runs** — C.1/C.2-A-C.2-G contract foundations now define identity, authenticated-request, target, rotation/replay semantics, receiver verification, timeout/cancellation, and one-attempt/zero-retry policy evidence. Live receiver routes/network dispatch remain disabled until safe diagnostic/error convergence and later durable-state/activation prerequisites pass and activation is separately approved.
 6. **Preserve raw engine output** — raw artifacts remain distinct and immutable after sealing.
 7. **Candidate Safety Gate v1** — validate MXL/ZIP and MusicXML before canonical/ensemble parsing.
 8. **Canonicalize safe candidates** — retain provenance.
 9. **Compare candidates** — disagreements remain evidence, not automatic corrections.
-10. **Teacher review** — the future authorized Teacher Review Score Editor consumes source/candidate/canonical/report evidence and emits new immutable `TeacherScoreRevision` artifacts; it never mutates upstream artifacts.
+10. **Teacher review** — the future authorized Teacher Review Score Editor consumes source/candidate/canonical/report evidence and emits new immutable `TeacherScoreRevision` artifacts; it never mutates upstream artifacts. UI-0A/UI-0B provide only visual/static prototype evidence and do not implement this runtime.
 11. **Revision validation and corrected MusicXML derivation** — materialize only from an exact immutable teacher revision, re-run structural/security checks, and verify canonical/revision consistency before approval eligibility.
 12. **Approval barrier** — bind approval to exact revision/artifact hashes, reviewer identity, and blocking-issue/waiver state.
 13. **Publication** — only the explicitly eligible approved artifact may become learner-facing output.
@@ -258,9 +269,9 @@ Before external or staging upload exposure, the integration boundary must demons
 - rate limiting and abuse controls;
 - idempotency;
 - cancellation and retry semantics;
-- the remaining Gate C live receiver/dispatch controls on top of the completed C.1/C.2-A/C.2-B contract foundations;
+- safe diagnostic/error convergence plus approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G contract foundations;
+- durable replay/job/artifact state and restart recovery under Gate D;
 - the completed Safe Intake decision wired as a mandatory pre-processing boundary;
-- durable job/artifact state;
 - Candidate Safety v1 enforcement;
 - safe error/logging behavior.
 
