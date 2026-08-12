@@ -41,6 +41,9 @@ jobs:
       - name: Validate JSON contracts and devcontainer
         run: python scripts/validate_foundation.py
 
+      - name: Validate UI-0B static isolation
+        run: python -m unittest discover -s tests -p 'test_ui_0b_static_shell.py'
+
       - name: Show Docker Compose version
         run: docker compose version
 
