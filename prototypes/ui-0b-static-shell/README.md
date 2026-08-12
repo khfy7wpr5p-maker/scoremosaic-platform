@@ -12,6 +12,7 @@ UI-0B contains only:
 
 - semantic HTML for the Teacher Review workspace regions;
 - dependency-free CSS for the visual system and responsive layout;
+- static keyboard-accessible mobile disclosure controls for Issues and Structured Edit;
 - disabled presentation controls for future edit and transport areas;
 - explicit disconnected/locked states;
 - a restrictive Content Security Policy that blocks scripts, network connections, forms, frames, and objects.
@@ -24,6 +25,10 @@ Required shell regions:
 - Source Evidence;
 - Review Transport;
 - Validation / Revision Status.
+
+## Responsive behavior
+
+Score View remains the primary region. At narrow widths, Issues and Structured Edit are collapsed by default behind keyboard-accessible checkbox/label disclosure controls. Source Evidence remains visible in the stacked flow. This is presentation-only behavior and does not require JavaScript or runtime state.
 
 ## Isolation guarantees
 
@@ -46,6 +51,6 @@ Open `index.html` directly in a browser. No local server or installation is requ
 
 ## Verification
 
-`tests/test_ui_0b_static_shell.py` checks the static isolation contract with Python standard-library parsing. It verifies required regions, disabled controls, restrictive CSP directives, and the absence of scripts, forms, frames, remote URLs, and CSS URL loads.
+`tests/test_ui_0b_static_shell.py` checks the static isolation contract with Python standard-library parsing. It verifies required regions, disabled controls, restrictive CSP directives, the absence of scripts, forms, frames, remote URLs and CSS URL loads, and the narrow-screen disclosure contract.
 
 UI-0B must remain replaceable and must not become a parallel production application architecture.
