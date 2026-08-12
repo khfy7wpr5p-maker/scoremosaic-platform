@@ -18,6 +18,7 @@ from typing import Any, Callable
 
 from .authenticated_request import (
     AuthenticatedRequestEnvelope,
+    MAX_REQUEST_AGE_SECONDS,
     RequestAuthError,
     sign_authenticated_request,
     verify_authenticated_request,
@@ -43,6 +44,7 @@ GENERATION_REQUEST_PROOF_VERSION = "scoremosaic-s2s-request-generation-v1"
 GENERATION_RESULT_PROOF_VERSION = "scoremosaic-dispatch-result-generation-v1"
 GENERATION_AUTH_ALGORITHM = "hmac-sha256"
 MAX_ROTATION_GRACE_SECONDS = 300
+MIN_REPLAY_RESERVATION_SECONDS = MAX_REQUEST_AGE_SECONDS + 1
 MAX_REPLAY_RESERVATION_SECONDS = 600
 NONCE_HEX_LENGTH = 32
 SHA256_HEX_LENGTH = 64
@@ -299,6 +301,8 @@ def build_rotation_set(
         raise CredentialRotationError("rotation_binding_mismatch")
     if previous_generation.generation_id == current_generation.generation_id:
         raise CredentialRotationError("credential_generation_collision")
+    if hmac.compare_digest(_secret(current_generation), _secret(previous_generation)):
+        raise CredentialRotationError("credential_material_reused")
     if previous_valid_until is None:
         raise CredentialRotationError("rotation_grace_invalid")
     valid_until = _require_timestamp(previous_valid_until, "rotation_grace_invalid")
@@ -387,6 +391,8 @@ def build_replay_reservation(
         or not 1 <= max_request_age_seconds <= MAX_REPLAY_RESERVATION_SECONDS
     ):
         raise CredentialRotationError("replay_reservation_ttl_invalid")
+    if max_request_age_seconds < MIN_REPLAY_RESERVATION_SECONDS:
+        raise CredentialRotationError("replay_reservation_ttl_too_short")
 
     key_payload = {
         "version": CREDENTIAL_ROTATION_CONTRACT_VERSION,
