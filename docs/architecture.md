@@ -85,7 +85,7 @@ Gate B.5 likewise leaves the target architecture unchanged. Exact immutable JPEG
 
 Gate B.6 validates original filename metadata without deriving caller-controlled filesystem paths. The integrated `decide_safe_intake()` boundary then composes B.1-B.6 over one exact immutable payload and returns only bounded server-derived evidence after all required checks pass. The hostile-input convergence suite verifies representative fail-closed categories through that integrated decision. None of these Gate B slices enables HTTP upload, storage, or engine dispatch.
 
-Gate C.1 and Gate C.2-A through C.2-G contract foundations are present on `main`. Together they define service identity/environment credential binding, authenticated request envelopes, exact test/staging target allowlisting, job/source/run/result identity binding, credential-generation/rotation and replay-reservation semantics, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present: HOMR, Clarity, and Audiveris runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness responses suppress untrusted runtime/version/model fields. Production has no authorized dispatch origin. The reserved future `POST /internal/transcribe` target is not registered, no live engine receiver route or network dispatch is enabled, and durable replay persistence/job state remain later Gate D work. Any remaining receiver/dispatch diagnostic mapping must converge before an activation decision.
+Gate C.1 and Gate C.2-A through C.2-G contract foundations are present on `main`. Together they define service identity/environment credential binding, authenticated request envelopes, exact test/staging target allowlisting, job/source/run/result identity binding, credential-generation/rotation and replay-reservation semantics, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present: HOMR, Clarity, and Audiveris runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness responses suppress untrusted runtime/version/model fields. C-DIAG-2 is present as the bounded outward diagnostic convergence for C.2-E/F/G: receiver-verification, dispatch-deadline, retry-budget, and unexpected dispatch exceptions map to a closed immutable version/stage/reason payload without inspecting exception text, trusted mappings require exact exception types, and diagnostic fields require exact `str` values. Production has no authorized dispatch origin. The reserved future `POST /internal/transcribe` target is not registered, no live engine receiver route or network dispatch is enabled, and durable replay persistence/job state remain later Gate D work.
 
 The Teacher Review Score Editor architecture is defined by [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). That contract refines the future Gate F boundary without changing the Gate C -> D -> E -> F -> G security order. It does not activate a Teacher Review API, editor, storage, playback, approval, or publication capability.
 
@@ -109,6 +109,7 @@ The repository contains substantial runtime and comparison foundations, but the 
 - Gate C.2-F deterministic timeout/cancellation decision foundation with fresh result-arrival evaluation and terminal non-reopening behavior; no timers/process control are activated.
 - Gate C.2-G bounded retry/attempt-budget foundation preserving one total v1 attempt and zero retries; it cannot create or start another run.
 - C-DIAG-1 bounded engine runtime diagnostic redaction across HOMR, Clarity, and Audiveris probe, readiness, transcription-result, and raised-error surfaces; no runtime output or provider exception text becomes dispatch authority.
+- C-DIAG-2 bounded receiver/dispatch outward diagnostic mapping for C.2-E/F/G failures; the payload is closed to version/stage/reason, exception text is not inspected, and non-exact string fields fail closed.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -142,7 +143,7 @@ A disabled capability must not be interpreted as implemented merely because its 
 - Derive JPEG/PNG dimensions and total pixel evidence from exact immutable bytes in the bounded B.5 helper; do not trust caller-supplied dimensions or permit animated image input.
 - Validate original filename metadata through B.6 without converting it into a caller-controlled filesystem/storage path.
 - Preserve server-owned job and artifact identity.
-- Dispatch only to authenticated, allowlisted private engine endpoints after any remaining receiver/dispatch diagnostic convergence beyond C-DIAG-1, Gate D durable-state prerequisites, and any later activation prerequisites pass and activation is separately approved.
+- Dispatch only to authenticated, allowlisted private engine endpoints after the completed C-DIAG-1/C-DIAG-2 diagnostic foundations, Gate D durable-state prerequisites, and any later activation prerequisites pass and activation is separately approved.
 - Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules without widening the current v1 one-attempt/zero-retry contract by implication.
 - Never bypass Candidate Safety v1 when accepting engine results.
 
@@ -189,7 +190,7 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 2. **Safe Intake Gate** — the completed Gate B foundation applies B.1 signature classification, B.2 MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page inspection, B.5 static JPEG/PNG dimension/pixel inspection, B.6 filename safety, and one integrated fail-closed decision over the exact immutable bytes. Hostile-input convergence validates the central boundary.
 3. **Seal immutable source** — assign server-owned identity and SHA-256/provenance.
 4. **Create durable job** — future Gate D persistence boundary; must support idempotency, durable replay/state evidence, and restart recovery before live dispatch is activated.
-5. **Dispatch private engine runs** — C.1/C.2-A-C.2-G contract foundations now define identity, authenticated-request, target, rotation/replay semantics, receiver verification, timeout/cancellation, and one-attempt/zero-retry policy evidence. C-DIAG-1 prevents raw engine runtime output/provider exception text from crossing current safe surfaces. Live receiver routes/network dispatch remain disabled until any remaining receiver/dispatch diagnostic mapping and later durable-state/activation prerequisites pass and activation is separately approved.
+5. **Dispatch private engine runs** — C.1/C.2-A-C.2-G contract foundations now define identity, authenticated-request, target, rotation/replay semantics, receiver verification, timeout/cancellation, and one-attempt/zero-retry policy evidence. C-DIAG-1 prevents raw engine runtime output/provider exception text from crossing current safe surfaces, while C-DIAG-2 bounds outward receiver/dispatch diagnostics for C.2-E/F/G failures. Live receiver routes/network dispatch remain disabled until later durable-state/activation prerequisites pass and activation is separately approved.
 6. **Preserve raw engine output** — raw artifacts remain distinct and immutable after sealing.
 7. **Candidate Safety Gate v1** — validate MXL/ZIP and MusicXML before canonical/ensemble parsing.
 8. **Canonicalize safe candidates** — retain provenance.
@@ -270,7 +271,7 @@ Before external or staging upload exposure, the integration boundary must demons
 - rate limiting and abuse controls;
 - idempotency;
 - cancellation and retry semantics;
-- safe diagnostic/error convergence plus approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G contract foundations;
+- approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations;
 - durable replay/job/artifact state and restart recovery under Gate D;
 - the completed Safe Intake decision wired as a mandatory pre-processing boundary;
 - Candidate Safety v1 enforcement;
