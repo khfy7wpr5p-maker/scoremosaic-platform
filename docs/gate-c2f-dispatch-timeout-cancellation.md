@@ -122,21 +122,26 @@ timed_out
 
 When a future trusted state boundary supplies a valid prior terminal C.2-F decision, later observations preserve that exact terminal status. The decision cannot reopen as `active`.
 
-A prior decision with different plan/job/run/engine/dispatch identity, malformed terminal fields, or regressing observation time fails closed.
+A prior decision with different plan/job/run/engine/dispatch identity, malformed terminal fields, or regressing observation time fails closed. A cancellation timestamp that attempts to move backward across an already-observed active decision also fails closed rather than retroactively rewriting history.
 
 C.2-F does not persist prior decisions. Durable lifecycle/event state remains later work.
 
 ## Result acceptance guard
 
-`require_dispatch_result_acceptance()` accepts only an exact context/decision identity pair whose decision is still `active`.
+`require_dispatch_result_acceptance()` never treats a previously issued `active` decision as sufficient evidence by itself. The caller must provide a **fresh result-arrival monotonic observation** from the same receiver-owned monotonic clock source. The guard re-evaluates the supplied prior decision at that arrival time before result processing may continue.
 
-It rejects:
+An optional fresh cancellation-request monotonic timestamp may also be supplied at result arrival. If that evidence makes the run cancelled, or if the fresh arrival observation reaches or passes the timeout deadline, the guard fails closed as `dispatch_result_not_acceptable`.
+
+Therefore a stale pre-timeout `active` decision cannot authorize a result that actually arrives at or after timeout. If the refreshed decision remains active, the guard returns that refreshed active decision for downstream policy evidence.
+
+The guard rejects:
 
 - `cancelled`;
 - `timed_out`;
+- a stale `active` decision whose fresh result-arrival observation is now timed out or cancelled;
 - mismatched plan/job/run/engine identity;
 - malformed or forged decision shape;
-- an active decision observed at or beyond the timeout deadline.
+- regressing or otherwise invalid fresh monotonic evidence.
 
 This is a policy guard only. Future result processing must still perform the existing C.2-C/C.2-D authenticated result verification and later artifact/candidate safety gates.
 
@@ -165,6 +170,8 @@ The C.2-F regression suite covers at least:
 - `attemptLimit = 1` and `retryAfterTimeout = false`;
 - active result acceptance one nanosecond before timeout;
 - terminal timeout exactly at the deadline;
+- stale pre-timeout active evidence cannot authorize a result arriving at the timeout boundary;
+- fresh cancellation evidence at result arrival is applied before result acceptance;
 - late result rejection during and after cleanup grace;
 - pre-timeout cancellation becoming immediately terminal;
 - cancellation grace never reopening result acceptance;
@@ -174,7 +181,7 @@ The C.2-F regression suite covers at least:
 - bool, negative, out-of-range, future, regressing, and overflow time evidence rejection;
 - exact context/decision identity required by the result-acceptance guard.
 
-The initial tests-only commit intentionally fails because `scoremosaic_gateway.dispatch_deadline` does not yet exist. This RED evidence demonstrates the gap before the additive implementation.
+The initial tests-only commit intentionally fails because `scoremosaic_gateway.dispatch_deadline` does not yet exist. This RED evidence demonstrates the original gap before the additive implementation. A later focused RED regression additionally demonstrates that the original result guard lacked fresh result-arrival monotonic evidence before that flaw was remediated.
 
 ## Explicit non-activation
 
