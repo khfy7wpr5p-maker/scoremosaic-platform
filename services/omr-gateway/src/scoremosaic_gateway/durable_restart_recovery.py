@@ -8,7 +8,8 @@ returns only a bounded read-only recovery disposition.
 The v1 safety rule is deliberately conservative: restart never creates a new
 attempt or resumes an in-flight dispatch automatically. ``planned``/``queued``
 may be identified as pre-dispatch recovery candidates, while ``dispatching``
-and ``running`` require reconciliation. Terminal states are preserved exactly.
+and ``running`` require reconciliation. Terminal states are preserved exactly
+only when the exact candidate/output evidence converges across crash windows.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from .artifact_lifecycle import CandidateArtifactLifecycle
+from .artifact_lifecycle import CandidateArtifactLifecycle, CandidateRecord
 from .durable_artifact_storage import DurableArtifactStorageManifest
 from .durable_idempotency import DurableIdempotencyLedger
 from .durable_job_state import (
@@ -104,6 +105,62 @@ def _disposition_for_state(state: str) -> tuple[str, bool, bool]:
     if state in _AMBIGUOUS_IN_FLIGHT_STATES:
         return ("reconciliation_required", False, True)
     raise DurableRestartRecoveryError("state_invalid")
+
+
+def _candidate_for_snapshot(
+    snapshot: DurableJobStateSnapshot,
+    lifecycle: CandidateArtifactLifecycle,
+) -> CandidateRecord:
+    matches = tuple(
+        candidate
+        for candidate in lifecycle.candidates
+        if candidate.run_id == snapshot.run_id and candidate.engine == snapshot.engine
+    )
+    if len(matches) != 1:
+        raise DurableRestartRecoveryError("identity_mismatch")
+    return matches[0]
+
+
+def _validate_crash_window_convergence(
+    snapshot: DurableJobStateSnapshot,
+    lifecycle: CandidateArtifactLifecycle,
+    manifest: DurableArtifactStorageManifest,
+) -> None:
+    """Fail closed on cross-layer partial-output states that are unsafe to preserve."""
+
+    candidate = _candidate_for_snapshot(snapshot, lifecycle)
+    bound_artifact_ids = {
+        record.artifact_id
+        for record in manifest.records
+        if record.candidate_id == candidate.candidate_id
+    }
+    sealed_artifact_ids = {
+        artifact.artifact_id
+        for artifact in candidate.artifacts
+        if artifact.state == "sealed"
+    }
+
+    if snapshot.state in _PRE_DISPATCH_STATES:
+        if (
+            candidate.state != "reserved"
+            or any(artifact.state != "reserved" for artifact in candidate.artifacts)
+            or bound_artifact_ids
+        ):
+            raise DurableRestartRecoveryError("crash_window_mismatch")
+        return
+
+    if snapshot.state in _AMBIGUOUS_IN_FLIGHT_STATES:
+        # D.5 deliberately treats any valid partial-output in-flight restore as
+        # reconciliation-only and grants no resume/retry/mutation authority.
+        return
+
+    expected_candidate_state = (
+        "sealed" if snapshot.state == "completed" else snapshot.state
+    )
+    if candidate.state != expected_candidate_state:
+        raise DurableRestartRecoveryError("crash_window_mismatch")
+    if bound_artifact_ids != sealed_artifact_ids:
+        raise DurableRestartRecoveryError("crash_window_mismatch")
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,6 +302,12 @@ def evaluate_durable_restart_recovery(
         if exc.category == "identity_mismatch":
             raise DurableRestartRecoveryError("identity_mismatch") from None
         raise DurableRestartRecoveryError("provenance_mismatch") from None
+
+    _validate_crash_window_convergence(
+        checked_snapshot,
+        checked_lifecycle,
+        checked_manifest,
+    )
 
     disposition, terminal, reconciliation_required = _disposition_for_state(
         checked_snapshot.state
