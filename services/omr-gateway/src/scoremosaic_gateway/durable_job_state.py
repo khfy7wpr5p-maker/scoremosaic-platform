@@ -51,6 +51,16 @@ _JOB_RUN_TRANSITIONS = {
 # The existing graph is acyclic. Its longest valid path has four transitions:
 # planned -> queued -> dispatching -> running -> terminal.
 _MAX_REVISION = 4
+_VALID_REVISIONS_BY_STATE = {
+    "planned": (0,),
+    "queued": (1,),
+    "dispatching": (2,),
+    "running": (3,),
+    "completed": (4,),
+    "failed": (3, 4),
+    "cancelled": (1, 2, 3, 4),
+    "timed_out": (2, 3, 4),
+}
 
 
 class DurableJobStateError(ValueError):
@@ -102,9 +112,7 @@ class DurableJobStateSnapshot:
         _require_dispatch_identity(self.binding)
         state = _require_state(self.state)
         revision = _require_revision(self.revision)
-        if state == "planned" and revision != 0:
-            raise DurableJobStateError("revision_state_mismatch")
-        if state != "planned" and revision == 0:
+        if revision not in _VALID_REVISIONS_BY_STATE[state]:
             raise DurableJobStateError("revision_state_mismatch")
 
     @property
