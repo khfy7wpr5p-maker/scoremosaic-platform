@@ -174,16 +174,15 @@ class DurableArtifactStorageContractTests(unittest.TestCase):
             candidate_id=other_candidate.candidate_id,
             engine=other_candidate.engine,
         )
-        forged = DurableArtifactStorageManifest(
-            version=valid.version,
-            lifecycle_id=valid.lifecycle_id,
-            job_id=valid.job_id,
-            records=valid.records[:-1] + (forged_record,),
-        )
 
         with self.assertRaises(DurableArtifactStorageError) as caught:
-            verify_durable_artifact_storage_manifest(forged, lifecycle)
-        self.assertEqual(caught.exception.category, "identity_mismatch")
+            DurableArtifactStorageManifest(
+                version=valid.version,
+                lifecycle_id=valid.lifecycle_id,
+                job_id=valid.job_id,
+                records=valid.records[:-1] + (forged_record,),
+            )
+        self.assertEqual(caught.exception.category, "manifest_invalid")
 
     def test_restored_manifest_rejects_non_server_derived_storage_key(self) -> None:
         lifecycle, _, artifact_id = self._sealed_first_output()
@@ -197,16 +196,15 @@ class DurableArtifactStorageContractTests(unittest.TestCase):
             valid.records[-1],
             storage_key="immutable/jobs/job_storage_12345678/foreign/key",
         )
-        forged = DurableArtifactStorageManifest(
-            version=valid.version,
-            lifecycle_id=valid.lifecycle_id,
-            job_id=valid.job_id,
-            records=valid.records[:-1] + (forged_record,),
-        )
 
         with self.assertRaises(DurableArtifactStorageError) as caught:
-            verify_durable_artifact_storage_manifest(forged, lifecycle)
-        self.assertEqual(caught.exception.category, "storage_key_mismatch")
+            DurableArtifactStorageManifest(
+                version=valid.version,
+                lifecycle_id=valid.lifecycle_id,
+                job_id=valid.job_id,
+                records=valid.records[:-1] + (forged_record,),
+            )
+        self.assertEqual(caught.exception.category, "manifest_invalid")
 
     def test_valid_manifest_can_be_reconstructed_and_verified(self) -> None:
         lifecycle, _, artifact_id = self._sealed_first_output()
