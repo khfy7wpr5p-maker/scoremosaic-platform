@@ -49,8 +49,12 @@ One active rotation set contains:
 - one rotation activation timestamp;
 - when a previous generation exists, one exclusive grace deadline.
 
-Current and previous generations must use the exact same validated C.1 binding
-and must have different generation IDs.
+Current and previous generations must use the exact same validated C.1 binding,
+must have different generation IDs, and must contain different credential secret
+material. Re-labeling the same secret as a new generation is rejected fail-closed
+as `credential_material_reused`; otherwise retirement of the previous generation
+would not provide revocation. The comparison is performed without exposing the
+secret in diagnostics.
 
 The previous-generation grace interval is bounded to at most 300 seconds.
 A previous generation is accepted only while:
@@ -121,8 +125,19 @@ Timestamp is used only to calculate reservation expiry:
 
 `expires_at = request_timestamp + max_request_age_seconds`
 
-The reservation TTL input is bounded to 1–600 seconds. A live atomic replay
-store must reserve this key exactly once until expiry.
+C.2-A accepts a correctly authenticated request while its age is less than or
+equal to `MAX_REQUEST_AGE_SECONDS`, currently 120 seconds. Because replay-store
+expiry is an exclusive boundary, a reservation must remain present through the
+entire inclusive verifier freshness window. C.2-D therefore requires:
+
+`121 <= max_request_age_seconds <= 600`
+
+The minimum is derived as `MAX_REQUEST_AGE_SECONDS + 1`; values of 120 seconds or
+less fail closed as `replay_reservation_ttl_too_short`. This prevents an identical
+still-fresh signed request from becoming reservable again merely because a shorter
+replay TTL expired first.
+
+A live atomic replay store must reserve the key exactly once until expiry.
 
 A nonce may be reused under a different credential generation because the
 credential generation is part of the reservation identity. This prevents a
@@ -171,6 +186,7 @@ Regression evidence for this slice covers at least:
 - exact logical-key + generation provider lookup;
 - provider exception mapping without diagnostic leakage;
 - current/previous generation collision rejection;
+- current/previous generation secret-material reuse rejection;
 - missing or excessive grace-window rejection;
 - current-only signing selection;
 - exact generation receiver selection without secret fallback;
@@ -179,6 +195,8 @@ Regression evidence for this slice covers at least:
 - generation-label tamper rejection for request proofs;
 - generation-proof failure before replay reservation;
 - generation ID delivered to replay reservation callback after both auth layers;
+- replay TTL values that do not cover the complete C.2-A freshness window are
+  rejected;
 - replay key independence from timestamp and scoping by generation;
 - an accepted previous-generation request result remaining verifiable after the
   request grace deadline using its exact accepted credential;
