@@ -290,3 +290,26 @@ Before external or staging upload exposure, the integration boundary must demons
 - privacy-safe external error/logging behavior.
 
 A live writable Teacher Review surface additionally requires Gate D operational durable state, Gate E external/API security, and the TR-8A reviewer RBAC/audit authorization foundation before TR-4 may be activated. Generic E.2 authorization does not replace reviewer RBAC. This dependency is normative in the TR-0A architecture contract.
+
+## 10. Deployment environments
+
+- Development: GitHub Codespaces / local development
+- Automated verification: GitHub Actions
+- Integration environment: Coolify staging
+- Production: blocked until explicit production-readiness acceptance gates pass
+
+Engine containers remain private in all environments. Staging availability does not itself authorize public upload or production publication.
+
+## 11. Non-goals of the current architecture foundations
+
+The current architecture and documentation foundations do **not** enable:
+
+- public uploads or an upload endpoint;
+- live Gateway dispatch;
+- automatic candidate ranking/merging/correction;
+- production storage;
+- Teacher Review API or writable editor runtime;
+- playback/cursor runtime;
+- teacher approval endpoints;
+- learner-facing publication;
+- ST-OMR production integration.
