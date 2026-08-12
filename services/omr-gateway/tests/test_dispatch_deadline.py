@@ -142,6 +142,21 @@ class DispatchDeadlineContractTests(unittest.TestCase):
         ):
             require_dispatch_result_acceptance(self.context, exact)
 
+    def test_stale_active_decision_cannot_authorize_late_result(self) -> None:
+        active = evaluate_dispatch_deadline(
+            self.context,
+            observed_monotonic_ns=self.timeout_deadline_ns - 1,
+        )
+        with self.assertRaisesRegex(
+            DispatchDeadlineError,
+            "dispatch_result_not_acceptable",
+        ):
+            require_dispatch_result_acceptance(
+                self.context,
+                active,
+                observed_monotonic_ns=self.timeout_deadline_ns,
+            )
+
     def test_late_result_stays_rejected_after_timeout_and_cleanup_grace(self) -> None:
         timed_out = evaluate_dispatch_deadline(
             self.context,
