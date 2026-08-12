@@ -127,7 +127,12 @@ class DispatchDeadlineContractTests(unittest.TestCase):
         )
         self.assertEqual(before.status, "active")
         self.assertTrue(before.accepts_result)
-        require_dispatch_result_acceptance(self.context, before)
+        refreshed = require_dispatch_result_acceptance(
+            self.context,
+            before,
+            observed_monotonic_ns=self.timeout_deadline_ns - 1,
+        )
+        self.assertEqual(refreshed.status, "active")
 
         exact = evaluate_dispatch_deadline(
             self.context,
@@ -140,7 +145,11 @@ class DispatchDeadlineContractTests(unittest.TestCase):
             DispatchDeadlineError,
             "dispatch_result_not_acceptable",
         ):
-            require_dispatch_result_acceptance(self.context, exact)
+            require_dispatch_result_acceptance(
+                self.context,
+                exact,
+                observed_monotonic_ns=self.timeout_deadline_ns,
+            )
 
     def test_stale_active_decision_cannot_authorize_late_result(self) -> None:
         active = evaluate_dispatch_deadline(
@@ -157,14 +166,32 @@ class DispatchDeadlineContractTests(unittest.TestCase):
                 observed_monotonic_ns=self.timeout_deadline_ns,
             )
 
+    def test_result_guard_applies_fresh_cancellation_evidence(self) -> None:
+        active = evaluate_dispatch_deadline(
+            self.context,
+            observed_monotonic_ns=self.dispatch_started_ns + NANOSECONDS_PER_SECOND,
+        )
+        cancel_ns = self.dispatch_started_ns + 2 * NANOSECONDS_PER_SECOND
+        with self.assertRaisesRegex(
+            DispatchDeadlineError,
+            "dispatch_result_not_acceptable",
+        ):
+            require_dispatch_result_acceptance(
+                self.context,
+                active,
+                observed_monotonic_ns=cancel_ns,
+                cancellation_requested_monotonic_ns=cancel_ns,
+            )
+
     def test_late_result_stays_rejected_after_timeout_and_cleanup_grace(self) -> None:
         timed_out = evaluate_dispatch_deadline(
             self.context,
             observed_monotonic_ns=self.timeout_deadline_ns,
         )
+        after_grace_observed = self.timeout_deadline_ns + 5 * NANOSECONDS_PER_SECOND
         after_grace = evaluate_dispatch_deadline(
             self.context,
-            observed_monotonic_ns=self.timeout_deadline_ns + 5 * NANOSECONDS_PER_SECOND,
+            observed_monotonic_ns=after_grace_observed,
             prior_decision=timed_out,
         )
         self.assertEqual(after_grace.status, "timed_out")
@@ -177,7 +204,11 @@ class DispatchDeadlineContractTests(unittest.TestCase):
             DispatchDeadlineError,
             "dispatch_result_not_acceptable",
         ):
-            require_dispatch_result_acceptance(self.context, after_grace)
+            require_dispatch_result_acceptance(
+                self.context,
+                after_grace,
+                observed_monotonic_ns=after_grace_observed,
+            )
 
     def test_cancellation_before_timeout_is_immediately_terminal(self) -> None:
         cancel_ns = self.dispatch_started_ns + 10 * NANOSECONDS_PER_SECOND
@@ -303,16 +334,21 @@ class DispatchDeadlineContractTests(unittest.TestCase):
             )
 
     def test_result_acceptance_rejects_context_decision_identity_mismatch(self) -> None:
+        active_observed = self.timeout_deadline_ns - 1
         active = evaluate_dispatch_deadline(
             self.context,
-            observed_monotonic_ns=self.timeout_deadline_ns - 1,
+            observed_monotonic_ns=active_observed,
         )
         other_context = replace(self.context, run_id="run_" + "f" * 24)
         with self.assertRaisesRegex(
             DispatchDeadlineError,
             "dispatch_decision_identity_mismatch",
         ):
-            require_dispatch_result_acceptance(other_context, active)
+            require_dispatch_result_acceptance(
+                other_context,
+                active,
+                observed_monotonic_ns=active_observed,
+            )
 
 
 if __name__ == "__main__":
