@@ -49,7 +49,8 @@ RUN set -eux; \
       output_name="$5"; \
       url="https://github.com/liebharc/homr/releases/download/onnx_checkpoints/${archive}"; \
       curl --fail --location --proto '=https' --tlsv1.2 \
-        --retry 4 --retry-all-errors \
+        --retry 8 --retry-all-errors --retry-max-time 180 \
+        --connect-timeout 20 \
         --output "/tmp/${archive}" "${url}"; \
       echo "${archive_sha}  /tmp/${archive}" | sha256sum --check --strict; \
       mkdir -p "${destination}"; \
