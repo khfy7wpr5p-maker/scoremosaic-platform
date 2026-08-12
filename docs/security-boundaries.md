@@ -19,6 +19,7 @@ The platform therefore separates two mandatory data gates:
 - Engine services must not receive browser-visible API keys.
 - Development, staging, and production secrets must be separate.
 - Current Gateway upload and execution/orchestration remain disabled.
+- Gate E.1 now defines provider-neutral authenticated external-principal evidence, and Gate E.2 defines deny-by-default authorization-decision evidence. Neither foundation registers a public route, selects an identity provider, executes an authorized operation, or enables upload/job/orchestration behavior.
 
 ## 3. Safe Intake Gate
 
@@ -47,7 +48,7 @@ B.6 treats the original filename as metadata only. It rejects empty/overlong or 
 
 The hostile-input convergence layer exercises representative renamed/unsupported input, MIME mismatch, byte-budget rejection, traversal/control/device filename cases, malformed/missing-reference/encrypted PDFs, PDF page-budget rejection, malformed/truncated JPEG/PNG, animated/APNG rejection, dimension/pixel rejection, and bounded inspector timeout categories through the integrated decision boundary. The 256 MiB worker address-space limits are verified separately without allocating hostile-sized inputs.
 
-Gate B completion is a security-foundation milestone, not an activation event. **External upload remains disabled.** There is no upload endpoint, and later durable-job/storage, external API authentication/authorization, rate/abuse, and production-readiness controls still have to pass before public traffic may be enabled.
+Gate B completion is a security-foundation milestone, not an activation event. **External upload remains disabled.** There is no upload endpoint. Gate D.1-D.6 durable state/recovery contract foundations and Gate E.1/E.2 identity/authorization foundations now exist, but rate/abuse controls, safe upload-session semantics, external request/idempotency binding, production storage/runtime activation, and production-readiness controls still have to pass before public traffic may be enabled.
 
 ## 4. Candidate Safety Gate v1
 
@@ -90,7 +91,9 @@ Raw engine output remains an audit artifact. Passing Candidate Safety v1 means o
 - Apply retention classes and cleanup only after checking review/protection status.
 - Production backups must be encrypted and restore-tested.
 
-Production immutable object storage and durable provenance persistence are not yet enabled.
+Gate D.1-D.6 now provide the contract/convergence foundation for immutable artifact authority, storage-key derivation, SHA-256 content binding, provenance chaining, idempotency, restart decisions, and partial-output/crash-window recovery checks. These contracts perform no provider-backed storage operation by themselves.
+
+Production immutable object storage, durable database/replay adapters, and provider-backed provenance persistence are **not enabled**.
 
 ## 6. Job execution controls
 
@@ -105,7 +108,9 @@ Before live orchestration is enabled:
 - bind engine results to the correct job/source identity;
 - require service-to-service authentication for engine dispatch.
 
-Current Gateway orchestration remains disabled while these controls are incomplete.
+Gate C and Gate D now define these controls at the contract/convergence layer: C.2-F/G fix timeout/cancellation and one-attempt/zero-retry semantics; D.1-D.6 define durable-state snapshots, idempotency/replay semantics, immutable storage authority, provenance records, restart-recovery decisions, and crash-window/partial-output convergence. In-flight `dispatching`/`running` recovery is reconciliation-only and does not authorize automatic resume/retry.
+
+Current Gateway orchestration remains disabled because operational persistence/replay providers, real credential/network wiring, queue/worker/process control, storage writes, and explicit activation have **not** been authorized. Contract completion is not runtime activation.
 
 ## 7. Logging and privacy
 
@@ -126,6 +131,8 @@ Logs must not include:
 - unrestricted local paths.
 
 External error responses must avoid stack traces, raw subprocess output, and internal infrastructure details.
+
+Gate E.1 safe principal evidence excludes raw subject and credential material. Gate E.2 safe authorization evidence exposes only bounded principal/operation/decision information and does not disclose unrelated policy grants. Privacy-safe behavior for future live HTTP errors and request logs remains required before public API activation.
 
 ## 8. Dependency and model supply chain
 
@@ -150,7 +157,7 @@ Gate B.4 introduced the Gateway's first PDF parser dependency and pins it exactl
 - Publication is a separate transition from approval.
 - Learner-facing publication remains blocked while blocking issues are unresolved or no approved revision exists.
 
-The production Teacher Review API/RBAC/publication barrier is not yet implemented.
+The production Teacher Review API/RBAC/publication barrier is not yet implemented. Gate E.2 does not define reviewer/admin roles and must not be treated as TR-8A RBAC authority.
 
 ## 10. Threat-test catalogue
 
@@ -196,16 +203,19 @@ These intake categories are covered across the B.1-B.6 primitive suites and the 
 - restart during processing;
 - result/job identity mismatch;
 - unauthorized internal dispatch;
+- unauthorized external operation requests;
 - unauthorized review/approval/publication attempts.
+
+Gate D.6 covers representative job/candidate/storage partial-output and crash-window convergence at the contract layer. E.1/E.2 cover external principal/authorization confusion and deny-by-default decision behavior, without activating a public route.
 
 ## 11. Security stop rules
 
 The following capabilities remain blocked until their protecting controls and negative tests pass:
 
-- **External upload** → Safe Intake Gate B is complete as a foundation, but upload remains blocked because no upload endpoint or external API security boundary is enabled; later durable job/storage, auth/authz, rate/abuse, privacy, and explicit activation controls remain required.
-- **Live Gateway dispatch** → blocked until service-to-service authentication, durable job state, candidate handling, and the remaining execution controls are demonstrated.
+- **External upload** → Safe Intake Gate B is complete; Gate D.1-D.6 state/recovery contract foundations and Gate E.1/E.2 authentication/authorization-decision foundations also exist. Upload remains blocked because there is no upload endpoint/session, no provider-backed production persistence/storage activation, and remaining Gate E rate/abuse, resource-scope where applicable, request/idempotency, privacy, and explicit route-activation controls are incomplete.
+- **Live Gateway dispatch** → Gate C internal-dispatch contracts and Gate D state/recovery contract/convergence foundations are present, but operational credentials/replay persistence, durable provider-backed state/storage, live receiver/network wiring, process/worker control, and explicit orchestration activation remain blocked.
 - **Canonical/Ensemble consumption of engine output** → must pass Candidate Safety v1 first.
-- **Teacher approval/publication** → blocked until RBAC, immutable revisions, audit evidence, and approval/publication barriers exist.
+- **Teacher approval/publication** → blocked until Gate F/TR-8A RBAC, immutable revisions, audit evidence, and approval/publication barriers exist; generic E.2 authorization is not reviewer approval authority.
 - **Production promotion** → blocked until supply-chain scanning/pinning, monitoring, backup/restore, rollback, and acceptance evidence exist.
 
 Security controls must be implemented before the capability they protect is activated.
