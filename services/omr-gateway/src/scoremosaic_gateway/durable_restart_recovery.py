@@ -21,13 +21,16 @@ from .durable_artifact_storage import DurableArtifactStorageManifest
 from .durable_idempotency import DurableIdempotencyLedger
 from .durable_job_state import (
     TERMINAL_JOB_RUN_STATES,
+    DurableJobStateError,
     DurableJobStateSnapshot,
+    validate_durable_job_state_position,
 )
 from .durable_provenance import (
     DurableProvenanceChain,
     DurableProvenanceError,
     verify_durable_provenance_chain,
 )
+from .orchestration import ENGINE_NAMES
 
 
 DURABLE_RESTART_RECOVERY_CONTRACT_VERSION = (
@@ -35,6 +38,8 @@ DURABLE_RESTART_RECOVERY_CONTRACT_VERSION = (
 )
 
 _SHA256_PATTERN = re.compile(r"^[a-f0-9]{64}$")
+_JOB_ID_PATTERN = re.compile(r"^job_[A-Za-z0-9_-]{8,80}$")
+_RUN_ID_PATTERN = re.compile(r"^run_[a-f0-9]{24}$")
 _PRE_DISPATCH_STATES = frozenset({"planned", "queued"})
 _AMBIGUOUS_IN_FLIGHT_STATES = frozenset({"dispatching", "running"})
 _DISPOSITIONS = frozenset(
@@ -137,12 +142,19 @@ class DurableRestartRecoveryDecision:
             or _SHA256_PATTERN.fullmatch(self.provenance_chain_sha256) is None
         ):
             raise DurableRestartRecoveryError("decision_invalid")
-        if type(self.job_id) is not str or type(self.run_id) is not str:
+        if (
+            type(self.job_id) is not str
+            or _JOB_ID_PATTERN.fullmatch(self.job_id) is None
+            or type(self.run_id) is not str
+            or _RUN_ID_PATTERN.fullmatch(self.run_id) is None
+        ):
             raise DurableRestartRecoveryError("decision_invalid")
-        if type(self.engine) is not str or type(self.state) is not str:
+        if type(self.engine) is not str or self.engine not in ENGINE_NAMES:
             raise DurableRestartRecoveryError("decision_invalid")
-        if type(self.revision) is not int or self.revision < 0:
-            raise DurableRestartRecoveryError("decision_invalid")
+        try:
+            validate_durable_job_state_position(self.state, self.revision)
+        except DurableJobStateError:
+            raise DurableRestartRecoveryError("decision_invalid") from None
         if type(self.disposition) is not str or self.disposition not in _DISPOSITIONS:
             raise DurableRestartRecoveryError("decision_invalid")
         if type(self.terminal) is not bool or type(self.reconciliation_required) is not bool:
