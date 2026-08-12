@@ -19,13 +19,13 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
 | Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; external upload remains disabled. |
-| Internal dispatch security | C.2-G + C-DIAG-1/2 foundations completed | C.1 and C.2-A-C.2-G contract foundations are on `main`, together with C-DIAG-1 bounded engine runtime diagnostic redaction and C-DIAG-2 bounded receiver/dispatch outward diagnostic mapping. Raw engine runtime/provider details and dispatch exception payloads do not cross the current safe surfaces; non-exact diagnostic strings are rejected. Live receiver routes, durable replay persistence, network dispatch, and orchestration activation remain incomplete. |
+| Internal dispatch security | C.2-G + C-DIAG-1/2 foundations completed | C.1 and C.2-A-C.2-G contract foundations are on `main`, together with C-DIAG-1 bounded engine runtime diagnostic redaction and C-DIAG-2 bounded receiver/dispatch outward diagnostic mapping. Raw engine runtime/provider details and dispatch exception payloads do not cross the current safe surfaces; non-exact diagnostic strings are rejected. Live receiver routes, durable replay persistence, network dispatch, and orchestration activation remain disabled. |
+| Durable job/artifact state and recovery | Completed contract/convergence foundation | Gate D.1-D.6 define fail-closed job state, idempotency, immutable artifact authority, provenance, restart-recovery decisions, and crash-window/partial-output convergence. No database/object-storage provider, queue/worker runtime, durable read/write adapter, or live recovery/orchestration authority is activated. |
+| Production immutable object storage | Not started | Gate D storage authority contracts exist, but no production object-storage provider or storage-write runtime is selected or enabled. |
+| External API authentication/authorization | In progress | Gate E.1 external-principal authentication and Gate E.2 deny-by-default authorization-decision foundations exist. Public routes, provider wiring, resource/tenant scope where applicable, rate/abuse controls, safe upload sessions, and request/idempotency binding remain blocked. |
 | UI-0A visual/application-shell contract | Completed documentation foundation | Visual/application-shell direction exists only as documentation; it creates no frontend runtime or authority. |
 | UI-0B static application shell | Completed isolated prototype | Repository-owned HTML/CSS prototype exists but remains disconnected, non-production, non-authoritative, and without backend/edit/playback runtime. GitHub-hosted executable CI coverage is tracked separately. |
 | Teacher Review Score Editor TR-0A | Completed architecture contract | The future editor trust/authority and secure implementation sequence are documented; no Teacher Review API, writable editor, persistence, playback, approval, or publication runtime is activated. |
-| Durable job queue/state/recovery | Not started | Live orchestration remains blocked. |
-| Production immutable object storage | Not started | Production persistence remains blocked. |
-| External API auth/authz + rate/abuse controls | Not started | Public API exposure remains blocked. |
 | Teacher Review API + RBAC + immutable revisions | Not started | Approval workflow remains a contract, not a production API. |
 | Approval-to-publication barrier | Not started | Learner-facing publication remains blocked. |
 | Base-image digest pinning + repository-owned security scans | Not started | Required before production readiness. |
@@ -79,7 +79,7 @@ Requirements:
 - malformed/truncated/oversized hostile fixtures;
 - deterministic stable rejection categories.
 
-Gate B completion has no activation effect by itself. The Gateway still has no external upload endpoint, and upload remains disabled until later job/storage, external API authentication/authorization, rate/abuse, and production-readiness controls are implemented and explicitly approved.
+Gate B completion has no activation effect by itself. The Gateway still has no external upload endpoint, and upload remains disabled until the remaining external API security, rate/abuse, safe-upload-session, production storage/runtime, and production-readiness controls are implemented and explicitly approved.
 
 ### Gate C — Internal Dispatch Security
 
@@ -91,7 +91,7 @@ Completed slices:
 - C.2-A authenticated request envelope and receiver verification contract foundation — completed. Deterministic HMAC-SHA256 binds the C.1 caller/engine/audience/environment/credential-key relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256. Receiver verification independently validates the observed method/path, request freshness, signature, and replay-check ordering before acceptance. This slice does not register engine execution routes, wire live receiver handlers, persist replay state, provision production credentials, or enable network dispatch.
 - C.2-B engine dispatch target allowlist contract foundation — completed. C.1 engine identity and C.2-A authenticated request metadata are bound to exact private test/staging engine origins and the fixed future `POST /internal/transcribe` target before signing. The allowlist is immutable, production has no authorized dispatch origin, malformed or cross-engine target shapes fail closed, and the reserved route is not registered by this slice. C.2-B does not send network requests, wire receiver handlers, provision production credentials, persist replay state, or enable orchestration.
 - C.2-C dispatch job/source/run/result identity-binding foundation — completed. One verified orchestration plan/run/source/candidate/artifact lineage is bound to the authenticated dispatch payload, and returned result bytes are cryptographically bound back to that exact dispatch identity. It does not execute engines, persist state, or authorize a candidate as musically correct.
-- C.2-D credential-generation, bounded rotation, and replay-reservation semantics foundation — completed. Current/previous generation identity, bounded grace semantics, exact generation selection, generation-bound proofs, and generation-scoped replay reservation identity/expiry are defined fail-closed. This foundation deliberately does not implement a durable replay store or provision/rotate real production credentials; durable persistence remains Gate D work.
+- C.2-D credential-generation, bounded rotation, and replay-reservation semantics foundation — completed. Current/previous generation identity, bounded grace semantics, exact generation selection, generation-bound proofs, and generation-scoped replay reservation identity/expiry are defined fail-closed. This foundation deliberately does not implement a durable replay store or provision/rotate real production credentials. Gate D now supplies the durable state/recovery contract foundation, while an operational replay/persistence provider remains separately disabled.
 - C.2-E receiver verification adapter foundation — completed. C.2-B target evidence, C.2-C semantic identity, C.2-D generation proof, and C.2-A authenticated request/freshness/replay callback ordering converge into one immutable `VerifiedDispatchRequest`. No `/internal/transcribe` route is registered and no engine execution or network dispatch is activated.
 - C.2-F dispatch timeout/cancellation decision foundation — completed. Receiver-owned monotonic evidence is evaluated against the immutable orchestration timeout/cancellation policy, terminal decisions cannot reopen, stale pre-timeout evidence cannot authorize a late result, and cancellation grace remains cleanup-only. No timers, process control, scheduler, persistence, or execution is activated.
 - C.2-G bounded retry/attempt-budget foundation — completed. The existing orchestration v1 policy remains authoritative: one total execution attempt and zero retries. All terminal outcomes are non-retryable, attempt 2 or higher is rejected, and the decision layer cannot create a new run/candidate/artifact identity or start execution.
@@ -107,35 +107,58 @@ Requirements:
 - bounded retry policy;
 - safe diagnostic/error mapping.
 
-C-DIAG-1 closes raw engine-runtime diagnostic leakage on the current probe, readiness, transcription-result, and raised-error surfaces. C-DIAG-2 closes the current receiver/dispatch outward diagnostic-mapping foundation for C.2-E/F/G without activating a receiver or transport. Live receiver route/network wiring and orchestration activation remain disabled. Durable replay persistence, durable job/artifact state, restart recovery, and operational lifecycle authority remain Gate D responsibilities rather than being implied by the completed C.2-D semantics foundation.
+C-DIAG-1 closes raw engine-runtime diagnostic leakage on the current probe, readiness, transcription-result, and raised-error surfaces. C-DIAG-2 closes the current receiver/dispatch outward diagnostic-mapping foundation for C.2-E/F/G without activating a receiver or transport. Live receiver route/network wiring and orchestration activation remain disabled. Gate D.1-D.6 now provide the durable state/recovery contract and crash-window convergence foundation; durable provider-backed replay/persistence and operational lifecycle activation remain separate disabled work.
 
 Exit rule: `orchestrationMode` must remain disabled until the required intake and Gate C controls pass and activation prerequisites in the later gates are satisfied and separately approved.
 
 ### Gate D — Durable Job and Artifact State
 
+Status: completed contract/convergence foundation.
+
 Goal: make processing crash/restart safe before live workload activation.
 
-Requirements:
+Completed slices:
+
+- D.1 durable job-state foundation — closed state vocabulary, valid transition graph, immutable snapshots, and terminal non-reopening behavior bound to the existing dispatch identity.
+- D.2 idempotency/replay foundation — server-derived transition slots, exact replay without duplicate revisions, conflict rejection, and restore validation against the D.1 state graph.
+- D.3 immutable artifact-storage authority foundation — server-derived normalized storage keys, immutable source/candidate bindings, exact SHA-256/size/media-type identity, replay-safe manifests, and fail-closed restore verification.
+- D.4 durable provenance-record foundation — immutable bounded job/run/source/storage provenance records with deterministic hashes and append-only previous-record hash chaining, verified against authoritative lifecycle/storage evidence.
+- D.5 restart-recovery decision foundation — exact restored D.1-D.4 evidence converges to pre-dispatch candidate, reconciliation-required, or terminal-preserved decisions without automatic retry/resume/execution authority.
+- D.6 partial-output/crash-window convergence — cross-layer run/candidate/storage terminal consistency, partial sealed-output binding checks, and fail-closed pre-dispatch/in-flight crash-window regressions.
+
+Requirements satisfied at the contract/convergence layer:
 
 - durable job state machine;
 - idempotency;
-- immutable source/candidate storage;
-- SHA-256/provenance persistence;
-- retry/cancellation/restart recovery;
+- immutable source/candidate storage authority;
+- SHA-256/provenance record binding;
+- retry/cancellation/restart-recovery decisions;
 - partial-output and crash-window tests.
+
+Activation effect: none. Gate D completion does **not** select or enable a database, S3/MinIO/filesystem object-store provider, durable replay adapter, queue/worker, process restart, storage writes, network dispatch, or orchestration. Those operational capabilities require separate reviewed activation work and evidence.
 
 ### Gate E — External API Security
 
+Status: in progress.
+
 Goal: expose only a controlled versioned platform boundary.
 
-Requirements:
+Completed foundations:
 
-- authentication and authorization;
-- tenant/user scope enforcement where applicable;
+- E.1 external-principal authentication — provider-neutral, bounded, fail-closed verified identity evidence; internal service identities cannot become external principals; authentication grants no authorization or runtime capability.
+- E.2 external authorization decision — deny-by-default exact `principalId + environment + operationId` authorization evidence from a server-owned policy; wildcard/implicit grants and direct allowed-decision construction are rejected; even an allowed decision grants no operation-execution, upload, job-creation, network-dispatch, or orchestration runtime authority.
+
+Remaining requirements before Gate E can close or any public data plane can be activated:
+
+- provider/runtime authentication wiring without weakening E.1;
+- resource/user/tenant scope enforcement where an authoritative resource-ownership model actually exists;
 - rate limiting and abuse protection;
 - safe upload session semantics wired through the completed Safe Intake decision;
-- request/idempotency binding;
-- privacy-safe logs/errors.
+- external request/idempotency binding;
+- privacy-safe logs/errors at the live API boundary;
+- explicit versioned route wiring and negative authorization tests for each activated operation.
+
+No public login, upload, job, review, or mutation route is activated by E.1 or E.2.
 
 ### Gate F — Teacher Review and Publication
 
