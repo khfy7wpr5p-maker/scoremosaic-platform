@@ -22,6 +22,27 @@ class RouteResponse:
 
 
 RuntimeProbeCallable = Callable[[ServiceConfig], RuntimeProbe]
+_SAFE_NOT_READY_REASONS = frozenset(
+    {
+        "homr_runtime_disabled",
+        "homr_command_unavailable",
+        "homr_package_unavailable",
+        "homr_package_probe_failed",
+        "homr_version_mismatch",
+        "homr_model_unavailable",
+        "homr_model_checksum_mismatch",
+        "homr_probe_timed_out",
+        "homr_probe_failed",
+        "homr_probe_nonzero_exit",
+    }
+)
+
+
+def _safe_not_ready_reason(reason: str) -> str:
+    code = reason.partition(":")[0]
+    if code in _SAFE_NOT_READY_REASONS:
+        return code
+    return "homr_runtime_not_ready"
 
 
 def _capabilities(config: ServiceConfig) -> dict[str, Any]:
@@ -64,17 +85,25 @@ def route_request(
 
     if method == "GET" and path == "/ready":
         probe = runtime_probe(config)
+        ready = (
+            probe.ready
+            and probe.reason == "ready"
+            and probe.version == config.homr_version
+            and probe.verified_models == len(MODEL_SPECS)
+        )
         return RouteResponse(
-            status=200 if probe.ready else 503,
+            status=200 if ready else 503,
             payload={
                 "service": "scoremosaic-homr-service",
                 "version": __version__,
-                "status": "ready" if probe.ready else "not_ready",
-                "reason": probe.reason,
+                "status": "ready" if ready else "not_ready",
+                "reason": (
+                    "ready" if ready else _safe_not_ready_reason(probe.reason)
+                ),
                 "engine": {
                     "name": "homr",
-                    "version": probe.version,
-                    "verifiedModels": probe.verified_models,
+                    "version": config.homr_version if ready else None,
+                    "verifiedModels": len(MODEL_SPECS) if ready else 0,
                     "computeMode": "cpu",
                 },
                 "capabilities": _capabilities(config),

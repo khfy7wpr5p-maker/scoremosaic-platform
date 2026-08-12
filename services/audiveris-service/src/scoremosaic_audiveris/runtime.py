@@ -23,7 +23,9 @@ _AUDIVERIS_VERSION_RE = re.compile(
     r"(?im)^\s*-\s*Version:\s*"
     r"([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?)\s*$"
 )
-_MAX_DIAGNOSTIC_CHARS = 16_384
+_MAX_RUNTIME_OUTPUT_CHARS = 16_384
+_RUNTIME_OUTPUT_REDACTED = "runtime_output_redacted"
+_RUNTIME_ERROR_REDACTED = "runtime_error_redacted"
 _PROCESS_TERMINATION_GRACE_SECONDS = 1.0
 
 
@@ -178,11 +180,17 @@ def _prepare_runtime_directories(config: ServiceConfig) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-def _diagnostic(stdout: str | None, stderr: str | None) -> str:
+def _combined_output(stdout: str | None, stderr: str | None) -> str:
     combined = "\n".join(
         part.strip() for part in (stdout or "", stderr or "") if part.strip()
     )
-    return combined[:_MAX_DIAGNOSTIC_CHARS]
+    return combined[:_MAX_RUNTIME_OUTPUT_CHARS]
+
+
+def _diagnostic(stdout: str | None, stderr: str | None) -> str:
+    if _combined_output(stdout, stderr):
+        return _RUNTIME_OUTPUT_REDACTED
+    return ""
 
 
 def probe_runtime(
@@ -212,35 +220,36 @@ def probe_runtime(
         )
     except subprocess.TimeoutExpired:
         return RuntimeProbe(False, "audiveris_probe_timed_out", None, False)
-    except OSError as exc:
+    except OSError:
         return RuntimeProbe(
             False,
             "audiveris_probe_failed",
             None,
             False,
-            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+            _RUNTIME_ERROR_REDACTED,
         )
 
-    output = _diagnostic(completed.stdout, completed.stderr)
-    match = _AUDIVERIS_VERSION_RE.search(output)
-    version = match.group(1) if match else None
+    raw_output = _combined_output(completed.stdout, completed.stderr)
+    diagnostic = _diagnostic(completed.stdout, completed.stderr)
     if completed.returncode != 0:
         return RuntimeProbe(
             False,
             "audiveris_probe_nonzero_exit",
-            version,
+            None,
             False,
-            output,
+            diagnostic,
         )
+    match = _AUDIVERIS_VERSION_RE.search(raw_output)
+    version = match.group(1) if match else None
     if version != config.audiveris_version:
         return RuntimeProbe(
             False,
             "audiveris_version_mismatch",
-            version,
+            None,
             False,
-            output,
+            diagnostic,
         )
-    return RuntimeProbe(True, "ready", version, True, output)
+    return RuntimeProbe(True, "ready", version, True, diagnostic)
 
 
 def _resolved_workspace(config: ServiceConfig) -> Path:
@@ -301,9 +310,7 @@ def transcribe_file(
 
     probe = probe_runtime(config, runner=runner)
     if not probe.ready:
-        raise RuntimeExecutionError(
-            f"{probe.reason}:{probe.diagnostic}" if probe.diagnostic else probe.reason
-        )
+        raise RuntimeExecutionError(probe.reason)
 
     command = build_transcription_command(input_path, output_dir, config)
     try:
@@ -316,22 +323,20 @@ def transcribe_file(
             timeout=config.request_timeout_seconds,
             check=False,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeExecutionError("audiveris_transcription_timed_out") from exc
-    except OSError as exc:
-        raise RuntimeExecutionError("audiveris_transcription_failed_to_start") from exc
+    except subprocess.TimeoutExpired:
+        raise RuntimeExecutionError("audiveris_transcription_timed_out") from None
+    except OSError:
+        raise RuntimeExecutionError("audiveris_transcription_failed_to_start") from None
 
     diagnostic = _diagnostic(completed.stdout, completed.stderr)
     if completed.returncode != 0:
-        raise RuntimeExecutionError(
-            f"audiveris_transcription_nonzero_exit:{completed.returncode}:{diagnostic}"
-        )
+        raise RuntimeExecutionError("audiveris_transcription_nonzero_exit")
 
     output_root = Path(command[command.index("-output") + 1])
     musicxml = tuple(sorted(output_root.rglob("*.mxl")))
     omr = tuple(sorted(output_root.rglob("*.omr")))
     if not musicxml:
-        raise RuntimeExecutionError(f"audiveris_musicxml_not_created:{diagnostic}")
+        raise RuntimeExecutionError("audiveris_musicxml_not_created")
 
     handoffs: list[CandidateSafetyHandoff] = []
     for artifact in musicxml:

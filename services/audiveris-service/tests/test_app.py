@@ -59,6 +59,30 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status, 503)
         self.assertEqual(response.payload["reason"], "audiveris_runtime_disabled")
 
+    def test_ready_rejects_untrusted_failed_probe_fields(self) -> None:
+        sensitive = "TOKEN_DO_NOT_LEAK_123 /private/runtime/path"
+        config = load_config(
+            {"SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE": "audiveris"}
+        )
+        response = route_request(
+            "GET",
+            "/ready",
+            config,
+            runtime_probe=lambda _: RuntimeProbe(
+                False,
+                sensitive,
+                sensitive,
+                False,
+                sensitive,
+            ),
+        )
+
+        self.assertEqual(response.status, 503)
+        self.assertEqual(response.payload["reason"], "audiveris_runtime_not_ready")
+        self.assertIsNone(response.payload["engine"]["version"])
+        self.assertNotIn("diagnostic", response.payload)
+        self.assertNotIn(sensitive, repr(response.payload))
+
     def test_unknown_path_is_not_found(self) -> None:
         response = route_request("GET", "/internal/jobs", load_config({}))
         self.assertEqual(response.status, 404)

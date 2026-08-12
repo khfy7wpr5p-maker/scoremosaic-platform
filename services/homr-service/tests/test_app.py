@@ -39,6 +39,27 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.payload["reason"], "homr_runtime_disabled")
         self.assertEqual(response.payload["engine"]["verifiedModels"], 0)
 
+    def test_ready_rejects_untrusted_failed_probe_fields(self) -> None:
+        sensitive = "TOKEN_DO_NOT_LEAK_123 /private/runtime/path"
+        response = route_request(
+            "GET",
+            "/ready",
+            self.runtime_config,
+            runtime_probe=lambda _: RuntimeProbe(
+                False,
+                sensitive,
+                sensitive,
+                0,
+                sensitive,
+            ),
+        )
+
+        self.assertEqual(response.status, 503)
+        self.assertEqual(response.payload["reason"], "homr_runtime_not_ready")
+        self.assertIsNone(response.payload["engine"]["version"])
+        self.assertNotIn("diagnostic", response.payload)
+        self.assertNotIn(sensitive, repr(response.payload))
+
     def test_ready_returns_200_for_verified_runtime(self) -> None:
         response = route_request(
             "GET",
