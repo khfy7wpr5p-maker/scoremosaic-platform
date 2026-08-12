@@ -99,7 +99,11 @@ metadata, including:
 - credential generation ID;
 - request timestamp and nonce;
 - payload SHA-256;
-- the fact that replay reservation succeeded.
+- the fact that the configured replay callback/check returned PASS.
+
+The safe field is `replayCheckPassed`, not `replayReserved`. C.2-E cannot claim
+that a durable atomic reservation exists because the callback implementation is
+outside this slice and persistent replay remains Gate D work.
 
 It must not expose:
 
@@ -120,8 +124,10 @@ A replay callback returning anything other than exact `True` fails closed as a
 replay. Callback exceptions fail closed as replay-check unavailability without
 propagating private backend diagnostic text.
 
-Durable atomic crash/restart-safe replay state remains Gate D work and is still a
-prerequisite for future live authenticated dispatch activation.
+A successful callback proves only that the configured replay check passed at this
+contract boundary. Durable atomic crash/restart-safe replay state remains Gate D
+work and is still a prerequisite for future live authenticated dispatch
+activation.
 
 ## Regression evidence
 
