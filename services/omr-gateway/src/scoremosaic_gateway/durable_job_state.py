@@ -94,6 +94,25 @@ def _require_revision(revision: object) -> int:
     return revision
 
 
+def validate_durable_job_state_transition(
+    from_state: str,
+    from_revision: int,
+    next_state: str,
+) -> None:
+    """Validate one D.1 edge without requiring a dispatch binding or doing I/O."""
+
+    current_state = _require_state(from_state)
+    current_revision = _require_revision(from_revision)
+    if current_revision not in _VALID_REVISIONS_BY_STATE[current_state]:
+        raise DurableJobStateError("revision_state_mismatch")
+
+    target_state = _require_state(next_state)
+    if target_state not in _JOB_RUN_TRANSITIONS[current_state]:
+        raise DurableJobStateError("state_transition_invalid")
+    if current_revision + 1 not in _VALID_REVISIONS_BY_STATE[target_state]:
+        raise DurableJobStateError("state_transition_invalid")
+
+
 @dataclass(frozen=True, slots=True)
 class DurableJobStateSnapshot:
     """Immutable D.1 snapshot for exactly one C.2-C planned engine run."""
@@ -187,7 +206,9 @@ def transition_durable_job_state(
 
     if type(current) is not DurableJobStateSnapshot:
         raise DurableJobStateError("snapshot_invalid")
-    state = _require_state(next_state)
-    if state not in _JOB_RUN_TRANSITIONS[current.state]:
-        raise DurableJobStateError("state_transition_invalid")
-    return replace(current, state=state, revision=current.revision + 1)
+    validate_durable_job_state_transition(
+        current.state,
+        current.revision,
+        next_state,
+    )
+    return replace(current, state=next_state, revision=current.revision + 1)
