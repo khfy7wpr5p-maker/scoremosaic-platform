@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ScoreMosaic — UI-0B Static Application Shell</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="mobile-disclosure.css">
+</head>
+<body>
+  <a class="skip-link" href="#score-view">Skip to Score View</a>
+
+  <header class="topbar" aria-label="Application context">
+    <div class="brand" aria-label="ScoreMosaic">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <span class="brand-copy">
+        <strong>SCOREMOSAIC</strong>
+        <small>OMR GATEWAY</small>
+      </span>
+    </div>
+
+    <div class="context-strip" aria-label="Prototype status">
+      <span class="context-chip">UI-0B</span>
+      <span class="context-chip context-chip--muted">Static prototype</span>
+      <span class="context-chip context-chip--safe">No backend connection</span>
+    </div>
+
+    <div class="account-placeholder" aria-label="Reviewer account placeholder">
+      Reviewer
+      <span aria-hidden="true">—</span>
+      <span>unavailable</span>
+    </div>
+  </header>
+
+  <main class="workspace" aria-label="Teacher Review static application shell">
+    <input class="mobile-disclosure-toggle" type="checkbox" id="issues-toggle" aria-controls="issues-panel">
+    <label class="mobile-disclosure-label" for="issues-toggle">
+      <span>Issues</span>
+      <span>
+        <span class="disclosure-action-open">Open panel</span>
+        <span class="disclosure-action-close">Close panel</span>
+      </span>
+    </label>
+    <aside id="issues-panel" class="panel issues-panel" aria-labelledby="issues-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Review</p>
+          <h1 id="issues-title">Issues</h1>
+        </div>
+        <span class="status-pill">Disconnected</span>
+      </div>
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">!</span>
+        <strong>No review data connected</strong>
+        <p>Issue evidence is intentionally unavailable in UI-0B.</p>
+      </div>
+      <div class="skeleton-list" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+    </aside>
+
+    <section id="score-view" class="panel score-panel" aria-labelledby="score-title" tabindex="-1">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Primary workspace</p>
+          <h2 id="score-title">Score View</h2>
+        </div>
+        <span class="status-pill status-pill--neutral">Presentation only</span>
+      </div>
+      <div class="score-placeholder" role="img" aria-label="Empty score rendering placeholder. No musical data is loaded.">
+        <div class="score-placeholder-copy">
+          <strong>Score renderer not connected</strong>
+          <p>UI-0B reserves the review canvas without loading MusicXML, Canonical Score data, or renderer output.</p>
+        </div>
+      </div>
+    </section>
+
+    <input class="mobile-disclosure-toggle" type="checkbox" id="structured-edit-toggle" aria-controls="structured-edit">
+    <label class="mobile-disclosure-label" for="structured-edit-toggle">
+      <span>Structured Edit</span>
+      <span>
+        <span class="disclosure-action-open">Open panel</span>
+        <span class="disclosure-action-close">Close panel</span>
+      </span>
+    </label>
+    <aside id="structured-edit" class="panel edit-panel" aria-labelledby="edit-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Future bounded controls</p>
+          <h2 id="edit-title">Structured Edit</h2>
+        </div>
+        <span class="status-pill status-pill--locked">Locked</span>
+      </div>
+
+      <div class="edit-groups" aria-label="Reserved editor sections">
+        <section class="edit-group" aria-labelledby="note-fields-title">
+          <h3 id="note-fields-title">Note fields</h3>
+          <div class="field-placeholder"><span>Pitch</span><span>Unavailable</span></div>
+          <div class="field-placeholder"><span>Duration</span><span>Unavailable</span></div>
+          <div class="field-placeholder"><span>Staff / Voice</span><span>Unavailable</span></div>
+        </section>
+        <section class="edit-group" aria-labelledby="tab-fields-title">
+          <h3 id="tab-fields-title">Guitar TAB</h3>
+          <div class="field-placeholder"><span>String</span><span>Unavailable</span></div>
+          <div class="field-placeholder"><span>Fret</span><span>Unavailable</span></div>
+        </section>
+      </div>
+
+      <button type="button" disabled>Apply correction</button>
+      <p class="security-note">Writes remain disabled until the required Teacher Review security and revision gates are complete.</p>
+    </aside>
+
+    <section id="source-evidence" class="panel evidence-panel" aria-labelledby="evidence-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Source comparison</p>
+          <h2 id="evidence-title">Source Evidence</h2>
+        </div>
+        <span class="status-pill status-pill--neutral">No source loaded</span>
+      </div>
+      <div class="evidence-placeholder">
+        <div class="document-outline" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <strong>Immutable source preview reserved</strong>
+          <p>No PDF, image, crop, engine evidence, or provenance artifact is read by this static shell.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section id="review-transport" class="transport" aria-labelledby="transport-title">
+    <div>
+      <p class="eyebrow">Presentation controls</p>
+      <h2 id="transport-title">Review Transport</h2>
+    </div>
+    <div class="transport-controls" aria-label="Disabled playback controls">
+      <button type="button" disabled aria-label="Go to beginning">|◀</button>
+      <button type="button" disabled>Play</button>
+      <button type="button" disabled>Pause</button>
+      <button type="button" disabled>Stop</button>
+      <button type="button" disabled>Loop measure</button>
+      <span class="tempo-placeholder">Tempo —</span>
+    </div>
+  </section>
+
+  <footer id="validation-status" class="statusbar" aria-label="Validation and revision status">
+    <span><strong>Validation</strong> unavailable</span>
+    <span><strong>Blocking issues</strong> unavailable</span>
+    <span><strong>Revision</strong> unavailable</span>
+    <span class="statusbar-isolation">Static shell · no API · no writes · no playback</span>
+  </footer>
+</body>
+</html>
