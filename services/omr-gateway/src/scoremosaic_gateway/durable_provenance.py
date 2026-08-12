@@ -2,8 +2,8 @@
 
 This module performs no persistence, storage, queue, network, orchestration,
 upload, approval, or publication operation. It binds the already-validated D.1
-job/run state snapshot to the already-validated D.3 immutable artifact-storage
-manifest and returns bounded immutable provenance evidence only.
+job/run state snapshot to the D.3 immutable artifact-storage manifest after the
+manifest is re-verified against its authoritative candidate/artifact lifecycle.
 
 The hash chain is deterministic tamper-evidence inside this contract; it is not
 a signature, external anchor, or authorization mechanism.
@@ -17,7 +17,12 @@ import json
 import re
 from typing import Any
 
-from .durable_artifact_storage import DurableArtifactStorageManifest
+from .artifact_lifecycle import CandidateArtifactLifecycle
+from .durable_artifact_storage import (
+    DurableArtifactStorageError,
+    DurableArtifactStorageManifest,
+    verify_durable_artifact_storage_manifest,
+)
 from .durable_job_state import (
     JOB_RUN_STATES,
     DurableJobStateError,
@@ -44,6 +49,7 @@ _POLICIES = {
     "exactReplayAllowed": True,
     "identityConvergenceRequired": True,
     "storageHistoryMonotonic": True,
+    "lifecycleVerificationRequired": True,
 }
 _BOUNDARIES = {
     "providerSelected": False,
@@ -109,15 +115,32 @@ def _require_manifest(value: object) -> DurableArtifactStorageManifest:
     return value
 
 
+def _require_lifecycle(value: object) -> CandidateArtifactLifecycle:
+    if type(value) is not CandidateArtifactLifecycle:
+        raise DurableProvenanceError("manifest_invalid")
+    return value
+
+
 def _require_identity_convergence(
     snapshot: DurableJobStateSnapshot,
     manifest: DurableArtifactStorageManifest,
+    lifecycle: CandidateArtifactLifecycle,
 ) -> None:
-    if manifest.job_id != snapshot.job_id:
+    try:
+        verify_durable_artifact_storage_manifest(manifest, lifecycle)
+    except DurableArtifactStorageError:
+        raise DurableProvenanceError("manifest_invalid") from None
+
+    if lifecycle.job_id != snapshot.job_id or manifest.job_id != snapshot.job_id:
         raise DurableProvenanceError("identity_mismatch")
+    if manifest.lifecycle_id != lifecycle.lifecycle_id:
+        raise DurableProvenanceError("identity_mismatch")
+
     source = manifest.records[0]
     if (
-        source.kind != "source"
+        lifecycle.source_artifact.artifact_id != snapshot.source_artifact_id
+        or lifecycle.source_artifact.sha256 != snapshot.source_sha256
+        or source.kind != "source"
         or source.artifact_id != snapshot.source_artifact_id
         or source.sha256 != snapshot.source_sha256
     ):
@@ -397,12 +420,19 @@ def _record_matches_evidence(
 def build_durable_provenance_chain(
     snapshot: DurableJobStateSnapshot,
     manifest: DurableArtifactStorageManifest,
+    *,
+    lifecycle: CandidateArtifactLifecycle,
 ) -> DurableProvenanceChain:
     """Create the initial bounded provenance record without performing I/O."""
 
     checked_snapshot = _require_snapshot(snapshot)
     checked_manifest = _require_manifest(manifest)
-    _require_identity_convergence(checked_snapshot, checked_manifest)
+    checked_lifecycle = _require_lifecycle(lifecycle)
+    _require_identity_convergence(
+        checked_snapshot,
+        checked_manifest,
+        checked_lifecycle,
+    )
     if checked_snapshot.state != "planned" or checked_snapshot.revision != 0:
         raise DurableProvenanceError("state_history_invalid")
 
@@ -416,7 +446,12 @@ def build_durable_provenance_chain(
         version=DURABLE_PROVENANCE_CONTRACT_VERSION,
         records=(record,),
     )
-    verify_durable_provenance_chain(chain, checked_snapshot, checked_manifest)
+    verify_durable_provenance_chain(
+        chain,
+        checked_snapshot,
+        checked_manifest,
+        lifecycle=checked_lifecycle,
+    )
     return chain
 
 
@@ -424,6 +459,8 @@ def append_durable_provenance_record_idempotently(
     chain: DurableProvenanceChain,
     snapshot: DurableJobStateSnapshot,
     manifest: DurableArtifactStorageManifest,
+    *,
+    lifecycle: CandidateArtifactLifecycle,
 ) -> DurableProvenanceAppendResult:
     """Append one provenance record or return exact replay; never persist it."""
 
@@ -431,7 +468,12 @@ def append_durable_provenance_record_idempotently(
         raise DurableProvenanceError("chain_invalid")
     checked_snapshot = _require_snapshot(snapshot)
     checked_manifest = _require_manifest(manifest)
-    _require_identity_convergence(checked_snapshot, checked_manifest)
+    checked_lifecycle = _require_lifecycle(lifecycle)
+    _require_identity_convergence(
+        checked_snapshot,
+        checked_manifest,
+        checked_lifecycle,
+    )
 
     latest = chain.records[-1]
     if _record_matches_evidence(latest, checked_snapshot, checked_manifest):
@@ -492,7 +534,12 @@ def append_durable_provenance_record_idempotently(
         if exc.category == "chain_invalid":
             raise DurableProvenanceError("provenance_invalid") from None
         raise
-    verify_durable_provenance_chain(updated, checked_snapshot, checked_manifest)
+    verify_durable_provenance_chain(
+        updated,
+        checked_snapshot,
+        checked_manifest,
+        lifecycle=checked_lifecycle,
+    )
     return DurableProvenanceAppendResult(chain=updated, replayed=False)
 
 
@@ -500,14 +547,21 @@ def verify_durable_provenance_chain(
     chain: DurableProvenanceChain,
     snapshot: DurableJobStateSnapshot,
     manifest: DurableArtifactStorageManifest,
+    *,
+    lifecycle: CandidateArtifactLifecycle,
 ) -> None:
-    """Verify the latest record against exact D.1 and D.3 evidence."""
+    """Verify the latest record against exact D.1, lifecycle, and D.3 evidence."""
 
     if type(chain) is not DurableProvenanceChain:
         raise DurableProvenanceError("chain_invalid")
     checked_snapshot = _require_snapshot(snapshot)
     checked_manifest = _require_manifest(manifest)
-    _require_identity_convergence(checked_snapshot, checked_manifest)
+    checked_lifecycle = _require_lifecycle(lifecycle)
+    _require_identity_convergence(
+        checked_snapshot,
+        checked_manifest,
+        checked_lifecycle,
+    )
 
     latest = chain.records[-1]
     if not _record_matches_evidence(latest, checked_snapshot, checked_manifest):
