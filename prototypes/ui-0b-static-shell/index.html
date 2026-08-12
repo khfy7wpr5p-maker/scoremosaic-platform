@@ -7,6 +7,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <title>ScoreMosaic — UI-0B Static Application Shell</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="mobile-disclosure.css">
 </head>
 <body>
   <a class="skip-link" href="#score-view">Skip to Score View</a>
@@ -34,6 +35,14 @@
   </header>
 
   <main class="workspace" aria-label="Teacher Review static application shell">
+    <input class="mobile-disclosure-toggle" type="checkbox" id="issues-toggle" aria-controls="issues-panel">
+    <label class="mobile-disclosure-label" for="issues-toggle">
+      <span>Issues</span>
+      <span>
+        <span class="disclosure-action-open">Open panel</span>
+        <span class="disclosure-action-close">Close panel</span>
+      </span>
+    </label>
     <aside id="issues-panel" class="panel issues-panel" aria-labelledby="issues-title">
       <div class="panel-heading">
         <div>
@@ -68,6 +77,14 @@
       </div>
     </section>
 
+    <input class="mobile-disclosure-toggle" type="checkbox" id="structured-edit-toggle" aria-controls="structured-edit">
+    <label class="mobile-disclosure-label" for="structured-edit-toggle">
+      <span>Structured Edit</span>
+      <span>
+        <span class="disclosure-action-open">Open panel</span>
+        <span class="disclosure-action-close">Close panel</span>
+      </span>
+    </label>
     <aside id="structured-edit" class="panel edit-panel" aria-labelledby="edit-title">
       <div class="panel-heading">
         <div>
