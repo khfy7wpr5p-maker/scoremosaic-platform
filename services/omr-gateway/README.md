@@ -10,9 +10,9 @@ Safe Intake Gate B is now a completed foundation without enabling upload. B.1 si
 
 Gate C.1 service-to-service authentication contract foundation is present on `main`. It defines fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed credential resolution, bounded opaque credential material, and negative regression evidence.
 
-Gate C.2-A authenticated request envelope and receiver verification contract foundation is also present on `main`. It selects deterministic HMAC-SHA256 over the existing C.1 engine/environment credential, binds the caller/engine/audience/environment relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256, and defines fail-closed receiver verification including receiver-observed target matching and replay-check ordering. Engine HTTP handlers are still not wired to the verifier, persistent replay state and credential-rotation grace semantics remain incomplete, and live engine dispatch remains disabled.
+Gate C.2-A authenticated request envelope and receiver verification contract foundation is also present on `main`. It selects deterministic HMAC-SHA256 over the existing C.1 engine/environment credential, binds the caller/engine/audience/environment relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256, and defines fail-closed receiver verification including receiver-observed target matching and replay-check ordering.
 
-Gate C.2-B engine dispatch target allowlist contract foundation is present on `main`. It binds the existing C.1 engine identity and C.2-A authenticated request metadata to immutable exact test/staging origins for Audiveris, HOMR, and Clarity and to the fixed future `POST /internal/transcribe` target before signing. `production` deliberately has no authorized dispatch origin. The reserved route is not registered, no network request is sent, and orchestration remains disabled. Live receiver wiring, persistent replay/rotation semantics, job/source/result identity binding, timeout/cancellation, bounded retries, and safe diagnostic/error convergence remain later Gate C work.
+Gate C.2-B through C.2-G contract foundations are present on `main`: exact test/staging target allowlisting, job/source/run/candidate/artifact/result identity binding, credential-generation and bounded rotation semantics, generation-scoped replay-reservation identity/expiry, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. `production` deliberately has no authorized dispatch origin. The reserved future `POST /internal/transcribe` route is not registered, no network request is sent, orchestration remains disabled, and no durable replay/job state exists. Safe diagnostic/error convergence remains Gate C work; durable replay persistence and durable lifecycle/recovery authority remain Gate D work.
 
 Implemented now:
 
@@ -34,7 +34,12 @@ Implemented now:
 - dedicated hostile-input convergence coverage through the integrated decision boundary
 - Gate C.1 fail-closed service identity, environment-scoped credential binding, and credential-resolution contract
 - Gate C.2-A deterministic HMAC-SHA256 authenticated request envelope plus fail-closed receiver-verification contract
-- Gate C.2-B immutable exact test/staging engine-origin allowlist plus fixed `POST /internal/transcribe` dispatch-target binding; production dispatch remains unconfigured/fail-closed and live receiver/network dispatch remains disabled
+- Gate C.2-B immutable exact test/staging engine-origin allowlist plus fixed future `POST /internal/transcribe` dispatch-target binding; production dispatch remains unconfigured/fail-closed
+- Gate C.2-C immutable job/source/run/candidate/artifact dispatch identity plus authenticated result-byte identity binding
+- Gate C.2-D explicit credential-generation identity, bounded current/previous rotation semantics, generation-bound request/result proofs, and persistence-neutral replay-reservation identity/expiry
+- Gate C.2-E immutable receiver verification adapter convergence over C.2-A/B/C/D without route registration or engine execution
+- Gate C.2-F deterministic receiver-owned monotonic timeout/cancellation/result-acceptance decisions; terminal states cannot reopen and cancellation grace is cleanup-only
+- Gate C.2-G bounded retry/attempt-budget decision foundation preserving orchestration v1 `attemptLimit = 1`, `retryAfterTimeout = false`, and zero retry attempts
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -64,7 +69,7 @@ GET /health -> 200; gateway process is running
 GET /ready  -> 503; orchestration and upload are disabled
 ```
 
-All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, and an artifact lifecycle endpoint do not exist in this foundation. The Gate C.2-B reserved engine target `/internal/transcribe` is a contract value only and is not registered by the Gateway or engine services in this slice.
+All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, and an artifact lifecycle endpoint do not exist in this foundation. The reserved engine target `/internal/transcribe` remains a contract value only and is not registered by the Gateway or engine services.
 
 The health payload declares:
 
@@ -261,10 +266,10 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 Gate B Safe Intake is complete as a foundation but does not activate an upload surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
 
-- authenticated service-to-service transport and live receiver-side verification wiring; Gate C.1 identity/credential binding, Gate C.2-A signed-request/verification, and Gate C.2-B exact dispatch-target allowlist foundations exist, but live handler wiring, persistent replay/credential-rotation semantics, job/source/result binding, timeout/cancellation enforcement, bounded retries, safe diagnostic convergence, and activation remain incomplete
-- concrete engine adapter request/response contracts
-- server-generated job, run, candidate, and artifact identifiers bound to durable state
-- queue, timeout enforcement, cancellation, cleanup, and restart recovery
+- safe diagnostic/error convergence plus separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G contract foundations; C.2-D defines credential-generation/rotation and replay-reservation semantics but does not provide a durable replay store
+- durable replay/job/run/candidate/artifact state with idempotency, immutable source/candidate storage, SHA-256/provenance persistence, restart recovery, and authoritative terminal-state evidence under Gate D
+- concrete engine adapter request/response contracts and controlled execution wiring
+- queue/cancellation/cleanup/restart-recovery behavior consistent with the existing timeout and v1 one-attempt/zero-retry policies
 - content-addressed immutable source and candidate artifact storage
 - safe MusicXML validation through Candidate Safety v1
 - retention, cleanup, and recovery rules
