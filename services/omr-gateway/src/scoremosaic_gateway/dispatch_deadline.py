@@ -371,11 +371,20 @@ def evaluate_dispatch_deadline(
 def require_dispatch_result_acceptance(
     context: DispatchDeadlineContext,
     decision: DispatchDeadlineDecision,
-) -> None:
-    """Fail closed unless the exact decision still permits result acceptance."""
+    *,
+    observed_monotonic_ns: int,
+    cancellation_requested_monotonic_ns: int | None = None,
+) -> DispatchDeadlineDecision:
+    """Re-evaluate at result arrival and fail closed unless still active."""
 
     if type(context) is not DispatchDeadlineContext:
         raise DispatchDeadlineError("dispatch_deadline_context_invalid")
-    _require_decision_shape(context, decision)
-    if decision.status != _ACTIVE or decision.accepts_result is not True:
+    refreshed = evaluate_dispatch_deadline(
+        context,
+        observed_monotonic_ns=observed_monotonic_ns,
+        cancellation_requested_monotonic_ns=cancellation_requested_monotonic_ns,
+        prior_decision=decision,
+    )
+    if refreshed.status != _ACTIVE or refreshed.accepts_result is not True:
         raise DispatchDeadlineError("dispatch_result_not_acceptable")
+    return refreshed
