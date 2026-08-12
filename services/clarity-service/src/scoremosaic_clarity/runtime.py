@@ -20,7 +20,8 @@ from .candidate_safety import (
 )
 from .config import ServiceConfig
 
-_MAX_DIAGNOSTIC_CHARS = 16_384
+_RUNTIME_OUTPUT_REDACTED = "runtime_output_redacted"
+_RUNTIME_ERROR_REDACTED = "runtime_error_redacted"
 _MAX_MUSICXML_BYTES = 64 * 1024 * 1024
 _MUSICXML_DOCTYPE_RE = re.compile(
     rb"""
@@ -140,10 +141,9 @@ def _runtime_environment(config: ServiceConfig) -> dict[str, str]:
 
 
 def _diagnostic(stdout: str | None, stderr: str | None) -> str:
-    combined = "\n".join(
-        part.strip() for part in (stdout or "", stderr or "") if part.strip()
-    )
-    return combined[:_MAX_DIAGNOSTIC_CHARS]
+    if any(part and part.strip() for part in (stdout, stderr)):
+        return _RUNTIME_OUTPUT_REDACTED
+    return ""
 
 
 def _file_sha256(path: Path) -> str:
@@ -184,7 +184,7 @@ def probe_runtime(
     marker = config.source_root / ".scoremosaic-source-revision"
     try:
         installed_revision = marker.read_text(encoding="utf-8").strip()
-    except OSError as exc:
+    except OSError:
         return RuntimeProbe(
             False,
             "clarity_source_revision_unavailable",
@@ -192,7 +192,7 @@ def probe_runtime(
             config.model_revision,
             0,
             None,
-            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+            _RUNTIME_ERROR_REDACTED,
         )
     if installed_revision != config.source_revision:
         return RuntimeProbe(
@@ -255,7 +255,7 @@ def probe_runtime(
             verified,
             None,
         )
-    except OSError as exc:
+    except OSError:
         return RuntimeProbe(
             False,
             "clarity_probe_failed",
@@ -263,10 +263,10 @@ def probe_runtime(
             config.model_revision,
             verified,
             None,
-            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+            _RUNTIME_ERROR_REDACTED,
         )
 
-    output = _diagnostic(completed.stdout, completed.stderr)
+    diagnostic = _diagnostic(completed.stdout, completed.stderr)
     if completed.returncode != 0:
         return RuntimeProbe(
             False,
@@ -275,7 +275,7 @@ def probe_runtime(
             config.model_revision,
             verified,
             None,
-            output,
+            diagnostic,
         )
     try:
         payload = json.loads((completed.stdout or "").strip().splitlines()[-1])
@@ -287,7 +287,7 @@ def probe_runtime(
             config.model_revision,
             verified,
             None,
-            output,
+            diagnostic,
         )
 
     torch_version = str(payload.get("torch", "")) or None
@@ -299,7 +299,7 @@ def probe_runtime(
             config.model_revision,
             verified,
             torch_version,
-            output,
+            diagnostic,
         )
     if payload.get("cuda") is not False:
         return RuntimeProbe(
@@ -309,7 +309,7 @@ def probe_runtime(
             config.model_revision,
             verified,
             torch_version,
-            output,
+            diagnostic,
         )
 
     return RuntimeProbe(
@@ -319,7 +319,7 @@ def probe_runtime(
         config.model_revision,
         verified,
         torch_version,
-        output,
+        diagnostic,
     )
 
 
@@ -460,16 +460,14 @@ def transcribe_file(
             timeout=config.request_timeout_seconds,
             check=False,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeExecutionError("clarity_transcription_timed_out") from exc
-    except OSError as exc:
-        raise RuntimeExecutionError("clarity_transcription_failed_to_start") from exc
+    except subprocess.TimeoutExpired:
+        raise RuntimeExecutionError("clarity_transcription_timed_out") from None
+    except OSError:
+        raise RuntimeExecutionError("clarity_transcription_failed_to_start") from None
 
     diagnostic = _diagnostic(completed.stdout, completed.stderr)
     if completed.returncode != 0:
-        raise RuntimeExecutionError(
-            f"clarity_transcription_nonzero_exit:{completed.returncode}:{diagnostic}"
-        )
+        raise RuntimeExecutionError("clarity_transcription_nonzero_exit")
 
     evidence = _validate_musicxml(output_path)
     try:
