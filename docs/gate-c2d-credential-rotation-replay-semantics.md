@@ -88,8 +88,13 @@ Receiver order is:
 A generation-proof failure therefore cannot reserve replay state.
 
 For an in-flight request signed by the previous generation during the bounded
-grace period, the receiver returns the exact selected generation credential as
-contract evidence so the response proof can use the same generation.
+grace period, the receiver returns the exact selected `GenerationCredential` as
+contract evidence. That credential becomes the immutable authentication context
+for the accepted dispatch and its result proof.
+
+The rotation grace deadline controls whether a **new request** using the previous
+generation may be accepted. It is not re-applied later to a dispatch that was
+already authenticated and accepted before the deadline.
 
 ## Replay reservation semantics
 
@@ -136,13 +141,27 @@ The proof covers:
   result HMAC, dispatch lineage, expected artifact IDs, result byte length, and
   result SHA-256.
 
-The generation proof is verified first, then the existing C.2-C result verifier
-runs with the exact selected generation credential.
+Result verification requires the exact `GenerationCredential` returned when the
+request was authenticated. The caller does **not** re-select a credential from
+the current rotation set and does not re-apply the previous-generation grace
+deadline to an already accepted in-flight dispatch.
 
-A receiver that accepted an in-flight previous-generation request can therefore
-produce a result proof using that same previous generation during the grace
-window. The caller verifies the exact generation rather than trying multiple
-secrets.
+Verification therefore proceeds as:
+
+1. validate the generation-bound result structure;
+2. validate the supplied exact accepted `GenerationCredential`;
+3. verify the result generation HMAC with that exact credential;
+4. require the proof generation ID to equal the accepted credential generation;
+5. run the existing C.2-C result verifier with the same exact credential.
+
+This prevents a legitimate request accepted just before the previous-generation
+grace deadline from being rejected merely because its bounded OMR execution
+finishes after the rotation grace period. Timeout/cancellation policy remains a
+separate Gate C control and is not weakened by this rule.
+
+The exact accepted generation credential must be carried as dispatch authentication
+context by the future live orchestration layer. This contract does not define or
+persist that runtime state; durable state remains Gate D work.
 
 ## Fail-closed evidence
 
@@ -155,12 +174,14 @@ Regression evidence for this slice covers at least:
 - missing or excessive grace-window rejection;
 - current-only signing selection;
 - exact generation receiver selection without secret fallback;
-- previous generation acceptance before and rejection at its deadline;
+- previous generation acceptance before and rejection at its deadline for new
+  request verification;
 - generation-label tamper rejection for request proofs;
 - generation-proof failure before replay reservation;
 - generation ID delivered to replay reservation callback after both auth layers;
 - replay key independence from timestamp and scoping by generation;
-- previous-generation request/result continuity during the grace window;
+- an accepted previous-generation request result remaining verifiable after the
+  request grace deadline using its exact accepted credential;
 - generation-label tamper rejection for result proofs;
 - secret and HMAC proof redaction from safe representations.
 
