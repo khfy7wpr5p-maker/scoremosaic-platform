@@ -12,7 +12,7 @@ Gate C.1 service-to-service authentication contract foundation is present on `ma
 
 Gate C.2-A authenticated request envelope and receiver verification contract foundation is also present on `main`. It selects deterministic HMAC-SHA256 over the existing C.1 engine/environment credential, binds the caller/engine/audience/environment relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256, and defines fail-closed receiver verification including receiver-observed target matching and replay-check ordering.
 
-Gate C.2-B through C.2-G contract foundations are present on `main`: exact test/staging target allowlisting, job/source/run/candidate/artifact/result identity binding, credential-generation and bounded rotation semantics, generation-scoped replay-reservation identity/expiry, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present across HOMR, Clarity, and Audiveris: raw runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness surfaces suppress untrusted runtime/version/model fields. `production` deliberately has no authorized dispatch origin. The reserved future `POST /internal/transcribe` route is not registered, no network request is sent, orchestration remains disabled, and no durable replay/job state exists. Any remaining receiver/dispatch diagnostic mapping remains Gate C work; durable replay persistence and durable lifecycle/recovery authority remain Gate D work.
+Gate C.2-B through C.2-G contract foundations are present on `main`: exact test/staging target allowlisting, job/source/run/candidate/artifact/result identity binding, credential-generation and bounded rotation semantics, generation-scoped replay-reservation identity/expiry, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present across HOMR, Clarity, and Audiveris: raw runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness surfaces suppress untrusted runtime/version/model fields. C-DIAG-2 is present for the C.2-E/F/G failure boundary: receiver-verification, dispatch-deadline, retry-budget, and unexpected dispatch exceptions map to a closed immutable version/stage/reason payload without inspecting exception text; trusted mappings require exact exception types and payload fields require exact `str` values. `production` deliberately has no authorized dispatch origin. The reserved future `POST /internal/transcribe` route is not registered, no network request is sent, orchestration remains disabled, and no durable replay/job state exists. Durable replay persistence and durable lifecycle/recovery authority remain Gate D work.
 
 Implemented now:
 
@@ -41,6 +41,7 @@ Implemented now:
 - Gate C.2-F deterministic receiver-owned monotonic timeout/cancellation/result-acceptance decisions; terminal states cannot reopen and cancellation grace is cleanup-only
 - Gate C.2-G bounded retry/attempt-budget decision foundation preserving orchestration v1 `attemptLimit = 1`, `retryAfterTimeout = false`, and zero retry attempts
 - C-DIAG-1 bounded HOMR, Clarity, and Audiveris runtime diagnostic redaction across probe, readiness, transcription-result, and raised-error surfaces
+- C-DIAG-2 bounded outward receiver/dispatch diagnostic mapping for C.2-E/F/G failures, with exact exception-type and exact-string enforcement and no exception text inspection
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -267,7 +268,7 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 Gate B Safe Intake is complete as a foundation but does not activate an upload surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
 
-- any remaining receiver/dispatch diagnostic mapping beyond completed C-DIAG-1 plus separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G contract foundations; C.2-D defines credential-generation/rotation and replay-reservation semantics but does not provide a durable replay store
+- separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations; C.2-D defines credential-generation/rotation and replay-reservation semantics but does not provide a durable replay store
 - durable replay/job/run/candidate/artifact state with idempotency, immutable source/candidate storage, SHA-256/provenance persistence, restart recovery, and authoritative terminal-state evidence under Gate D
 - concrete engine adapter request/response contracts and controlled execution wiring
 - queue/cancellation/cleanup/restart-recovery behavior consistent with the existing timeout and v1 one-attempt/zero-retry policies
