@@ -94,6 +94,15 @@ def _require_revision(revision: object) -> int:
     return revision
 
 
+def validate_durable_job_state_position(state: str, revision: int) -> None:
+    """Validate one reachable D.1 state/revision position without doing I/O."""
+
+    current_state = _require_state(state)
+    current_revision = _require_revision(revision)
+    if current_revision not in _VALID_REVISIONS_BY_STATE[current_state]:
+        raise DurableJobStateError("revision_state_mismatch")
+
+
 def validate_durable_job_state_transition(
     from_state: str,
     from_revision: int,
@@ -101,10 +110,9 @@ def validate_durable_job_state_transition(
 ) -> None:
     """Validate one D.1 edge without requiring a dispatch binding or doing I/O."""
 
-    current_state = _require_state(from_state)
-    current_revision = _require_revision(from_revision)
-    if current_revision not in _VALID_REVISIONS_BY_STATE[current_state]:
-        raise DurableJobStateError("revision_state_mismatch")
+    validate_durable_job_state_position(from_state, from_revision)
+    current_state = from_state
+    current_revision = from_revision
 
     target_state = _require_state(next_state)
     if target_state not in _JOB_RUN_TRANSITIONS[current_state]:
@@ -129,10 +137,7 @@ class DurableJobStateSnapshot:
         ):
             raise DurableJobStateError("version_invalid")
         _require_dispatch_identity(self.binding)
-        state = _require_state(self.state)
-        revision = _require_revision(self.revision)
-        if revision not in _VALID_REVISIONS_BY_STATE[state]:
-            raise DurableJobStateError("revision_state_mismatch")
+        validate_durable_job_state_position(self.state, self.revision)
 
     @property
     def dispatch_identity_sha256(self) -> str:
