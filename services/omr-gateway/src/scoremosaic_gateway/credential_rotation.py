@@ -629,21 +629,15 @@ def build_rotation_dispatch_result_identity(
 
 
 def require_rotation_dispatch_result_identity(
-    rotation: CredentialRotationSet,
+    generation_credential: GenerationCredential,
     expected_identity: DispatchIdentityBinding,
     result: GenerationBoundResult,
     result_payload: bytes,
-    *,
-    now_seconds: int,
 ) -> GenerationCredential:
-    """Verify exact generation proof, then the complete C.2-C result claim."""
+    """Verify one result against the exact credential accepted for its request."""
 
+    selected = _validated_generation_credential(generation_credential)
     observed = _require_generation_bound_result(result)
-    selected = select_verification_credential(
-        rotation,
-        observed.credential_generation_id,
-        now_seconds=now_seconds,
-    )
     auth_bytes = _generation_result_auth_bytes(
         observed.credential_generation_id,
         observed.result,
@@ -655,6 +649,8 @@ def require_rotation_dispatch_result_identity(
     ).hexdigest()
     if not hmac.compare_digest(observed.generation_signature, expected_signature):
         raise CredentialRotationError("generation_result_signature_invalid")
+    if observed.credential_generation_id != selected.generation_id:
+        raise CredentialRotationError("generation_result_credential_mismatch")
 
     require_dispatch_result_identity(
         selected.credential,
