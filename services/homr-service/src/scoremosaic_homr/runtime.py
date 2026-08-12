@@ -19,7 +19,8 @@ from .candidate_safety import (
 from .config import ServiceConfig
 
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png"}
-_MAX_DIAGNOSTIC_CHARS = 16_384
+_RUNTIME_OUTPUT_REDACTED = "runtime_output_redacted"
+_RUNTIME_ERROR_REDACTED = "runtime_error_redacted"
 
 
 class RuntimeExecutionError(RuntimeError):
@@ -126,10 +127,9 @@ def _runtime_environment(config: ServiceConfig) -> dict[str, str]:
 
 
 def _diagnostic(stdout: str | None, stderr: str | None) -> str:
-    combined = "\n".join(
-        part.strip() for part in (stdout or "", stderr or "") if part.strip()
-    )
-    return combined[:_MAX_DIAGNOSTIC_CHARS]
+    if any(part and part.strip() for part in (stdout, stderr)):
+        return _RUNTIME_OUTPUT_REDACTED
+    return ""
 
 
 def _file_sha256(path: Path) -> str:
@@ -171,26 +171,26 @@ def probe_runtime(
         version = version_reader("homr")
     except metadata.PackageNotFoundError:
         return RuntimeProbe(False, "homr_package_unavailable", None, 0)
-    except Exception as exc:
+    except Exception:
         return RuntimeProbe(
             False,
             "homr_package_probe_failed",
             None,
             0,
-            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+            _RUNTIME_ERROR_REDACTED,
         )
     if version != config.homr_version:
         return RuntimeProbe(False, "homr_version_mismatch", version, 0)
 
     try:
         package_root = package_root_resolver().resolve(strict=True)
-    except (OSError, RuntimeExecutionError) as exc:
+    except (OSError, RuntimeExecutionError):
         return RuntimeProbe(
             False,
             "homr_package_unavailable",
             version,
             0,
-            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+            _RUNTIME_ERROR_REDACTED,
         )
 
     verified, model_error = _verify_models(package_root, tuple(model_specs))
@@ -210,25 +210,25 @@ def probe_runtime(
         )
     except subprocess.TimeoutExpired:
         return RuntimeProbe(False, "homr_probe_timed_out", version, verified)
-    except OSError as exc:
+    except OSError:
         return RuntimeProbe(
             False,
             "homr_probe_failed",
             version,
             verified,
-            str(exc)[:_MAX_DIAGNOSTIC_CHARS],
+            _RUNTIME_ERROR_REDACTED,
         )
 
-    output = _diagnostic(completed.stdout, completed.stderr)
+    diagnostic = _diagnostic(completed.stdout, completed.stderr)
     if completed.returncode != 0:
         return RuntimeProbe(
             False,
             "homr_probe_nonzero_exit",
             version,
             verified,
-            output,
+            diagnostic,
         )
-    return RuntimeProbe(True, "ready", version, verified, output)
+    return RuntimeProbe(True, "ready", version, verified, diagnostic)
 
 
 def _resolved_workspace(config: ServiceConfig) -> Path:
@@ -304,18 +304,16 @@ def transcribe_file(
             timeout=config.request_timeout_seconds,
             check=False,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeExecutionError("homr_transcription_timed_out") from exc
-    except OSError as exc:
-        raise RuntimeExecutionError("homr_transcription_failed_to_start") from exc
+    except subprocess.TimeoutExpired:
+        raise RuntimeExecutionError("homr_transcription_timed_out") from None
+    except OSError:
+        raise RuntimeExecutionError("homr_transcription_failed_to_start") from None
 
     diagnostic = _diagnostic(completed.stdout, completed.stderr)
     if completed.returncode != 0:
-        raise RuntimeExecutionError(
-            f"homr_transcription_nonzero_exit:{completed.returncode}:{diagnostic}"
-        )
+        raise RuntimeExecutionError("homr_transcription_nonzero_exit")
     if expected_output.is_symlink() or not expected_output.is_file():
-        raise RuntimeExecutionError(f"homr_musicxml_not_created:{diagnostic}")
+        raise RuntimeExecutionError("homr_musicxml_not_created")
 
     try:
         evidence = validate_musicxml_file(expected_output)
