@@ -24,6 +24,7 @@ MAX_TIMESTAMP = (1 << 63) - 1
 
 _PROVIDER_ID_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}\Z")
 _SUBJECT_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@|+\-]{0,127}\Z")
+_PRINCIPAL_CONSTRUCTION_SEAL = object()
 
 
 class ExternalAuthError(ValueError):
@@ -99,9 +100,14 @@ class VerifiedExternalIdentity:
     expires_at_epoch_s: int
 
 
-@dataclass(frozen=True, slots=True, repr=False)
+@dataclass(frozen=True, slots=True, repr=False, init=False)
 class AuthenticatedExternalPrincipal:
-    """Bounded authentication result with no authorization authority."""
+    """Bounded authentication result with no authorization authority.
+
+    Construction is sealed to this module's verified authentication path. The seal
+    is intentionally not a dataclass field, so generic reconstruction helpers do
+    not carry authentication authority into a new instance.
+    """
 
     version: str
     environment: str
@@ -110,6 +116,30 @@ class AuthenticatedExternalPrincipal:
     principal_id: str
     authenticated_at_epoch_s: int
     expires_at_epoch_s: int
+
+    def __init__(
+        self,
+        *,
+        version: str,
+        environment: str,
+        provider_id: str,
+        subject_id: str,
+        principal_id: str,
+        authenticated_at_epoch_s: int,
+        expires_at_epoch_s: int,
+        _construction_seal: object | None = None,
+    ) -> None:
+        if _construction_seal is not _PRINCIPAL_CONSTRUCTION_SEAL:
+            raise ExternalAuthError("principal_construction_forbidden")
+
+        object.__setattr__(self, "version", version)
+        object.__setattr__(self, "environment", environment)
+        object.__setattr__(self, "provider_id", provider_id)
+        object.__setattr__(self, "subject_id", subject_id)
+        object.__setattr__(self, "principal_id", principal_id)
+        object.__setattr__(self, "authenticated_at_epoch_s", authenticated_at_epoch_s)
+        object.__setattr__(self, "expires_at_epoch_s", expires_at_epoch_s)
+        self.__post_init__()
 
     def __post_init__(self) -> None:
         if type(self.version) is not str or self.version != EXTERNAL_AUTH_CONTRACT_VERSION:
@@ -295,4 +325,5 @@ def authenticate_external_principal(
         principal_id=principal_id,
         authenticated_at_epoch_s=observed_at_epoch_s,
         expires_at_epoch_s=verified.expires_at_epoch_s,
+        _construction_seal=_PRINCIPAL_CONSTRUCTION_SEAL,
     )
