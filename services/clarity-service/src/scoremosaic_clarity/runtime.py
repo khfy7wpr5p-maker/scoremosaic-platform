@@ -198,7 +198,7 @@ def probe_runtime(
         return RuntimeProbe(
             False,
             "clarity_source_revision_mismatch",
-            installed_revision,
+            None,
             config.model_revision,
             0,
             None,
@@ -298,7 +298,7 @@ def probe_runtime(
             installed_revision,
             config.model_revision,
             verified,
-            torch_version,
+            None,
             diagnostic,
         )
     if payload.get("cuda") is not False:

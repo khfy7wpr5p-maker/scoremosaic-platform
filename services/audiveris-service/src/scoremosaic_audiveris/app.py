@@ -28,6 +28,22 @@ class RouteResponse:
 
 
 Probe = Callable[[ServiceConfig], RuntimeProbe]
+_SAFE_NOT_READY_REASONS = frozenset(
+    {
+        "audiveris_runtime_disabled",
+        "audiveris_command_unavailable",
+        "audiveris_probe_timed_out",
+        "audiveris_probe_failed",
+        "audiveris_probe_nonzero_exit",
+        "audiveris_version_mismatch",
+    }
+)
+
+
+def _safe_not_ready_reason(reason: str) -> str:
+    if reason in _SAFE_NOT_READY_REASONS:
+        return reason
+    return "audiveris_runtime_not_ready"
 
 
 def _capabilities(config: ServiceConfig) -> dict[str, Any]:
@@ -77,17 +93,25 @@ def route_request(
 
     if method == "GET" and path == "/ready":
         probe = runtime_probe(config)
+        ready = (
+            probe.ready
+            and probe.reason == "ready"
+            and probe.version == config.audiveris_version
+            and probe.java_runtime_enabled
+        )
         return RouteResponse(
-            status=200 if probe.ready else 503,
+            status=200 if ready else 503,
             payload={
                 "service": "scoremosaic-audiveris-service",
                 "version": __version__,
-                "status": "ready" if probe.ready else "not_ready",
-                "reason": probe.reason,
+                "status": "ready" if ready else "not_ready",
+                "reason": (
+                    "ready" if ready else _safe_not_ready_reason(probe.reason)
+                ),
                 "engine": {
                     "name": "audiveris",
-                    "version": probe.version,
-                    "javaRuntimeEnabled": probe.java_runtime_enabled,
+                    "version": config.audiveris_version if ready else None,
+                    "javaRuntimeEnabled": ready,
                 },
                 "capabilities": _capabilities(config),
             },

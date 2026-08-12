@@ -231,21 +231,21 @@ def probe_runtime(
 
     raw_output = _combined_output(completed.stdout, completed.stderr)
     diagnostic = _diagnostic(completed.stdout, completed.stderr)
-    match = _AUDIVERIS_VERSION_RE.search(raw_output)
-    version = match.group(1) if match else None
     if completed.returncode != 0:
         return RuntimeProbe(
             False,
             "audiveris_probe_nonzero_exit",
-            version,
+            None,
             False,
             diagnostic,
         )
+    match = _AUDIVERIS_VERSION_RE.search(raw_output)
+    version = match.group(1) if match else None
     if version != config.audiveris_version:
         return RuntimeProbe(
             False,
             "audiveris_version_mismatch",
-            version,
+            None,
             False,
             diagnostic,
         )

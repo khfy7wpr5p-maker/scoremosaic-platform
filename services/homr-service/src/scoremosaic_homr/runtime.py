@@ -180,7 +180,7 @@ def probe_runtime(
             _RUNTIME_ERROR_REDACTED,
         )
     if version != config.homr_version:
-        return RuntimeProbe(False, "homr_version_mismatch", version, 0)
+        return RuntimeProbe(False, "homr_version_mismatch", None, 0)
 
     try:
         package_root = package_root_resolver().resolve(strict=True)

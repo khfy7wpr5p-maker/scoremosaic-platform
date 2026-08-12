@@ -96,12 +96,39 @@ class RuntimeTests(unittest.TestCase):
             root = Path(directory)
             config = self._runtime_config(root)
             (config.source_root / ".scoremosaic-source-revision").write_text(
-                "0" * 40,
+                SENSITIVE_RUNTIME_OUTPUT,
                 encoding="utf-8",
             )
             result = probe_runtime(config, model_specs=())
             self.assertFalse(result.ready)
             self.assertEqual(result.reason, "clarity_source_revision_mismatch")
+            self.assertIsNone(result.source_revision)
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
+
+    def test_probe_redacts_mismatched_torch_version(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            payload = json.dumps(
+                {
+                    "torch": f"2.13.0+cpu-{SENSITIVE_RUNTIME_OUTPUT}",
+                    "torchvision": "0.28.0+cpu",
+                    "cuda": False,
+                }
+            )
+
+            result = probe_runtime(
+                config,
+                runner=lambda *args, **kwargs: subprocess.CompletedProcess(
+                    args[0], 0, payload, ""
+                ),
+                model_specs=(),
+            )
+
+            self.assertFalse(result.ready)
+            self.assertEqual(result.reason, "clarity_torch_version_mismatch")
+            self.assertIsNone(result.torch_version)
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
 
     def test_probe_rejects_model_checksum_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

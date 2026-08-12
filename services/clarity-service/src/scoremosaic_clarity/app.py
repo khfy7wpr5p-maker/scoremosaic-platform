@@ -15,6 +15,33 @@ from .runtime import RuntimeProbe, probe_runtime
 
 ACCEPTED_INPUT_FORMATS = ("application/pdf",)
 Probe = Callable[[ServiceConfig], RuntimeProbe]
+_PINNED_TORCH_VERSION = "2.13.0+cpu"
+_EXPECTED_MODELS = 2
+_SAFE_NOT_READY_REASONS = frozenset(
+    {
+        "clarity_runtime_disabled",
+        "clarity_python_unavailable",
+        "clarity_source_unavailable",
+        "clarity_source_revision_unavailable",
+        "clarity_source_revision_mismatch",
+        "clarity_entrypoint_unavailable",
+        "clarity_model_unavailable",
+        "clarity_model_checksum_mismatch",
+        "clarity_probe_timed_out",
+        "clarity_probe_failed",
+        "clarity_probe_nonzero_exit",
+        "clarity_probe_invalid_output",
+        "clarity_torch_version_mismatch",
+        "clarity_cpu_mode_not_enforced",
+    }
+)
+
+
+def _safe_not_ready_reason(reason: str) -> str:
+    code = reason.partition(":")[0]
+    if code in _SAFE_NOT_READY_REASONS:
+        return code
+    return "clarity_runtime_not_ready"
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,21 +92,31 @@ def route_request(
 
     if method == "GET" and path == "/ready":
         runtime = probe(config)
+        ready = (
+            runtime.ready
+            and runtime.reason == "ready"
+            and runtime.source_revision == config.source_revision
+            and runtime.model_revision == config.model_revision
+            and runtime.verified_models == _EXPECTED_MODELS
+            and runtime.torch_version == _PINNED_TORCH_VERSION
+        )
         payload = {
             "service": "scoremosaic-clarity-service",
             "version": __version__,
-            "status": "ready" if runtime.ready else "not_ready",
-            "reason": runtime.reason,
+            "status": "ready" if ready else "not_ready",
+            "reason": (
+                "ready" if ready else _safe_not_ready_reason(runtime.reason)
+            ),
             "engine": {
-                "sourceRevision": runtime.source_revision,
-                "modelRevision": runtime.model_revision,
-                "verifiedModels": runtime.verified_models,
-                "torchVersion": runtime.torch_version,
+                "sourceRevision": config.source_revision if ready else None,
+                "modelRevision": config.model_revision if ready else None,
+                "verifiedModels": _EXPECTED_MODELS if ready else 0,
+                "torchVersion": _PINNED_TORCH_VERSION if ready else None,
                 "computeMode": config.compute_mode,
             },
             "capabilities": _capabilities(config),
         }
-        return RouteResponse(status=200 if runtime.ready else 503, payload=payload)
+        return RouteResponse(status=200 if ready else 503, payload=payload)
 
     if method != "GET":
         return RouteResponse(

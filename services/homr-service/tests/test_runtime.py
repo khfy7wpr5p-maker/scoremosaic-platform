@@ -75,9 +75,14 @@ class RuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = self._runtime_config(root)
-            result = probe_runtime(config, version_reader=lambda _: "0.6.0")
+            result = probe_runtime(
+                config,
+                version_reader=lambda _: f"0.6.0+{SENSITIVE_RUNTIME_OUTPUT}",
+            )
             self.assertFalse(result.ready)
             self.assertEqual(result.reason, "homr_version_mismatch")
+            self.assertIsNone(result.version)
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
 
     def test_probe_rejects_model_checksum_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

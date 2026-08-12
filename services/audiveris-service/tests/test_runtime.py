@@ -138,12 +138,44 @@ class RuntimeTests(unittest.TestCase):
                 }
             )
             runner = lambda *args, **kwargs: subprocess.CompletedProcess(
-                args[0], 0, "- Version:      5.10.2\n", ""
+                args[0],
+                0,
+                "- Version:      5.10.2-TOKEN_DO_NOT_LEAK_123\n",
+                "",
             )
             probe = probe_runtime(config, runner=runner)
             self.assertFalse(probe.ready)
             self.assertEqual(probe.reason, "audiveris_version_mismatch")
-            self.assertEqual(probe.version, "5.10.2")
+            self.assertIsNone(probe.version)
+            self.assertNotIn("TOKEN_DO_NOT_LEAK_123", repr(probe))
+
+    def test_probe_nonzero_exit_does_not_preserve_parsed_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            command = Path(temp_dir) / "audiveris"
+            command.write_text("stub", encoding="utf-8")
+            command.chmod(0o755)
+            config = load_config(
+                {
+                    "SCOREMOSAIC_AUDIVERIS_RUNTIME_MODE": "audiveris",
+                    "SCOREMOSAIC_AUDIVERIS_COMMAND": str(command),
+                    "SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT": str(
+                        Path(temp_dir) / "workspace"
+                    ),
+                }
+            )
+            runner = lambda *args, **kwargs: subprocess.CompletedProcess(
+                args[0],
+                2,
+                "- Version:      5.10.2-TOKEN_DO_NOT_LEAK_123\n",
+                "",
+            )
+
+            probe = probe_runtime(config, runner=runner)
+
+            self.assertFalse(probe.ready)
+            self.assertEqual(probe.reason, "audiveris_probe_nonzero_exit")
+            self.assertIsNone(probe.version)
+            self.assertNotIn("TOKEN_DO_NOT_LEAK_123", repr(probe))
 
     def test_probe_timeout_is_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
