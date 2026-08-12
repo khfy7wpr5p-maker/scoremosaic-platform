@@ -50,15 +50,17 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s services/clarity-service/tests -v
 
-      - name: Render generated score fixture
+      - name: Stage approved Scarlatti PDF fixture
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends lilypond
+          set -euo pipefail
+          fixture="services/clarity-service/tests/fixtures/scarlatti-k178.pdf.b64"
+          test -s "$fixture"
           mkdir -p /tmp/scoremosaic-clarity-fixture
-          lilypond \
-            --pdf \
-            --output=/tmp/scoremosaic-clarity-fixture/smoke-score \
-            services/clarity-service/tests/fixtures/smoke-score.ly
+          base64 --decode "$fixture" \
+            > /tmp/scoremosaic-clarity-fixture/smoke-score.pdf
+          echo "2e0a638126aab3709d1964c3247b55c78cf1da41f9de9d00354caedd82014a1f  /tmp/scoremosaic-clarity-fixture/smoke-score.pdf" \
+            | sha256sum --check --strict
           test -s /tmp/scoremosaic-clarity-fixture/smoke-score.pdf
 
       - name: Build verified runtime image
@@ -152,7 +154,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 1
 
-      - name: Run real generated-score transcription
+      - name: Run real Scarlatti transcription
         shell: bash
         run: |
           set -uo pipefail
@@ -170,6 +172,7 @@ jobs:
 
             docker exec -i "$container_id" python - <<'PY'
           from pathlib import Path
+          from shutil import copyfile
           import xml.etree.ElementTree as ET
 
           from scoremosaic_clarity.config import load_config
@@ -180,11 +183,22 @@ jobs:
           print("transcription diagnostic:", result.diagnostic)
           assert result.musicxml_artifacts, result.diagnostic
           musicxml = result.musicxml_artifacts[0]
+          assert len(result.candidate_handoffs) == 1
+          handoff = result.candidate_handoffs[0]
+          assert handoff.artifact == musicxml
+          assert handoff.evidence.policy_version == "candidate-safety-v1"
           root = ET.parse(musicxml).getroot()
           assert root.tag.rsplit("}", 1)[-1] in {"score-partwise", "score-timewise"}
+          copyfile(musicxml, work / "scarlatti-k178.musicxml")
           print("MusicXML:", musicxml)
           print("MusicXML bytes:", musicxml.stat().st_size)
           PY
+
+            container_id="$(cat /tmp/scoremosaic-clarity-container-id)"
+            docker cp \
+              "$container_id:/tmp/scoremosaic-clarity/smoke/scarlatti-k178.musicxml" \
+              /tmp/scarlatti-k178.clarity.musicxml
+            test -s /tmp/scarlatti-k178.clarity.musicxml
           } > "$diagnostic" 2>&1
           status=$?
           set -e
@@ -197,6 +211,15 @@ jobs:
         with:
           name: clarity-transcription-diagnostic
           path: /tmp/clarity-transcription-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Scarlatti MusicXML result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: clarity-scarlatti-k178-musicxml
+          path: /tmp/scarlatti-k178.clarity.musicxml
           if-no-files-found: error
           retention-days: 1
 
