@@ -114,6 +114,41 @@ class GateDCrashWindowConvergenceTests(unittest.TestCase):
         lifecycle = transition_candidate(lifecycle, candidate.candidate_id, "sealed")
         return lifecycle
 
+    def _fail_homr_candidate_with_partial_output(self, lifecycle):
+        candidate = self._homr_candidate(lifecycle)
+        lifecycle = transition_candidate(lifecycle, candidate.candidate_id, "collecting")
+        raw = next(
+            artifact
+            for artifact in candidate.artifacts
+            if artifact.kind == "raw_engine_result"
+        )
+        lifecycle = transition_artifact(lifecycle, raw.artifact_id, "writing")
+        sha256, size_bytes, media_type = CONTENT[raw.kind]
+        lifecycle = transition_artifact(
+            lifecycle,
+            raw.artifact_id,
+            "sealed",
+            sha256=sha256,
+            size_bytes=size_bytes,
+            media_type=media_type,
+        )
+        for artifact in candidate.artifacts:
+            if artifact.artifact_id == raw.artifact_id:
+                continue
+            lifecycle = transition_artifact(
+                lifecycle,
+                artifact.artifact_id,
+                "abandoned",
+                reason_code="run_failed",
+            )
+        lifecycle = transition_candidate(
+            lifecycle,
+            candidate.candidate_id,
+            "failed",
+            reason_code="run_failed",
+        )
+        return lifecycle, raw.artifact_id
+
     def _bind_all_homr_artifacts(self, manifest, lifecycle):
         candidate = self._homr_candidate(lifecycle)
         for artifact in candidate.artifacts:
@@ -217,6 +252,74 @@ class GateDCrashWindowConvergenceTests(unittest.TestCase):
                 provenance=provenance,
             )
         self.assertEqual(caught.exception.category, "crash_window_mismatch")
+
+    def test_failed_run_with_unbound_sealed_partial_output_fails_closed(self) -> None:
+        snapshot, ledger, lifecycle, manifest, provenance = self._context()
+        snapshot, ledger, provenance = self._advance_to_running(
+            snapshot, ledger, lifecycle, manifest, provenance
+        )
+        lifecycle, _ = self._fail_homr_candidate_with_partial_output(lifecycle)
+        snapshot, ledger, provenance = self._advance(
+            snapshot,
+            ledger,
+            lifecycle,
+            manifest,
+            provenance,
+            "failed",
+        )
+
+        with self.assertRaises(DurableRestartRecoveryError) as caught:
+            evaluate_durable_restart_recovery(
+                snapshot,
+                ledger,
+                manifest,
+                lifecycle=lifecycle,
+                provenance=provenance,
+            )
+        self.assertEqual(caught.exception.category, "crash_window_mismatch")
+
+    def test_failed_run_with_bound_sealed_partial_output_is_preserved(self) -> None:
+        snapshot, ledger, lifecycle, manifest, provenance = self._context()
+        snapshot, ledger, provenance = self._advance_to_running(
+            snapshot, ledger, lifecycle, manifest, provenance
+        )
+        lifecycle, sealed_artifact_id = self._fail_homr_candidate_with_partial_output(
+            lifecycle
+        )
+        manifest = bind_sealed_artifact_idempotently(
+            manifest,
+            lifecycle,
+            sealed_artifact_id,
+        ).manifest
+        provenance = append_durable_provenance_record_idempotently(
+            provenance,
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        ).chain
+        snapshot, ledger, provenance = self._advance(
+            snapshot,
+            ledger,
+            lifecycle,
+            manifest,
+            provenance,
+            "failed",
+        )
+
+        decision = evaluate_durable_restart_recovery(
+            snapshot,
+            ledger,
+            manifest,
+            lifecycle=lifecycle,
+            provenance=provenance,
+        )
+        self.assertEqual(decision.disposition, "terminal_preserved")
+        self.assertTrue(decision.terminal)
+        self.assertFalse(decision.reconciliation_required)
+        self.assertFalse(decision.automatic_execution_allowed)
+        self.assertFalse(decision.retry_allowed)
+        self.assertFalse(decision.network_dispatch_allowed)
+        self.assertFalse(decision.state_mutation_allowed)
 
     def test_running_partial_output_remains_reconciliation_only(self) -> None:
         snapshot, ledger, lifecycle, manifest, provenance = self._context()
