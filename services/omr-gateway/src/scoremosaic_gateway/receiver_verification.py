@@ -74,7 +74,7 @@ class VerifiedDispatchRequest:
             "requestTimestamp": self.request_timestamp,
             "nonce": self.nonce,
             "payloadSha256": self.payload_sha256,
-            "replayReserved": True,
+            "replayCheckPassed": True,
         }
 
 
