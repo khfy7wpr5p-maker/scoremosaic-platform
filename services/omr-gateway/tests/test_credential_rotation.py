@@ -153,6 +153,25 @@ class CredentialRotationContractTests(unittest.TestCase):
                 previous_valid_until=self.timestamp + 60,
             )
 
+    def test_rotation_set_rejects_reused_secret_across_generation_ids(self) -> None:
+        current = self.credential(self.current_generation)
+        previous_with_reused_secret = resolve_engine_credential_generation(
+            self.binding,
+            self.previous_generation,
+            lambda credential_key, generation_id: self.current_secret,
+        )
+
+        with self.assertRaisesRegex(
+            CredentialRotationError,
+            "credential_material_reused",
+        ):
+            build_rotation_set(
+                current=current,
+                previous=previous_with_reused_secret,
+                rotation_started_at=self.timestamp,
+                previous_valid_until=self.timestamp + 60,
+            )
+
     def test_previous_generation_requires_bounded_grace_deadline(self) -> None:
         current = self.credential(self.current_generation)
         previous = self.credential(self.previous_generation)
@@ -360,38 +379,54 @@ class CredentialRotationContractTests(unittest.TestCase):
 
         self.assertEqual(replay_calls, 0)
 
+    def test_replay_reservation_rejects_ttl_shorter_than_verifier_freshness_window(self) -> None:
+        for ttl in (1, MAX_REQUEST_AGE_SECONDS):
+            with self.subTest(ttl=ttl):
+                with self.assertRaisesRegex(
+                    CredentialRotationError,
+                    "replay_reservation_ttl_too_short",
+                ):
+                    build_replay_reservation(
+                        self.binding,
+                        self.current_generation,
+                        self.nonce,
+                        request_timestamp=self.timestamp,
+                        max_request_age_seconds=ttl,
+                    )
+
     def test_replay_reservation_key_excludes_timestamp_and_is_generation_scoped(self) -> None:
+        reservation_horizon = MAX_REQUEST_AGE_SECONDS + 1
         first = build_replay_reservation(
             self.binding,
             self.current_generation,
             self.nonce,
             request_timestamp=self.timestamp,
-            max_request_age_seconds=MAX_REQUEST_AGE_SECONDS,
+            max_request_age_seconds=reservation_horizon,
         )
         same_nonce_later_timestamp = build_replay_reservation(
             self.binding,
             self.current_generation,
             self.nonce,
             request_timestamp=self.timestamp + 1,
-            max_request_age_seconds=MAX_REQUEST_AGE_SECONDS,
+            max_request_age_seconds=reservation_horizon,
         )
         previous_generation = build_replay_reservation(
             self.binding,
             self.previous_generation,
             self.nonce,
             request_timestamp=self.timestamp,
-            max_request_age_seconds=MAX_REQUEST_AGE_SECONDS,
+            max_request_age_seconds=reservation_horizon,
         )
 
         self.assertEqual(first.key, same_nonce_later_timestamp.key)
         self.assertNotEqual(first.key, previous_generation.key)
         self.assertEqual(
             first.expires_at,
-            self.timestamp + MAX_REQUEST_AGE_SECONDS,
+            self.timestamp + reservation_horizon,
         )
         self.assertEqual(
             same_nonce_later_timestamp.expires_at,
-            self.timestamp + 1 + MAX_REQUEST_AGE_SECONDS,
+            self.timestamp + 1 + reservation_horizon,
         )
 
     def test_accepted_previous_generation_result_remains_verifiable_after_grace(self) -> None:
