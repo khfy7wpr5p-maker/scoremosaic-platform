@@ -183,6 +183,26 @@ class DispatchDeadlineContractTests(unittest.TestCase):
                 cancellation_requested_monotonic_ns=cancel_ns,
             )
 
+    def test_cancellation_equal_to_prior_active_observation_is_valid(self) -> None:
+        same_tick_ns = self.dispatch_started_ns + 2 * NANOSECONDS_PER_SECOND
+        active = evaluate_dispatch_deadline(
+            self.context,
+            observed_monotonic_ns=same_tick_ns,
+        )
+        cancelled = evaluate_dispatch_deadline(
+            self.context,
+            observed_monotonic_ns=same_tick_ns,
+            cancellation_requested_monotonic_ns=same_tick_ns,
+            prior_decision=active,
+        )
+        self.assertEqual(cancelled.status, "cancelled")
+        self.assertFalse(cancelled.accepts_result)
+        self.assertEqual(cancelled.terminal_monotonic_ns, same_tick_ns)
+        self.assertEqual(
+            cancelled.cleanup_deadline_monotonic_ns,
+            same_tick_ns + 5 * NANOSECONDS_PER_SECOND,
+        )
+
     def test_late_result_stays_rejected_after_timeout_and_cleanup_grace(self) -> None:
         timed_out = evaluate_dispatch_deadline(
             self.context,
