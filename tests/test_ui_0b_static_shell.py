@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SHELL_DIR = ROOT / "prototypes" / "ui-0b-static-shell"
 HTML_PATH = SHELL_DIR / "index.html"
 CSS_PATH = SHELL_DIR / "styles.css"
+MOBILE_CSS_PATH = SHELL_DIR / "mobile-disclosure.css"
 
 
 class _ShellParser(HTMLParser):
@@ -46,6 +47,7 @@ class Ui0BStaticShellContractTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.html = HTML_PATH.read_text(encoding="utf-8")
         cls.css = CSS_PATH.read_text(encoding="utf-8")
+        cls.mobile_css = MOBILE_CSS_PATH.read_text(encoding="utf-8")
         cls.parser = _ShellParser()
         cls.parser.feed(cls.html)
 
@@ -80,8 +82,9 @@ class Ui0BStaticShellContractTest(unittest.TestCase):
                 self.assertIn(directive, self.html)
 
     def test_css_does_not_load_external_assets(self) -> None:
-        self.assertNotIn("url(", self.css.lower())
-        self.assertNotIn("@import", self.css.lower())
+        combined_css = f"{self.css}\n{self.mobile_css}".lower()
+        self.assertNotIn("url(", combined_css)
+        self.assertNotIn("@import", combined_css)
 
     def test_shell_does_not_claim_connected_capabilities(self) -> None:
         lowered = self.html.lower()
@@ -94,6 +97,22 @@ class Ui0BStaticShellContractTest(unittest.TestCase):
         ):
             with self.subTest(required_phrase=required_phrase):
                 self.assertIn(required_phrase, lowered)
+
+    def test_narrow_screen_secondary_panels_use_keyboard_disclosures(self) -> None:
+        self.assertIn('type="checkbox" id="issues-toggle" aria-controls="issues-panel"', self.html)
+        self.assertIn('for="issues-toggle"', self.html)
+        self.assertIn('type="checkbox" id="structured-edit-toggle" aria-controls="structured-edit"', self.html)
+        self.assertIn('for="structured-edit-toggle"', self.html)
+        self.assertNotIn('id="issues-toggle" checked', self.html)
+        self.assertNotIn('id="structured-edit-toggle" checked', self.html)
+        self.assertIn(
+            "#issues-toggle:not(:checked) + .mobile-disclosure-label + #issues-panel",
+            self.mobile_css,
+        )
+        self.assertIn(
+            "#structured-edit-toggle:not(:checked) + .mobile-disclosure-label + #structured-edit",
+            self.mobile_css,
+        )
 
 
 if __name__ == "__main__":
