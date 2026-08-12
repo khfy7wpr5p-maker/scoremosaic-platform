@@ -1,4 +1,6 @@
 from dataclasses import FrozenInstanceError
+import hashlib
+import json
 import re
 import unittest
 
@@ -7,6 +9,8 @@ from scoremosaic_gateway.durable_job_state import build_durable_job_state
 from scoremosaic_gateway.durable_idempotency import (
     DURABLE_IDEMPOTENCY_CONTRACT_VERSION,
     DurableIdempotencyError,
+    DurableIdempotencyLedger,
+    DurableIdempotencyRecord,
     apply_durable_transition_idempotently,
     build_durable_idempotency_ledger,
 )
@@ -19,6 +23,15 @@ _SLOT_RE = re.compile(r"^idem_[a-f0-9]{24}$")
 
 class _StringSubclass(str):
     pass
+
+
+def _canonical_json(payload: dict[str, object]) -> bytes:
+    return json.dumps(
+        payload,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
 
 
 class DurableIdempotencyTests(unittest.TestCase):
@@ -131,6 +144,47 @@ class DurableIdempotencyTests(unittest.TestCase):
         )
 
         self.assertEqual(first.ledger.records[0], second.ledger.records[0])
+
+    def test_restored_ledger_rejects_hash_consistent_but_illegal_d1_edge(self) -> None:
+        slot_digest = hashlib.sha256(
+            _canonical_json(
+                {
+                    "version": DURABLE_IDEMPOTENCY_CONTRACT_VERSION,
+                    "dispatchIdentitySha256": self.binding.identity_sha256,
+                    "revision": 0,
+                }
+            )
+        ).hexdigest()
+        slot_id = f"idem_{slot_digest[:24]}"
+        request_sha256 = hashlib.sha256(
+            _canonical_json(
+                {
+                    "version": DURABLE_IDEMPOTENCY_CONTRACT_VERSION,
+                    "slotId": slot_id,
+                    "dispatchIdentitySha256": self.binding.identity_sha256,
+                    "fromState": "planned",
+                    "fromRevision": 0,
+                    "toState": "running",
+                }
+            )
+        ).hexdigest()
+        forged = DurableIdempotencyRecord(
+            slot_id=slot_id,
+            request_sha256=request_sha256,
+            from_state="planned",
+            from_revision=0,
+            to_state="running",
+            result_state="running",
+            result_revision=1,
+        )
+
+        with self.assertRaises(DurableIdempotencyError) as caught:
+            DurableIdempotencyLedger(
+                version=DURABLE_IDEMPOTENCY_CONTRACT_VERSION,
+                dispatch_identity_sha256=self.binding.identity_sha256,
+                records=(forged,),
+            )
+        self.assertEqual(caught.exception.category, "ledger_invalid")
 
     def test_extensible_or_unknown_transition_state_fails_closed(self) -> None:
         ledger = build_durable_idempotency_ledger(self.initial)
