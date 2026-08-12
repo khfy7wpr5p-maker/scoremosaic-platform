@@ -16,6 +16,8 @@ The public data plane is intentionally **not enabled**:
 
 Safe Intake Gate B is now implemented as a closed foundation: B.1 signature classification, B.2 declared MIME binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed Safe Intake decision, and hostile-input convergence coverage are present on `main`. Gate B completion does **not** activate external upload; there is still no upload endpoint, and later authentication, durable-job, storage, external-API, and production-readiness gates remain required before public traffic is allowed.
 
+Gate C.1 and C.2-A through C.2-G contract foundations plus C-DIAG-1 engine runtime diagnostic redaction are present on `main`. These foundations bind service and dispatch identities, authenticated request/result evidence, exact targets, credential generations, replay reservations, timeout/cancellation decisions, and the v1 one-attempt/zero-retry policy. C-DIAG-1 prevents raw HOMR, Clarity, and Audiveris runtime stdout/stderr and provider exception text from crossing the current probe, readiness, transcription-result, or raised-error surfaces. Live receiver routes, network dispatch, durable replay/job/artifact state, and orchestration activation remain disabled.
+
 ## Secure target flow
 
 ```text
@@ -69,6 +71,7 @@ A successful engine process does **not** make its output trusted. HOMR, Clarity,
 - GitHub Actions references pinned to immutable commit SHAs.
 - Gateway health/orchestration contracts with upload and execution disabled.
 - Safe Intake Gate B foundation: B.1-B.6, one integrated fail-closed intake decision over exact immutable bytes, and hostile-input convergence coverage.
+- Gate C.1/C.2-A-C.2-G internal-dispatch contract foundations plus C-DIAG-1 bounded engine runtime diagnostic redaction; live dispatch remains disabled.
 - Immutable candidate/artifact lifecycle contracts.
 - Canonical Score, Ensemble comparator/report, and fixed evaluation foundations.
 - Candidate Safety v1 for HOMR, Clarity, and Audiveris engine outputs.
@@ -85,7 +88,7 @@ B.6 treats the original filename as metadata only. It rejects unsafe path forms,
 
 Gate B is complete as a Safe Intake foundation, but it does not authorize external upload or live orchestration. Before those capabilities are enabled, the platform still requires at minimum:
 
-1. Authenticated service-to-service engine requests.
+1. Separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1 foundations.
 2. Durable job state, idempotency, retry/cancellation, and restart recovery.
 3. Production immutable object storage and provenance retention.
 4. External API authentication/authorization, rate limits, abuse controls, and an explicitly reviewed upload boundary wired through the Safe Intake decision.
