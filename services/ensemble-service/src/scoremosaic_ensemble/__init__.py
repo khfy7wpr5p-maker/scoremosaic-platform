@@ -1,5 +1,13 @@
 """ScoreMosaic Ensemble canonical, comparison, report, and evaluation contracts."""
 
+from .admission import (
+    ADMISSION_FORMAT_VERSION,
+    CandidateAdmissionError,
+    CanonicalAdmissionEvidence,
+    CanonicalCandidateInput,
+    EnsembleAdmissionResult,
+    admit_and_compare_candidates,
+)
 from .canonical import (
     CanonicalEvent,
     CanonicalMeasure,
@@ -53,6 +61,7 @@ from .report import (
 )
 
 __all__ = [
+    "ADMISSION_FORMAT_VERSION",
     "COMPARISON_FORMAT_VERSION",
     "CORE_METRIC_NAMES",
     "DATASET_SCHEMA_VERSION",
@@ -62,8 +71,11 @@ __all__ = [
     "REPORT_TYPE",
     "RESULT_SCHEMA_VERSION",
     "RESULT_TYPE",
+    "CandidateAdmissionError",
     "CandidateObservation",
     "CandidateSummary",
+    "CanonicalAdmissionEvidence",
+    "CanonicalCandidateInput",
     "CanonicalEvent",
     "CanonicalMeasure",
     "CanonicalModelError",
@@ -75,6 +87,7 @@ __all__ = [
     "ComparisonReportError",
     "ComparisonResult",
     "DivisionsChange",
+    "EnsembleAdmissionResult",
     "EnsembleComparisonReport",
     "EvaluationError",
     "EvaluationResult",
@@ -89,6 +102,7 @@ __all__ = [
     "TimeSignatureChange",
     "TimingMovement",
     "TupletRatio",
+    "admit_and_compare_candidates",
     "build_comparison_report",
     "compare_candidates",
     "evaluate_candidate",
