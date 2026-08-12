@@ -18,6 +18,7 @@ from .durable_job_state import (
     DurableJobStateError,
     DurableJobStateSnapshot,
     transition_durable_job_state,
+    validate_durable_job_state_transition,
 )
 
 DURABLE_IDEMPOTENCY_CONTRACT_VERSION = "scoremosaic-durable-idempotency-v1"
@@ -189,6 +190,14 @@ class DurableIdempotencyLedger:
             ).hexdigest()
             if record.request_sha256 != expected_request:
                 raise DurableIdempotencyError("ledger_invalid")
+            try:
+                validate_durable_job_state_transition(
+                    record.from_state,
+                    record.from_revision,
+                    record.to_state,
+                )
+            except DurableJobStateError:
+                raise DurableIdempotencyError("ledger_invalid") from None
             if previous is None:
                 if record.from_state != "planned" or record.from_revision != 0:
                     raise DurableIdempotencyError("ledger_invalid")
