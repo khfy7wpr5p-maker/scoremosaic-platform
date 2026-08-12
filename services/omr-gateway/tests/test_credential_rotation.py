@@ -394,7 +394,7 @@ class CredentialRotationContractTests(unittest.TestCase):
             self.timestamp + 1 + MAX_REQUEST_AGE_SECONDS,
         )
 
-    def test_previous_generation_request_can_return_same_generation_during_grace(self) -> None:
+    def test_accepted_previous_generation_result_remains_verifiable_after_grace(self) -> None:
         previous_only = build_rotation_set(
             current=self.credential(self.previous_generation),
             previous=None,
@@ -423,6 +423,17 @@ class CredentialRotationContractTests(unittest.TestCase):
 
         self.assertEqual(selected.generation_id, self.previous_generation)
 
+        deadline = self.timestamp + 60
+        with self.assertRaisesRegex(
+            CredentialRotationError,
+            "credential_generation_expired",
+        ):
+            select_verification_credential(
+                active_rotation,
+                self.previous_generation,
+                now_seconds=deadline,
+            )
+
         plan = build_orchestration_plan(
             "job_c2d_rotation_0001",
             source_artifact_ref="sources/job_c2d_rotation_0001/input.pdf",
@@ -444,11 +455,10 @@ class CredentialRotationContractTests(unittest.TestCase):
             self.previous_generation,
         )
         verified = require_rotation_dispatch_result_identity(
-            active_rotation,
+            selected,
             identity,
             result,
             result_payload,
-            now_seconds=self.timestamp,
         )
         self.assertEqual(verified.generation_id, self.previous_generation)
 
@@ -483,11 +493,10 @@ class CredentialRotationContractTests(unittest.TestCase):
             "generation_result_signature_invalid",
         ):
             require_rotation_dispatch_result_identity(
-                rotation,
+                selected,
                 identity,
                 forged,
                 result_payload,
-                now_seconds=self.timestamp,
             )
 
 
