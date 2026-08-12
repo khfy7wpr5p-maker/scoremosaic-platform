@@ -13,6 +13,7 @@ Implemented now:
 - exact CPU dependency lock with `torch==2.13.0+cpu` and `torchvision==0.28.0+cpu`
 - `GET /health` reporting the expected runtime while upload/conversion remain disabled
 - `GET /ready` returning 200 only after source, model, dependency, and CPU checks succeed
+- bounded stable runtime diagnostics: raw stdout/stderr and provider exception text are redacted, and failed readiness suppresses untrusted source/model/dependency fields
 - bounded internal PDF-to-MusicXML helper with fixed server-controlled options
 - generated, non-copyrighted PDF smoke fixture in GitHub Actions
 - MusicXML size, XML, root-element, and unsafe-declaration validation

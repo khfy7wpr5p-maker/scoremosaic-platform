@@ -11,6 +11,7 @@ Implemented:
 - bundled Java runtime supplied by the official Audiveris installer
 - `GET /health` for process and installed-runtime metadata
 - `GET /ready` that runs the bounded `audiveris -version` command and requires the exact pinned version
+- bounded stable runtime diagnostics: raw stdout/stderr and provider exception text are redacted, and failed readiness suppresses untrusted version/runtime fields
 - fixed internal batch command for PDF, JPG/JPEG, and PNG smoke conversion
 - server-controlled command arguments and workspace paths
 - path containment and symbolic-link rejection

@@ -11,6 +11,7 @@ Implemented now:
 - three pinned CPU ONNX model assets with archive and installed-file SHA-256 verification
 - `GET /health` reporting runtime metadata while upload and conversion remain disabled
 - `GET /ready` returning 200 only when the exact package, executable, and all model hashes are verified
+- bounded stable runtime diagnostics: raw stdout/stderr and provider exception text are redacted, and failed readiness suppresses untrusted version/model fields
 - bounded internal CPU transcription helper with fixed command-line options
 - JPG/JPEG and PNG input support for private runtime tests
 - generated, non-copyrighted score fixture producing temporary MusicXML in CI

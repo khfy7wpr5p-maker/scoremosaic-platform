@@ -19,7 +19,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
 | Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; external upload remains disabled. |
-| Internal dispatch security | C.2-G contract foundations completed | C.1 and C.2-A-C.2-G contract foundations are on `main`: authenticated request binding, exact target allowlisting, job/source/run/result identity binding, credential-generation/rotation and replay-reservation semantics, receiver verification, timeout/cancellation decisions, and the v1 one-attempt/zero-retry budget. Live receiver routes, durable replay persistence, safe diagnostic/error convergence, network dispatch, and orchestration activation remain incomplete. |
+| Internal dispatch security | C.2-G + C-DIAG-1 foundations completed | C.1 and C.2-A-C.2-G contract foundations are on `main`, together with C-DIAG-1 bounded engine runtime diagnostic redaction. Raw HOMR, Clarity, and Audiveris stdout/stderr, provider exception text, and untrusted failed-readiness fields no longer cross the current safe surfaces. Live receiver routes, durable replay persistence, remaining receiver/dispatch diagnostic convergence, network dispatch, and orchestration activation remain incomplete. |
 | UI-0A visual/application-shell contract | Completed documentation foundation | Visual/application-shell direction exists only as documentation; it creates no frontend runtime or authority. |
 | UI-0B static application shell | Completed isolated prototype | Repository-owned HTML/CSS prototype exists but remains disconnected, non-production, non-authoritative, and without backend/edit/playback runtime. GitHub-hosted executable CI coverage is tracked separately. |
 | Teacher Review Score Editor TR-0A | Completed architecture contract | The future editor trust/authority and secure implementation sequence are documented; no Teacher Review API, writable editor, persistence, playback, approval, or publication runtime is activated. |
@@ -95,6 +95,7 @@ Completed slices:
 - C.2-E receiver verification adapter foundation — completed. C.2-B target evidence, C.2-C semantic identity, C.2-D generation proof, and C.2-A authenticated request/freshness/replay callback ordering converge into one immutable `VerifiedDispatchRequest`. No `/internal/transcribe` route is registered and no engine execution or network dispatch is activated.
 - C.2-F dispatch timeout/cancellation decision foundation — completed. Receiver-owned monotonic evidence is evaluated against the immutable orchestration timeout/cancellation policy, terminal decisions cannot reopen, stale pre-timeout evidence cannot authorize a late result, and cancellation grace remains cleanup-only. No timers, process control, scheduler, persistence, or execution is activated.
 - C.2-G bounded retry/attempt-budget foundation — completed. The existing orchestration v1 policy remains authoritative: one total execution attempt and zero retries. All terminal outcomes are non-retryable, attempt 2 or higher is rejected, and the decision layer cannot create a new run/candidate/artifact identity or start execution.
+- C-DIAG-1 engine runtime diagnostic redaction — completed. HOMR, Clarity, and Audiveris runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes; failed readiness responses suppress untrusted runtime/version/model fields and fail closed. This slice does not register a receiver route, send a network request, enable orchestration, or add persistence.
 
 Requirements:
 
@@ -105,7 +106,7 @@ Requirements:
 - bounded retry policy;
 - safe diagnostic/error mapping.
 
-Remaining Gate C foundation work is safe diagnostic/error convergence. Live receiver route/network wiring and orchestration activation remain disabled. Durable replay persistence, durable job/artifact state, restart recovery, and operational lifecycle authority remain Gate D responsibilities rather than being implied by the completed C.2-D semantics foundation.
+C-DIAG-1 closes raw engine-runtime diagnostic leakage on the current probe, readiness, transcription-result, and raised-error surfaces. Any remaining receiver/dispatch diagnostic mapping must converge before activation. Live receiver route/network wiring and orchestration activation remain disabled. Durable replay persistence, durable job/artifact state, restart recovery, and operational lifecycle authority remain Gate D responsibilities rather than being implied by the completed C.2-D semantics foundation.
 
 Exit rule: `orchestrationMode` must remain disabled until the required intake and Gate C controls pass and activation prerequisites in the later gates are satisfied and separately approved.
 
