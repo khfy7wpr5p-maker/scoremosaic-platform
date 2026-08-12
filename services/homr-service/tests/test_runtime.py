@@ -22,6 +22,10 @@ from scoremosaic_homr.runtime import (
     transcribe_file,
 )
 
+SENSITIVE_RUNTIME_OUTPUT = (
+    "TOKEN_DO_NOT_LEAK_123 /private/runtime/path?token=SHOULD_NOT_LEAK"
+)
+
 
 class RuntimeTests(unittest.TestCase):
     def _runtime_config(self, root: Path):
@@ -114,6 +118,43 @@ class RuntimeTests(unittest.TestCase):
             self.assertFalse(result.ready)
             self.assertEqual(result.reason, "homr_probe_timed_out")
 
+    def test_probe_redacts_runtime_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            package_root = root / "package"
+            package_root.mkdir()
+
+            result = probe_runtime(
+                config,
+                runner=lambda *args, **kwargs: subprocess.CompletedProcess(
+                    args[0], 1, SENSITIVE_RUNTIME_OUTPUT, SENSITIVE_RUNTIME_OUTPUT
+                ),
+                version_reader=lambda _: "0.7.0",
+                package_root_resolver=lambda: package_root,
+                model_specs=(),
+            )
+
+            self.assertFalse(result.ready)
+            self.assertEqual(result.reason, "homr_probe_nonzero_exit")
+            self.assertEqual(result.diagnostic, "runtime_output_redacted")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
+
+    def test_probe_redacts_provider_exception_text(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+
+            def failing_version_reader(_: str) -> str:
+                raise RuntimeError(SENSITIVE_RUNTIME_OUTPUT)
+
+            result = probe_runtime(config, version_reader=failing_version_reader)
+
+            self.assertFalse(result.ready)
+            self.assertEqual(result.reason, "homr_package_probe_failed")
+            self.assertEqual(result.diagnostic, "runtime_error_redacted")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
+
     def test_command_contains_only_fixed_options_and_safe_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -171,7 +212,9 @@ class RuntimeTests(unittest.TestCase):
                     "<?xml version='1.0'?><score-partwise version='4.0'/>",
                     encoding="utf-8",
                 )
-                return subprocess.CompletedProcess(command, 0, "done", "")
+                return subprocess.CompletedProcess(
+                    command, 0, SENSITIVE_RUNTIME_OUTPUT, ""
+                )
 
             result = transcribe_file(
                 image,
@@ -183,10 +226,38 @@ class RuntimeTests(unittest.TestCase):
 
             self.assertEqual(result.return_code, 0)
             self.assertEqual(result.musicxml_artifacts, (output / "score.musicxml",))
+            self.assertEqual(result.diagnostic, "runtime_output_redacted")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
             self.assertEqual(len(result.candidate_handoffs), 1)
             handoff = result.candidate_handoffs[0]
             self.assertEqual(handoff.artifact, output / "score.musicxml")
             self.assertEqual(handoff.evidence.policy_version, "candidate-safety-v1")
+
+    def test_transcription_nonzero_exit_does_not_include_runtime_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            output = config.workspace_root / "run"
+            output.mkdir(parents=True)
+            image = output / "score.png"
+            image.write_bytes(b"png")
+
+            def runner(command, **kwargs):
+                return subprocess.CompletedProcess(
+                    command, 7, SENSITIVE_RUNTIME_OUTPUT, SENSITIVE_RUNTIME_OUTPUT
+                )
+
+            with self.assertRaises(RuntimeExecutionError) as raised:
+                transcribe_file(
+                    image,
+                    output,
+                    config,
+                    runner=runner,
+                    probe=lambda _: RuntimeProbe(True, "ready", "0.7.0", 3),
+                )
+
+            self.assertEqual(str(raised.exception), "homr_transcription_nonzero_exit")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, str(raised.exception))
 
     def test_transcription_rejects_unsafe_musicxml_candidate(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
