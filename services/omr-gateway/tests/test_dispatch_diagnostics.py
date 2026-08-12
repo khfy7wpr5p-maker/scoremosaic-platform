@@ -94,6 +94,23 @@ class DispatchDiagnosticContractTests(unittest.TestCase):
         self.assertEqual(diagnostic.reason, "dispatch_internal_failure")
         self.assertNotIn(SENSITIVE, repr(diagnostic))
 
+    def test_diagnostic_fields_reject_str_subclasses(self) -> None:
+        class ForgedString(str):
+            def __repr__(self) -> str:
+                return SENSITIVE
+
+        exact_values = {
+            "version": DISPATCH_DIAGNOSTIC_CONTRACT_VERSION,
+            "stage": "receiver_verification",
+            "reason": "receiver_request_rejected",
+        }
+        for field_name in exact_values:
+            values = dict(exact_values)
+            values[field_name] = ForgedString(values[field_name])
+            with self.subTest(field=field_name):
+                with self.assertRaisesRegex(ValueError, "dispatch diagnostic .* is invalid"):
+                    SafeDispatchDiagnostic(**values)
+
     def test_non_exception_input_is_rejected_with_fixed_error(self) -> None:
         with self.assertRaisesRegex(TypeError, "dispatch failure must be an exception"):
             map_dispatch_failure(SENSITIVE)
