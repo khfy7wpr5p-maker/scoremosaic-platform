@@ -55,6 +55,8 @@ Integer nanoseconds make the timeout boundary exact without wall-clock, timezone
 
 C.2-F does not read a clock itself. A future runtime boundary must supply monotonic observations from one consistent clock source.
 
+A monotonic clock is required to be **nondecreasing**, not strictly increasing on every read. Consecutive valid observations may therefore carry the same nanosecond value. C.2-F treats only a strictly smaller later timestamp as time regression; equality alone is not regression evidence.
+
 ## Timeout boundary
 
 For one run:
@@ -87,6 +89,8 @@ cancelRequested >= timeoutDeadline -> timed_out once deadline is reached
 ```
 
 This precedence avoids a cancellation event at or after expiry rewriting an already-expired run as a different terminal outcome.
+
+A cancellation request may validly have the **same monotonic timestamp** as the most recent non-terminal active observation. Equal-tick evidence is accepted because monotonic clocks need not advance between consecutive reads. Only a cancellation timestamp strictly earlier than the prior observation is rejected as `cancellation_time_regression`.
 
 ## Cancellation grace is cleanup-only
 
@@ -122,7 +126,7 @@ timed_out
 
 When a future trusted state boundary supplies a valid prior terminal C.2-F decision, later observations preserve that exact terminal status. The decision cannot reopen as `active`.
 
-A prior decision with different plan/job/run/engine/dispatch identity, malformed terminal fields, or regressing observation time fails closed. A cancellation timestamp that attempts to move backward across an already-observed active decision also fails closed rather than retroactively rewriting history.
+A prior decision with different plan/job/run/engine/dispatch identity, malformed terminal fields, or strictly regressing observation time fails closed. A cancellation timestamp strictly earlier than an already-observed active decision also fails closed rather than retroactively rewriting history; equality is permitted as valid nondecreasing monotonic evidence.
 
 C.2-F does not persist prior decisions. Durable lifecycle/event state remains later work.
 
@@ -141,7 +145,7 @@ The guard rejects:
 - a stale `active` decision whose fresh result-arrival observation is now timed out or cancelled;
 - mismatched plan/job/run/engine identity;
 - malformed or forged decision shape;
-- regressing or otherwise invalid fresh monotonic evidence.
+- strictly regressing or otherwise invalid fresh monotonic evidence.
 
 This is a policy guard only. Future result processing must still perform the existing C.2-C/C.2-D authenticated result verification and later artifact/candidate safety gates.
 
@@ -172,16 +176,17 @@ The C.2-F regression suite covers at least:
 - terminal timeout exactly at the deadline;
 - stale pre-timeout active evidence cannot authorize a result arriving at the timeout boundary;
 - fresh cancellation evidence at result arrival is applied before result acceptance;
+- equal-tick cancellation after an active observation is valid nondecreasing monotonic evidence;
 - late result rejection during and after cleanup grace;
 - pre-timeout cancellation becoming immediately terminal;
 - cancellation grace never reopening result acceptance;
 - timeout precedence at an exact cancellation/deadline tie;
 - terminal decisions never reopening;
 - job/run/engine identity mismatch rejection;
-- bool, negative, out-of-range, future, regressing, and overflow time evidence rejection;
+- bool, negative, out-of-range, future, strictly regressing, and overflow time evidence rejection;
 - exact context/decision identity required by the result-acceptance guard.
 
-The initial tests-only commit intentionally fails because `scoremosaic_gateway.dispatch_deadline` does not yet exist. This RED evidence demonstrates the original gap before the additive implementation. A later focused RED regression additionally demonstrates that the original result guard lacked fresh result-arrival monotonic evidence before that flaw was remediated.
+The initial tests-only commit intentionally fails because `scoremosaic_gateway.dispatch_deadline` does not yet exist. This RED evidence demonstrates the original gap before the additive implementation. A later focused RED regression demonstrates that the original result guard lacked fresh result-arrival monotonic evidence before that flaw was remediated. A further focused RED regression demonstrates that rejecting equal-tick cancellation as regression was incorrect before the comparison was narrowed to strictly earlier timestamps.
 
 ## Explicit non-activation
 
