@@ -41,6 +41,10 @@ class DurableIdempotencyTests(unittest.TestCase):
         self.assertEqual(result.snapshot.state, "queued")
         self.assertEqual(result.snapshot.revision, 1)
         self.assertIs(result.snapshot.binding, self.binding)
+        self.assertEqual(
+            result.ledger.dispatch_identity_sha256,
+            self.binding.identity_sha256,
+        )
         self.assertEqual(len(result.ledger.records), 1)
 
         record = result.ledger.records[0]
