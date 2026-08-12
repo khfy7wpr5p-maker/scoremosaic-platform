@@ -147,7 +147,7 @@ Requirements:
 - RBAC;
 - immutable corrections/revisions;
 - complete audit evidence;
-- approval bound to exact revision/artifact hashes;
+- approval bound to exact revision/hash;
 - unresolved-warning/waiver rules;
 - separate publication transition;
 - negative unauthorized approval/publication tests.
