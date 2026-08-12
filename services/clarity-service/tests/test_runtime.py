@@ -23,6 +23,10 @@ from scoremosaic_clarity.runtime import (
     transcribe_file,
 )
 
+SENSITIVE_RUNTIME_OUTPUT = (
+    "TOKEN_DO_NOT_LEAK_123 /private/runtime/path?token=SHOULD_NOT_LEAK"
+)
+
 
 class RuntimeTests(unittest.TestCase):
     def _runtime_config(self, root: Path):
@@ -75,7 +79,7 @@ class RuntimeTests(unittest.TestCase):
             result = probe_runtime(
                 config,
                 runner=lambda *args, **kwargs: subprocess.CompletedProcess(
-                    args[0], 0, payload + "\n", ""
+                    args[0], 0, payload + "\n", SENSITIVE_RUNTIME_OUTPUT
                 ),
                 model_specs=specs,
             )
@@ -84,6 +88,8 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(result.reason, "ready")
             self.assertEqual(result.verified_models, 1)
             self.assertEqual(result.torch_version, "2.13.0+cpu")
+            self.assertEqual(result.diagnostic, "runtime_output_redacted")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
 
     def test_probe_rejects_source_revision_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -125,6 +131,25 @@ class RuntimeTests(unittest.TestCase):
             )
             self.assertFalse(result.ready)
             self.assertEqual(result.reason, "clarity_probe_timed_out")
+
+    def test_probe_redacts_runtime_error_text(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+
+            def failing_runner(*args, **kwargs):
+                raise OSError(SENSITIVE_RUNTIME_OUTPUT)
+
+            result = probe_runtime(
+                config,
+                runner=failing_runner,
+                model_specs=(),
+            )
+
+            self.assertFalse(result.ready)
+            self.assertEqual(result.reason, "clarity_probe_failed")
+            self.assertEqual(result.diagnostic, "runtime_error_redacted")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
 
     def test_command_contains_only_fixed_cpu_options_and_safe_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -203,7 +228,9 @@ class RuntimeTests(unittest.TestCase):
                     "<?xml version='1.0'?><score-partwise version='4.0'/>",
                     encoding="utf-8",
                 )
-                return subprocess.CompletedProcess(command, 0, "done", "")
+                return subprocess.CompletedProcess(
+                    command, 0, "done", SENSITIVE_RUNTIME_OUTPUT
+                )
 
             result = transcribe_file(
                 pdf,
@@ -222,10 +249,47 @@ class RuntimeTests(unittest.TestCase):
 
             self.assertEqual(result.return_code, 0)
             self.assertEqual(result.musicxml_artifacts, (output / "result.musicxml",))
+            self.assertEqual(result.diagnostic, "runtime_output_redacted")
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, repr(result))
             self.assertEqual(len(result.candidate_handoffs), 1)
             handoff = result.candidate_handoffs[0]
             self.assertEqual(handoff.artifact, output / "result.musicxml")
             self.assertEqual(handoff.evidence.policy_version, "candidate-safety-v1")
+
+    def test_transcription_nonzero_exit_does_not_include_runtime_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self._runtime_config(root)
+            pdf = config.workspace_root / "score.pdf"
+            pdf.parent.mkdir(parents=True)
+            pdf.write_bytes(b"%PDF-1.4\n")
+            output = config.workspace_root / "run"
+
+            def runner(command, **kwargs):
+                return subprocess.CompletedProcess(
+                    command, 9, SENSITIVE_RUNTIME_OUTPUT, SENSITIVE_RUNTIME_OUTPUT
+                )
+
+            with self.assertRaises(RuntimeExecutionError) as raised:
+                transcribe_file(
+                    pdf,
+                    output,
+                    config,
+                    runner=runner,
+                    probe=lambda _: RuntimeProbe(
+                        True,
+                        "ready",
+                        config.source_revision,
+                        config.model_revision,
+                        2,
+                        "2.13.0+cpu",
+                    ),
+                )
+
+            self.assertEqual(
+                str(raised.exception), "clarity_transcription_nonzero_exit"
+            )
+            self.assertNotIn(SENSITIVE_RUNTIME_OUTPUT, str(raised.exception))
 
     def test_transcription_rejects_unsafe_xml_declaration(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
