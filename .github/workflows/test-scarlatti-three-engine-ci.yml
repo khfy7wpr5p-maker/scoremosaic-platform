@@ -1,0 +1,577 @@
+name: TEST ONLY Scarlatti Three-Engine CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/test-scarlatti-three-engine-ci.yml"
+      - "services/ensemble-service/tests/fixtures/test-only/scarlatti-k178.pdf.b64"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-scarlatti-three-engine-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-scarlatti-inputs:
+    name: Prepare two bounded Scarlatti pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install exact Safe Intake dependencies
+        run: python -m pip install --disable-pip-version-check pypdf==6.14.2 Pillow==12.3.0
+
+      - name: Decode, verify, and derive bounded page inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+
+          fixture="services/ensemble-service/tests/fixtures/test-only/scarlatti-k178.pdf.b64"
+          output_dir="/tmp/scoremosaic-scarlatti-inputs"
+          source_pdf="$output_dir/scarlatti-k178.pdf"
+          mkdir -p "$output_dir"
+          base64 --decode "$fixture" > "$source_pdf"
+          echo "2e0a638126aab3709d1964c3247b55c78cf1da41f9de9d00354caedd82014a1f  $source_pdf" \
+            | sha256sum --check --strict
+
+          pdfseparate "$source_pdf" "$output_dir/page-%d.pdf"
+          for page in 1 2; do
+            pdftoppm \
+              -png \
+              -r 300 \
+              -f "$page" \
+              -l "$page" \
+              -singlefile \
+              "$source_pdf" \
+              "$output_dir/page-$page"
+            test -s "$output_dir/page-$page.pdf"
+            test -s "$output_dir/page-$page.png"
+          done
+
+          test "$(find "$output_dir" -maxdepth 1 -name 'page-*.pdf' -type f | wc -l)" -eq 2
+          test "$(find "$output_dir" -maxdepth 1 -name 'page-*.png' -type f | wc -l)" -eq 2
+
+      - name: Apply Safe Intake to source and every derived page input
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/omr-gateway/src python - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          from scoremosaic_gateway.intake_decision import decide_safe_intake
+
+          root = Path("/tmp/scoremosaic-scarlatti-inputs")
+          source_path = root / "scarlatti-k178.pdf"
+          source = source_path.read_bytes()
+          source_sha = sha256(source).hexdigest()
+          assert source_sha == "2e0a638126aab3709d1964c3247b55c78cf1da41f9de9d00354caedd82014a1f"
+          source_decision = decide_safe_intake(
+              source,
+              original_filename=source_path.name,
+              declared_media_type="application/pdf",
+              max_bytes=20 * 1024 * 1024,
+              max_pages=40,
+          )
+          assert source_decision.page_count == 2
+
+          pages = []
+          for page in (1, 2):
+              pdf_path = root / f"page-{page}.pdf"
+              png_path = root / f"page-{page}.png"
+              pdf = pdf_path.read_bytes()
+              png = png_path.read_bytes()
+              pdf_decision = decide_safe_intake(
+                  pdf,
+                  original_filename=pdf_path.name,
+                  declared_media_type="application/pdf",
+                  max_bytes=20 * 1024 * 1024,
+                  max_pages=1,
+              )
+              png_decision = decide_safe_intake(
+                  png,
+                  original_filename=png_path.name,
+                  declared_media_type="image/png",
+                  max_bytes=20 * 1024 * 1024,
+                  max_pages=1,
+              )
+              assert pdf_decision.page_count == 1
+              assert png_decision.image_pixel_count is not None
+              assert png_decision.image_pixel_count <= 40_000_000
+              pages.append(
+                  {
+                      "page": page,
+                      "pdfSha256": sha256(pdf).hexdigest(),
+                      "pngSha256": sha256(png).hexdigest(),
+                      "pngWidth": png_decision.image_width,
+                      "pngHeight": png_decision.image_height,
+                      "pngPixels": png_decision.image_pixel_count,
+                  }
+              )
+
+          manifest = {
+              "formatVersion": "test-only-scarlatti-inputs-v1",
+              "sourceSha256": source_sha,
+              "sourceBytes": len(source),
+              "sourcePages": source_decision.page_count,
+              "rasterDpi": 300,
+              "pages": pages,
+          }
+          (root / "input-manifest.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2))
+          PY
+
+      - name: Upload immutable Scarlatti page inputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scarlatti-three-engine-inputs
+          path: /tmp/scoremosaic-scarlatti-inputs
+          if-no-files-found: error
+          retention-days: 1
+
+  capture-scarlatti-candidates:
+    name: Capture ${{ matrix.engine }} candidates for both pages
+    needs: prepare-scarlatti-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: audiveris
+            service_dir: services/audiveris-service
+            port: 8082
+            workspace_root: /tmp/scoremosaic-audiveris
+            tmpfs_size: 1073741824
+            pids_limit: 128
+            memory_limit: 4g
+            input_suffix: png
+            engine_version: 5.11.0
+            model_version: bundled-with-audiveris-5.11.0
+          - engine: homr
+            service_dir: services/homr-service
+            port: 8080
+            workspace_root: /tmp/scoremosaic-homr
+            tmpfs_size: 1073741824
+            pids_limit: 128
+            memory_limit: 4g
+            input_suffix: png
+            engine_version: 0.7.0
+            model_version: three-pinned-model-checksums
+          - engine: clarity
+            service_dir: services/clarity-service
+            port: 8081
+            workspace_root: /tmp/scoremosaic-clarity
+            tmpfs_size: 2147483648
+            pids_limit: 256
+            memory_limit: 6g
+            input_suffix: pdf
+            engine_version: c6bb8a4d2a5b52842a9c41bd0f761f58d02f6f82
+            model_version: ee14c1e41ab371fe27bf8a2707ea588560077e73
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Download bounded Scarlatti inputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: scarlatti-three-engine-inputs
+          path: /tmp/scoremosaic-scarlatti-inputs
+
+      - name: Verify capture helper and selected inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile services/ensemble-service/tools/capture_real_fixture.py
+          test -s /tmp/scoremosaic-scarlatti-inputs/input-manifest.json
+          for page in 1 2; do
+            test -s "/tmp/scoremosaic-scarlatti-inputs/page-$page.${{ matrix.input_suffix }}"
+          done
+
+      - name: Build pinned ${{ matrix.engine }} runtime image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="scoremosaic-${{ matrix.engine }}-scarlatti:${GITHUB_SHA}"
+          docker build --tag "$image" "${{ matrix.service_dir }}"
+          echo "SCARLATTI_TEST_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Start private hardened offline runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          extra_args=()
+          if [[ "${{ matrix.engine }}" == "audiveris" ]]; then
+            extra_args+=(
+              --tmpfs
+              "/tmp/scoremosaic-audiveris-jna:rw,exec,nosuid,nodev,size=67108864,mode=0700,uid=65532,gid=65532"
+            )
+          fi
+          if [[ "${{ matrix.engine }}" == "clarity" ]]; then
+            extra_args+=(--memory-swap "${{ matrix.memory_limit }}")
+          fi
+
+          container_id="$(docker run --detach \
+            --network none \
+            --read-only \
+            --tmpfs "${{ matrix.workspace_root }}:rw,noexec,nosuid,nodev,size=${{ matrix.tmpfs_size }},mode=0700,uid=65532,gid=65532" \
+            "${extra_args[@]}" \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit "${{ matrix.pids_limit }}" \
+            --cpus 2 \
+            --memory "${{ matrix.memory_limit }}" \
+            "$SCARLATTI_TEST_IMAGE")"
+          printf '%s' "$container_id" > /tmp/scoremosaic-scarlatti-container-id
+
+          for attempt in {1..120}; do
+            if docker exec "$container_id" python -c \
+              "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${{ matrix.port }}/health', timeout=3).read()"; then
+              exit 0
+            fi
+            if [[ "$attempt" == "120" ]]; then
+              echo "${{ matrix.engine }} health check did not become ready." >&2
+              docker logs "$container_id" >&2 || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run two real page transcriptions and capture safe candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          diagnostic="/tmp/${{ matrix.engine }}-scarlatti-diagnostic.txt"
+          exec > >(tee "$diagnostic") 2>&1
+          mkdir -p /tmp/scoremosaic-scarlatti-candidates
+          source_sha="2e0a638126aab3709d1964c3247b55c78cf1da41f9de9d00354caedd82014a1f"
+          container_id="$(cat /tmp/scoremosaic-scarlatti-container-id)"
+
+          for page in 1 2; do
+            workspace="${{ matrix.workspace_root }}/scarlatti-page-$page"
+            input_path="$workspace/input.${{ matrix.input_suffix }}"
+            docker exec "$container_id" mkdir -p "$workspace/output" "$workspace/capture"
+            docker exec -i "$container_id" sh -c "cat > '$input_path'" \
+              < "/tmp/scoremosaic-scarlatti-inputs/page-$page.${{ matrix.input_suffix }}"
+            docker exec "$container_id" test -s "$input_path"
+
+            docker exec \
+              --env ENGINE="${{ matrix.engine }}" \
+              --env WORKSPACE="$workspace" \
+              --env INPUT_SUFFIX="${{ matrix.input_suffix }}" \
+              -i "$container_id" python - <<'PY'
+          from pathlib import Path
+          import os
+          import shutil
+
+          engine = os.environ["ENGINE"]
+          workspace = Path(os.environ["WORKSPACE"])
+          input_path = workspace / f"input.{os.environ['INPUT_SUFFIX']}"
+
+          if engine == "audiveris":
+              from scoremosaic_audiveris.config import load_config
+              from scoremosaic_audiveris.runtime import transcribe_file
+
+              result = transcribe_file(input_path, workspace / "output", load_config())
+          elif engine == "homr":
+              from scoremosaic_homr.config import load_config
+              from scoremosaic_homr.runtime import transcribe_file
+
+              result = transcribe_file(input_path, workspace, load_config())
+          elif engine == "clarity":
+              from scoremosaic_clarity.config import load_config
+              from scoremosaic_clarity.runtime import transcribe_file
+
+              result = transcribe_file(input_path, workspace / "output", load_config())
+          else:
+              raise AssertionError(f"unsupported engine: {engine}")
+
+          print("engine:", engine)
+          print("diagnostic:", result.diagnostic)
+          assert result.musicxml_artifacts, result.diagnostic
+          artifact = result.musicxml_artifacts[0]
+          assert artifact.is_file() and not artifact.is_symlink(), artifact
+          matching_handoffs = [
+              handoff
+              for handoff in result.candidate_handoffs
+              if handoff.artifact == artifact
+          ]
+          assert len(matching_handoffs) == 1
+          assert matching_handoffs[0].evidence.policy_version == "candidate-safety-v1"
+          destination = workspace / "capture" / "engine-artifact"
+          shutil.copyfile(artifact, destination)
+          print("captured bytes:", destination.stat().st_size)
+          PY
+
+            docker exec "$container_id" \
+              cat "$workspace/capture/engine-artifact" \
+              > "/tmp/scoremosaic-engine-artifact-page-$page"
+            test -s "/tmp/scoremosaic-engine-artifact-page-$page"
+
+            python services/ensemble-service/tools/capture_real_fixture.py \
+              --input "/tmp/scoremosaic-engine-artifact-page-$page" \
+              --output "/tmp/scoremosaic-scarlatti-candidates/${{ matrix.engine }}-page-$page.musicxml" \
+              --metadata "/tmp/scoremosaic-scarlatti-candidates/${{ matrix.engine }}-page-$page.capture.json" \
+              --engine "${{ matrix.engine }}" \
+              --engine-version "${{ matrix.engine_version }}" \
+              --model-version "${{ matrix.model_version }}" \
+              --source-fixture-sha256 "$source_sha"
+          done
+
+      - name: Upload ${{ matrix.engine }} page candidates
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scarlatti-candidate-${{ matrix.engine }}
+          path: /tmp/scoremosaic-scarlatti-candidates
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload ${{ matrix.engine }} diagnostic
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scarlatti-diagnostic-${{ matrix.engine }}
+          path: /tmp/${{ matrix.engine }}-scarlatti-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Remove runtime container
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s /tmp/scoremosaic-scarlatti-container-id ]]; then
+            container_id="$(cat /tmp/scoremosaic-scarlatti-container-id)"
+            docker logs "$container_id" || true
+            docker rm --force "$container_id" >/dev/null 2>&1 || true
+          fi
+
+  validate-three-engine-comparisons:
+    name: Normalize and neutrally compare both pages
+    needs:
+      - prepare-scarlatti-inputs
+      - capture-scarlatti-candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Download all Scarlatti candidates
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: scarlatti-candidate-*
+          path: /tmp/scoremosaic-scarlatti-candidates
+          merge-multiple: true
+
+      - name: Download Scarlatti input evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: scarlatti-three-engine-inputs
+          path: /tmp/scoremosaic-scarlatti-inputs
+
+      - name: Compile and run Ensemble unit tests
+        run: |
+          python -m compileall -q services/ensemble-service/src services/ensemble-service/tools
+          python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Normalize six candidates and run two neutral comparisons
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/scoremosaic-scarlatti-validation
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          from collections import Counter
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          from scoremosaic_ensemble import compare_candidates, normalize_musicxml
+
+          candidates_root = Path("/tmp/scoremosaic-scarlatti-candidates")
+          inputs_root = Path("/tmp/scoremosaic-scarlatti-inputs")
+          output = Path("/tmp/scoremosaic-scarlatti-validation")
+          input_manifest = json.loads(
+              (inputs_root / "input-manifest.json").read_text(encoding="utf-8")
+          )
+          source_sha = input_manifest["sourceSha256"]
+          assert source_sha == "2e0a638126aab3709d1964c3247b55c78cf1da41f9de9d00354caedd82014a1f"
+          assert input_manifest["sourcePages"] == 2
+          engines = ("audiveris", "homr", "clarity")
+          all_candidate_summaries = []
+          comparison_summaries = []
+
+          for page in (1, 2):
+              candidates = []
+              page_summaries = []
+              for engine in engines:
+                  stem = f"{engine}-page-{page}"
+                  musicxml_path = candidates_root / f"{stem}.musicxml"
+                  metadata_path = candidates_root / f"{stem}.capture.json"
+                  assert musicxml_path.is_file() and not musicxml_path.is_symlink()
+                  assert metadata_path.is_file() and not metadata_path.is_symlink()
+
+                  document = musicxml_path.read_bytes()
+                  metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                  assert metadata["engine"] == engine
+                  assert metadata["sourceFixtureSha256"] == source_sha
+                  assert metadata["capturedMusicXmlSha256"] == sha256(document).hexdigest()
+                  assert metadata["rootType"] == "score-partwise"
+
+                  score = normalize_musicxml(
+                      document,
+                      engine=engine,
+                      engine_version=metadata["engineVersion"],
+                      model_version=metadata["modelVersion"],
+                      artifact_ref=f"test-only/scarlatti/{stem}.musicxml",
+                  )
+                  assert score.source.artifact_sha256 == metadata["capturedMusicXmlSha256"]
+                  assert score.source.engine == engine
+                  assert score.measure_count > 0
+                  assert score.event_count > 0
+                  for part in score.parts:
+                      for measure in part.measures:
+                          for event in measure.events:
+                              assert event.provenance.xml_path
+                              assert event.provenance.source_event_index >= 0
+
+                  (output / f"{stem}.canonical.json").write_text(
+                      score.to_json() + "\n",
+                      encoding="utf-8",
+                  )
+                  candidates.append(score)
+                  item = {
+                      "page": page,
+                      "engine": engine,
+                      "engineVersion": metadata["engineVersion"],
+                      "modelVersion": metadata["modelVersion"],
+                      "capturedMusicXmlSha256": metadata["capturedMusicXmlSha256"],
+                      "canonicalSha256": score.canonical_sha256,
+                      "partCount": len(score.parts),
+                      "measureCount": score.measure_count,
+                      "eventCount": score.event_count,
+                      "diagnosticCount": len(score.diagnostics),
+                  }
+                  page_summaries.append(item)
+                  all_candidate_summaries.append(item)
+
+              original_hashes = tuple(score.canonical_sha256 for score in candidates)
+              result = compare_candidates(tuple(candidates))
+              reversed_result = compare_candidates(tuple(reversed(candidates)))
+              assert result.to_json(indent=None) == reversed_result.to_json(indent=None)
+              assert original_hashes == tuple(score.canonical_sha256 for score in candidates)
+
+              payload = result.as_dict()
+              assert payload["candidateCount"] == 3
+              assert {item["source"]["engine"] for item in payload["candidates"]} == set(engines)
+              assert payload["comparisonMode"] == "neutral-all-candidates"
+              assert payload["alignment"]["fuzzyAlignment"] is False
+              assert payload["boundaries"] == {
+                  "readOnly": True,
+                  "engineRanking": False,
+                  "winnerSelection": False,
+                  "automaticMerge": False,
+                  "automaticCorrection": False,
+                  "teacherApproval": False,
+                  "publication": False,
+              }
+
+              category_counts = Counter(item.category for item in result.differences)
+              comparison_summary = {
+                  "page": page,
+                  "resultSha256": result.result_sha256,
+                  "identical": result.identical,
+                  "differenceCount": len(result.differences),
+                  "differenceCategories": dict(sorted(category_counts.items())),
+                  "candidates": page_summaries,
+              }
+              comparison_summaries.append(comparison_summary)
+              (output / f"page-{page}.comparison.foundation.json").write_text(
+                  result.to_json() + "\n",
+                  encoding="utf-8",
+              )
+
+          summary = {
+              "validationFormatVersion": "test-only-scarlatti-three-engine-v1",
+              "sourceSha256": source_sha,
+              "sourcePages": 2,
+              "candidateCount": len(all_candidate_summaries),
+              "accuracyClaim": False,
+              "candidates": all_candidate_summaries,
+              "comparisons": comparison_summaries,
+              "boundaries": {
+                  "readOnly": True,
+                  "engineRanking": False,
+                  "winnerSelection": False,
+                  "automaticMerge": False,
+                  "automaticCorrection": False,
+                  "teacherApproval": False,
+                  "publication": False,
+              },
+          }
+          (output / "validation-summary.json").write_text(
+              json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          (output / "input-manifest.json").write_text(
+              json.dumps(input_manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2))
+          PY
+
+      - name: Copy captured candidates into validation bundle
+        run: |
+          cp /tmp/scoremosaic-scarlatti-candidates/*.musicxml /tmp/scoremosaic-scarlatti-validation/
+          cp /tmp/scoremosaic-scarlatti-candidates/*.capture.json /tmp/scoremosaic-scarlatti-validation/
+          test "$(find /tmp/scoremosaic-scarlatti-validation -maxdepth 1 -type f | wc -l)" -ge 22
+
+      - name: Upload three-engine Scarlatti validation bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scarlatti-three-engine-validation-bundle
+          path: /tmp/scoremosaic-scarlatti-validation
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Verify disabled boundaries and repository formatting
+        run: |
+          python3 services/st-omr-service/tools/validate_safety_boundary.py
+          git diff --check
