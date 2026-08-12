@@ -186,6 +186,20 @@ class DurableIdempotencyTests(unittest.TestCase):
             )
         self.assertEqual(caught.exception.category, "ledger_invalid")
 
+    def test_restored_ledger_accepts_valid_d1_edge(self) -> None:
+        first = apply_durable_transition_idempotently(
+            build_durable_idempotency_ledger(self.initial),
+            self.initial,
+            "queued",
+        )
+        restored = DurableIdempotencyLedger(
+            version=DURABLE_IDEMPOTENCY_CONTRACT_VERSION,
+            dispatch_identity_sha256=self.binding.identity_sha256,
+            records=first.ledger.records,
+        )
+
+        self.assertEqual(restored, first.ledger)
+
     def test_extensible_or_unknown_transition_state_fails_closed(self) -> None:
         ledger = build_durable_idempotency_ledger(self.initial)
 
