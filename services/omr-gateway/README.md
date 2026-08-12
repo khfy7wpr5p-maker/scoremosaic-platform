@@ -4,15 +4,19 @@
 
 This service remains a private, health-only foundation for the shared ScoreMosaic OMR Gateway. It centralizes the configured internal addresses for Audiveris, HOMR, and Clarity, but it does not accept files, create jobs through HTTP, call an OMR conversion endpoint, persist artifacts, or produce MusicXML.
 
-Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 adds a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or storage. Both libraries are deterministic and perform no file, network, queue, database, or storage operation.
+Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 added a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or storage. Both libraries are deterministic and perform no file, network, queue, database, or storage operation.
 
-Safe Intake Gate B is now a completed foundation without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed Safe Intake decision, and hostile-input convergence coverage are present on `main` with post-merge CI evidence.
+Safe Intake Gate B is a completed foundation without enabling upload. B.1 signature classification, B.2 declared MIME/signature binding, B.3 observed byte-budget enforcement, B.4 strict PDF structure/page-budget inspection, B.5 decoded static JPEG/PNG image/pixel enforcement, B.6 original filename safety, the integrated fail-closed Safe Intake decision, and hostile-input convergence coverage are present on `main` with post-merge CI evidence.
 
 Gate C.1 service-to-service authentication contract foundation is present on `main`. It defines fixed Gateway/engine identities, explicit environment-scoped credential bindings, fail-closed credential resolution, bounded opaque credential material, and negative regression evidence.
 
 Gate C.2-A authenticated request envelope and receiver verification contract foundation is also present on `main`. It selects deterministic HMAC-SHA256 over the existing C.1 engine/environment credential, binds the caller/engine/audience/environment relationship to the exact method, canonical path, timestamp, nonce, payload length, and payload SHA-256, and defines fail-closed receiver verification including receiver-observed target matching and replay-check ordering.
 
-Gate C.2-B through C.2-G contract foundations are present on `main`: exact test/staging target allowlisting, job/source/run/candidate/artifact/result identity binding, credential-generation and bounded rotation semantics, generation-scoped replay-reservation identity/expiry, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present across HOMR, Clarity, and Audiveris: raw runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness surfaces suppress untrusted runtime/version/model fields. C-DIAG-2 is present for the C.2-E/F/G failure boundary: receiver-verification, dispatch-deadline, retry-budget, and unexpected dispatch exceptions map to a closed immutable version/stage/reason payload without inspecting exception text; trusted mappings require exact exception types and payload fields require exact `str` values. `production` deliberately has no authorized dispatch origin. The reserved future `POST /internal/transcribe` route is not registered, no network request is sent, orchestration remains disabled, and no durable replay/job state exists. Durable replay persistence and durable lifecycle/recovery authority remain Gate D work.
+Gate C.2-B through C.2-G contract foundations are present on `main`: exact test/staging target allowlisting, job/source/run/candidate/artifact/result identity binding, credential-generation and bounded rotation semantics, generation-scoped replay-reservation identity/expiry, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present across HOMR, Clarity, and Audiveris: raw runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness surfaces suppress untrusted runtime/version/model fields. C-DIAG-2 is present for the C.2-E/F/G failure boundary: receiver-verification, dispatch-deadline, retry-budget, and unexpected dispatch exceptions map to a closed immutable version/stage/reason payload without inspecting exception text; trusted mappings require exact exception types and payload fields require exact `str` values. `production` deliberately has no authorized dispatch origin. The reserved future `POST /internal/transcribe` route is not registered, no network request is sent, and orchestration remains disabled.
+
+Gate D.1-D.6 are now complete as a **durable job/artifact state and recovery contract/convergence foundation**. The Gateway library contains fail-closed durable run-state snapshots, server-derived idempotency/replay slots, immutable artifact-storage authority manifests, bounded provenance records/hash chaining, restart-recovery decisions, and partial-output/crash-window convergence. This foundation does not select or operate a database, S3/MinIO/filesystem storage provider, durable replay adapter, queue/worker, process-restart mechanism, or live storage/orchestration runtime.
+
+Gate E is in progress. E.1 defines provider-neutral authenticated external-principal evidence without a provider SDK or HTTP auth route. E.2 defines deny-by-default exact principal/environment/operation authorization decisions from a server-owned policy. E.2 authorization evidence is not operation-execution authority: upload, job creation, network dispatch, and orchestration remain false even when the abstract operation decision is allowed. Public route wiring, provider/runtime auth, resource/tenant scope where applicable, rate/abuse controls, safe upload sessions, external request/idempotency binding, and privacy-safe live API behavior remain disabled/unimplemented.
 
 Implemented now:
 
@@ -42,6 +46,14 @@ Implemented now:
 - Gate C.2-G bounded retry/attempt-budget decision foundation preserving orchestration v1 `attemptLimit = 1`, `retryAfterTimeout = false`, and zero retry attempts
 - C-DIAG-1 bounded HOMR, Clarity, and Audiveris runtime diagnostic redaction across probe, readiness, transcription-result, and raised-error surfaces
 - C-DIAG-2 bounded outward receiver/dispatch diagnostic mapping for C.2-E/F/G failures, with exact exception-type and exact-string enforcement and no exception text inspection
+- Gate D.1 closed durable run-state contract bound to exact dispatch identity
+- Gate D.2 server-derived idempotency/replay ledger contract with exact-replay and conflict semantics
+- Gate D.3 immutable artifact-storage authority contract with server-derived keys and exact sealed-content identity
+- Gate D.4 bounded append-only provenance-record/hash-chain contract verified against authoritative lifecycle/storage evidence
+- Gate D.5 restart-recovery decision contract: pre-dispatch candidate, reconciliation-required, or terminal-preserved; no automatic resume/retry
+- Gate D.6 partial-output/crash-window convergence across run, candidate, sealed artifact, and storage-manifest evidence
+- Gate E.1 provider-neutral external-principal authentication contract with bounded/redacted safe evidence and no authorization authority
+- Gate E.2 deny-by-default external authorization-decision contract with exact principal/environment/operation grants and no runtime operation authority
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -71,7 +83,7 @@ GET /health -> 200; gateway process is running
 GET /ready  -> 503; orchestration and upload are disabled
 ```
 
-All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, and an artifact lifecycle endpoint do not exist in this foundation. The reserved engine target `/internal/transcribe` remains a contract value only and is not registered by the Gateway or engine services.
+All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, an external auth/authz endpoint, and an artifact lifecycle endpoint do not exist in this foundation. The reserved engine target `/internal/transcribe` remains a contract value only and is not registered by the Gateway or engine services.
 
 The health payload declares:
 
@@ -207,6 +219,8 @@ See `docs/candidate-artifact-lifecycle-v1.md` for the complete state and securit
 }
 ```
 
+The E.2 decision can report `authorizationGranted=true` only for an exact abstract policy grant, but its safe evidence keeps `operationExecutionAllowed`, `uploadAllowed`, `jobCreationAllowed`, `networkDispatchAllowed`, and `orchestrationAllowed` false. Therefore this section remains authoritative for runtime capability activation.
+
 ## Existing job model boundary
 
 `build_job_record()` creates an immutable in-memory planning record only. It validates the existing `job_...` identifier format and creates one unique engine run and candidate namespace per requested engine.
@@ -248,6 +262,8 @@ No engine is allowed to overwrite another engine's candidate.
 
 The engine addresses are deployment configuration, never orchestration-plan, lifecycle, or user input. Gate C.2-B separately constrains authenticated future dispatch targets to the immutable exact test/staging allowlist before signing; deployment configuration alone does not authorize a target. Readiness probes read at most 64 KiB from each response and use a strict timeout.
 
+No E.1 authentication provider or E.2 authorization policy is loaded from these deployment variables yet. Provider/runtime and policy wiring remain later reviewed Gate E work rather than implicit configuration authority.
+
 ## Dependency boundary
 
 Gate B.4 introduced the Gateway PDF parser dependency `pypdf==6.14.2`; Gate B.5 adds exact-pinned `Pillow==12.3.0` only for bounded static JPEG/PNG inspection. Both inspection helpers are subprocess-isolated with 256 MiB address-space limits inside the current 512 MiB private staging Gateway container. Repository-owned vulnerability/dependency scanning, package-hash locking, SBOM/provenance, and base-image digest pinning remain Gate G production-readiness work.
@@ -264,27 +280,30 @@ python -m unittest discover -s services/omr-gateway/tests -v
 
 Docker validation is performed in GitHub Actions and later in Coolify staging.
 
-## Required gates before real orchestration and storage
+## Required gates before real orchestration, storage, and external API activation
 
-Gate B Safe Intake is complete as a foundation but does not activate an upload surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
+Gate B Safe Intake, Gate C dispatch-security contracts, Gate D.1-D.6 durable state/recovery contract/convergence foundations, E.1 authentication, and E.2 authorization-decision foundations do not activate an upload or execution surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
 
-- separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations; C.2-D defines credential-generation/rotation and replay-reservation semantics but does not provide a durable replay store
-- durable replay/job/run/candidate/artifact state with idempotency, immutable source/candidate storage, SHA-256/provenance persistence, restart recovery, and authoritative terminal-state evidence under Gate D
+- separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations, with operational credential-generation/rotation and durable replay implementation consistent with those contracts
+- provider-backed durable replay/job/run/candidate/artifact/provenance persistence and immutable storage writes consistent with Gate D.1-D.6; no concrete database/S3/MinIO/filesystem provider is currently active
 - concrete engine adapter request/response contracts and controlled execution wiring
-- queue/cancellation/cleanup/restart-recovery behavior consistent with the existing timeout and v1 one-attempt/zero-retry policies
-- content-addressed immutable source and candidate artifact storage
+- queue/cancellation/cleanup/process-recovery behavior consistent with Gate D recovery decisions and the existing v1 one-attempt/zero-retry policy; in-flight ambiguous work must not automatically resume
+- content-addressed immutable source and candidate artifact storage plus retention, cleanup, backup/recovery rules
 - safe MusicXML validation through Candidate Safety v1
-- retention, cleanup, and recovery rules
-- a versioned authenticated external API with rate/abuse controls and an upload path that must pass `decide_safe_intake()` before later processing
+- E.1-compatible real authentication-provider/runtime wiring without exposing credentials or raw subjects
+- E.2-compatible deny-by-default authorization wired independently for each activated operation, plus resource/user/tenant scope enforcement where an authoritative ownership model exists
+- rate limiting and abuse controls
+- external request/idempotency binding and privacy-safe external error/log handling
+- a safe upload-session path that must pass `decide_safe_intake()` before later processing
 - real engine adapters with pinned versions
-- no automatic teacher approval or publication
+- no automatic teacher approval or publication; reviewer RBAC remains Gate F/TR-8A rather than E.2
 
 ## Explicit non-goals
 
 - public API or domain
 - real upload or conversion
 - live network dispatch or orchestration execution
-- database, queue, or persistent storage
+- database, queue, or persistent storage runtime
 - runtime artifact mutation or overwrite
 - automatic Ensemble comparison invocation
 - engine ranking, preferred candidate, or winner selection
