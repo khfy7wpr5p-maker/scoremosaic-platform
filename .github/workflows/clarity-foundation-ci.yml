@@ -195,9 +195,9 @@ jobs:
           PY
 
             container_id="$(cat /tmp/scoremosaic-clarity-container-id)"
-            docker cp \
-              "$container_id:/tmp/scoremosaic-clarity/smoke/scarlatti-k178.musicxml" \
-              /tmp/scarlatti-k178.clarity.musicxml
+            docker exec "$container_id" \
+              cat /tmp/scoremosaic-clarity/smoke/scarlatti-k178.musicxml \
+              > /tmp/scarlatti-k178.clarity.musicxml
             test -s /tmp/scarlatti-k178.clarity.musicxml
           } > "$diagnostic" 2>&1
           status=$?
