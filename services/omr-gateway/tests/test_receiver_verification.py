@@ -299,6 +299,8 @@ class ReceiverVerificationContractTests(unittest.TestCase):
         self.assertNotIn(self.request.envelope.signature, repr(safe))
         self.assertEqual(safe["credentialGenerationId"], self.generation)
         self.assertEqual(safe["dispatchIdentity"]["identitySha256"], self.identity.identity_sha256)
+        self.assertIs(safe["replayCheckPassed"], True)
+        self.assertNotIn("replayReserved", safe)
 
     def test_receiver_adapter_does_not_register_internal_transcribe_route(self) -> None:
         response = route_request("POST", "/internal/transcribe", load_config({}))
