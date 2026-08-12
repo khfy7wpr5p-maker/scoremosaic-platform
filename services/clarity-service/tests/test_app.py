@@ -53,7 +53,8 @@ class RouteTests(unittest.TestCase):
         self.assertFalse(response.payload["capabilities"]["uploadEnabled"])
         self.assertFalse(response.payload["capabilities"]["conversionEnabled"])
 
-    def test_ready_isolated_failure_returns_503(self) -> None:
+    def test_ready_isolated_failure_returns_503_without_diagnostic(self) -> None:
+        sensitive = "TOKEN_DO_NOT_LEAK_123 /private/runtime/path?token=SHOULD_NOT_LEAK"
         probe = RuntimeProbe(
             False,
             "clarity_model_checksum_mismatch:info/yolo.pt",
@@ -61,7 +62,7 @@ class RouteTests(unittest.TestCase):
             self.config.model_revision,
             0,
             None,
-            "sanitized diagnostic",
+            sensitive,
         )
         response = route_request(
             "GET", "/ready", self.config, probe=lambda _: probe
@@ -70,7 +71,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status, 503)
         self.assertEqual(response.payload["status"], "not_ready")
         self.assertIn("checksum_mismatch", response.payload["reason"])
-        self.assertEqual(response.payload["diagnostic"], "sanitized diagnostic")
+        self.assertNotIn("diagnostic", response.payload)
+        self.assertNotIn(sensitive, repr(response.payload))
 
     def test_unknown_path_is_not_found(self) -> None:
         response = route_request("GET", "/internal/jobs", self.config)
