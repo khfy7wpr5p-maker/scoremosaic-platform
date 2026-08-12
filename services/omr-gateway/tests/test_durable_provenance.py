@@ -89,8 +89,12 @@ class DurableProvenanceContractTests(unittest.TestCase):
         return snapshot, lifecycle, manifest
 
     def test_initial_record_binds_exact_job_run_source_and_storage_hashes(self) -> None:
-        snapshot, _, manifest = self._context()
-        chain = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        chain = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
 
         self.assertEqual(chain.version, DURABLE_PROVENANCE_CONTRACT_VERSION)
         self.assertEqual(len(chain.records), 1)
@@ -115,15 +119,25 @@ class DurableProvenanceContractTests(unittest.TestCase):
             record.storage_binding_sha256s,
             tuple(item.binding_sha256 for item in manifest.records),
         )
-        verify_durable_provenance_chain(chain, snapshot, manifest)
+        verify_durable_provenance_chain(
+            chain,
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
 
     def test_exact_replay_returns_same_chain_without_duplicate_record(self) -> None:
-        snapshot, _, manifest = self._context()
-        initial = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        initial = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
         replay = append_durable_provenance_record_idempotently(
             initial,
             snapshot,
             manifest,
+            lifecycle=lifecycle,
         )
 
         self.assertTrue(replay.replayed)
@@ -131,13 +145,18 @@ class DurableProvenanceContractTests(unittest.TestCase):
         self.assertEqual(len(replay.chain.records), 1)
 
     def test_state_advance_appends_hash_chained_record(self) -> None:
-        snapshot, _, manifest = self._context()
-        initial = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        initial = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
         queued = transition_durable_job_state(snapshot, "queued")
         result = append_durable_provenance_record_idempotently(
             initial,
             queued,
             manifest,
+            lifecycle=lifecycle,
         )
 
         self.assertFalse(result.replayed)
@@ -147,16 +166,26 @@ class DurableProvenanceContractTests(unittest.TestCase):
         self.assertEqual(current.previous_record_sha256, previous.record_sha256)
         self.assertEqual(current.state, "queued")
         self.assertEqual(current.state_revision, 1)
-        verify_durable_provenance_chain(result.chain, queued, manifest)
+        verify_durable_provenance_chain(
+            result.chain,
+            queued,
+            manifest,
+            lifecycle=lifecycle,
+        )
 
     def test_storage_manifest_advance_can_append_with_same_job_state_revision(self) -> None:
-        snapshot, _, manifest = self._manifest_with_first_output()
-        source_only = build_durable_artifact_storage_manifest(self._context()[1])
-        initial = build_durable_provenance_chain(snapshot, source_only)
+        snapshot, lifecycle, manifest = self._manifest_with_first_output()
+        source_only = build_durable_artifact_storage_manifest(lifecycle)
+        initial = build_durable_provenance_chain(
+            snapshot,
+            source_only,
+            lifecycle=lifecycle,
+        )
         result = append_durable_provenance_record_idempotently(
             initial,
             snapshot,
             manifest,
+            lifecycle=lifecycle,
         )
 
         self.assertFalse(result.replayed)
@@ -172,20 +201,31 @@ class DurableProvenanceContractTests(unittest.TestCase):
 
     def test_cross_job_or_source_manifest_binding_fails_closed(self) -> None:
         snapshot, _, _ = self._context()
-        _, _, other_manifest = self._context("job_provenance_87654321")
+        _, other_lifecycle, other_manifest = self._context(
+            "job_provenance_87654321"
+        )
 
         with self.assertRaises(DurableProvenanceError) as caught:
-            build_durable_provenance_chain(snapshot, other_manifest)
+            build_durable_provenance_chain(
+                snapshot,
+                other_manifest,
+                lifecycle=other_lifecycle,
+            )
         self.assertEqual(caught.exception.category, "identity_mismatch")
 
     def test_state_revision_cannot_go_backwards_or_change_state_at_same_revision(self) -> None:
-        snapshot, _, manifest = self._context()
-        chain = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        chain = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
         queued = transition_durable_job_state(snapshot, "queued")
         chain = append_durable_provenance_record_idempotently(
             chain,
             queued,
             manifest,
+            lifecycle=lifecycle,
         ).chain
 
         with self.assertRaises(DurableProvenanceError) as caught:
@@ -193,6 +233,7 @@ class DurableProvenanceContractTests(unittest.TestCase):
                 chain,
                 snapshot,
                 manifest,
+                lifecycle=lifecycle,
             )
         self.assertEqual(caught.exception.category, "state_history_invalid")
 
@@ -202,17 +243,23 @@ class DurableProvenanceContractTests(unittest.TestCase):
                 chain,
                 cancelled,
                 manifest,
+                lifecycle=lifecycle,
             )
         self.assertEqual(caught.exception.category, "state_history_invalid")
 
     def test_restored_chain_rejects_sequence_gap(self) -> None:
-        snapshot, _, manifest = self._context()
-        chain = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        chain = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
         queued = transition_durable_job_state(snapshot, "queued")
         chain = append_durable_provenance_record_idempotently(
             chain,
             queued,
             manifest,
+            lifecycle=lifecycle,
         ).chain
         forged_last = replace(chain.records[-1], sequence=2)
 
@@ -224,13 +271,18 @@ class DurableProvenanceContractTests(unittest.TestCase):
         self.assertEqual(caught.exception.category, "chain_invalid")
 
     def test_restored_chain_rejects_previous_hash_tamper(self) -> None:
-        snapshot, _, manifest = self._context()
-        chain = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        chain = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
         queued = transition_durable_job_state(snapshot, "queued")
         chain = append_durable_provenance_record_idempotently(
             chain,
             queued,
             manifest,
+            lifecycle=lifecycle,
         ).chain
         forged_last = replace(
             chain.records[-1],
@@ -245,8 +297,12 @@ class DurableProvenanceContractTests(unittest.TestCase):
         self.assertEqual(caught.exception.category, "chain_invalid")
 
     def test_restore_verification_rejects_latest_manifest_hash_mismatch(self) -> None:
-        snapshot, _, manifest = self._context()
-        chain = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        chain = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
         forged_record = replace(
             chain.records[0],
             storage_manifest_sha256="f" * 64,
@@ -257,12 +313,21 @@ class DurableProvenanceContractTests(unittest.TestCase):
         )
 
         with self.assertRaises(DurableProvenanceError) as caught:
-            verify_durable_provenance_chain(forged_chain, snapshot, manifest)
+            verify_durable_provenance_chain(
+                forged_chain,
+                snapshot,
+                manifest,
+                lifecycle=lifecycle,
+            )
         self.assertEqual(caught.exception.category, "provenance_mismatch")
 
     def test_records_and_chain_are_immutable(self) -> None:
-        snapshot, _, manifest = self._context()
-        chain = build_durable_provenance_chain(snapshot, manifest)
+        snapshot, lifecycle, manifest = self._context()
+        chain = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        )
 
         with self.assertRaises(FrozenInstanceError):
             chain.records = ()  # type: ignore[misc]
@@ -270,9 +335,14 @@ class DurableProvenanceContractTests(unittest.TestCase):
             chain.records[0].state = "queued"  # type: ignore[misc]
 
     def test_safe_evidence_is_bounded_and_has_no_persistence_or_runtime_authority(self) -> None:
-        snapshot, _, manifest = self._context()
-        payload = build_durable_provenance_chain(snapshot, manifest).as_safe_dict()
+        snapshot, lifecycle, manifest = self._context()
+        payload = build_durable_provenance_chain(
+            snapshot,
+            manifest,
+            lifecycle=lifecycle,
+        ).as_safe_dict()
 
+        self.assertTrue(payload["policies"]["lifecycleVerificationRequired"])
         self.assertEqual(
             payload["boundaries"],
             {
