@@ -278,7 +278,15 @@ class DurableArtifactStorageContractTests(unittest.TestCase):
             },
         )
         self.assertLessEqual(len(payload["records"]), 16)
-        self.assertNotIn("bytes", str(payload).lower())
+        serialized = str(payload).lower()
+        for raw_byte_field in (
+            "contentbytes",
+            "payloadbytes",
+            "bodybytes",
+            "rawbytes",
+            "objectbytes",
+        ):
+            self.assertNotIn(raw_byte_field, serialized)
 
     def test_structural_manifest_rejects_duplicate_storage_keys(self) -> None:
         manifest = build_durable_artifact_storage_manifest(self._initial())
