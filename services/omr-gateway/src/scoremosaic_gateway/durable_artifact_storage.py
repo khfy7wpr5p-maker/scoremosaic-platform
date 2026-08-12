@@ -190,6 +190,20 @@ class ArtifactStorageBinding:
         return payload
 
 
+def _expected_storage_key_from_binding(
+    job_id: str,
+    record: ArtifactStorageBinding,
+) -> str:
+    if record.kind == "source":
+        return f"immutable/jobs/{job_id}/source/{record.artifact_id}"
+    if record.candidate_id is None:
+        raise DurableArtifactStorageError("manifest_invalid")
+    return (
+        f"immutable/jobs/{job_id}/candidates/"
+        f"{record.candidate_id}/{record.artifact_id}"
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class DurableArtifactStorageManifest:
     version: str
@@ -211,8 +225,14 @@ class DurableArtifactStorageManifest:
         if len({record.artifact_id for record in self.records}) != len(self.records):
             raise DurableArtifactStorageError("manifest_invalid")
         sources = [record for record in self.records if record.kind == "source"]
-        if len(sources) != 1:
+        if len(sources) != 1 or self.records[0].kind != "source":
             raise DurableArtifactStorageError("manifest_invalid")
+        for record in self.records:
+            if record.storage_key != _expected_storage_key_from_binding(
+                self.job_id,
+                record,
+            ):
+                raise DurableArtifactStorageError("manifest_invalid")
 
     def _core(self) -> dict[str, Any]:
         return {
