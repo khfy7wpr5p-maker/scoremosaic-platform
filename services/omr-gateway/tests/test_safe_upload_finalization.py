@@ -372,6 +372,23 @@ class SafeUploadFinalizationContractTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.category, "upload_finalization_authority_mutated")
 
+    def test_provider_request_mutation_cannot_hide_behind_original_receipt(self) -> None:
+        def finalizer(request):
+            receipt = self._receipt_for(request)
+            object.__setattr__(request, "document_sha256", "f" * 64)
+            return receipt
+
+        with self.assertRaises(SafeUploadFinalizationError) as raised:
+            finalize_safe_upload_session(
+                session=self.session,
+                payload=PNG_1X1,
+                original_filename="scan.png",
+                declared_media_type="image/png",
+                observed_at_epoch_s=self.now + 4,
+                finalizer=finalizer,
+            )
+        self.assertEqual(raised.exception.category, "upload_finalization_authority_mutated")
+
     def test_finalizer_receives_no_document_bytes_or_filename(self) -> None:
         seen = []
 

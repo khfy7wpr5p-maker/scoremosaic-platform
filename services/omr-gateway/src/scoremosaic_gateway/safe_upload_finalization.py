@@ -533,6 +533,12 @@ def finalize_safe_upload_session(
     except Exception:
         raise SafeUploadFinalizationError("upload_finalization_unavailable") from None
 
+    try:
+        provider_request.__post_init__()
+    except Exception:
+        raise SafeUploadFinalizationError("upload_finalization_authority_mutated") from None
+    if provider_request != request:
+        raise SafeUploadFinalizationError("upload_finalization_authority_mutated")
     if _session_snapshot(session) != initial_session:
         raise SafeUploadFinalizationError("upload_finalization_authority_mutated")
     try:
