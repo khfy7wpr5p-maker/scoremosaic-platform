@@ -128,7 +128,7 @@ class StagingUploadProvider:
     """Stateful local staging provider with create-once records and source bytes."""
 
     def __init__(self, root: Path) -> None:
-        if type(root) is not Path or not root.is_absolute():
+        if not isinstance(root, Path) or not root.is_absolute():
             raise MinimumStagingVerticalSliceError("staging_root_invalid")
         if root.exists() and root.is_symlink():
             raise MinimumStagingVerticalSliceError("staging_root_invalid")
