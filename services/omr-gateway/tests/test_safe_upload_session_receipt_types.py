@@ -9,6 +9,7 @@ sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
 from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES
 from scoremosaic_gateway.safe_upload_session import (
+    SAFE_UPLOAD_SESSION_OPERATION_ID,
     SafeUploadSessionError,
     SafeUploadSessionReservationReceipt,
 )
@@ -35,7 +36,7 @@ class SafeUploadSessionReceiptTypeConvergenceTests(unittest.TestCase):
                 admission_binding_id="b" * 64,
                 principal_id="c" * 64,
                 environment="staging",
-                operation_id="platform.operation.alpha",
+                operation_id=SAFE_UPLOAD_SESSION_OPERATION_ID,
                 request_sha256="d" * 64,
                 request_bytes=32,
                 max_bytes=1024,
