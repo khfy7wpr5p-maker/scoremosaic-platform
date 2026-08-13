@@ -36,6 +36,7 @@ from .external_idempotency import (
 from .external_rate_limit import (
     ExternalRateLimitError,
     ExternalRateLimitPolicy,
+    ExternalRateReservationRequest,
     ExternalRateSlotReserver,
     reserve_external_rate_slot,
 )
@@ -221,6 +222,21 @@ def compose_external_admission(
 ) -> ExternalAdmissionDecision:
     """Evaluate fresh rate admission then bind one exact E.3B request decision."""
 
+    def isolate_rate_reservation(request: ExternalRateReservationRequest):
+        if type(request) is not ExternalRateReservationRequest:
+            raise ExternalAdmissionError("rate_callback_invalid")
+        provider_request = ExternalRateReservationRequest(
+            version=request.version,
+            environment=request.environment,
+            principal_id=request.principal_id,
+            operation_id=request.operation_id,
+            reservation_key=request.reservation_key,
+            window_start_epoch_s=request.window_start_epoch_s,
+            window_end_epoch_s=request.window_end_epoch_s,
+            max_requests=request.max_requests,
+        )
+        return rate_reserver(provider_request)
+
     try:
         rate_decision = reserve_external_rate_slot(
             policy=rate_policy,
@@ -228,7 +244,7 @@ def compose_external_admission(
             authorization=authorization,
             operation_id=operation_id,
             observed_at_epoch_s=observed_at_epoch_s,
-            reserver=rate_reserver,
+            reserver=isolate_rate_reservation,
         )
     except ExternalRateLimitError as exc:
         raise ExternalAdmissionError(exc.category) from None
@@ -247,7 +263,16 @@ def compose_external_admission(
         if type(request) is not ExternalIdempotencyReservationRequest:
             raise ExternalAdmissionError("idempotency_callback_invalid")
         captured_request = request
-        return idempotency_reserver(request)
+        provider_request = ExternalIdempotencyReservationRequest(
+            version=request.version,
+            environment=request.environment,
+            principal_id=request.principal_id,
+            operation_id=request.operation_id,
+            slot_id=request.slot_id,
+            request_sha256=request.request_sha256,
+            request_bytes=request.request_bytes,
+        )
+        return idempotency_reserver(provider_request)
 
     try:
         idempotency_decision = reserve_external_idempotency_slot(
