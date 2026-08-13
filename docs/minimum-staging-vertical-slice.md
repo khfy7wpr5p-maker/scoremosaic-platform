@@ -34,6 +34,8 @@ The slice provides one repository-owned staging filesystem provider with bounded
 
 The provider stores only bounded server-derived session/finalization evidence plus the exact accepted source bytes. Raw document bytes are still not passed into the E.4A or E.4B state callbacks; only the final source-write step receives bytes, after Gate B and E.4C verification have succeeded.
 
+Persisted E.4A/E.4B staging state is authenticated with HMAC-SHA256 before replay evidence is trusted. `StagingUploadProvider` requires one exact 32-byte integrity key supplied by its private caller. That key is not written beside the state records and is not derived from user input. A provider restart must receive the same key to verify and replay existing state; a missing, different, or invalid key does not grant replay authority. Production secret provisioning or environment-variable wiring is deliberately outside this slice.
+
 ## Fail-closed guarantees
 
 The focused regressions require:
@@ -42,10 +44,15 @@ The focused regressions require:
 - invalid/mutable document inputs to remain governed by the existing Gate B/E.4 contracts;
 - exact replay to preserve the original session/finalization identities and source bytes;
 - same-session different-document input to fail as a finalization conflict;
+- persisted session/finalization state to pass its HMAC integrity check before identity or timestamp evidence is trusted;
+- coherent timestamp substitution in a persisted session record to fail closed;
+- bounded persisted-state reads and bounded immutable-source replay reads;
 - a payload that does not match the verified E.4C hash/size to be rejected before a write;
 - a pre-existing different source at the immutable key to fail as a collision, never overwrite;
 - malformed persisted session state to fail closed;
-- a pre-existing symlink in the provider-owned state path to fail closed rather than escape the staging root.
+- symlinks in provider-owned state/source parent paths to fail closed rather than escape the staging root;
+- filesystem failures to map to stable bounded slice errors rather than leak provider details;
+- temporary file descriptors to be closed even when setup fails before file-object ownership transfers.
 
 ## Explicit non-activation
 
