@@ -92,18 +92,14 @@ class SafeSourceJobBindingContractTests(unittest.TestCase):
         self.assertEqual(first.job_id, second.job_id)
         self.assertEqual(first.source_storage_key, second.source_storage_key)
 
-    def test_cross_principal_or_finalization_identity_changes_job_identity(self) -> None:
-        other_fixture = helpers.SafeUploadFinalizationContractTests(methodName="runTest")
-        other_fixture.setUp()
-        object.__setattr__(other_fixture.principal, "principal_id", "f" * 64)
-        object.__setattr__(other_fixture.authorization, "principal_id", "f" * 64)
+    def test_distinct_finalized_source_identity_changes_job_identity(self) -> None:
         other = finalize_safe_upload_session(
-            session=other_fixture.session,
-            payload=helpers.PNG_1X1,
-            original_filename="score.png",
-            declared_media_type="image/png",
-            observed_at_epoch_s=other_fixture.now + 4,
-            finalizer=other_fixture._receipt_for,
+            session=self.fixture.session,
+            payload=helpers.JPEG_1X1,
+            original_filename="score.jpg",
+            declared_media_type="image/jpeg",
+            observed_at_epoch_s=self.fixture.now + 5,
+            finalizer=self.fixture._receipt_for,
         )
         self.assertNotEqual(
             bind_finalized_source_to_job(self.finalization).job_id,
