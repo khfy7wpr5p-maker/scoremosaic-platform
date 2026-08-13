@@ -251,7 +251,11 @@ class SafeUploadSessionReservationReceipt:
             maximum=MAX_SAFE_UPLOAD_SESSION_PDF_PAGES,
             category="upload_session_receipt_invalid",
         )
-        if self.allowed_media_types != SAFE_INTAKE_MEDIA_TYPES:
+        if (
+            type(self.allowed_media_types) is not tuple
+            or self.allowed_media_types != SAFE_INTAKE_MEDIA_TYPES
+            or any(type(item) is not str for item in self.allowed_media_types)
+        ):
             raise SafeUploadSessionError("upload_session_receipt_invalid")
         if not _is_timestamp(self.created_at_epoch_s) or not _is_timestamp(self.expires_at_epoch_s):
             raise SafeUploadSessionError("upload_session_receipt_invalid")
