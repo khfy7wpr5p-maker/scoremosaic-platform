@@ -14,6 +14,7 @@ import test_safe_upload_finalization as helpers
 from scoremosaic_gateway.safe_upload_finalization import finalize_safe_upload_session
 from scoremosaic_gateway.safe_source_job_binding import (
     SAFE_SOURCE_JOB_BINDING_CONTRACT_VERSION,
+    SafeSourceJobBindingDecision,
     SafeSourceJobBindingError,
     bind_finalized_source_to_job,
 )
@@ -119,6 +120,40 @@ class SafeSourceJobBindingContractTests(unittest.TestCase):
         with self.assertRaises(SafeSourceJobBindingError) as raised:
             bind_finalized_source_to_job(self.finalization)
         self.assertEqual(raised.exception.category, "source_finalization_invalid")
+
+    def test_pre_tampered_principal_session_relationship_fails_closed(self) -> None:
+        object.__setattr__(self.finalization, "principal_id", "f" * 64)
+        with self.assertRaises(SafeSourceJobBindingError) as raised:
+            bind_finalized_source_to_job(self.finalization)
+        self.assertEqual(raised.exception.category, "source_finalization_invalid")
+
+    def test_decision_cannot_be_directly_constructed_as_authority(self) -> None:
+        valid = bind_finalized_source_to_job(self.finalization)
+        with self.assertRaises(SafeSourceJobBindingError) as raised:
+            SafeSourceJobBindingDecision(
+                version=valid.version,
+                environment=valid.environment,
+                principal_id=valid.principal_id,
+                operation_id=valid.operation_id,
+                session_id=valid.session_id,
+                finalization_id=valid.finalization_id,
+                document_sha256=valid.document_sha256,
+                intake_policy_version=valid.intake_policy_version,
+                format_id=valid.format_id,
+                source_size_bytes=valid.source_size_bytes,
+                source_media_type=valid.source_media_type,
+                job_id=valid.job_id,
+                source_artifact_id=valid.source_artifact_id,
+                source_artifact_ref=valid.source_artifact_ref,
+                source_storage_key=valid.source_storage_key,
+                source_binding_sha256=valid.source_binding_sha256,
+                orchestration_plan_id=valid.orchestration_plan_id,
+                orchestration_plan_sha256=valid.orchestration_plan_sha256,
+                lifecycle_id=valid.lifecycle_id,
+                lifecycle_sha256=valid.lifecycle_sha256,
+                storage_manifest_sha256=valid.storage_manifest_sha256,
+            )
+        self.assertEqual(raised.exception.category, "source_binding_construction_forbidden")
 
     def test_source_job_binding_cannot_be_forged_or_used_as_runtime_authority(self) -> None:
         decision = bind_finalized_source_to_job(self.finalization)
