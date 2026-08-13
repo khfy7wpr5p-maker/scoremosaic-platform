@@ -90,6 +90,19 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(raised.exception.category, "staging_source_payload_mismatch")
         self.assertEqual(self.provider.read_source(result.binding), helpers.PNG_1X1)
 
+    def test_source_writer_rejects_nonstaging_evidence_before_binding_use(self) -> None:
+        result = self.run_slice()
+        object.__setattr__(result.binding, "environment", "production")
+        object.__setattr__(result.finalization, "environment", "production")
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.provider.write_source(
+                binding=result.binding,
+                finalization=result.finalization,
+                payload=helpers.PNG_1X1,
+            )
+        self.assertEqual(raised.exception.category, "staging_environment_required")
+
     def test_corrupt_persisted_session_fails_closed_without_touching_source(self) -> None:
         first = self.run_slice()
         session_path = (
