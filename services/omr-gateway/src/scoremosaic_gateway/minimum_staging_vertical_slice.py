@@ -146,10 +146,45 @@ class StagingUploadProvider:
             or len(state_integrity_key) != _STATE_INTEGRITY_KEY_BYTES
         ):
             raise MinimumStagingVerticalSliceError("staging_integrity_key_invalid")
+        missing_root_ancestry: list[Path] = []
+        cursor = root
         try:
+            while True:
+                try:
+                    cursor_stat = cursor.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    missing_root_ancestry.append(cursor)
+                    parent = cursor.parent
+                    if parent == cursor:
+                        raise MinimumStagingVerticalSliceError(
+                            "staging_root_invalid"
+                        )
+                    cursor = parent
+                    continue
+                if not stat.S_ISDIR(cursor_stat.st_mode):
+                    raise MinimumStagingVerticalSliceError("staging_root_invalid")
+                break
             root.mkdir(mode=0o700, parents=True, exist_ok=True)
             if root.is_symlink() or not root.is_dir():
                 raise MinimumStagingVerticalSliceError("staging_root_invalid")
+            for created in reversed(missing_root_ancestry):
+                parent_fd = os.open(created.parent, self._directory_open_flags())
+                try:
+                    child_fd = os.open(
+                        created.name,
+                        self._directory_open_flags(),
+                        dir_fd=parent_fd,
+                    )
+                    try:
+                        if not stat.S_ISDIR(os.fstat(child_fd).st_mode):
+                            raise MinimumStagingVerticalSliceError(
+                                "staging_root_invalid"
+                            )
+                        os.fsync(parent_fd)
+                    finally:
+                        os.close(child_fd)
+                finally:
+                    os.close(parent_fd)
         except MinimumStagingVerticalSliceError:
             raise
         except OSError:
@@ -512,6 +547,33 @@ class StagingUploadProvider:
                         "staging_state_unavailable"
                     )
                 os.fsync(parent_fd)
+                current_parent_fd, current_leaf = self._open_parent_fd(
+                    path,
+                    create=False,
+                )
+                try:
+                    retained_parent_stat = os.fstat(parent_fd)
+                    current_parent_stat = os.fstat(current_parent_fd)
+                    current_published_stat = os.stat(
+                        current_leaf,
+                        dir_fd=current_parent_fd,
+                        follow_symlinks=False,
+                    )
+                    if (
+                        current_leaf != final_leaf
+                        or (current_parent_stat.st_dev, current_parent_stat.st_ino)
+                        != (retained_parent_stat.st_dev, retained_parent_stat.st_ino)
+                        or not stat.S_ISREG(current_published_stat.st_mode)
+                        or (current_published_stat.st_dev, current_published_stat.st_ino)
+                        != (temp_stat.st_dev, temp_stat.st_ino)
+                        or current_published_stat.st_size != len(payload)
+                    ):
+                        raise MinimumStagingVerticalSliceError(
+                            "staging_state_unavailable"
+                        )
+                    os.fsync(current_parent_fd)
+                finally:
+                    os.close(current_parent_fd)
                 return True
             except MinimumStagingVerticalSliceError:
                 raise

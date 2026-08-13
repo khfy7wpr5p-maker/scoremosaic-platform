@@ -146,6 +146,64 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(raised.exception.category, "staging_state_unavailable")
         self.assertEqual(target.read_bytes(), concurrent_winner)
 
+    def test_relocated_parent_cannot_acknowledge_publication_off_canonical_path(
+        self,
+    ) -> None:
+        root = Path(self.temp_dir.name)
+        target = root / "state" / "sessions" / "relocated.json"
+        relocated_parent = root / "state" / "sessions-relocated"
+        real_link = self.provider._link_unnamed_file
+
+        def relocating_link(temp_fd, parent_fd, final_leaf):
+            real_link(temp_fd, parent_fd, final_leaf)
+            target.parent.rename(relocated_parent)
+            target.parent.mkdir(mode=0o700)
+
+        with patch.object(
+            self.provider,
+            "_link_unnamed_file",
+            side_effect=relocating_link,
+        ):
+            with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+                self.provider._atomic_create(target, b'{"expected":true}')
+
+        self.assertEqual(raised.exception.category, "staging_state_unavailable")
+        self.assertFalse(target.exists())
+        self.assertTrue((relocated_parent / target.name).is_file())
+
+    def test_new_staging_root_ancestry_is_synced_during_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as existing_parent_name:
+            existing_parent = Path(existing_parent_name)
+            root = existing_parent / "created-parent" / "staging-root"
+            existing_identity = (
+                existing_parent.stat().st_dev,
+                existing_parent.stat().st_ino,
+            )
+            synced_directories: list[tuple[int, int]] = []
+            real_fsync = os.fsync
+
+            def tracking_fsync(fd):
+                fd_stat = os.fstat(fd)
+                if stat.S_ISDIR(fd_stat.st_mode):
+                    synced_directories.append((fd_stat.st_dev, fd_stat.st_ino))
+                return real_fsync(fd)
+
+            with patch(
+                "scoremosaic_gateway.minimum_staging_vertical_slice.os.fsync",
+                side_effect=tracking_fsync,
+            ):
+                StagingUploadProvider(
+                    root,
+                    state_integrity_key=self.state_integrity_key,
+                )
+
+            created_parent_identity = (
+                root.parent.stat().st_dev,
+                root.parent.stat().st_ino,
+            )
+            self.assertIn(existing_identity, synced_directories)
+            self.assertIn(created_parent_identity, synced_directories)
+
     def test_publication_fsyncs_created_ancestry_and_containing_directory(self) -> None:
         real_fsync = os.fsync
         real_link = self.provider._link_unnamed_file
