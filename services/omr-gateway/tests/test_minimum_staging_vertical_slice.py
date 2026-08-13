@@ -233,6 +233,75 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(raised.exception.category, "staging_path_invalid")
         self.assertEqual(external_source.read_bytes(), helpers.PNG_1X1)
 
+    def test_read_source_parent_swap_cannot_redirect_open_outside_root(self) -> None:
+        first = self.run_slice()
+        root = Path(self.temp_dir.name)
+        objects = root / "objects"
+        original_objects = root / "objects-original"
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        outside_root = Path(outside.name)
+        external_source = outside_root / Path(first.binding.source_storage_key)
+        external_source.parent.mkdir(parents=True)
+        external_source.write_bytes(b"X" * len(helpers.PNG_1X1))
+        real_open = os.open
+        swapped = False
+        source_path = objects / Path(first.binding.source_storage_key)
+
+        def racing_open(path, flags, *args, **kwargs):
+            nonlocal swapped
+            candidate = Path(path) if isinstance(path, (str, os.PathLike)) else None
+            is_final_source_open = (
+                candidate == source_path
+                or (
+                    candidate is not None
+                    and candidate.name == source_path.name
+                    and kwargs.get("dir_fd") is not None
+                )
+            )
+            if is_final_source_open and not swapped:
+                objects.rename(original_objects)
+                objects.symlink_to(outside_root, target_is_directory=True)
+                swapped = True
+            return real_open(path, flags, *args, **kwargs)
+
+        with patch(
+            "scoremosaic_gateway.minimum_staging_vertical_slice.os.open",
+            side_effect=racing_open,
+        ):
+            self.assertEqual(self.provider.read_source(first.binding), helpers.PNG_1X1)
+        self.assertTrue(swapped)
+        self.assertEqual(external_source.read_bytes(), b"X" * len(helpers.PNG_1X1))
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "requires FIFO support")
+    def test_special_source_is_opened_nonblocking_and_rejected_as_nonregular(self) -> None:
+        first = self.run_slice()
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / Path(first.binding.source_storage_key)
+        )
+        source_path.unlink()
+        os.mkfifo(source_path, 0o600)
+        real_open = os.open
+
+        def guarded_open(path, flags, *args, **kwargs):
+            candidate = Path(path) if isinstance(path, (str, os.PathLike)) else None
+            if candidate is not None and (
+                candidate == source_path or candidate.name == source_path.name
+            ):
+                if hasattr(os, "O_NONBLOCK") and not flags & os.O_NONBLOCK:
+                    raise AssertionError("source open must be nonblocking")
+            return real_open(path, flags, *args, **kwargs)
+
+        with patch(
+            "scoremosaic_gateway.minimum_staging_vertical_slice.os.open",
+            side_effect=guarded_open,
+        ):
+            with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+                self.provider.read_source(first.binding)
+        self.assertEqual(raised.exception.category, "staging_path_invalid")
+
     def test_existing_tampered_source_is_never_overwritten_on_replay(self) -> None:
         first = self.run_slice()
         source_path = (
