@@ -75,6 +75,24 @@ class ExternalAdmissionConvergenceTests(unittest.TestCase):
             rules=(ExternalRateLimitRule(self.operation, 60, 5),),
         )
 
+    def build_other_principal(self):
+        return authenticate_external_principal(
+            policy=ExternalAuthPolicy(
+                version=EXTERNAL_AUTH_CONTRACT_VERSION,
+                environment="staging",
+                allowed_provider_ids=("test-provider",),
+            ),
+            provider_id="test-provider",
+            credential=b"other-opaque-authentication-credential",
+            verifier=lambda provider_id, credential: VerifiedExternalIdentity(
+                provider_id=provider_id,
+                subject_id="private-subject-beta",
+                issued_at_epoch_s=self.now - 60,
+                expires_at_epoch_s=self.now + 600,
+            ),
+            observed_at_epoch_s=self.now,
+        )
+
     @staticmethod
     def normal_rate(request):
         return ExternalRateReservationReceipt(
@@ -146,6 +164,67 @@ class ExternalAdmissionConvergenceTests(unittest.TestCase):
         with self.assertRaisesRegex(
             ExternalAdmissionError,
             "idempotency_receipt_invalid",
+        ):
+            self.compose(
+                rate_reserver=self.normal_rate,
+                idempotency_reserver=mutating_idempotency,
+            )
+        self.assertEqual(calls, 1)
+
+    def test_rate_adapter_cannot_replace_authenticated_authority_mid_call(self) -> None:
+        other_principal = self.build_other_principal()
+        idempotency_calls = 0
+
+        def mutating_rate(request):
+            object.__setattr__(self.principal, "subject_id", other_principal.subject_id)
+            object.__setattr__(self.principal, "principal_id", other_principal.principal_id)
+            object.__setattr__(
+                self.authorization,
+                "principal_id",
+                other_principal.principal_id,
+            )
+            object.__setattr__(self.rate_policy.rules[0], "max_requests", 6)
+            return ExternalRateReservationReceipt(
+                reservation_key=request.reservation_key,
+                window_start_epoch_s=request.window_start_epoch_s,
+                window_end_epoch_s=request.window_end_epoch_s,
+                max_requests=request.max_requests,
+                outcome="reserved",
+            )
+
+        def counting_idempotency(request):
+            nonlocal idempotency_calls
+            idempotency_calls += 1
+            return self.normal_idempotency(request)
+
+        with self.assertRaisesRegex(
+            ExternalAdmissionError,
+            "admission_authority_mutated",
+        ):
+            self.compose(
+                rate_reserver=mutating_rate,
+                idempotency_reserver=counting_idempotency,
+            )
+        self.assertEqual(idempotency_calls, 0)
+
+    def test_idempotency_adapter_cannot_mutate_authority_mid_call(self) -> None:
+        calls = 0
+
+        def mutating_idempotency(request):
+            nonlocal calls
+            calls += 1
+            object.__setattr__(self.principal, "subject_id", "private-subject-mutated")
+            object.__setattr__(self.authorization, "allowed", False)
+            return ExternalIdempotencyReservationReceipt(
+                slot_id=request.slot_id,
+                request_sha256=request.request_sha256,
+                request_bytes=request.request_bytes,
+                outcome="reserved",
+            )
+
+        with self.assertRaisesRegex(
+            ExternalAdmissionError,
+            "admission_authority_mutated",
         ):
             self.compose(
                 rate_reserver=self.normal_rate,
