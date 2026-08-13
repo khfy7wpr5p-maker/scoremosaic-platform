@@ -116,6 +116,7 @@ class ControlledStagingJobLifecycleTests(unittest.TestCase):
         )
         stored = json.loads(path.read_text(encoding="utf-8"))
         stored["job_id"] = "job_" + "0" * 32
+        path.chmod(0o600)
         path.write_text(json.dumps(stored), encoding="utf-8")
 
         with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
