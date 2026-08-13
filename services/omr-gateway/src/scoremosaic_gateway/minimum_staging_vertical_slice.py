@@ -26,7 +26,6 @@ from .safe_source_job_binding import (
 )
 from .safe_source_job_binding_verification import verify_safe_source_job_binding_decision
 from .safe_upload_finalization import (
-    SAFE_UPLOAD_FINALIZATION_CONTRACT_VERSION,
     SafeUploadFinalizationDecision,
     SafeUploadFinalizationError,
     SafeUploadFinalizationReceipt,
@@ -202,6 +201,10 @@ class StagingUploadProvider:
         return self._root / "state" / "finalizations" / f"{session_id}.json"
 
     def _source_path(self, binding: SafeSourceJobBindingDecision) -> Path:
+        if type(binding) is not SafeSourceJobBindingDecision:
+            raise MinimumStagingVerticalSliceError("staging_source_binding_invalid")
+        if getattr(binding, "environment", None) != "staging":
+            raise MinimumStagingVerticalSliceError("staging_environment_required")
         try:
             binding.__post_init__()
         except Exception:
@@ -360,6 +363,15 @@ class StagingUploadProvider:
         finalization: SafeUploadFinalizationDecision,
         payload: bytes,
     ) -> str:
+        if type(binding) is not SafeSourceJobBindingDecision:
+            raise MinimumStagingVerticalSliceError("staging_source_binding_invalid")
+        if type(finalization) is not SafeUploadFinalizationDecision:
+            raise MinimumStagingVerticalSliceError("staging_source_binding_invalid")
+        if (
+            getattr(binding, "environment", None) != "staging"
+            or getattr(finalization, "environment", None) != "staging"
+        ):
+            raise MinimumStagingVerticalSliceError("staging_environment_required")
         if type(payload) is not bytes:
             raise MinimumStagingVerticalSliceError("staging_source_payload_invalid")
         try:
