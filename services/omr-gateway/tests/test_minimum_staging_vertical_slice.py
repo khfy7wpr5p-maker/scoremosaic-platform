@@ -27,7 +27,11 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.admission = self.fixture._admission()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
-        self.provider = StagingUploadProvider(Path(self.temp_dir.name))
+        self.state_integrity_key = b"S" * 32
+        self.provider = StagingUploadProvider(
+            Path(self.temp_dir.name),
+            state_integrity_key=self.state_integrity_key,
+        )
 
     def run_slice(self, *, payload=helpers.PNG_1X1, filename="scan.png", media_type="image/png"):
         return run_minimum_staging_vertical_slice(
@@ -69,6 +73,28 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             self.provider.read_source(replay.binding),
             helpers.PNG_1X1,
         )
+
+    def test_provider_restart_with_same_integrity_key_preserves_exact_replay(self) -> None:
+        first = self.run_slice()
+        restarted_provider = StagingUploadProvider(
+            Path(self.temp_dir.name),
+            state_integrity_key=self.state_integrity_key,
+        )
+        replay = run_minimum_staging_vertical_slice(
+            admission=self.admission,
+            session_policy=self.fixture.session_policy,
+            payload=helpers.PNG_1X1,
+            original_filename="scan.png",
+            declared_media_type="image/png",
+            observed_at_epoch_s=self.admission.evaluated_at_epoch_s,
+            provider=restarted_provider,
+        )
+
+        self.assertTrue(replay.session.replayed)
+        self.assertTrue(replay.finalization.replayed)
+        self.assertEqual(replay.source_write_state, "replay")
+        self.assertEqual(replay.job_id, first.job_id)
+        self.assertEqual(replay.source_artifact_id, first.source_artifact_id)
 
     def test_same_session_with_different_document_fails_closed_and_preserves_original(self) -> None:
         first = self.run_slice()
