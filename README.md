@@ -20,7 +20,7 @@ Gate C.1 and C.2-A through C.2-G contract foundations plus C-DIAG-1 engine runti
 
 Gate D.1-D.6 are complete as a **durable state/recovery contract and convergence foundation**. They cover fail-closed job state, idempotency/replay semantics, immutable source/candidate storage authority, SHA-256 provenance records, restart-recovery decisions, and partial-output/crash-window convergence. This does **not** mean production persistence is active: no database/S3/MinIO/filesystem provider, durable read/write adapter, queue/worker runtime, automatic process restart, storage-write runtime, or live orchestration authority is enabled.
 
-Gate E is now **in progress**. E.1 provides provider-neutral external-principal authentication evidence. E.2 provides deny-by-default external authorization-decision evidence bound to an exact principal, environment, and canonical operation. Authentication and authorization remain separate, and even an allowed E.2 decision does not execute an operation or activate upload, job creation, network dispatch, or orchestration. Provider/runtime wiring, resource/tenant scope where an authoritative ownership model exists, rate/abuse controls, safe upload sessions, request/idempotency binding, privacy-safe live API errors/logs, and versioned public route wiring remain outstanding.
+Gate E is now **in progress**. E.1 provides provider-neutral external-principal authentication evidence. E.2 provides deny-by-default external authorization-decision evidence bound to an exact principal, environment, and canonical operation. E.3A provides provider-neutral authenticated-operation rate-slot reservation evidence, and E.3B provides provider-neutral external request-idempotency admission evidence bound to the exact principal, operation, allowed rate decision, client idempotency key, and immutable request bytes. These remain admission-contract foundations only: they do not execute an operation or activate upload, job creation, persistence, network dispatch, or orchestration. Provider/runtime authentication wiring, resource/tenant scope where an authoritative ownership model exists, production/runtime rate and idempotency adapters, edge/anonymous abuse controls, safe upload sessions, privacy-safe live API errors/logs, and versioned public route wiring remain outstanding.
 
 ## Secure target flow
 
@@ -79,6 +79,8 @@ A successful engine process does **not** make its output trusted. HOMR, Clarity,
 - Gate D.1-D.6 durable job/artifact state, idempotency, storage-authority, provenance, restart-recovery, and crash-window/partial-output contract/convergence foundations; operational persistence and live orchestration remain disabled.
 - Gate E.1 provider-neutral external-principal authentication foundation.
 - Gate E.2 deny-by-default external authorization-decision foundation; allowed decisions still carry no operation-execution authority.
+- Gate E.3A provider-neutral authenticated-operation rate-slot reservation foundation; no production rate-state backend or HTTP 429 wiring is activated.
+- Gate E.3B provider-neutral external request-idempotency admission foundation; no durable idempotency backend or live request wiring is activated.
 - Immutable candidate/artifact lifecycle contracts.
 - Canonical Score, Ensemble comparator/report, and fixed evaluation foundations.
 - Candidate Safety v1 for HOMR, Clarity, and Audiveris engine outputs.
@@ -93,12 +95,12 @@ B.6 treats the original filename as metadata only. It rejects unsafe path forms,
 
 ## Activation gates still required
 
-Gate B, the Gate C security contracts, Gate D contract/convergence foundation, E.1 authentication foundation, and E.2 authorization-decision foundation do not by themselves authorize external upload or live orchestration. Before those capabilities are enabled, the platform still requires at minimum:
+Gate B, the Gate C security contracts, Gate D contract/convergence foundation, and Gate E.1-E.3B external API security foundations do not by themselves authorize external upload or live orchestration. Before those capabilities are enabled, the platform still requires at minimum:
 
 1. Separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations, with operational credential/replay protections and no security-boundary weakening.
 2. A separately reviewed operational persistence layer/provider for durable replay/job/artifact/provenance state, plus queue/worker/process-recovery behavior if activated; Gate D.1-D.6 currently provide only the contract/convergence authority model.
 3. Production immutable object storage and retention/restore behavior bound to the existing immutable artifact/provenance contracts.
-4. Remaining Gate E controls: provider/runtime authentication wiring, resource/user/tenant scope where applicable, rate limits and abuse controls, privacy-safe external errors/logs, request/idempotency binding, and an explicitly reviewed upload-session boundary wired through Safe Intake.
+4. Remaining Gate E controls: provider/runtime authentication wiring, resource/user/tenant scope where applicable, production/runtime rate-limit and idempotency adapters, fresh per-request E.3A/E.3B composition, edge/anonymous abuse protection, privacy-safe external errors/logs, and an explicitly reviewed upload-session boundary wired through Safe Intake.
 5. Teacher Review API with TR-8A RBAC/audit authorization, immutable revisions, and approval-to-publication barrier.
 6. Production monitoring, backup/restore, rollback, and supply-chain hardening gates.
 
