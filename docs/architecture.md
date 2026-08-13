@@ -89,7 +89,7 @@ Gate C.1 and Gate C.2-A through C.2-G contract foundations are present on `main`
 
 Gate D.1-D.6 are present as the durable job/artifact state and recovery **contract/convergence foundation**. They define closed durable job state, server-derived idempotency slots, immutable storage authority and content identity, append-only provenance evidence, restart-recovery decisions, and cross-layer partial-output/crash-window convergence. These contracts do not select or operate a database/object-store provider, durable replay adapter, queue/worker, process restart mechanism, storage writer, or live orchestration runtime.
 
-Gate E.1-E.3B provide external API security foundations without activating the external API. E.1 produces bounded authenticated external-principal evidence through a provider-neutral verifier seam. E.2 evaluates deny-by-default exact principal/environment/operation grants from a server-owned policy. E.3A derives operation-specific fixed-window rate-admission evidence through a provider-neutral atomic reservation seam. E.3B binds the exact principal, operation, allowed E.3A evidence, bounded client idempotency key, and server-computed SHA-256 of the immutable request bytes to one atomic reserve/replay/conflict decision. These foundations remain admission evidence only and carry no operation-execution, upload, job-creation, persistence, network-dispatch, or orchestration authority. Provider/runtime authentication wiring, resource/tenant scope where an authoritative ownership model exists, production rate/idempotency adapters, edge/anonymous abuse protection, safe upload sessions, and live privacy-safe API behavior remain later Gate E work. Any future live composition must evaluate E.3A freshly for the request being admitted before composing it with E.3B rather than reusing old allowed rate evidence as runtime authority.
+Gate E.1-E.3C provide external API security foundations without activating the external API. E.1 produces bounded authenticated external-principal evidence through a provider-neutral verifier seam. E.2 evaluates deny-by-default exact principal/environment/operation grants from a server-owned policy. E.3A derives operation-specific fixed-window rate-admission evidence through a provider-neutral atomic reservation seam. E.3B binds the exact principal, operation, allowed E.3A evidence, bounded client idempotency key, and server-computed SHA-256 of the immutable request bytes to one atomic reserve/replay/conflict decision. E.3C composes exact E.1/E.2 authority with a freshly evaluated E.3A reservation and then E.3B for the same immutable request, derives one deterministic admission binding, uses defensive callback request clones, and rechecks authority snapshots so callback mutation fails closed. These foundations remain admission evidence only and carry no operation-execution, upload, job-creation, persistence, network-dispatch, or orchestration authority. Provider/runtime authentication wiring, resource/tenant scope where an authoritative ownership model exists, production rate/idempotency adapters that preserve E.3C semantics, edge/anonymous abuse protection, safe upload sessions, and live privacy-safe API behavior remain later Gate E work.
 
 The Teacher Review Score Editor architecture is defined by [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). That contract refines the future Gate F boundary without changing the Gate C -> D -> E -> F -> G security order. It does not activate a Teacher Review API, editor, storage, playback, approval, or publication capability.
 
@@ -119,6 +119,7 @@ The repository contains substantial runtime and comparison foundations, but the 
 - Gate E.2 deny-by-default external authorization-decision foundation; even an allowed decision grants no operation-execution authority.
 - Gate E.3A provider-neutral external rate-slot reservation foundation; no production rate-state backend or HTTP 429 route behavior is activated.
 - Gate E.3B provider-neutral external request-idempotency admission foundation; no durable idempotency backend or live request route is activated.
+- Gate E.3C fail-closed external admission composition foundation; exact admission evaluates E.3A freshly before E.3B, binds exact immutable request identity, and rejects callback authority mutation without activating runtime capability.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -136,12 +137,12 @@ The repository contains substantial runtime and comparison foundations, but the 
 - Queue/worker/process restart runtime and automatic recovery execution.
 - External authentication-provider/runtime wiring and versioned public API routes.
 - Resource/user/tenant scope enforcement where applicable.
-- Production rate/idempotency adapters, edge/anonymous abuse protection, safe upload-session semantics, and live E.3A/E.3B request composition.
+- Production rate/idempotency adapters that preserve E.3C exact-request/fresh-rate composition, edge/anonymous abuse protection, and safe upload-session semantics.
 - Public publication.
 - Teacher Review production API and writable editor runtime.
 - Production approval/publication runtime.
 
-A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation, Gate C contract foundations do not authorize live dispatch, Gate D contract/convergence completion does not authorize provider-backed persistence or recovery execution, E.1-E.3B do not authorize a public API, UI-0B does not constitute a working Teacher Review editor, and TR-0A does not authorize Teacher Review runtime activation.
+A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation, Gate C contract foundations do not authorize live dispatch, Gate D contract/convergence completion does not authorize provider-backed persistence or recovery execution, E.1-E.3C do not authorize a public API, UI-0B does not constitute a working Teacher Review editor, and TR-0A does not authorize Teacher Review runtime activation.
 
 ## 4. Service responsibilities
 
@@ -156,7 +157,7 @@ A disabled capability must not be interpreted as implemented merely because its 
 - Preserve server-owned job and artifact identity.
 - Dispatch only to authenticated, allowlisted private engine endpoints after the completed C-DIAG-1/C-DIAG-2 and Gate D contract/convergence foundations are paired with separately reviewed operational credentials, replay/persistence, receiver/network wiring, and explicit activation.
 - Apply explicit timeout, cancellation, retry, idempotency, and restart-recovery rules without widening the current v1 one-attempt/zero-retry contract by implication.
-- Require exact Gate E authentication, authorization, fresh rate-admission, and request-idempotency evidence before any future external operation is wired, while keeping all admission evidence separate from operation-execution authority.
+- Require exact Gate E authentication/authorization plus E.3C fresh-rate/exact-request admission evidence before any future external operation is wired, while keeping all admission evidence separate from operation-execution authority.
 - Never bypass Candidate Safety v1 when accepting engine results.
 
 ### homr-service
@@ -282,7 +283,7 @@ Before external or staging upload exposure, the integration boundary must demons
 - E.1-compatible provider/runtime authentication and E.2-compatible deny-by-default authorization for every activated operation;
 - resource/user/tenant scope enforcement where an authoritative ownership model exists;
 - provider-backed rate limiting and edge/anonymous abuse controls consistent with E.3A;
-- provider-backed request-idempotency persistence/runtime consistent with E.3B, with fresh E.3A evaluation for each admitted request;
+- provider-backed rate/idempotency runtime that preserves E.3C fresh-rate, exact-request composition and replay/conflict semantics;
 - cancellation and retry semantics;
 - approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations;
 - operational provider-backed durable replay/job/artifact/provenance state and restart behavior consistent with the completed Gate D.1-D.6 contract/convergence foundation;
