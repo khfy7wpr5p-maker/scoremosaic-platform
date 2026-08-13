@@ -30,6 +30,7 @@ from scoremosaic_gateway.external_admission import compose_external_admission
 from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES
 from scoremosaic_gateway.safe_upload_session import (
     SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
+    SAFE_UPLOAD_SESSION_OPERATION_ID,
     SafeUploadSessionError,
     SafeUploadSessionPolicy,
     SafeUploadSessionReservationReceipt,
@@ -40,7 +41,7 @@ from scoremosaic_gateway.safe_upload_session import (
 class SafeUploadSessionConvergenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.now = 2_000_000_000
-        self.operation = "platform.operation.alpha"
+        self.operation = SAFE_UPLOAD_SESSION_OPERATION_ID
         self.principal = authenticate_external_principal(
             policy=ExternalAuthPolicy(
                 version=EXTERNAL_AUTH_CONTRACT_VERSION,
