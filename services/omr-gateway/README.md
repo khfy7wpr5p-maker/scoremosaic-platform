@@ -279,3 +279,36 @@ python -m pip install pypdf==6.14.2 Pillow==12.3.0
 python -m compileall -q services/omr-gateway/src
 python -m unittest discover -s services/omr-gateway/tests -v
 ```
+
+Docker validation is performed in GitHub Actions and later in Coolify staging.
+
+## Required gates before real orchestration, storage, and external API activation
+
+Gate B Safe Intake, Gate C dispatch-security contracts, Gate D.1-D.6 durable state/recovery contract/convergence foundations, and Gate E.1-E.3B external API security foundations do not activate an upload or execution surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
+
+- separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations, with operational credential-generation/rotation and durable replay implementation consistent with those contracts
+- provider-backed durable replay/job/run/candidate/artifact/provenance persistence and immutable storage writes consistent with Gate D.1-D.6; no concrete database/S3/MinIO/filesystem provider is currently active
+- concrete engine adapter request/response contracts and controlled execution wiring
+- queue/cancellation/cleanup/process-recovery behavior consistent with Gate D recovery decisions and the existing v1 one-attempt/zero-retry policy; in-flight ambiguous work must not automatically resume
+- content-addressed immutable source and candidate artifact storage plus retention, cleanup, backup/recovery rules
+- safe MusicXML validation through Candidate Safety v1
+- E.1-compatible real authentication-provider/runtime wiring without exposing credentials or raw subjects
+- E.2-compatible deny-by-default authorization wired independently for each activated operation, plus resource/user/tenant scope enforcement where an authoritative ownership model exists
+- E.3A-compatible production/runtime rate limiting plus edge/anonymous abuse protection
+- E.3B-compatible production/runtime request-idempotency persistence, with fresh E.3A evaluation for each admitted request and privacy-safe external error/log handling
+- a safe upload-session path that must pass `decide_safe_intake()` before later processing
+- real engine adapters with pinned versions
+- no automatic teacher approval or publication; reviewer RBAC remains Gate F/TR-8A rather than E.2
+
+## Explicit non-goals
+
+- public API or domain
+- real upload or conversion
+- live network dispatch or orchestration execution
+- database, queue, or persistent storage runtime
+- runtime artifact mutation or overwrite
+- automatic Ensemble comparison invocation
+- engine ranking, preferred candidate, or winner selection
+- automatic MusicXML merge or correction
+- user editor, teacher approval, or note tracking
+- ST-OMR implementation or integration
