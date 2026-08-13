@@ -34,6 +34,7 @@ from .external_idempotency import (
     reserve_external_idempotency_slot,
 )
 from .external_rate_limit import (
+    ExternalRateDecision,
     ExternalRateLimitError,
     ExternalRateLimitPolicy,
     ExternalRateReservationRequest,
@@ -67,6 +68,76 @@ def _is_principal_id(value: object) -> bool:
 
 def _is_sha256(value: object) -> bool:
     return type(value) is str and _SHA256_RE.fullmatch(value) is not None
+
+
+def _authority_snapshot(
+    *,
+    rate_policy: object,
+    principal: object,
+    authorization: object,
+) -> tuple[object, ...] | None:
+    """Capture exact validated-shape authority values before provider callbacks.
+
+    The snapshot is not new authority and cannot be used to construct trusted
+    principal or authorization objects. It only lets this composition layer detect
+    in-process mutation of already-validated authority evidence across callback
+    seams before any later stage can consume the changed values.
+    """
+
+    if (
+        type(rate_policy) is not ExternalRateLimitPolicy
+        or type(principal) is not AuthenticatedExternalPrincipal
+        or type(authorization) is not ExternalAuthorizationDecision
+    ):
+        return None
+
+    try:
+        rules = tuple(
+            (
+                type(rule),
+                rule.operation_id,
+                rule.window_seconds,
+                rule.max_requests,
+            )
+            for rule in rate_policy.rules
+        )
+        return (
+            rate_policy.version,
+            rate_policy.environment,
+            type(rate_policy.rules),
+            rules,
+            principal.version,
+            principal.environment,
+            principal.provider_id,
+            principal.subject_id,
+            principal.principal_id,
+            principal.authenticated_at_epoch_s,
+            principal.expires_at_epoch_s,
+            authorization.version,
+            authorization.environment,
+            authorization.principal_id,
+            authorization.operation_id,
+            authorization.allowed,
+            authorization.reason,
+        )
+    except Exception:
+        return None
+
+
+def _rate_decision_snapshot(rate_decision: object) -> tuple[object, ...] | None:
+    if type(rate_decision) is not ExternalRateDecision:
+        return None
+    try:
+        return (
+            rate_decision.version,
+            rate_decision.environment,
+            rate_decision.principal_id,
+            rate_decision.operation_id,
+            rate_decision.allowed,
+            rate_decision.reason,
+        )
+    except Exception:
+        return None
 
 
 def _binding_id(
@@ -222,6 +293,19 @@ def compose_external_admission(
 ) -> ExternalAdmissionDecision:
     """Evaluate fresh rate admission then bind one exact E.3B request decision."""
 
+    initial_authority = _authority_snapshot(
+        rate_policy=rate_policy,
+        principal=principal,
+        authorization=authorization,
+    )
+
+    def authority_unchanged() -> bool:
+        return initial_authority is not None and _authority_snapshot(
+            rate_policy=rate_policy,
+            principal=principal,
+            authorization=authorization,
+        ) == initial_authority
+
     def isolate_rate_reservation(request: ExternalRateReservationRequest):
         if type(request) is not ExternalRateReservationRequest:
             raise ExternalAdmissionError("rate_callback_invalid")
@@ -248,6 +332,13 @@ def compose_external_admission(
         )
     except ExternalRateLimitError as exc:
         raise ExternalAdmissionError(exc.category) from None
+
+    if not authority_unchanged():
+        raise ExternalAdmissionError("admission_authority_mutated")
+
+    rate_authority = _rate_decision_snapshot(rate_decision)
+    if rate_authority is None:
+        raise ExternalAdmissionError("rate_decision_invalid")
 
     if not rate_decision.allowed:
         raise ExternalAdmissionError("rate_limited")
@@ -287,6 +378,9 @@ def compose_external_admission(
         )
     except ExternalIdempotencyError as exc:
         raise ExternalAdmissionError(exc.category) from None
+
+    if not authority_unchanged() or _rate_decision_snapshot(rate_decision) != rate_authority:
+        raise ExternalAdmissionError("admission_authority_mutated")
 
     if captured_request is None:
         raise ExternalAdmissionError("idempotency_binding_missing")
