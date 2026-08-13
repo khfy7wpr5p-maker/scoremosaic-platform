@@ -23,6 +23,7 @@ from .external_auth import ALLOWED_ENVIRONMENTS, MAX_TIMESTAMP
 from .intake_decision import SafeIntakeDecision, decide_safe_intake
 from .safe_intake import SAFE_INTAKE_MEDIA_TYPES, SAFE_INTAKE_POLICY_VERSION
 from .safe_upload_session import (
+    SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
     SAFE_UPLOAD_SESSION_OPERATION_ID,
     SafeUploadSessionDecision,
     SafeUploadSessionError,
@@ -84,6 +85,10 @@ def _session_snapshot(value: object) -> tuple[object, ...] | None:
         return None
 
 
+def _optional_int_token(value: int | None) -> bytes:
+    return b"-" if value is None else str(value).encode("ascii")
+
+
 def _finalization_id(*, session_id: str, document_sha256: str, intake: SafeIntakeDecision) -> str:
     payload = b"\0".join(
         (
@@ -94,6 +99,10 @@ def _finalization_id(*, session_id: str, document_sha256: str, intake: SafeIntak
             intake.format_id.encode("ascii"),
             intake.media_type.encode("ascii"),
             str(intake.observed_bytes).encode("ascii"),
+            _optional_int_token(intake.page_count),
+            _optional_int_token(intake.image_width),
+            _optional_int_token(intake.image_height),
+            _optional_int_token(intake.image_pixel_count),
         )
     )
     return "final_" + sha256(payload).hexdigest()[:40]
@@ -420,6 +429,49 @@ class SafeUploadFinalizationDecision:
         }
 
 
+def verify_safe_upload_finalization_decision(decision: SafeUploadFinalizationDecision) -> None:
+    """Verify exact E.4B evidence before a later gate derives new authority."""
+
+    if type(decision) is not SafeUploadFinalizationDecision:
+        raise SafeUploadFinalizationError("upload_finalization_decision_invalid")
+    try:
+        decision.__post_init__()
+    except Exception:
+        raise SafeUploadFinalizationError("upload_finalization_decision_invalid") from None
+
+    expected_session_id = "upload_" + sha256(
+        b"\0".join(
+            (
+                SAFE_UPLOAD_SESSION_CONTRACT_VERSION.encode("ascii"),
+                decision.environment.encode("ascii"),
+                decision.principal_id.encode("ascii"),
+                decision.operation_id.encode("ascii"),
+                decision.admission_binding_id.encode("ascii"),
+            )
+        )
+    ).hexdigest()[:40]
+    if decision.session_id != expected_session_id:
+        raise SafeUploadFinalizationError("upload_finalization_decision_invalid")
+
+    intake = SafeIntakeDecision(
+        policy_version=decision.intake_policy_version,
+        format_id=decision.format_id,
+        media_type=decision.media_type,
+        observed_bytes=decision.observed_bytes,
+        page_count=decision.page_count,
+        image_width=decision.image_width,
+        image_height=decision.image_height,
+        image_pixel_count=decision.image_pixel_count,
+    )
+    expected_finalization_id = _finalization_id(
+        session_id=decision.session_id,
+        document_sha256=decision.document_sha256,
+        intake=intake,
+    )
+    if decision.finalization_id != expected_finalization_id:
+        raise SafeUploadFinalizationError("upload_finalization_decision_invalid")
+
+
 def finalize_safe_upload_session(
     *,
     session: SafeUploadSessionDecision,
@@ -583,7 +635,7 @@ def finalize_safe_upload_session(
         raise SafeUploadFinalizationError("upload_finalization_receipt_invalid")
 
     replayed = receipt.outcome == "replay"
-    return SafeUploadFinalizationDecision(
+    decision = SafeUploadFinalizationDecision(
         version=request.version,
         session_id=request.session_id,
         admission_binding_id=request.admission_binding_id,
@@ -605,3 +657,5 @@ def finalize_safe_upload_session(
         finalized_at_epoch_s=receipt.finalized_at_epoch_s,
         _construction_seal=_DECISION_CONSTRUCTION_SEAL,
     )
+    verify_safe_upload_finalization_decision(decision)
+    return decision
