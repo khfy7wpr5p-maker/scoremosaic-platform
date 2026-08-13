@@ -11,14 +11,18 @@ select a production database/object-store provider.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 import ctypes
 from dataclasses import dataclass
 import errno
+import fcntl
 from hashlib import sha256
 from hmac import compare_digest, new as hmac_new
 import json
 import os
 from pathlib import Path
+import re
 import stat
 
 from .external_admission import ExternalAdmissionDecision
@@ -50,7 +54,9 @@ _READ_CHUNK_BYTES = 64 * 1024
 _STATE_INTEGRITY_KEY_BYTES = 32
 _STATE_INTEGRITY_MAC_FIELD = "state_integrity_mac"
 _STATE_INTEGRITY_DOMAIN = b"scoremosaic-minimum-staging-state-v1"
-_STATE_RECORD_KINDS = frozenset({"session", "finalization"})
+_STATE_RECORD_KINDS = frozenset({"session", "finalization", "job_lifecycle"})
+_JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
+_JOB_LOCK_PAYLOAD = b"scoremosaic-staging-job-lock-v1"
 _AT_EMPTY_PATH = 0x1000
 
 
@@ -506,7 +512,13 @@ class StagingUploadProvider:
             offset += len(chunk)
         return os.read(fd, 1) == b""
 
-    def _atomic_create(self, path: Path, payload: bytes) -> bool:
+    def _atomic_create(
+        self,
+        path: Path,
+        payload: bytes,
+        *,
+        prepublish_check: Callable[[], None] | None = None,
+    ) -> bool:
         parent_fd, final_leaf = self._open_parent_fd(path, create=True)
         temp_fd: int | None = None
         try:
@@ -521,6 +533,8 @@ class StagingUploadProvider:
                     or temp_stat.st_size != len(payload)
                 ):
                     raise OSError(errno.EIO, "temporary staging file is invalid")
+                if prepublish_check is not None:
+                    prepublish_check()
                 try:
                     self._link_unnamed_file(temp_fd, parent_fd, final_leaf)
                 except FileExistsError:
@@ -603,6 +617,68 @@ class StagingUploadProvider:
     def _finalization_path(self, session_id: str) -> Path:
         return self._root / "state" / "finalizations" / f"{session_id}.json"
 
+    def _job_lifecycle_path(self, job_id: str) -> Path:
+        if type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        return self._root / "state" / "jobs" / f"{job_id}.json"
+
+    def _job_lock_path(self, job_id: str) -> Path:
+        if type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        return self._root / "state" / "locks" / f"{job_id}.lock"
+
+    @contextmanager
+    def _job_lock(self, job_id: str) -> Iterator[None]:
+        path = self._job_lock_path(job_id)
+        self._atomic_create(path, _JOB_LOCK_PAYLOAD)
+        parent_fd, leaf = self._open_parent_fd(path, create=False)
+        lock_fd: int | None = None
+        locked = False
+        try:
+            try:
+                lock_fd = os.open(leaf, self._file_read_flags(), dir_fd=parent_fd)
+                lock_stat = os.fstat(lock_fd)
+                if (
+                    not stat.S_ISREG(lock_stat.st_mode)
+                    or lock_stat.st_size != len(_JOB_LOCK_PAYLOAD)
+                ):
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_corrupt"
+                    )
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                locked = True
+            except MinimumStagingVerticalSliceError:
+                raise
+            except OSError:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
+            yield
+        finally:
+            close_failed = False
+            if lock_fd is not None:
+                if locked:
+                    try:
+                        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                    except OSError:
+                        close_failed = True
+                try:
+                    os.close(lock_fd)
+                except OSError:
+                    close_failed = True
+            try:
+                os.close(parent_fd)
+            except OSError:
+                close_failed = True
+            if close_failed:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
+
     def _source_path(self, binding: SafeSourceJobBindingDecision) -> Path:
         if type(binding) is not SafeSourceJobBindingDecision:
             raise MinimumStagingVerticalSliceError("staging_source_binding_invalid")
@@ -616,6 +692,125 @@ class StagingUploadProvider:
         if relative.is_absolute() or ".." in relative.parts:
             raise MinimumStagingVerticalSliceError("staging_path_invalid")
         return self._root / "objects" / relative
+
+    @staticmethod
+    def _source_fd_matches_binding(
+        fd: int,
+        binding: SafeSourceJobBindingDecision,
+    ) -> bool:
+        try:
+            os.lseek(fd, 0, os.SEEK_SET)
+            digest = sha256()
+            observed = 0
+            while observed <= binding.source_size_bytes:
+                chunk = os.read(
+                    fd,
+                    min(
+                        _READ_CHUNK_BYTES,
+                        binding.source_size_bytes + 1 - observed,
+                    ),
+                )
+                if not chunk:
+                    break
+                observed += len(chunk)
+                digest.update(chunk)
+            return (
+                observed == binding.source_size_bytes
+                and digest.hexdigest() == binding.document_sha256
+            )
+        except OSError:
+            raise MinimumStagingVerticalSliceError(
+                "staging_state_unavailable"
+            ) from None
+
+    @contextmanager
+    def _verified_source_guard(
+        self,
+        binding: SafeSourceJobBindingDecision,
+    ) -> Iterator[Callable[[], None]]:
+        path = self._source_path(binding)
+        parent_fd, leaf = self._open_parent_fd(path, create=False)
+        source_fd: int | None = None
+        try:
+            try:
+                source_fd = os.open(
+                    leaf,
+                    self._file_read_flags(),
+                    dir_fd=parent_fd,
+                )
+                source_stat = os.fstat(source_fd)
+            except OSError as exc:
+                raise self._path_error(exc) from None
+            if (
+                not stat.S_ISREG(source_stat.st_mode)
+                or source_stat.st_size != binding.source_size_bytes
+                or not self._source_fd_matches_binding(source_fd, binding)
+            ):
+                raise MinimumStagingVerticalSliceError(
+                    "staging_source_collision"
+                )
+
+            def assert_stable() -> None:
+                assert source_fd is not None
+                try:
+                    retained_source_stat = os.fstat(source_fd)
+                    current_parent_fd, current_leaf = self._open_parent_fd(
+                        path,
+                        create=False,
+                    )
+                    try:
+                        current_source_stat = os.stat(
+                            current_leaf,
+                            dir_fd=current_parent_fd,
+                            follow_symlinks=False,
+                        )
+                        if (
+                            current_leaf != leaf
+                            or not stat.S_ISREG(current_source_stat.st_mode)
+                            or (current_source_stat.st_dev, current_source_stat.st_ino)
+                            != (source_stat.st_dev, source_stat.st_ino)
+                            or (
+                                retained_source_stat.st_dev,
+                                retained_source_stat.st_ino,
+                            )
+                            != (source_stat.st_dev, source_stat.st_ino)
+                            or current_source_stat.st_size
+                            != binding.source_size_bytes
+                            or not self._source_fd_matches_binding(
+                                source_fd,
+                                binding,
+                            )
+                        ):
+                            raise MinimumStagingVerticalSliceError(
+                                "staging_source_collision"
+                            )
+                    finally:
+                        os.close(current_parent_fd)
+                except MinimumStagingVerticalSliceError:
+                    raise
+                except OSError:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_unavailable"
+                    ) from None
+
+            assert_stable()
+            yield assert_stable
+            assert_stable()
+        finally:
+            close_failed = False
+            if source_fd is not None:
+                try:
+                    os.close(source_fd)
+                except OSError:
+                    close_failed = True
+            try:
+                os.close(parent_fd)
+            except OSError:
+                close_failed = True
+            if close_failed:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
 
     @staticmethod
     def _session_record(request: SafeUploadSessionReservationRequest) -> dict[str, object]:
@@ -815,35 +1010,110 @@ class StagingUploadProvider:
             raise MinimumStagingVerticalSliceError("staging_source_payload_mismatch")
 
         path = self._source_path(binding)
-        created = self._atomic_create(path, payload)
-        if created:
-            return "written"
-        existing = self._read_file_no_follow(
-            path,
-            max_bytes=binding.source_size_bytes,
-            overflow_category="staging_source_collision",
-        )
-        if (
-            len(existing) != binding.source_size_bytes
-            or sha256(existing).hexdigest() != binding.document_sha256
-            or existing != payload
-        ):
-            raise MinimumStagingVerticalSliceError("staging_source_collision")
-        return "replay"
+        with self._job_lock(binding.job_id):
+            created = self._atomic_create(path, payload)
+            if created:
+                return "written"
+            existing = self._read_file_no_follow(
+                path,
+                max_bytes=binding.source_size_bytes,
+                overflow_category="staging_source_collision",
+            )
+            if (
+                len(existing) != binding.source_size_bytes
+                or sha256(existing).hexdigest() != binding.document_sha256
+                or existing != payload
+            ):
+                raise MinimumStagingVerticalSliceError("staging_source_collision")
+            return "replay"
 
     def read_source(self, binding: SafeSourceJobBindingDecision) -> bytes:
         path = self._source_path(binding)
-        existing = self._read_file_no_follow(
-            path,
-            max_bytes=binding.source_size_bytes,
-            overflow_category="staging_source_collision",
-        )
+        with self._job_lock(binding.job_id):
+            existing = self._read_file_no_follow(
+                path,
+                max_bytes=binding.source_size_bytes,
+                overflow_category="staging_source_collision",
+            )
+            if (
+                len(existing) != binding.source_size_bytes
+                or sha256(existing).hexdigest() != binding.document_sha256
+            ):
+                raise MinimumStagingVerticalSliceError("staging_source_collision")
+            return existing
+
+    def persist_job_lifecycle_record(
+        self,
+        *,
+        binding: SafeSourceJobBindingDecision,
+        record: dict[str, object],
+    ) -> str:
+        """Create or exactly replay one authenticated staging job record."""
+
+        if type(binding) is not SafeSourceJobBindingDecision:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        try:
+            binding.__post_init__()
+        except Exception:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            ) from None
+        job_id = binding.job_id
+        path = self._job_lifecycle_path(job_id)
         if (
-            len(existing) != binding.source_size_bytes
-            or sha256(existing).hexdigest() != binding.document_sha256
+            type(record) is not dict
+            or any(type(key) is not str for key in record)
+            or record.get("job_id") != job_id
+            or _STATE_INTEGRITY_MAC_FIELD in record
         ):
-            raise MinimumStagingVerticalSliceError("staging_source_collision")
-        return existing
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        try:
+            payload = _canonical_json_bytes(record)
+            detached = _decode_record(payload)
+        except (TypeError, ValueError, OverflowError):
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            ) from None
+        if detached != record or len(payload) > _MAX_STATE_RECORD_BYTES:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+
+        sealed = self._seal_state_record(kind="job_lifecycle", record=detached)
+        sealed_payload = _canonical_json_bytes(sealed)
+        if len(sealed_payload) > _MAX_STATE_RECORD_BYTES:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        with self._job_lock(job_id):
+            with self._verified_source_guard(binding) as assert_source_stable:
+                created = self._atomic_create(
+                    path,
+                    sealed_payload,
+                    prepublish_check=assert_source_stable,
+                )
+                if created:
+                    return "written"
+
+                stored = self._verify_state_record(
+                    kind="job_lifecycle",
+                    record=_decode_record(
+                        self._read_file_no_follow(
+                            path,
+                            max_bytes=_MAX_STATE_RECORD_BYTES,
+                            overflow_category="staging_state_corrupt",
+                        )
+                    ),
+                )
+                if stored != detached:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_job_lifecycle_conflict"
+                    )
+                return "replay"
 
 
 def run_minimum_staging_vertical_slice(

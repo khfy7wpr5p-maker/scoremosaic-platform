@@ -1,6 +1,6 @@
 # Minimum Staging Vertical Slice
 
-Status: implemented on the staging slice branch; merge remains separately gated.
+Status: implemented on `main` by PR #89.
 
 ## Purpose
 
