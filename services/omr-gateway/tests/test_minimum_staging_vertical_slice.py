@@ -90,6 +90,47 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(raised.exception.category, "staging_source_payload_mismatch")
         self.assertEqual(self.provider.read_source(result.binding), helpers.PNG_1X1)
 
+    def test_corrupt_persisted_session_fails_closed_without_touching_source(self) -> None:
+        first = self.run_slice()
+        session_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "sessions"
+            / f"{first.session.session_id}.json"
+        )
+        session_path.write_text("{}", encoding="utf-8")
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.run_slice()
+        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
+        self.assertEqual(self.provider.read_source(first.binding), helpers.PNG_1X1)
+
+    def test_preexisting_symlink_state_directory_cannot_escape_staging_root(self) -> None:
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        root = Path(self.temp_dir.name)
+        (root / "state").symlink_to(Path(outside.name), target_is_directory=True)
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.run_slice()
+        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
+        self.assertEqual(list(Path(outside.name).rglob("*")), [])
+
+    def test_existing_tampered_source_is_never_overwritten_on_replay(self) -> None:
+        first = self.run_slice()
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / Path(first.binding.source_storage_key)
+        )
+        tampered = b"X" * len(helpers.PNG_1X1)
+        source_path.write_bytes(tampered)
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.run_slice()
+        self.assertEqual(raised.exception.category, "staging_source_collision")
+        self.assertEqual(source_path.read_bytes(), tampered)
+
     def test_slice_is_staging_only_and_does_not_activate_http_or_dispatch_authority(self) -> None:
         object.__setattr__(self.admission, "environment", "production")
 
