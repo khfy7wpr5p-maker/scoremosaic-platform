@@ -19,7 +19,7 @@ The platform therefore separates two mandatory data gates:
 - Engine services must not receive browser-visible API keys.
 - Development, staging, and production secrets must be separate.
 - Current Gateway upload and execution/orchestration remain disabled.
-- Gate E.1 defines provider-neutral authenticated external-principal evidence, Gate E.2 defines deny-by-default authorization-decision evidence, Gate E.3A defines provider-neutral rate-admission evidence, and Gate E.3B defines provider-neutral external request-idempotency admission evidence. None of these foundations registers a public route, selects a production provider/backend, executes an authorized operation, or enables upload/job/network/orchestration behavior.
+- Gate E.1 defines provider-neutral authenticated external-principal evidence, Gate E.2 defines deny-by-default authorization-decision evidence, Gate E.3A defines provider-neutral rate-admission evidence, Gate E.3B defines provider-neutral external request-idempotency admission evidence, and Gate E.3C defines fail-closed fresh-rate/exact-request admission-composition evidence. None of these foundations registers a public route, selects a production provider/backend, executes an authorized operation, or enables upload/job/network/orchestration behavior.
 
 ## 3. Safe Intake Gate
 
@@ -48,7 +48,7 @@ B.6 treats the original filename as metadata only. It rejects empty/overlong or 
 
 The hostile-input convergence layer exercises representative renamed/unsupported input, MIME mismatch, byte-budget rejection, traversal/control/device filename cases, malformed/missing-reference/encrypted PDFs, PDF page-budget rejection, malformed/truncated JPEG/PNG, animated/APNG rejection, dimension/pixel rejection, and bounded inspector timeout categories through the integrated decision boundary. The 256 MiB worker address-space limits are verified separately without allocating hostile-sized inputs.
 
-Gate B completion is a security-foundation milestone, not an activation event. **External upload remains disabled.** There is no upload endpoint. Gate D.1-D.6 durable state/recovery contract foundations and Gate E.1-E.3B external API security foundations now exist, but production rate/idempotency adapters, edge/anonymous abuse controls, safe upload-session semantics, resource scope where applicable, production storage/runtime activation, privacy-safe live API behavior, and production-readiness controls still have to pass before public traffic may be enabled.
+Gate B completion is a security-foundation milestone, not an activation event. **External upload remains disabled.** There is no upload endpoint. Gate D.1-D.6 durable state/recovery contract foundations and Gate E.1-E.3C external API security foundations now exist, but production rate/idempotency adapters, edge/anonymous abuse controls, safe upload-session semantics, resource scope where applicable, production storage/runtime activation, privacy-safe live API behavior, and production-readiness controls still have to pass before public traffic may be enabled.
 
 ## 4. Candidate Safety Gate v1
 
@@ -132,7 +132,7 @@ Logs must not include:
 
 External error responses must avoid stack traces, raw subprocess output, and internal infrastructure details.
 
-Gate E.1 safe principal evidence excludes raw subject and credential material. Gate E.2 safe authorization evidence exposes only bounded principal/operation/decision information and does not disclose unrelated policy grants. Gate E.3A safe rate evidence excludes backend/provider diagnostics and does not grant execution authority. Gate E.3B safe idempotency evidence excludes the raw client key, request body, slot ID, request digest, subject, credentials, and provider details. Privacy-safe behavior for future live HTTP errors and request logs remains required before public API activation.
+Gate E.1 safe principal evidence excludes raw subject and credential material. Gate E.2 safe authorization evidence exposes only bounded principal/operation/decision information and does not disclose unrelated policy grants. Gate E.3A safe rate evidence excludes backend/provider diagnostics and does not grant execution authority. Gate E.3B safe idempotency evidence excludes the raw client key, request body, slot ID, request digest, subject, credentials, and provider details. Gate E.3C safe admission evidence excludes internal binding/request material and provider diagnostics while explicitly retaining all runtime authority flags as disabled. Privacy-safe behavior for future live HTTP errors and request logs remains required before public API activation.
 
 ## 8. Dependency and model supply chain
 
@@ -206,13 +206,13 @@ These intake categories are covered across the B.1-B.6 primitive suites and the 
 - unauthorized external operation requests;
 - unauthorized review/approval/publication attempts.
 
-Gate D.6 covers representative job/candidate/storage partial-output and crash-window convergence at the contract layer. E.1-E.3B cover external principal/authorization/rate/idempotency confusion and fail-closed admission behavior without activating a public route.
+Gate D.6 covers representative job/candidate/storage partial-output and crash-window convergence at the contract layer. E.1-E.3C cover external principal/authorization/rate/idempotency/composition confusion and fail-closed admission behavior without activating a public route.
 
 ## 11. Security stop rules
 
 The following capabilities remain blocked until their protecting controls and negative tests pass:
 
-- **External upload** → Safe Intake Gate B is complete; Gate D.1-D.6 state/recovery contract foundations and Gate E.1-E.3B external API security foundations also exist. Upload remains blocked because there is no upload endpoint/session, no provider-backed production persistence/storage activation, and remaining Gate E provider/runtime auth, resource scope where applicable, production rate/idempotency adapters, edge/anonymous abuse, privacy, fresh request composition, and explicit route-activation controls are incomplete.
+- **External upload** → Safe Intake Gate B is complete; Gate D.1-D.6 state/recovery contract foundations and Gate E.1-E.3C external API security foundations also exist. Upload remains blocked because there is no activated upload endpoint/session, no provider-backed production persistence/storage activation, and remaining Gate E provider/runtime auth, resource scope where applicable, production rate/idempotency adapters, edge/anonymous abuse, privacy, safe upload-session, and explicit route-activation controls are incomplete.
 - **Live Gateway dispatch** → Gate C internal-dispatch contracts and Gate D state/recovery contract/convergence foundations are present, but operational credentials/replay persistence, durable provider-backed state/storage, live receiver/network wiring, process/worker control, and explicit orchestration activation remain blocked.
 - **Canonical/Ensemble consumption of engine output** → must pass Candidate Safety v1 first.
 - **Teacher approval/publication** → blocked until Gate F/TR-8A RBAC, immutable revisions, audit evidence, and approval/publication barriers exist; generic E.2 authorization is not reviewer approval authority.
