@@ -11,7 +11,7 @@ ScoreMosaic is an OMR and review-support platform. It is not the learner-facing 
 ```text
 External application
         |
-        | versioned authenticated HTTPS API
+        | future versioned authenticated HTTPS API
         v
 Safe Upload Session reservation (E.4A)
         |
@@ -29,6 +29,10 @@ Immutable source artifact / job binding (E.4C)
 SHA-256 + provenance
         |
         | E.4 closure verification / convergence
+        v
+Private staging source persistence
+(minimum staging vertical slice)
+        |
         v
 OMR Gateway / job orchestration
         |
@@ -88,17 +92,19 @@ Gate B.4 adds one implementation boundary inside Safe Intake: exact PDF bytes ar
 
 Gate B.5 likewise leaves the target architecture unchanged. Exact immutable JPEG/PNG bytes are inspected in a bounded private helper using exact-pinned `Pillow==12.3.0`; only static JPEG/PNG is accepted, dimensions are server-derived, each dimension is capped at 12,000 px, total pixels are capped at 40,000,000, and the helper is bounded by a 256 MiB address-space limit and a 3-second timeout. The helper persists nothing and does not enable upload or orchestration.
 
-Gate B.6 validates original filename metadata without deriving caller-controlled filesystem paths. The integrated `decide_safe_intake()` boundary then composes B.1-B.6 over one exact immutable payload and returns only bounded server-derived evidence after all required checks pass. The hostile-input convergence suite verifies representative fail-closed categories through that integrated decision. None of these Gate B slices enables HTTP upload, storage, or engine dispatch.
+Gate B.6 validates original filename metadata without deriving caller-controlled filesystem paths. The integrated `decide_safe_intake()` boundary then composes B.1-B.6 over one exact immutable payload and returns only bounded server-derived evidence after all required checks pass. The hostile-input convergence suite verifies representative fail-closed categories through that integrated decision. None of these Gate B slices by themselves enables HTTP upload, storage, or engine dispatch.
 
 Gate C.1 and Gate C.2-A through C.2-G contract foundations are present on `main`. Together they define service identity/environment credential binding, authenticated request envelopes, exact test/staging target allowlisting, job/source/run/result identity binding, credential-generation/rotation and replay-reservation semantics, receiver verification convergence, deterministic timeout/cancellation decisions, and the orchestration v1 one-attempt/zero-retry budget. C-DIAG-1 is also present: HOMR, Clarity, and Audiveris runtime stdout/stderr and provider exception text are replaced by bounded stable markers or reason codes, and failed readiness responses suppress untrusted runtime/version/model fields. C-DIAG-2 is present as the bounded outward diagnostic convergence for C.2-E/F/G: receiver-verification, dispatch-deadline, retry-budget, and unexpected dispatch exceptions map to a closed immutable version/stage/reason payload without inspecting exception text, trusted mappings require exact exception types, and diagnostic fields require exact `str` values. Production has no authorized dispatch origin. The reserved future `POST /internal/transcribe` target is not registered and no live engine receiver route or network dispatch is enabled.
 
-Gate D.1-D.6 are present as the durable job/artifact state and recovery **contract/convergence foundation**. They define closed durable job state, server-derived idempotency slots, immutable storage authority and content identity, append-only provenance evidence, restart-recovery decisions, and cross-layer partial-output/crash-window convergence. These contracts do not select or operate a database/object-store provider, durable replay adapter, queue/worker, process restart mechanism, storage writer, or live orchestration runtime.
+Gate D.1-D.6 are present as the durable job/artifact state and recovery **contract/convergence foundation**. They define closed durable job state, server-derived idempotency slots, immutable storage authority and content identity, append-only provenance evidence, restart-recovery decisions, and cross-layer partial-output/crash-window convergence. Gate D completion itself did not select or operate a database/object-store provider, durable replay adapter, queue/worker, process restart mechanism, storage writer, or live orchestration runtime. The later minimum staging slice deliberately reuses Gate D.3 source authority for one bounded private source write only; broader job/candidate persistence remains disabled.
 
-Gate E.1-E.4 now provide the external API security/admission/upload-to-source **contract/convergence foundations** without activating the external API. E.1 produces bounded authenticated external-principal evidence through a provider-neutral verifier seam. E.2 evaluates deny-by-default exact principal/environment/operation grants from a server-owned policy. E.3A derives operation-specific fixed-window rate-admission evidence through a provider-neutral atomic reservation seam. E.3B binds the exact principal, operation, allowed E.3A evidence, bounded client idempotency key, and server-computed SHA-256 of immutable request bytes to one atomic reserve/replay/conflict decision. E.3C composes exact E.1/E.2 authority with a freshly evaluated E.3A reservation and then E.3B for the same immutable request, derives one deterministic admission binding, uses defensive callback request clones, and rechecks authority snapshots so callback mutation fails closed. E.4A consumes only exact E.3C admission for canonical `platform.safe_upload_session` and derives one server-owned bounded session. E.4B consumes one exact active E.4A session plus exact immutable document `bytes`, executes Gate B `decide_safe_intake()` before any provider callback, computes document SHA-256 server-side, and binds exact Safe Intake provenance to one deterministic finalization identity. E.4C independently re-verifies E.4B and derives deterministic server-owned source/job/storage identity using existing orchestration, artifact-lifecycle, and Gate D.3 contracts. The final E.4 closure adds independent later-consumer verification by freshly re-deriving E.4C from exact E.4B evidence and proves replay/tamper/cross-finalization convergence. None of E.1-E.4 grants public upload, persistence, storage-write, execution, network-dispatch, or orchestration authority. Detailed boundaries are documented in [`gate-e4b-safe-intake-session-finalization.md`](gate-e4b-safe-intake-session-finalization.md), [`gate-e4c-immutable-source-job-binding.md`](gate-e4c-immutable-source-job-binding.md), and [`gate-e4-closure-convergence.md`](gate-e4-closure-convergence.md).
+Gate E.1-E.4 provide the external API security/admission/upload-to-source **contract/convergence foundations**. E.1 produces bounded authenticated external-principal evidence through a provider-neutral verifier seam. E.2 evaluates deny-by-default exact principal/environment/operation grants from a server-owned policy. E.3A derives operation-specific fixed-window rate-admission evidence through a provider-neutral atomic reservation seam. E.3B binds the exact principal, operation, allowed E.3A evidence, bounded client idempotency key, and server-computed SHA-256 of immutable request bytes to one atomic reserve/replay/conflict decision. E.3C composes exact E.1/E.2 authority with a freshly evaluated E.3A reservation and then E.3B for the same immutable request, derives one deterministic admission binding, uses defensive callback request clones, and rechecks authority snapshots so callback mutation fails closed. E.4A consumes only exact E.3C admission for canonical `platform.safe_upload_session` and derives one server-owned bounded session. E.4B consumes one exact active E.4A session plus exact immutable document `bytes`, executes Gate B `decide_safe_intake()` before any provider callback, computes document SHA-256 server-side, and binds exact Safe Intake provenance to one deterministic finalization identity. E.4C independently re-verifies E.4B and derives deterministic server-owned source/job/storage identity using existing orchestration, artifact-lifecycle, and Gate D.3 contracts. The final E.4 closure adds independent later-consumer verification by freshly re-deriving E.4C from exact E.4B evidence and proves replay/tamper/cross-finalization convergence. Detailed boundaries are documented in [`gate-e4b-safe-intake-session-finalization.md`](gate-e4b-safe-intake-session-finalization.md), [`gate-e4c-immutable-source-job-binding.md`](gate-e4c-immutable-source-job-binding.md), and [`gate-e4-closure-convergence.md`](gate-e4-closure-convergence.md).
 
-E.4A replay immutability has an explicit operational boundary: the future stateful reservation provider must atomically return the **original stored** session identity, creation time, expiry, and budgets for a replay. It must not refresh TTL or widen budgets. E.4B has the analogous finalization-provider obligation: exact replay must return the original immutable finalization record, while the same session with different document identity must conflict. The contracts validate type/shape/exact binding but do not themselves persist provider state. These are production-provider obligations, not reasons to create additional abstract micro-Gates.
+The **minimum staging vertical slice** is the first runtime use of those completed contracts. It starts only from exact staging E.3C admission evidence, persists E.4A and E.4B state in a private create-once staging filesystem provider, runs Gate B and E.4C, freshly verifies the E.4C decision, and only then persists the exact accepted source bytes at the server-derived immutable storage key. Exact replay converges without overwrite; same-session different-document input conflicts; malformed state, pre-existing symlink state paths, mismatched source bytes, and immutable-key collisions fail closed. This staging activation does not create a public route, production provider, queue/worker, engine dispatch, or orchestration authority. The boundary is documented in [`minimum-staging-vertical-slice.md`](minimum-staging-vertical-slice.md).
 
-The bounded E.4 sequence is closed at the contract/convergence layer. The preferred next direction is a **minimum staging vertical slice** that wires existing foundations to controlled provider-backed staging behavior, rather than an open-ended E.4D/E.4E foundation chain unless a concrete P1/P2 or mandatory trust boundary proves otherwise.
+E.4A replay immutability has an explicit operational boundary: a stateful reservation provider must atomically return the **original stored** session identity, creation time, expiry, and budgets for a replay. It must not refresh TTL or widen budgets. E.4B has the analogous finalization-provider obligation: exact replay must return the original immutable finalization record, while the same session with different document identity must conflict. The minimum staging provider now demonstrates those semantics for private staging; production still requires separately reviewed providers.
+
+The bounded E.4 sequence remains closed at the contract/convergence layer. The minimum staging slice is an implementation step over that closed sequence, not a new E.4D/E.4E foundation chain. Wider activation must now extend the real staging path rather than proliferate abstract micro-gates.
 
 The Teacher Review Score Editor architecture is defined by [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). That contract refines the future Gate F boundary without changing the Gate C -> D -> E -> F -> G security order. It does not activate a Teacher Review API, editor, storage, playback, approval, or publication capability.
 
@@ -106,9 +112,9 @@ UI-0A is a documentation-only visual/application-shell foundation. UI-0B is an i
 
 ## 3. Current activation state
 
-The repository contains substantial runtime and comparison foundations, but the public data plane remains deliberately closed.
+The repository now contains one bounded provider-backed private staging source-ingest path, while the public data plane and engine execution remain deliberately closed.
 
-### Enabled foundations
+### Enabled foundations and bounded staging behavior
 
 - Private HOMR, Clarity-OMR, and Audiveris runtime adapters.
 - Private OMR Gateway health and orchestration contracts.
@@ -123,16 +129,17 @@ The repository contains substantial runtime and comparison foundations, but the 
 - Gate C.2-G bounded retry/attempt-budget foundation preserving one total v1 attempt and zero retries; it cannot create or start another run.
 - C-DIAG-1 bounded engine runtime diagnostic redaction across HOMR, Clarity, and Audiveris probe, readiness, transcription-result, and raised-error surfaces; no runtime output or provider exception text becomes dispatch authority.
 - C-DIAG-2 bounded receiver/dispatch outward diagnostic mapping for C.2-E/F/G failures; the payload is closed to version/stage/reason, exception text is not inspected, and non-exact string fields fail closed.
-- Gate D.1-D.6 durable job/artifact state, idempotency, immutable storage-authority, provenance, restart-recovery, and partial-output/crash-window contract/convergence foundations; no provider-backed persistence/runtime activation is implied.
+- Gate D.1-D.6 durable job/artifact state, idempotency, immutable storage-authority, provenance, restart-recovery, and partial-output/crash-window contract/convergence foundations.
 - Gate E.1 provider-neutral external-principal authentication foundation; no provider SDK or public auth route is activated.
 - Gate E.2 deny-by-default external authorization-decision foundation; even an allowed decision grants no operation-execution authority.
 - Gate E.3A provider-neutral external rate-slot reservation foundation; no production rate-state backend or HTTP 429 route behavior is activated.
-- Gate E.3B provider-neutral external request-idempotency admission foundation; no durable idempotency backend or live request route is activated.
-- Gate E.3C fail-closed external admission composition foundation; exact admission evaluates E.3A freshly before E.3B, binds exact immutable request identity, and rejects callback authority mutation without activating runtime capability.
-- Gate E.4A Safe Upload Session reservation foundation; exact canonical `platform.safe_upload_session` admission is required, but public document upload, storage writes and runnable job creation remain disabled.
-- Gate E.4B Safe Intake Session Finalization foundation; exact immutable document bytes can enter only this contract-library boundary under one exact active E.4A session, must pass Gate B before atomic finalization evidence, and still receive no HTTP upload/storage/job runtime authority.
-- Gate E.4C Immutable Source / Job Binding foundation; exact E.4B evidence derives deterministic server-owned source/job/storage identity using existing Gate D.3 authority without a provider-backed write.
-- Gate E.4 closure convergence; exact replay converges to one source/job identity and E.4C evidence can be freshly reverified against exact E.4B evidence while valid-shape post-construction substitution fails closed.
+- Gate E.3B provider-neutral external request-idempotency admission foundation; no production durable idempotency backend or live request route is activated.
+- Gate E.3C fail-closed external admission composition foundation; exact admission evaluates E.3A freshly before E.3B, binds exact immutable request identity, and rejects callback authority mutation without activating execution capability.
+- Gate E.4A Safe Upload Session reservation foundation; exact canonical `platform.safe_upload_session` admission is required.
+- Gate E.4B Safe Intake Session Finalization foundation; exact immutable document bytes must pass Gate B before atomic finalization evidence.
+- Gate E.4C Immutable Source / Job Binding foundation; exact E.4B evidence derives deterministic server-owned source/job/storage identity using existing Gate D.3 authority.
+- Gate E.4 closure convergence; exact replay converges to one source/job identity and E.4C evidence can be freshly reverified against exact E.4B evidence while post-construction substitution fails closed.
+- Minimum staging vertical slice: stateful private E.4A/E.4B staging records plus one create-once immutable source filesystem write after exact Gate B/E.4C verification; no public route or engine execution is activated.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -143,26 +150,26 @@ The repository contains substantial runtime and comparison foundations, but the 
 
 ### Deliberately disabled or not yet implemented
 
-- External document payload upload and a public upload endpoint.
+- Public external document upload and any public upload endpoint.
 - Live authenticated Gateway engine dispatch/orchestration and receiver route wiring.
-- Provider-backed durable replay/job/artifact/provenance persistence and storage writes.
+- Broader provider-backed durable job/candidate/provenance persistence; only the minimum private staging session/finalization/source records are active in this slice.
 - Production immutable object storage.
 - Queue/worker/process restart runtime and automatic recovery execution.
 - External authentication-provider/runtime wiring and versioned public API routes.
 - Resource/user/tenant scope enforcement where applicable.
-- Production rate/idempotency/session/finalization providers, including E.4A original replay expiry/budget preservation and E.4B one-session/one-document atomic replay/conflict behavior, plus edge/anonymous abuse protection.
+- Production rate/idempotency/session/finalization providers plus edge/anonymous abuse protection.
 - Public publication.
 - Teacher Review production API and writable editor runtime.
 - Production approval/publication runtime.
 
-A disabled capability must not be interpreted as implemented merely because its protecting foundation or configuration limits already exist. Gate B completion does not authorize upload activation, Gate C contract foundations do not authorize live dispatch, Gate D contract/convergence completion does not authorize provider-backed persistence or recovery execution, E.1-E.4 contract/convergence completion does not authorize a public API or document upload route, UI-0B does not constitute a working Teacher Review editor, and TR-0A does not authorize Teacher Review runtime activation.
+A bounded staging capability must not be interpreted as broader activation. Gate B completion does not authorize public upload, Gate C contract foundations do not authorize live dispatch, Gate D contract/convergence completion plus one staging source writer does not authorize broader durable runtime or recovery execution, E.1-E.4 plus the private staging slice do not authorize a public API, UI-0B does not constitute a working Teacher Review editor, and TR-0A does not authorize Teacher Review runtime activation.
 
 ## 4. Service responsibilities
 
 ### omr-gateway
 
 - Own the future external OMR job boundary.
-- Require the integrated Safe Intake decision before any future external document can enter later processing.
+- Require the integrated Safe Intake decision before any external or private-staging document can enter later processing.
 - Derive PDF page evidence from exact bounded PDF bytes; do not trust caller-supplied page metadata.
 - Keep PDF structural parsing in the bounded B.4 helper subprocess; current v1 rejects encrypted PDFs and does not render or extract document content.
 - Derive JPEG/PNG dimensions and total pixel evidence from exact immutable bytes in the bounded B.5 helper; do not trust caller-supplied dimensions or permit animated image input.
@@ -173,7 +180,8 @@ A disabled capability must not be interpreted as implemented merely because its 
 - Require exact Gate E authentication/authorization plus E.3C fresh-rate/exact-request admission evidence before any future external operation is wired, while keeping all admission evidence separate from operation-execution authority.
 - For Safe Upload Session reservation, require the exact canonical `platform.safe_upload_session` operation and E.4A evidence; never reinterpret an unrelated authorized operation as upload-session authority.
 - Require E.4B to run the completed Safe Intake decision over exact session-bound immutable document bytes before any source can advance toward E.4C; never send raw document bytes or original filename to the finalization provider.
-- Require E.4C source/job evidence to match exact E.4B finalization evidence through the E.4 closure verifier before a future runtime consumer treats that binding as authoritative.
+- Require E.4C source/job evidence to match exact E.4B finalization evidence through the E.4 closure verifier before any runtime consumer treats that binding as authoritative.
+- In the minimum staging slice, write exact source bytes only after that verification, only beneath the private staging provider root, and never overwrite a different existing immutable source.
 - Never bypass Candidate Safety v1 when accepting engine results.
 
 ### homr-service
@@ -215,19 +223,20 @@ ST-OMR remains an isolated development track. Its current synthetic/model-runtim
 
 ## 5. Data flow and trust transitions
 
-1. **Reserve external upload session** — E.4A derives bounded session reservation evidence only for exact canonical `platform.safe_upload_session` E.3C admission. It accepts no document bytes and grants no upload/storage/job runtime authority. Public route/runtime wiring remains disabled.
-2. **Safe Intake session finalization** — E.4B accepts exact immutable document bytes only inside the contract boundary for one exact still-active E.4A session. It requires the canonical media allowlist, applies the E.4A byte/page budgets, executes Gate B B.1-B.6 through `decide_safe_intake()` before any finalization provider callback, computes exact document SHA-256 server-side, and creates bounded atomic reserve/replay/conflict evidence carrying exact Safe Intake policy provenance. Same-session/different-document reuse and provider policy-version substitution fail closed; the provider sees no raw bytes or original filename. No HTTP route/storage/job runtime authority is created.
-3. **Bind immutable source / job identity** — E.4C re-verifies exact E.4B evidence, derives deterministic server-owned job and source identity, and binds source SHA-256/size/media type to existing orchestration, artifact-lifecycle, and Gate D.3 immutable storage-authority evidence. The E.4 closure verifier can later re-derive this result from exact E.4B evidence and rejects post-construction substitution or cross-finalization confusion. This remains contract evidence, not a write or runnable job.
-4. **Create durable job/state evidence** — Gate D.1-D.6 define the fail-closed state/idempotency/storage-authority/provenance/restart/crash-window contract. Actual provider-backed persistence, queue/worker behavior, and durable writes remain disabled until separately reviewed and activated.
-5. **Dispatch private engine runs** — C.1/C.2-A-C.2-G contract foundations define identity, authenticated-request, target, rotation/replay semantics, receiver verification, timeout/cancellation, and one-attempt/zero-retry policy evidence. C-DIAG-1 prevents raw engine runtime output/provider exception text from crossing current safe surfaces, while C-DIAG-2 bounds outward receiver/dispatch diagnostics for C.2-E/F/G failures. Live receiver routes/network dispatch remain disabled pending operational credentials/replay persistence, receiver wiring, and explicit activation.
-6. **Preserve raw engine output** — raw artifacts remain distinct and immutable after sealing.
-7. **Candidate Safety Gate v1** — validate MXL/ZIP and MusicXML before canonical/ensemble parsing.
-8. **Canonicalize safe candidates** — retain provenance.
-9. **Compare candidates** — disagreements remain evidence, not automatic corrections.
-10. **Teacher review** — the future authorized Teacher Review Score Editor consumes source/candidate/canonical/report evidence and emits new immutable `TeacherScoreRevision` artifacts; it never mutates upstream artifacts. UI-0A/UI-0B provide only visual/static prototype evidence and do not implement this runtime.
-11. **Revision validation and corrected MusicXML derivation** — materialize only from an exact immutable teacher revision, re-run structural/security checks, and verify canonical/revision consistency before approval eligibility.
-12. **Approval barrier** — bind approval to exact revision/artifact hashes, reviewer identity, and blocking-issue/waiver state.
-13. **Publication** — only the explicitly eligible approved artifact may become learner-facing output.
+1. **Reserve external/staging upload session** — E.4A derives bounded session reservation evidence only for exact canonical `platform.safe_upload_session` E.3C admission. Public route/runtime wiring remains disabled; the minimum private staging slice can persist the exact reservation record.
+2. **Safe Intake session finalization** — E.4B accepts exact immutable document bytes for one exact still-active E.4A session, applies E.4A budgets, executes Gate B B.1-B.6 through `decide_safe_intake()` before any finalization provider callback, computes exact document SHA-256 server-side, and creates bounded atomic reserve/replay/conflict evidence carrying exact Safe Intake policy provenance. The private staging provider persists only bounded finalization evidence; raw bytes and filename never enter that callback.
+3. **Bind immutable source / job identity** — E.4C re-verifies exact E.4B evidence, derives deterministic server-owned job and source identity, and binds source SHA-256/size/media type to existing orchestration, artifact-lifecycle, and Gate D.3 immutable storage-authority evidence. The E.4 closure verifier freshly re-derives this result and rejects substitution/confusion.
+4. **Persist exact private staging source** — the minimum staging provider writes exact accepted bytes create-once at the server-derived E.4C storage key only after closure verification. Exact replay observes the same content and never overwrites; a different existing file is a collision and fails closed. This is source-only staging persistence, not a runnable job.
+5. **Create durable job/state evidence** — Gate D.1-D.6 define the fail-closed state/idempotency/storage-authority/provenance/restart/crash-window contract. Broader provider-backed job persistence, queue/worker behavior, and durable lifecycle writes remain disabled until separately reviewed and activated.
+6. **Dispatch private engine runs** — C.1/C.2-A-C.2-G contract foundations define identity, authenticated-request, target, rotation/replay semantics, receiver verification, timeout/cancellation, and one-attempt/zero-retry policy evidence. C-DIAG-1 prevents raw engine runtime output/provider exception text from crossing current safe surfaces, while C-DIAG-2 bounds outward receiver/dispatch diagnostics. Live receiver routes/network dispatch remain disabled.
+7. **Preserve raw engine output** — raw artifacts remain distinct and immutable after sealing.
+8. **Candidate Safety Gate v1** — validate MXL/ZIP and MusicXML before canonical/ensemble parsing.
+9. **Canonicalize safe candidates** — retain provenance.
+10. **Compare candidates** — disagreements remain evidence, not automatic corrections.
+11. **Teacher review** — the future authorized Teacher Review Score Editor consumes source/candidate/canonical/report evidence and emits new immutable `TeacherScoreRevision` artifacts; it never mutates upstream artifacts. UI-0A/UI-0B provide only visual/static prototype evidence and do not implement this runtime.
+12. **Revision validation and corrected MusicXML derivation** — materialize only from an exact immutable teacher revision, re-run structural/security checks, and verify canonical/revision consistency before approval eligibility.
+13. **Approval barrier** — bind approval to exact revision/artifact hashes, reviewer identity, and blocking-issue/waiver state.
+14. **Publication** — only the explicitly eligible approved artifact may become learner-facing output.
 
 The detailed Teacher Review authority, adapter boundaries, immutable revision direction, and secure implementation sequence are defined in [`teacher-review-score-editor-architecture-contract.md`](teacher-review-score-editor-architecture-contract.md). The product-level review behavior remains documented in [`teacher-review-workflow.md`](teacher-review-workflow.md).
 
@@ -266,7 +275,7 @@ corrected/<revision-id>.musicxml
 approved/approved.musicxml
 ```
 
-Raw output is never silently overwritten by a corrected revision. Sanitized/normalized derivatives must be separate logical artifacts with provenance back to the raw source. Gate D now defines immutable storage-authority and provenance contracts for the OMR job/candidate layer, but the concrete provider-backed durable storage layout remains unactivated; these paths are architectural examples, not an active persistence layout.
+Raw output is never silently overwritten by a corrected revision. Sanitized/normalized derivatives must be separate logical artifacts with provenance back to the raw source. Gate D defines immutable storage-authority and provenance contracts. The minimum staging slice now materializes only the accepted **source** bytes under the E.4C server-derived key in a private staging filesystem provider; the broader durable job/candidate storage layout and all production storage remain unactivated.
 
 ## 8. Job lifecycle
 
@@ -288,30 +297,29 @@ failed
 expired
 ```
 
-Implementation may introduce internal substates, but public transitions must remain explicit and auditable. No state may imply durable success before required artifacts are durably stored and verified.
+Implementation may introduce internal substates, but public transitions must remain explicit and auditable. No state may imply durable success before required artifacts are durably stored and verified. The minimum staging source-ingest result is not itself a public lifecycle transition or runnable job.
 
 ## 9. Integration boundary
 
-External applications integrate through a versioned API and never access engine containers, local storage paths, or model files directly.
+External applications integrate through a future versioned API and never access engine containers, local storage paths, or model files directly. The minimum staging slice is private/internal and is not that API.
 
-Before external or staging upload exposure, the integration boundary must demonstrate:
+Before any public external exposure or wider staging activation, the integration boundary must demonstrate:
 
 - E.1-compatible provider/runtime authentication and E.2-compatible deny-by-default authorization for every activated operation;
 - resource/user/tenant scope enforcement where an authoritative ownership model exists;
 - provider-backed rate limiting and edge/anonymous abuse controls consistent with E.3A;
 - provider-backed rate/idempotency runtime that preserves E.3C fresh-rate, exact-request composition and replay/conflict semantics;
-- a stateful E.4A reservation provider that atomically preserves the original session record on replay and never refreshes TTL or widens budgets;
-- a stateful E.4B finalization provider that atomically preserves one original finalized document identity per session, returns exact replay, and rejects same-session/different-document conflicts;
+- stateful E.4A/E.4B providers preserving original replay TTL/budgets and one-session/one-document exact replay/conflict behavior; the private minimum staging provider demonstrates these semantics but is not a production provider;
 - exact E.4B Safe Intake policy provenance and finalization evidence over session-bound immutable document bytes;
-- exact E.4C immutable source/job binding plus closure verification against the authoritative E.4B evidence;
-- provider-backed persistence and immutable object storage consistent with Gate D and E.4C evidence where the staging slice requires a write;
+- exact E.4C immutable source/job binding plus closure verification against authoritative E.4B evidence;
+- provider-backed persistence and immutable object storage consistent with Gate D and E.4C for every activated write; the minimum slice currently covers only private staging source bytes;
 - cancellation and retry semantics;
 - approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations;
-- operational provider-backed durable replay/job/artifact/provenance state and restart behavior consistent with the completed Gate D.1-D.6 contract/convergence foundation;
+- operational provider-backed durable replay/job/artifact/provenance state and restart behavior consistent with Gate D.1-D.6;
 - Candidate Safety v1 enforcement;
 - privacy-safe external error/logging behavior.
 
-The immediate post-E.4 development direction is a **minimum staging vertical slice**. That slice should activate only the smallest provider-backed path necessary to demonstrate the existing E.1-E.4 boundaries in staging, with each runtime capability still separately reviewed and without widening the completed contracts.
+The minimum staging vertical slice therefore marks the transition from contract-only work to real bounded staging integration. The next slices should extend this same real path—first through durable staging job lifecycle and only later toward controlled dispatch—rather than reopen abstract E.4 micro-foundations. Public routes remain a separate activation decision.
 
 A live writable Teacher Review surface additionally requires Gate D operational durable state, Gate E external/API security, and the TR-8A reviewer RBAC/audit authorization foundation before TR-4 may be activated. Generic E.2 authorization does not replace reviewer RBAC. This dependency is normative in the TR-0A architecture contract.
 
@@ -322,16 +330,17 @@ A live writable Teacher Review surface additionally requires Gate D operational 
 - Integration environment: Coolify staging
 - Production: blocked until explicit production-readiness acceptance gates pass
 
-Engine containers remain private in all environments. Staging availability does not itself authorize public upload or production publication.
+Engine containers remain private in all environments. Private staging source persistence does not itself authorize public upload, engine dispatch, or production publication.
 
-## 11. Non-goals of the current architecture foundations
+## 11. Non-goals of the current architecture foundations and minimum staging slice
 
-The current architecture and documentation foundations do **not** enable:
+The current architecture plus the minimum staging source-ingest slice do **not** enable:
 
 - public uploads or an upload endpoint;
 - live Gateway dispatch;
 - automatic candidate ranking/merging/correction;
 - production storage;
+- broader provider-backed job/candidate persistence;
 - Teacher Review API or writable editor runtime;
 - playback/cursor runtime;
 - teacher approval endpoints;

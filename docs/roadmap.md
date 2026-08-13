@@ -12,17 +12,18 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | HOMR pinned runtime/model foundation | Completed foundation | Pinned runtime/model checks and private execution helper exist. |
 | Clarity pinned source/model foundation | Completed foundation | Pinned source/model and controlled CPU/offline runtime exist. |
 | Audiveris pinned runtime foundation | Completed foundation | Pinned package/runtime and private execution helper exist. |
-| OMR Gateway health/orchestration contracts | Completed foundation | Gateway contracts exist; upload/execution remain disabled. |
+| OMR Gateway health/orchestration contracts | Completed foundation | Gateway contracts exist; public upload and engine execution remain disabled. |
 | Candidate/artifact lifecycle v1 | Completed foundation | Candidate isolation and immutable lifecycle contracts exist; production persistence remains disabled. |
 | Canonical Score / Ensemble comparator/report | Completed foundation | Deterministic normalization/comparison/report foundations exist. |
 | Fixed evaluation foundations | Completed | Fixed evaluation datasets/contracts are present. |
 | ST-OMR isolated development track | In progress | Synthetic/model-runtime contracts exist; production integration remains outside scope. |
 | Candidate Safety Gate v1 | Implemented | HOMR, Clarity, and Audiveris outputs are fail-closed validated before acceptance as safe candidates. |
-| Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; external upload remains disabled. |
+| Safe Intake Gate B | Completed foundation | B.1-B.6, the integrated fail-closed Safe Intake decision, hostile-input convergence coverage, and post-merge CI evidence are complete; no public upload route is enabled. |
 | Internal dispatch security | C.2-G + C-DIAG-1/2 foundations completed | C.1 and C.2-A-C.2-G contract foundations are on `main`, together with C-DIAG-1 bounded engine runtime diagnostic redaction and C-DIAG-2 bounded receiver/dispatch outward diagnostic mapping. Raw engine runtime/provider details and dispatch exception payloads do not cross the current safe surfaces; non-exact diagnostic strings are rejected. Live receiver routes, durable replay persistence, network dispatch, and orchestration activation remain disabled. |
-| Durable job/artifact state and recovery | Completed contract/convergence foundation | Gate D.1-D.6 define fail-closed job state, idempotency, immutable artifact authority, provenance, restart-recovery decisions, and crash-window/partial-output convergence. No database/object-storage provider, queue/worker runtime, durable read/write adapter, or live recovery/orchestration authority is activated. |
-| Production immutable object storage | Not started | Gate D storage authority contracts exist, but no production object-storage provider or storage-write runtime is selected or enabled. |
-| External API authentication/authorization | In progress; E.4 contract/convergence complete | Gate E.1 authentication, E.2 authorization, E.3A rate admission, E.3B request idempotency, E.3C admission composition, and the bounded E.4A-E.4C upload-to-source contract/convergence foundation are complete. E.4 closure proves exact replay/tamper/cross-finalization convergence without activating HTTP upload, persistence, storage writes, network dispatch, or orchestration. Provider/runtime wiring, edge abuse controls, privacy-safe live errors/logs, and public routes remain blocked. |
+| Durable job/artifact state and recovery | Completed contract/convergence foundation | Gate D.1-D.6 define fail-closed job state, idempotency, immutable artifact authority, provenance, restart-recovery decisions, and crash-window/partial-output convergence. No production database/object-storage provider, queue/worker runtime, durable job-state adapter, or live recovery/orchestration authority is activated. |
+| Minimum private staging source ingest | Implemented on PR #89 branch | Exact E.3C admission can drive stateful E.4A reservation, E.4B Safe Intake finalization, E.4C verification, and one create-once immutable staging filesystem source write. Exact replay converges without overwrite; public HTTP, engine dispatch, orchestration, and production providers remain disabled. |
+| Production immutable object storage | Not started | Gate D storage authority contracts exist and the minimum slice has only a private staging source-write provider; no production object-storage provider or production storage-write runtime is selected or enabled. |
+| External API authentication/authorization | In progress; E.4 closed and private staging source ingest implemented | Gate E.1 authentication, E.2 authorization, E.3A rate admission, E.3B request idempotency, E.3C admission composition, and E.4A-E.4C contract/convergence are complete. The minimum staging slice now exercises the E.3C→E.4 trust chain with stateful private staging reservation/finalization and immutable source persistence. Provider/runtime auth, production rate/idempotency, edge abuse controls, privacy-safe live errors/logs, and public routes remain blocked. |
 | UI-0A visual/application-shell contract | Completed documentation foundation | Visual/application-shell direction exists only as documentation; it creates no frontend runtime or authority. |
 | UI-0B static application shell | Completed isolated prototype | Repository-owned HTML/CSS prototype exists but remains disconnected, non-production, non-authoritative, and without backend/edit/playback runtime. GitHub-hosted executable CI coverage is tracked separately. |
 | Teacher Review Score Editor TR-0A | Completed architecture contract | The future editor trust/authority and secure implementation sequence are documented; no Teacher Review API, writable editor, persistence, playback, approval, or publication runtime is activated. |
@@ -79,7 +80,7 @@ Requirements:
 - malformed/truncated/oversized hostile fixtures;
 - deterministic stable rejection categories.
 
-Gate B completion has no activation effect by itself. The Gateway still has no external upload endpoint. E.4A reserves bounded session evidence, E.4B can consume exact immutable document bytes only inside the contract library and must run `decide_safe_intake()` before any finalization provider callback, and E.4C binds the accepted immutable source evidence to deterministic server-owned job/source/storage identity by reusing Gate D.3 authority. E.4 convergence is closed at the contract layer, but no storage write, persistence provider, HTTP upload route, or execution authority is enabled. Production storage/runtime and production-readiness controls remain separately required.
+Gate B completion had no activation effect by itself. E.4A-E.4C later bound exact E.3C admission to bounded session, Safe Intake finalization, and deterministic source/job identity. The minimum staging vertical slice now invokes that existing trust chain and permits one **private staging-only create-once source filesystem write after exact E.4C verification**. No public HTTP upload route, production object-storage provider, queue/worker, engine execution, network dispatch, or orchestration authority is enabled.
 
 ### Gate C — Internal Dispatch Security
 
@@ -135,11 +136,11 @@ Requirements satisfied at the contract/convergence layer:
 - retry/cancellation/restart-recovery decisions;
 - partial-output and crash-window tests.
 
-Activation effect: none. Gate D completion does **not** select or enable a database, S3/MinIO/filesystem object-store provider, durable replay adapter, queue/worker, process restart, storage writes, network dispatch, or orchestration. Those operational capabilities require separate reviewed activation work and evidence.
+Activation effect: Gate D completion itself selected no database, S3/MinIO/filesystem object-store provider, queue/worker, process restart, storage write, network dispatch, or orchestration. The later minimum staging vertical slice deliberately activates only a bounded private filesystem provider for E.4A/E.4B state and the exact verified source bytes; it does not activate the broader durable job/candidate runtime or production persistence.
 
 ### Gate E — External API Security
 
-Status: in progress; E.4 upload-to-source contract/convergence foundation completed.
+Status: in progress; E.4 upload-to-source contract/convergence completed and minimum private staging source ingest implemented.
 
 Goal: expose only a controlled versioned platform boundary.
 
@@ -154,26 +155,26 @@ Completed foundations:
 - E.4B Safe Intake Session Finalization — consumes one exact still-active E.4A session and exact immutable document `bytes`, requires the canonical Safe Intake media-type tuple, executes the completed Gate B `decide_safe_intake()` boundary before any finalization provider callback, computes document SHA-256 server-side, and binds the exact Safe Intake policy version plus bounded evidence to a deterministic finalization identity. One provider-neutral atomic reserve/replay/conflict seam prevents silent same-session/different-document finalization, and provider policy-version substitution fails closed. The provider receives no raw document bytes or original filename. E.4B creates no HTTP route, storage write, runnable job, execution, network-dispatch, or orchestration authority. The normative boundary is documented in [`gate-e4b-safe-intake-session-finalization.md`](gate-e4b-safe-intake-session-finalization.md).
 - E.4C Immutable Source / Job Binding — consumes only exact E.4B finalization evidence, independently re-verifies the E.4B session/content/Safe Intake lineage, derives deterministic server-owned job/source identity, and reuses existing orchestration, artifact-lifecycle, and Gate D.3 immutable storage-authority evidence. It performs no storage write, persistence operation, queueing, engine execution, network dispatch, or orchestration activation. The normative boundary is documented in [`gate-e4c-immutable-source-job-binding.md`](gate-e4c-immutable-source-job-binding.md).
 - E.4 convergence closure — exact E.4A/E.4B replay converges to the same E.4C job/source/storage identity; an E.4C decision can be independently re-verified against exact E.4B evidence by fresh authoritative re-derivation; valid-shape post-construction source substitution and cross-finalization confusion fail closed. The closure creates no new authority and is documented in [`gate-e4-closure-convergence.md`](gate-e4-closure-convergence.md).
+- Minimum staging vertical slice — consumes exact staging E.3C evidence, uses stateful private staging E.4A/E.4B providers, executes Gate B and E.4C, independently verifies the resulting source/job binding, and then performs one create-once immutable staging filesystem source write. Exact replay reuses the original session/finalization/job/source identity, same-session different-document attempts fail closed, corrupted state and symlink escape attempts fail closed, and an existing different source is never overwritten. The boundary is documented in [`minimum-staging-vertical-slice.md`](minimum-staging-vertical-slice.md).
 
-E.4A replay semantics require the future production reservation provider to atomically preserve the original immutable session record. On replay the provider must return the original creation time, expiry, budgets, and identity; it must never refresh TTL or widen budgets.
+E.4A replay semantics require a stateful provider to atomically preserve the original immutable session record. The minimum staging provider now demonstrates this behavior for private staging. A future production provider must preserve the same semantics: replay returns the original creation time, expiry, budgets, and identity; TTL must never refresh and budgets must never widen.
 
-E.4B likewise requires a future stateful finalization provider to atomically preserve the original finalization record for one session. Exact replay must return the original finalization identity/evidence, while the same session with a different document identity must return a conflict. The contract validates exact receipt binding and time/evidence shape but does not itself persist provider state. These provider obligations do not create additional abstract E.4 gates.
+E.4B likewise requires a stateful finalization provider to atomically preserve the original finalization record for one session. The minimum staging provider demonstrates exact replay/conflict semantics for private staging. Production still needs its separately reviewed provider.
 
-E.4 is now bounded and closed at the **contract/convergence foundation** layer. The default next direction is a **minimum staging vertical slice** that wires existing foundations into controlled provider-backed staging behavior. Do not open an E.4D/E.4E foundation chain unless a concrete P1/P2 or mandatory trust boundary proves it necessary.
+E.4 remains bounded and closed at the **contract/convergence foundation** layer. The minimum staging vertical slice is now the first real provider-backed implementation of that trust chain. This is not an E.4D/E.4E gate and does not imply public API or engine activation.
 
 Remaining requirements before Gate E can close or any public data plane can be activated:
 
-- minimum staging vertical slice over the existing E.1-E.4 trust chain;
+- extend private staging persistence from accepted source bytes into the required durable job lifecycle before engine dispatch is considered;
 - provider/runtime authentication wiring without weakening E.1;
 - resource/user/tenant scope enforcement where an authoritative resource-ownership model actually exists;
 - production/runtime rate-limit and idempotency adapters plus edge/anonymous abuse protection;
-- a production upload-session reservation provider that preserves E.4A immutable replay semantics;
-- a production Safe Intake finalization provider that preserves E.4B atomic exact-replay/conflict semantics;
-- provider-backed persistence/immutable object storage consistent with Gate D and E.4C evidence;
+- production upload-session and Safe Intake finalization providers preserving the demonstrated replay/conflict semantics;
+- production provider-backed persistence/immutable object storage consistent with Gate D and E.4C evidence;
 - privacy-safe logs/errors at the live API boundary;
 - explicit versioned route wiring and negative authorization tests for each activated operation.
 
-No public login, upload, job, review, or mutation route is activated by the E.1-E.4 contract/convergence foundations.
+No public login, upload, job, review, or mutation route is activated by the minimum staging vertical slice.
 
 ### Gate F — Teacher Review and Publication
 
