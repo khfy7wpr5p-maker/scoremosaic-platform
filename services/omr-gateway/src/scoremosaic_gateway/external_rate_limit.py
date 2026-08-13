@@ -276,7 +276,6 @@ def _reservation_key(
     operation_id: str,
     window_start_epoch_s: int,
     window_end_epoch_s: int,
-    max_requests: int,
 ) -> str:
     payload = b"\0".join(
         (
@@ -286,7 +285,6 @@ def _reservation_key(
             operation_id.encode("ascii"),
             str(window_start_epoch_s).encode("ascii"),
             str(window_end_epoch_s).encode("ascii"),
-            str(max_requests).encode("ascii"),
         )
     )
     return sha256(payload).hexdigest()
@@ -364,7 +362,6 @@ def reserve_external_rate_slot(
             operation_id=operation_id,
             window_start_epoch_s=window_start,
             window_end_epoch_s=window_end,
-            max_requests=rule.max_requests,
         ),
         window_start_epoch_s=window_start,
         window_end_epoch_s=window_end,
