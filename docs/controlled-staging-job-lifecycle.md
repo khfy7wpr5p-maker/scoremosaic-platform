@@ -24,6 +24,12 @@ same integrity key, returns the original record without overwrite. A different,
 malformed, oversized, incorrectly authenticated, or symlink-redirected record
 fails closed.
 
+Source writes, source reads, and lifecycle publication share one job-scoped
+filesystem lock. Lifecycle publication additionally holds the verified source
+descriptor open and rechecks the canonical source inode, size, and SHA-256 before
+the create-once record is linked and again before the lock is released. A source
+replacement after an earlier verification therefore cannot publish job evidence.
+
 Before persistence, the boundary:
 
 1. verifies the E.4C binding against the exact E.4B finalization;

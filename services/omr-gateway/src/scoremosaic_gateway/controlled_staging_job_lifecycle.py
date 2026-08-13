@@ -298,7 +298,7 @@ def run_controlled_staging_job_lifecycle(
     }
     try:
         persistence_state = provider.persist_job_lifecycle_record(
-            job_id=binding.job_id,
+            binding=binding,
             record=record,
         )
     except MinimumStagingVerticalSliceError:

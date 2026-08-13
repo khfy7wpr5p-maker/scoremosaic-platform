@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
@@ -169,6 +170,68 @@ class ControlledStagingJobLifecycleTests(unittest.TestCase):
                 / f"{self.minimum_slice.job_id}.json"
             ).exists()
         )
+
+    def test_source_replacement_after_initial_verification_cannot_publish_job(self) -> None:
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        job_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{self.minimum_slice.job_id}.json"
+        )
+        real_read_source = self.provider.read_source
+
+        def replace_after_read(binding):
+            payload = real_read_source(binding)
+            source_path.chmod(0o600)
+            source_path.write_bytes(b"X" * len(payload))
+            return payload
+
+        with patch.object(
+            self.provider,
+            "read_source",
+            side_effect=replace_after_read,
+        ):
+            with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+                self.run_lifecycle()
+
+        self.assertEqual(raised.exception.category, "staging_job_lifecycle_state_invalid")
+        self.assertFalse(job_path.exists())
+
+    def test_source_replacement_during_record_build_fails_before_link(self) -> None:
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        job_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{self.minimum_slice.job_id}.json"
+        )
+        real_write_all = self.provider._write_all
+
+        def replace_while_building_record(fd, payload):
+            real_write_all(fd, payload)
+            if b'"job_id"' in payload:
+                source_path.chmod(0o600)
+                source_path.write_bytes(b"X" * self.minimum_slice.binding.source_size_bytes)
+
+        with patch.object(
+            self.provider,
+            "_write_all",
+            side_effect=replace_while_building_record,
+        ):
+            with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+                self.run_lifecycle()
+
+        self.assertEqual(raised.exception.category, "staging_job_lifecycle_state_invalid")
+        self.assertFalse(job_path.exists())
 
     def test_wrong_input_types_fail_before_provider_use(self) -> None:
         with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
