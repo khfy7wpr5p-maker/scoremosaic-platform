@@ -96,6 +96,42 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(replay.job_id, first.job_id)
         self.assertEqual(replay.source_artifact_id, first.source_artifact_id)
 
+    def test_temp_name_swap_cannot_publish_attacker_selected_inode(self) -> None:
+        root = Path(self.temp_dir.name)
+        real_link = os.link
+        swapped = False
+
+        def racing_link(src, dst, *args, **kwargs):
+            nonlocal swapped
+            if not swapped:
+                parent_fd = kwargs["src_dir_fd"]
+                os.unlink(src, dir_fd=parent_fd)
+                attacker_fd = os.open(
+                    src,
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                    0o600,
+                    dir_fd=parent_fd,
+                )
+                try:
+                    os.write(attacker_fd, b'{"attacker":true}')
+                finally:
+                    os.close(attacker_fd)
+                swapped = True
+            return real_link(src, dst, *args, **kwargs)
+
+        with patch(
+            "scoremosaic_gateway.minimum_staging_vertical_slice.os.link",
+            side_effect=racing_link,
+        ):
+            with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+                self.run_slice()
+        self.assertTrue(swapped)
+        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
+        self.assertEqual(
+            [path for path in root.rglob("*") if path.is_file() or path.is_symlink()],
+            [],
+        )
+
     def test_replaced_root_directory_fails_closed_and_preserves_original_state(
         self,
     ) -> None:

@@ -233,7 +233,7 @@ class StagingUploadProvider:
 
     @staticmethod
     def _file_create_flags() -> int:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         if hasattr(os, "O_CLOEXEC"):
@@ -439,6 +439,17 @@ class StagingUploadProvider:
                 raise OSError(errno.EIO, "staging write made no progress")
             offset += written
 
+    @staticmethod
+    def _fd_matches_payload(fd: int, payload: bytes) -> bool:
+        os.lseek(fd, 0, os.SEEK_SET)
+        offset = 0
+        while offset < len(payload):
+            chunk = os.read(fd, min(_READ_CHUNK_BYTES, len(payload) - offset))
+            if not chunk or chunk != payload[offset : offset + len(chunk)]:
+                return False
+            offset += len(chunk)
+        return os.read(fd, 1) == b""
+
     def _atomic_create(self, path: Path, payload: bytes) -> bool:
         parent_fd, final_leaf = self._open_parent_fd(path, create=True)
         temp_fd: int | None = None
@@ -449,8 +460,12 @@ class StagingUploadProvider:
                 os.fchmod(temp_fd, 0o600)
                 self._write_all(temp_fd, payload)
                 os.fsync(temp_fd)
-                os.close(temp_fd)
-                temp_fd = None
+                temp_stat = os.fstat(temp_fd)
+                if (
+                    not stat.S_ISREG(temp_stat.st_mode)
+                    or temp_stat.st_size != len(payload)
+                ):
+                    raise OSError(errno.EIO, "temporary staging file is invalid")
                 try:
                     os.link(
                         temp_leaf,
@@ -459,9 +474,34 @@ class StagingUploadProvider:
                         dst_dir_fd=parent_fd,
                         follow_symlinks=False,
                     )
-                    return True
                 except FileExistsError:
                     return False
+
+                published_stat = os.stat(
+                    final_leaf,
+                    dir_fd=parent_fd,
+                    follow_symlinks=False,
+                )
+                linked_temp_stat = os.fstat(temp_fd)
+                publication_valid = (
+                    stat.S_ISREG(published_stat.st_mode)
+                    and stat.S_ISREG(linked_temp_stat.st_mode)
+                    and (published_stat.st_dev, published_stat.st_ino)
+                    == (temp_stat.st_dev, temp_stat.st_ino)
+                    == (linked_temp_stat.st_dev, linked_temp_stat.st_ino)
+                    and published_stat.st_size == len(payload)
+                    and linked_temp_stat.st_size == len(payload)
+                    and self._fd_matches_payload(temp_fd, payload)
+                )
+                if not publication_valid:
+                    try:
+                        os.unlink(final_leaf, dir_fd=parent_fd)
+                    except FileNotFoundError:
+                        pass
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_unavailable"
+                    )
+                return True
             except MinimumStagingVerticalSliceError:
                 raise
             except OSError:
