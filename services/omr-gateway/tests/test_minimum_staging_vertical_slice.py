@@ -356,8 +356,9 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         )
         source_path.unlink()
 
-        with patch(
-            "scoremosaic_gateway.minimum_staging_vertical_slice.tempfile.mkstemp",
+        with patch.object(
+            self.provider,
+            "_create_temp_file",
             side_effect=OSError("sensitive filesystem detail"),
         ):
             with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
@@ -377,17 +378,18 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             / Path(first.binding.source_storage_key)
         )
         source_path.unlink()
-        real_mkstemp = tempfile.mkstemp
+        real_create = self.provider._create_temp_file
         captured_fds: list[int] = []
 
-        def tracking_mkstemp(*args, **kwargs):
-            fd, path = real_mkstemp(*args, **kwargs)
+        def tracking_create(parent_fd):
+            fd, leaf = real_create(parent_fd)
             captured_fds.append(fd)
-            return fd, path
+            return fd, leaf
 
-        with patch(
-            "scoremosaic_gateway.minimum_staging_vertical_slice.tempfile.mkstemp",
-            side_effect=tracking_mkstemp,
+        with patch.object(
+            self.provider,
+            "_create_temp_file",
+            side_effect=tracking_create,
         ), patch(
             "scoremosaic_gateway.minimum_staging_vertical_slice.os.fchmod",
             side_effect=OSError("sensitive filesystem detail"),
