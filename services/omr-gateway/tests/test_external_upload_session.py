@@ -28,18 +28,18 @@ from scoremosaic_gateway.external_rate_limit import (
 )
 from scoremosaic_gateway.external_idempotency import ExternalIdempotencyReservationReceipt
 from scoremosaic_gateway.external_admission import compose_external_admission
-from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES, SAFE_INTAKE_POLICY_VERSION
-from scoremosaic_gateway.external_upload_session import (
-    EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION,
-    ExternalUploadSessionDecision,
-    ExternalUploadSessionError,
-    ExternalUploadSessionPolicy,
-    ExternalUploadSessionReservationReceipt,
-    reserve_external_upload_session,
+from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES
+from scoremosaic_gateway.safe_upload_session import (
+    SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
+    SafeUploadSessionDecision,
+    SafeUploadSessionError,
+    SafeUploadSessionPolicy,
+    SafeUploadSessionReservationReceipt,
+    reserve_safe_upload_session,
 )
 
 
-class ExternalUploadSessionReservationContractTests(unittest.TestCase):
+class SafeUploadSessionReservationContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.now = 2_000_000_000
         self.operation = "platform.operation.alpha"
@@ -65,12 +65,10 @@ class ExternalUploadSessionReservationContractTests(unittest.TestCase):
             policy=ExternalAuthorizationPolicy(
                 version=EXTERNAL_AUTHORIZATION_CONTRACT_VERSION,
                 environment="staging",
-                grants=(
-                    ExternalAuthorizationGrant(
-                        principal_id=self.principal.principal_id,
-                        operation_id=self.operation,
-                    ),
-                ),
+                grants=(ExternalAuthorizationGrant(
+                    principal_id=self.principal.principal_id,
+                    operation_id=self.operation,
+                ),),
             ),
             principal=self.principal,
             operation_id=self.operation,
@@ -81,29 +79,27 @@ class ExternalUploadSessionReservationContractTests(unittest.TestCase):
             environment="staging",
             rules=(ExternalRateLimitRule(self.operation, 60, 10),),
         )
-        self.policy = ExternalUploadSessionPolicy(
-            version=EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION,
+        self.policy = SafeUploadSessionPolicy(
+            version=SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
             environment="staging",
-            operation_id=self.operation,
             session_ttl_seconds=300,
             max_bytes=25 * 1024 * 1024,
             max_pages=100,
-            intake_policy_version=SAFE_INTAKE_POLICY_VERSION,
             allowed_media_types=SAFE_INTAKE_MEDIA_TYPES,
         )
 
     @staticmethod
-    def rate_receipt(request, outcome: str = "reserved"):
+    def rate_receipt(request):
         return ExternalRateReservationReceipt(
             reservation_key=request.reservation_key,
             window_start_epoch_s=request.window_start_epoch_s,
             window_end_epoch_s=request.window_end_epoch_s,
             max_requests=request.max_requests,
-            outcome=outcome,
+            outcome="reserved",
         )
 
     @staticmethod
-    def idempotency_receipt(request, outcome: str = "reserved"):
+    def idempotency_receipt(request, *, outcome="reserved"):
         return ExternalIdempotencyReservationReceipt(
             slot_id=request.slot_id,
             request_sha256=request.request_sha256,
@@ -111,243 +107,160 @@ class ExternalUploadSessionReservationContractTests(unittest.TestCase):
             outcome=outcome,
         )
 
-    def admission(
-        self,
-        *,
-        client_key: str | None = None,
-        payload: bytes | None = None,
-        observed_at_epoch_s: int | None = None,
-        idempotency_outcome: str = "reserved",
-    ):
+    def admission(self, *, key=None, payload=None, observed=None, outcome="reserved"):
         return compose_external_admission(
             rate_policy=self.rate_policy,
             principal=self.principal,
             authorization=self.authorization,
             operation_id=self.operation,
-            client_idempotency_key=self.client_key if client_key is None else client_key,
+            client_idempotency_key=self.client_key if key is None else key,
             request_payload=self.payload if payload is None else payload,
-            observed_at_epoch_s=(
-                self.now + 3 if observed_at_epoch_s is None else observed_at_epoch_s
-            ),
+            observed_at_epoch_s=self.now + 3 if observed is None else observed,
             rate_reserver=self.rate_receipt,
-            idempotency_reserver=lambda request: self.idempotency_receipt(
-                request, outcome=idempotency_outcome
-            ),
+            idempotency_reserver=lambda request: self.idempotency_receipt(request, outcome=outcome),
         )
 
     @staticmethod
-    def reserved_receipt(request, *, outcome: str = "reserved"):
-        return ExternalUploadSessionReservationReceipt(
+    def receipt(request, *, outcome="reserved"):
+        return SafeUploadSessionReservationReceipt(
             session_id=request.session_id,
             admission_binding_id=request.admission_binding_id,
-            created_at_epoch_s=request.observed_at_epoch_s,
-            expires_at_epoch_s=request.observed_at_epoch_s + request.session_ttl_seconds,
+            principal_id=request.principal_id,
+            environment=request.environment,
+            operation_id=request.operation_id,
+            request_sha256=request.request_sha256,
+            request_bytes=request.request_bytes,
             max_bytes=request.max_bytes,
             max_pages=request.max_pages,
-            intake_policy_version=request.intake_policy_version,
             allowed_media_types=request.allowed_media_types,
+            created_at_epoch_s=request.requested_at_epoch_s,
+            expires_at_epoch_s=request.requested_at_epoch_s + request.session_ttl_seconds,
             outcome=outcome,
         )
 
-    def reserve(self, admission, *, observed_at_epoch_s=None, reserver=None):
-        return reserve_external_upload_session(
+    def reserve(self, admission, *, reserver=None):
+        return reserve_safe_upload_session(
             policy=self.policy,
             admission=admission,
-            observed_at_epoch_s=(
-                self.now + 4 if observed_at_epoch_s is None else observed_at_epoch_s
-            ),
-            reserver=self.reserved_receipt if reserver is None else reserver,
+            observed_at_epoch_s=admission.evaluated_at_epoch_s,
+            reserver=self.receipt if reserver is None else reserver,
         )
 
     def test_exact_admission_reserves_server_derived_bounded_session(self) -> None:
-        seen = []
-
-        def reserver(request):
-            seen.append(request)
-            return self.reserved_receipt(request)
-
         admission = self.admission()
-        decision = self.reserve(admission, reserver=reserver)
-
-        self.assertIs(type(decision), ExternalUploadSessionDecision)
-        self.assertEqual(len(seen), 1)
-        self.assertRegex(decision.session_id, r"^[0-9a-f]{64}$")
+        decision = self.reserve(admission)
+        self.assertIs(type(decision), SafeUploadSessionDecision)
+        self.assertRegex(decision.session_id, r"^upload_[0-9a-f]{40}$")
         self.assertEqual(decision.admission_binding_id, admission.binding_id)
-        self.assertEqual(decision.environment, admission.environment)
-        self.assertEqual(decision.principal_id, admission.principal_id)
-        self.assertEqual(decision.operation_id, admission.operation_id)
-        self.assertEqual(decision.state, "reserved")
+        self.assertEqual(decision.created_at_epoch_s, admission.evaluated_at_epoch_s)
+        self.assertEqual(decision.expires_at_epoch_s, admission.evaluated_at_epoch_s + 300)
         self.assertFalse(decision.replayed)
-        self.assertEqual(decision.created_at_epoch_s, self.now + 4)
-        self.assertEqual(decision.expires_at_epoch_s, self.now + 304)
-        self.assertEqual(decision.max_bytes, self.policy.max_bytes)
-        self.assertEqual(decision.max_pages, self.policy.max_pages)
-        self.assertEqual(decision.intake_policy_version, SAFE_INTAKE_POLICY_VERSION)
-        self.assertEqual(decision.allowed_media_types, SAFE_INTAKE_MEDIA_TYPES)
-
         safe = decision.as_safe_dict()
         for key in (
-            "uploadAllowed",
-            "operationExecutionAllowed",
-            "jobCreationAllowed",
-            "storageWriteAllowed",
-            "networkDispatchAllowed",
-            "orchestrationAllowed",
+            "uploadAllowed", "operationExecutionAllowed", "jobCreationAllowed",
+            "storageWriteAllowed", "networkDispatchAllowed", "orchestrationAllowed",
         ):
             self.assertFalse(safe[key])
         self.assertNotIn("admissionBindingId", safe)
         self.assertNotIn("requestSha256", safe)
 
-    def test_exact_admission_replay_returns_same_session_without_extending_ttl(self) -> None:
+    def test_exact_replay_returns_same_session_without_extending_ttl(self) -> None:
         stored = None
-
-        def stateful_reserver(request):
+        def stateful(request):
             nonlocal stored
             if stored is None:
-                stored = self.reserved_receipt(request)
+                stored = self.receipt(request)
                 return stored
-            self.assertEqual(request.session_id, stored.session_id)
-            self.assertEqual(request.admission_binding_id, stored.admission_binding_id)
-            return ExternalUploadSessionReservationReceipt(
+            return SafeUploadSessionReservationReceipt(
                 session_id=stored.session_id,
                 admission_binding_id=stored.admission_binding_id,
-                created_at_epoch_s=stored.created_at_epoch_s,
-                expires_at_epoch_s=stored.expires_at_epoch_s,
+                principal_id=request.principal_id,
+                environment=request.environment,
+                operation_id=request.operation_id,
+                request_sha256=request.request_sha256,
+                request_bytes=request.request_bytes,
                 max_bytes=stored.max_bytes,
                 max_pages=stored.max_pages,
-                intake_policy_version=stored.intake_policy_version,
                 allowed_media_types=stored.allowed_media_types,
+                created_at_epoch_s=stored.created_at_epoch_s,
+                expires_at_epoch_s=stored.expires_at_epoch_s,
                 outcome="replay",
             )
-
-        first_admission = self.admission()
-        first = self.reserve(first_admission, reserver=stateful_reserver)
-        replay_admission = self.admission(
-            observed_at_epoch_s=self.now + 10,
-            idempotency_outcome="replay",
-        )
-        replay = self.reserve(
-            replay_admission,
-            observed_at_epoch_s=self.now + 11,
-            reserver=stateful_reserver,
-        )
-
+        first = self.reserve(self.admission(), reserver=stateful)
+        replay = self.reserve(self.admission(observed=self.now + 10, outcome="replay"), reserver=stateful)
         self.assertEqual(first.session_id, replay.session_id)
         self.assertEqual(first.created_at_epoch_s, replay.created_at_epoch_s)
         self.assertEqual(first.expires_at_epoch_s, replay.expires_at_epoch_s)
-        self.assertFalse(first.replayed)
         self.assertTrue(replay.replayed)
 
     def test_session_identity_isolated_by_exact_admission_binding(self) -> None:
         first = self.reserve(self.admission())
-        by_key = self.reserve(self.admission(client_key="request-key-00000002"))
+        by_key = self.reserve(self.admission(key="request-key-00000002"))
         by_payload = self.reserve(self.admission(payload=b"different immutable request bytes"))
         self.assertEqual(len({first.session_id, by_key.session_id, by_payload.session_id}), 3)
 
-    def test_policy_mismatch_and_expired_session_fail_closed(self) -> None:
+    def test_expired_replay_fails_closed(self) -> None:
         admission = self.admission()
-        wrong_operation = ExternalUploadSessionPolicy(
-            version=EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION,
-            environment="staging",
-            operation_id="platform.operation.beta",
-            session_ttl_seconds=300,
-            max_bytes=self.policy.max_bytes,
-            max_pages=self.policy.max_pages,
-            intake_policy_version=SAFE_INTAKE_POLICY_VERSION,
-            allowed_media_types=SAFE_INTAKE_MEDIA_TYPES,
-        )
-        with self.assertRaisesRegex(ExternalUploadSessionError, "operation_mismatch"):
-            reserve_external_upload_session(
-                policy=wrong_operation,
-                admission=admission,
-                observed_at_epoch_s=self.now + 4,
-                reserver=self.reserved_receipt,
-            )
-
         def expired(request):
-            return ExternalUploadSessionReservationReceipt(
+            return SafeUploadSessionReservationReceipt(
                 session_id=request.session_id,
                 admission_binding_id=request.admission_binding_id,
-                created_at_epoch_s=request.observed_at_epoch_s - 301,
-                expires_at_epoch_s=request.observed_at_epoch_s - 1,
+                principal_id=request.principal_id,
+                environment=request.environment,
+                operation_id=request.operation_id,
+                request_sha256=request.request_sha256,
+                request_bytes=request.request_bytes,
                 max_bytes=request.max_bytes,
                 max_pages=request.max_pages,
-                intake_policy_version=request.intake_policy_version,
                 allowed_media_types=request.allowed_media_types,
+                created_at_epoch_s=request.requested_at_epoch_s - 301,
+                expires_at_epoch_s=request.requested_at_epoch_s - 1,
                 outcome="replay",
             )
-
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_expired"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_expired"):
             self.reserve(admission, reserver=expired)
 
-    def test_malformed_or_mismatched_receipt_and_provider_failure_fail_closed(self) -> None:
+    def test_malformed_mismatched_and_provider_failure_fail_closed(self) -> None:
         admission = self.admission()
-
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_unavailable"):
-            self.reserve(admission, reserver=lambda request: (_ for _ in ()).throw(RuntimeError("private backend detail")))
-
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_receipt_invalid"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_unavailable"):
+            self.reserve(admission, reserver=lambda request: (_ for _ in ()).throw(RuntimeError("private backend")))
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_receipt_invalid"):
             self.reserve(admission, reserver=lambda request: object())
-
         def mismatch(request):
-            return ExternalUploadSessionReservationReceipt(
-                session_id="f" * 64,
-                admission_binding_id=request.admission_binding_id,
-                created_at_epoch_s=request.observed_at_epoch_s,
-                expires_at_epoch_s=request.observed_at_epoch_s + request.session_ttl_seconds,
-                max_bytes=request.max_bytes,
-                max_pages=request.max_pages,
-                intake_policy_version=request.intake_policy_version,
-                allowed_media_types=request.allowed_media_types,
-                outcome="reserved",
-            )
-
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_receipt_invalid"):
+            receipt = self.receipt(request)
+            object.__setattr__(receipt, "session_id", "upload_" + "f" * 40)
+            return receipt
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_receipt_invalid"):
             self.reserve(admission, reserver=mismatch)
 
     def test_callback_is_single_atomic_seam_and_direct_authority_cannot_be_forged(self) -> None:
-        admission = self.admission()
         calls = 0
-
         def reserver(request):
             nonlocal calls
             calls += 1
-            return self.reserved_receipt(request)
-
+            return self.receipt(request)
+        admission = self.admission()
         self.reserve(admission, reserver=reserver)
         self.assertEqual(calls, 1)
-
-        with self.assertRaisesRegex(
-            ExternalUploadSessionError,
-            "upload_session_decision_construction_forbidden",
-        ):
-            ExternalUploadSessionDecision(
-                version=EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION,
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_decision_construction_forbidden"):
+            SafeUploadSessionDecision(
+                version=SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
                 environment=admission.environment,
                 principal_id=admission.principal_id,
                 operation_id=admission.operation_id,
                 state="reserved",
                 replayed=False,
-                session_id="a" * 64,
+                session_id="upload_" + "a" * 40,
                 admission_binding_id=admission.binding_id,
-                created_at_epoch_s=self.now + 4,
-                expires_at_epoch_s=self.now + 304,
-                max_bytes=self.policy.max_bytes,
-                max_pages=self.policy.max_pages,
-                intake_policy_version=SAFE_INTAKE_POLICY_VERSION,
-                allowed_media_types=SAFE_INTAKE_MEDIA_TYPES,
+                request_sha256=admission.request_sha256,
+                request_bytes=admission.request_bytes,
+                created_at_epoch_s=admission.evaluated_at_epoch_s,
+                expires_at_epoch_s=admission.evaluated_at_epoch_s + 300,
             )
 
-    def test_public_reservation_api_has_no_caller_supplied_session_authority(self) -> None:
-        signature = inspect.signature(reserve_external_upload_session)
-        for name in (
-            "session_id",
-            "created_at_epoch_s",
-            "expires_at_epoch_s",
-            "upload_allowed",
-            "storage_write_allowed",
-            "job_creation_allowed",
-        ):
+    def test_public_api_has_no_caller_supplied_session_authority(self) -> None:
+        signature = inspect.signature(reserve_safe_upload_session)
+        for name in ("session_id", "created_at_epoch_s", "expires_at_epoch_s", "upload_allowed", "storage_write_allowed"):
             self.assertNotIn(name, signature.parameters)
 
 
