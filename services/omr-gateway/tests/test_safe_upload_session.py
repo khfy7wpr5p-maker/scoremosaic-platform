@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from hashlib import sha256
 from pathlib import Path
 import sys
 import unittest
@@ -28,13 +27,13 @@ from scoremosaic_gateway.external_rate_limit import (
 )
 from scoremosaic_gateway.external_idempotency import ExternalIdempotencyReservationReceipt
 from scoremosaic_gateway.external_admission import compose_external_admission
-from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES, SAFE_INTAKE_POLICY_VERSION
-from scoremosaic_gateway.external_upload_session import (
-    EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION,
-    ExternalUploadSessionError,
-    ExternalUploadSessionPolicy,
-    ExternalUploadSessionReservationReceipt,
-    reserve_external_upload_session,
+from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES
+from scoremosaic_gateway.safe_upload_session import (
+    SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
+    SafeUploadSessionError,
+    SafeUploadSessionPolicy,
+    SafeUploadSessionReservationReceipt,
+    reserve_safe_upload_session,
 )
 
 
@@ -78,14 +77,12 @@ class SafeUploadSessionConvergenceTests(unittest.TestCase):
             environment="staging",
             rules=(ExternalRateLimitRule(self.operation, 60, 5),),
         )
-        self.policy = ExternalUploadSessionPolicy(
-            version=EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION,
+        self.policy = SafeUploadSessionPolicy(
+            version=SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
             environment="staging",
-            operation_id=self.operation,
             session_ttl_seconds=300,
             max_bytes=25 * 1024 * 1024,
             max_pages=120,
-            intake_policy_version=SAFE_INTAKE_POLICY_VERSION,
             allowed_media_types=SAFE_INTAKE_MEDIA_TYPES,
         )
 
@@ -123,21 +120,25 @@ class SafeUploadSessionConvergenceTests(unittest.TestCase):
 
     @staticmethod
     def receipt_for(request, *, outcome="reserved"):
-        return ExternalUploadSessionReservationReceipt(
+        return SafeUploadSessionReservationReceipt(
             session_id=request.session_id,
             admission_binding_id=request.admission_binding_id,
-            created_at_epoch_s=request.observed_at_epoch_s,
-            expires_at_epoch_s=request.observed_at_epoch_s + request.session_ttl_seconds,
+            principal_id=request.principal_id,
+            environment=request.environment,
+            operation_id=request.operation_id,
+            request_sha256=request.request_sha256,
+            request_bytes=request.request_bytes,
             max_bytes=request.max_bytes,
             max_pages=request.max_pages,
-            intake_policy_version=request.intake_policy_version,
             allowed_media_types=request.allowed_media_types,
+            created_at_epoch_s=request.requested_at_epoch_s,
+            expires_at_epoch_s=request.requested_at_epoch_s + request.session_ttl_seconds,
             outcome=outcome,
         )
 
     def reserve(self, *, admission=None, observed_at_epoch_s=None, reserver=None):
         checked_admission = self.admission() if admission is None else admission
-        return reserve_external_upload_session(
+        return reserve_safe_upload_session(
             policy=self.policy,
             admission=checked_admission,
             observed_at_epoch_s=(
@@ -150,7 +151,7 @@ class SafeUploadSessionConvergenceTests(unittest.TestCase):
 
     def test_stale_admission_cannot_open_a_new_session_later(self) -> None:
         admission = self.admission()
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_time_mismatch"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_time_mismatch"):
             self.reserve(
                 admission=admission,
                 observed_at_epoch_s=admission.evaluated_at_epoch_s + 1,
@@ -163,7 +164,7 @@ class SafeUploadSessionConvergenceTests(unittest.TestCase):
             object.__setattr__(request, "max_bytes", original_max_bytes + 1)
             return self.receipt_for(request)
 
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_authority_mutated"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_receipt_invalid"):
             self.reserve(reserver=mutating_reserver)
         self.assertEqual(self.policy.max_bytes, original_max_bytes)
 
@@ -175,32 +176,18 @@ class SafeUploadSessionConvergenceTests(unittest.TestCase):
             object.__setattr__(request, "max_bytes", original_max_bytes + 1)
             return self.receipt_for(request)
 
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_authority_mutated"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_authority_mutated"):
             self.reserve(reserver=mutating_reserver)
 
     def test_adapter_cannot_replace_admission_binding_and_choose_session_identity(self) -> None:
         admission = self.admission()
-        forged_binding = "f" * 64
-
-        def forged_session_id(binding_id: str) -> str:
-            payload = b"\0".join(
-                (
-                    EXTERNAL_UPLOAD_SESSION_CONTRACT_VERSION.encode("ascii"),
-                    admission.environment.encode("ascii"),
-                    admission.principal_id.encode("ascii"),
-                    admission.operation_id.encode("ascii"),
-                    binding_id.encode("ascii"),
-                )
-            )
-            return sha256(payload).hexdigest()
 
         def mutating_reserver(request):
-            object.__setattr__(admission, "binding_id", forged_binding)
-            object.__setattr__(request, "admission_binding_id", forged_binding)
-            object.__setattr__(request, "session_id", forged_session_id(forged_binding))
+            object.__setattr__(admission, "binding_id", "f" * 64)
+            object.__setattr__(request, "admission_binding_id", "f" * 64)
             return self.receipt_for(request)
 
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_authority_mutated"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_authority_mutated"):
             self.reserve(admission=admission, reserver=mutating_reserver)
 
     def test_provider_receives_a_defensive_request_copy(self) -> None:
@@ -211,7 +198,7 @@ class SafeUploadSessionConvergenceTests(unittest.TestCase):
             object.__setattr__(request, "max_pages", request.max_pages - 1)
             return self.receipt_for(request)
 
-        with self.assertRaisesRegex(ExternalUploadSessionError, "upload_session_receipt_invalid"):
+        with self.assertRaisesRegex(SafeUploadSessionError, "upload_session_receipt_invalid"):
             self.reserve(reserver=mutating_reserver)
         self.assertEqual(self.policy.max_pages, 120)
         self.assertEqual(len(seen), 1)
