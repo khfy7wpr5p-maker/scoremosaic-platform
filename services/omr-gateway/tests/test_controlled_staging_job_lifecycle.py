@@ -14,6 +14,7 @@ sys.path.insert(0, str(SERVICE_ROOT / "src"))
 import test_safe_upload_finalization as helpers
 from scoremosaic_gateway.controlled_staging_job_lifecycle import (
     ControlledStagingJobLifecycleError,
+    recover_controlled_staging_job_lifecycle,
     run_controlled_staging_job_lifecycle,
 )
 from scoremosaic_gateway.minimum_staging_vertical_slice import (
@@ -106,6 +107,181 @@ class ControlledStagingJobLifecycleTests(unittest.TestCase):
         self.assertEqual(after_restart.persistence_state, "replay")
         self.assertEqual(replay.runs, first.runs)
         self.assertEqual(after_restart.runs, first.runs)
+
+    def test_provider_restart_restores_read_only_gate_d5_decisions(self) -> None:
+        created = self.run_lifecycle()
+        job_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{created.job_id}.json"
+        )
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        original_job_bytes = job_path.read_bytes()
+        original_source_bytes = source_path.read_bytes()
+        restarted = StagingUploadProvider(
+            Path(self.temp_dir.name),
+            state_integrity_key=self.integrity_key,
+        )
+
+        recovered = recover_controlled_staging_job_lifecycle(
+            minimum_slice=self.minimum_slice,
+            provider=restarted,
+        )
+        replayed = recover_controlled_staging_job_lifecycle(
+            minimum_slice=self.minimum_slice,
+            provider=restarted,
+        )
+
+        self.assertEqual(recovered, replayed)
+        self.assertEqual(recovered.job_id, created.job_id)
+        self.assertEqual(tuple(run.engine for run in recovered.runs), ENGINE_NAMES)
+        self.assertTrue(all(run.state == "planned" for run in recovered.runs))
+        self.assertTrue(all(run.revision == 0 for run in recovered.runs))
+        self.assertTrue(
+            all(
+                run.disposition == "pre_dispatch_candidate"
+                for run in recovered.runs
+            )
+        )
+        self.assertTrue(all(not run.terminal for run in recovered.runs))
+        self.assertTrue(
+            all(not run.reconciliation_required for run in recovered.runs)
+        )
+        self.assertFalse(recovered.automatic_execution_allowed)
+        self.assertFalse(recovered.retry_allowed)
+        self.assertFalse(recovered.state_mutation_allowed)
+        self.assertFalse(recovered.queue_allowed)
+        self.assertFalse(recovered.worker_allowed)
+        self.assertFalse(recovered.network_dispatch_allowed)
+        self.assertFalse(recovered.orchestration_allowed)
+        self.assertFalse(recovered.engine_execution_allowed)
+        self.assertEqual(job_path.read_bytes(), original_job_bytes)
+        self.assertEqual(source_path.read_bytes(), original_source_bytes)
+
+    def test_recovery_requires_existing_authenticated_exact_job_record(self) -> None:
+        missing_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{self.minimum_slice.job_id}.json"
+        )
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+            recover_controlled_staging_job_lifecycle(
+                minimum_slice=self.minimum_slice,
+                provider=self.provider,
+            )
+
+        self.assertEqual(
+            raised.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
+        self.assertFalse(missing_path.exists())
+
+    def test_recovery_rejects_valid_but_different_authenticated_record(self) -> None:
+        created = self.run_lifecycle()
+        path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{created.job_id}.json"
+        )
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        stored["boundaries"]["networkDispatchAllowed"] = True
+        stored.pop("state_integrity_mac")
+        resealed = self.provider._seal_state_record(
+            kind="job_lifecycle",
+            record=stored,
+        )
+        path.chmod(0o600)
+        path.write_text(
+            json.dumps(resealed, separators=(",", ":"), sort_keys=True),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+            recover_controlled_staging_job_lifecycle(
+                minimum_slice=self.minimum_slice,
+                provider=self.provider,
+            )
+
+        self.assertEqual(
+            raised.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
+
+    def test_recovery_rejects_authenticated_json_type_substitution(self) -> None:
+        created = self.run_lifecycle()
+        path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{created.job_id}.json"
+        )
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        stored["runs"][0]["job_state"]["revision"] = False
+        stored.pop("state_integrity_mac")
+        resealed = self.provider._seal_state_record(
+            kind="job_lifecycle",
+            record=stored,
+        )
+        path.chmod(0o600)
+        path.write_text(
+            json.dumps(resealed, separators=(",", ":"), sort_keys=True),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+            recover_controlled_staging_job_lifecycle(
+                minimum_slice=self.minimum_slice,
+                provider=self.provider,
+            )
+
+        self.assertEqual(
+            raised.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
+
+    def test_recovery_rejects_wrong_key_or_modified_source(self) -> None:
+        self.run_lifecycle()
+        wrong_key_provider = StagingUploadProvider(
+            Path(self.temp_dir.name),
+            state_integrity_key=b"W" * 32,
+        )
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as wrong_key:
+            recover_controlled_staging_job_lifecycle(
+                minimum_slice=self.minimum_slice,
+                provider=wrong_key_provider,
+            )
+        self.assertEqual(
+            wrong_key.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
+
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        source_path.chmod(0o600)
+        source_path.write_bytes(
+            b"X" * self.minimum_slice.binding.source_size_bytes
+        )
+        with self.assertRaises(ControlledStagingJobLifecycleError) as modified:
+            recover_controlled_staging_job_lifecycle(
+                minimum_slice=self.minimum_slice,
+                provider=self.provider,
+            )
+        self.assertEqual(
+            modified.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
 
     def test_tampered_job_lifecycle_record_fails_closed(self) -> None:
         self.run_lifecycle()
@@ -226,6 +402,39 @@ class ControlledStagingJobLifecycleTests(unittest.TestCase):
             self.provider,
             "_write_all",
             side_effect=replace_while_building_record,
+        ):
+            with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+                self.run_lifecycle()
+
+        self.assertEqual(raised.exception.category, "staging_job_lifecycle_state_invalid")
+        self.assertFalse(job_path.exists())
+
+    def test_source_replacement_between_final_check_and_link_rolls_back_job(self) -> None:
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        job_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{self.minimum_slice.job_id}.json"
+        )
+        real_link = self.provider._link_unnamed_file
+
+        def replace_immediately_before_link(temp_fd, parent_fd, final_leaf):
+            if final_leaf.endswith(".json"):
+                source_path.chmod(0o600)
+                source_path.write_bytes(
+                    b"X" * self.minimum_slice.binding.source_size_bytes
+                )
+            real_link(temp_fd, parent_fd, final_leaf)
+
+        with patch.object(
+            self.provider,
+            "_link_unnamed_file",
+            side_effect=replace_immediately_before_link,
         ):
             with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
                 self.run_lifecycle()

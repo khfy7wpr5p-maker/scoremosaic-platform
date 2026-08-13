@@ -518,6 +518,7 @@ class StagingUploadProvider:
         payload: bytes,
         *,
         prepublish_check: Callable[[], None] | None = None,
+        postpublish_check: Callable[[], None] | None = None,
     ) -> bool:
         parent_fd, final_leaf = self._open_parent_fd(path, create=True)
         temp_fd: int | None = None
@@ -560,6 +561,32 @@ class StagingUploadProvider:
                     raise MinimumStagingVerticalSliceError(
                         "staging_state_unavailable"
                     )
+                if postpublish_check is not None:
+                    try:
+                        postpublish_check()
+                    except MinimumStagingVerticalSliceError:
+                        try:
+                            rollback_stat = os.stat(
+                                final_leaf,
+                                dir_fd=parent_fd,
+                                follow_symlinks=False,
+                            )
+                            if (
+                                not stat.S_ISREG(rollback_stat.st_mode)
+                                or (rollback_stat.st_dev, rollback_stat.st_ino)
+                                != (temp_stat.st_dev, temp_stat.st_ino)
+                            ):
+                                raise OSError(
+                                    errno.EIO,
+                                    "published staging file changed before rollback",
+                                )
+                            os.unlink(final_leaf, dir_fd=parent_fd)
+                            os.fsync(parent_fd)
+                        except OSError:
+                            raise MinimumStagingVerticalSliceError(
+                                "staging_state_unavailable"
+                            ) from None
+                        raise
                 os.fsync(parent_fd)
                 current_parent_fd, current_leaf = self._open_parent_fd(
                     path,
@@ -1095,6 +1122,7 @@ class StagingUploadProvider:
                     path,
                     sealed_payload,
                     prepublish_check=assert_source_stable,
+                    postpublish_check=assert_source_stable,
                 )
                 if created:
                     return "written"
@@ -1114,6 +1142,43 @@ class StagingUploadProvider:
                         "staging_job_lifecycle_conflict"
                     )
                 return "replay"
+
+    def read_job_lifecycle_record(
+        self,
+        *,
+        binding: SafeSourceJobBindingDecision,
+    ) -> dict[str, object]:
+        """Read one authenticated lifecycle record without granting mutation authority."""
+
+        if type(binding) is not SafeSourceJobBindingDecision:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        try:
+            binding.__post_init__()
+        except Exception:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            ) from None
+        path = self._job_lifecycle_path(binding.job_id)
+        with self._job_lock(binding.job_id):
+            with self._verified_source_guard(binding) as assert_source_stable:
+                stored = self._verify_state_record(
+                    kind="job_lifecycle",
+                    record=_decode_record(
+                        self._read_file_no_follow(
+                            path,
+                            max_bytes=_MAX_STATE_RECORD_BYTES,
+                            overflow_category="staging_state_corrupt",
+                        )
+                    ),
+                )
+                assert_source_stable()
+                if stored.get("job_id") != binding.job_id:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_corrupt"
+                    )
+                return _decode_record(_canonical_json_bytes(stored))
 
 
 def run_minimum_staging_vertical_slice(
