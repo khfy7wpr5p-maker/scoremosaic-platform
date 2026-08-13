@@ -2,7 +2,7 @@
 
 ## Status
 
-Gate E.4C is the final bounded foundation slice in the E.4 upload-intake chain. It consumes only exact Gate E.4B Safe Intake finalization evidence and binds that accepted source identity to existing server-owned job, artifact-lifecycle, and Gate D.3 immutable storage-authority contracts.
+Gate E.4C is the final bounded foundation slice in the E.4 upload-intake chain and is present on `main`. It consumes only exact Gate E.4B Safe Intake finalization evidence and binds that accepted source identity to existing server-owned job, artifact-lifecycle, and Gate D.3 immutable storage-authority contracts.
 
 This document describes a contract foundation. It does **not** activate a public upload route, storage writes, a database/object-store provider, queue/worker execution, engine dispatch, or orchestration.
 
@@ -80,7 +80,7 @@ No concrete persistence provider is selected by E.4C. Gate D remains a contract/
 
 ## Exit criteria
 
-E.4C is merge-ready only when:
+E.4C itself is complete when:
 
 - focused E.4C positive, replay, cross-source, pre-tamper, direct-construction, and no-runtime-authority tests pass;
 - all existing OMR Gateway regression tests pass;
@@ -88,4 +88,4 @@ E.4C is merge-ready only when:
 - documentation still states that upload, persistence, storage writes, dispatch, and orchestration are disabled;
 - no unresolved P1/P2 finding remains.
 
-Merging E.4C does **not** by itself close E.4. One bounded E.4A–E.4C convergence/regression closure remains required. After that closure, the default next direction is the minimum staging vertical slice rather than another abstract E.4 sub-gate unless a concrete P1/P2 or mandatory trust boundary proves otherwise.
+E.4C completion does **not** by itself activate runtime capability. The final E.4A–E.4C convergence/regression closure is defined in [`gate-e4-closure-convergence.md`](gate-e4-closure-convergence.md). Once that closure is merged with fresh CI evidence, E.4 may be recorded as a completed contract/convergence foundation and the default next direction becomes the minimum staging vertical slice rather than another abstract E.4 sub-gate unless a concrete P1/P2 or mandatory trust boundary proves otherwise.
