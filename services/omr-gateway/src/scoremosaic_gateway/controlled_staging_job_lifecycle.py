@@ -1,9 +1,11 @@
-"""Provider-backed initial Gate D evidence for the controlled staging runtime.
+"""Provider-backed Gate D lifecycle evidence for the controlled staging runtime.
 
 The boundary begins only after the minimum staging vertical slice has written and
 reverified one immutable source. It persists the deterministic D.1 planned state,
 D.2 empty idempotency ledger, and D.4 initial provenance record for each planned
-engine run. It creates no queue, worker, transport, dispatch, or engine authority.
+engine run. A restarted provider can restore that exact evidence into read-only
+D.5 decisions. It creates no queue, worker, transition, transport, dispatch, or
+engine authority.
 """
 
 from __future__ import annotations
@@ -11,20 +13,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from .artifact_lifecycle import ArtifactLifecycleError, build_artifact_lifecycle
+from .artifact_lifecycle import (
+    ArtifactLifecycleError,
+    CandidateArtifactLifecycle,
+    build_artifact_lifecycle,
+)
 from .dispatch_identity import DispatchIdentityError, build_dispatch_identity
 from .durable_artifact_storage import (
+    DurableArtifactStorageManifest,
     DurableArtifactStorageError,
     build_durable_artifact_storage_manifest,
 )
 from .durable_idempotency import (
     DurableIdempotencyError,
+    DurableIdempotencyLedger,
     build_durable_idempotency_ledger,
 )
-from .durable_job_state import DurableJobStateError, build_durable_job_state
+from .durable_job_state import (
+    DurableJobStateError,
+    DurableJobStateSnapshot,
+    build_durable_job_state,
+)
 from .durable_provenance import (
+    DurableProvenanceChain,
     DurableProvenanceError,
     build_durable_provenance_chain,
+)
+from .durable_restart_recovery import (
+    DurableRestartRecoveryDecision,
+    DurableRestartRecoveryError,
+    evaluate_durable_restart_recovery,
 )
 from .minimum_staging_vertical_slice import (
     MinimumStagingVerticalSliceError,
@@ -36,7 +54,10 @@ from .orchestration import (
     OrchestrationContractError,
     build_orchestration_plan,
 )
-from .safe_source_job_binding import SafeSourceJobBindingError
+from .safe_source_job_binding import (
+    SafeSourceJobBindingDecision,
+    SafeSourceJobBindingError,
+)
 from .safe_source_job_binding_verification import (
     verify_safe_source_job_binding_decision,
 )
@@ -44,6 +65,9 @@ from .safe_source_job_binding_verification import (
 
 CONTROLLED_STAGING_JOB_LIFECYCLE_VERSION = (
     "scoremosaic-controlled-staging-job-lifecycle-v1"
+)
+CONTROLLED_STAGING_JOB_RECOVERY_VERSION = (
+    "scoremosaic-controlled-staging-job-recovery-v1"
 )
 _JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
 _ARTIFACT_ID_RE = re.compile(r"artifact_[0-9a-f]{24}\Z")
@@ -95,6 +119,22 @@ class ControlledStagingRunEvidence:
             raise ControlledStagingJobLifecycleError(
                 "staging_job_lifecycle_result_invalid"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class _ControlledStagingRunContext:
+    snapshot: DurableJobStateSnapshot
+    ledger: DurableIdempotencyLedger
+    provenance: DurableProvenanceChain
+
+
+@dataclass(frozen=True, slots=True)
+class _ControlledStagingDerivedEvidence:
+    record: dict[str, object]
+    run_evidence: tuple[ControlledStagingRunEvidence, ...]
+    run_contexts: tuple[_ControlledStagingRunContext, ...]
+    lifecycle: CandidateArtifactLifecycle
+    manifest: DurableArtifactStorageManifest
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,13 +208,95 @@ class ControlledStagingJobLifecycleResult:
         }
 
 
-def run_controlled_staging_job_lifecycle(
-    *,
+@dataclass(frozen=True, slots=True)
+class ControlledStagingJobRecoveryResult:
+    """Read-only provider-backed D.5 decisions for one restored staging job."""
+
+    job_id: str
+    source_artifact_id: str
+    runs: tuple[DurableRestartRecoveryDecision, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.job_id) is not str
+            or _JOB_ID_RE.fullmatch(self.job_id) is None
+            or type(self.source_artifact_id) is not str
+            or _ARTIFACT_ID_RE.fullmatch(self.source_artifact_id) is None
+            or type(self.runs) is not tuple
+            or any(type(run) is not DurableRestartRecoveryDecision for run in self.runs)
+            or tuple(run.engine for run in self.runs) != ENGINE_NAMES
+            or any(run.job_id != self.job_id for run in self.runs)
+            or any(
+                run.state != "planned"
+                or run.revision != 0
+                or run.disposition != "pre_dispatch_candidate"
+                or run.terminal
+                or run.reconciliation_required
+                or run.automatic_execution_allowed
+                or run.retry_allowed
+                or run.network_dispatch_allowed
+                or run.state_mutation_allowed
+                for run in self.runs
+            )
+        ):
+            raise ControlledStagingJobLifecycleError(
+                "staging_job_recovery_result_invalid"
+            )
+
+    @property
+    def automatic_execution_allowed(self) -> bool:
+        return False
+
+    @property
+    def retry_allowed(self) -> bool:
+        return False
+
+    @property
+    def state_mutation_allowed(self) -> bool:
+        return False
+
+    @property
+    def queue_allowed(self) -> bool:
+        return False
+
+    @property
+    def worker_allowed(self) -> bool:
+        return False
+
+    @property
+    def network_dispatch_allowed(self) -> bool:
+        return False
+
+    @property
+    def orchestration_allowed(self) -> bool:
+        return False
+
+    @property
+    def engine_execution_allowed(self) -> bool:
+        return False
+
+    def as_safe_dict(self) -> dict[str, object]:
+        return {
+            "version": CONTROLLED_STAGING_JOB_RECOVERY_VERSION,
+            "environment": "staging",
+            "jobId": self.job_id,
+            "sourceArtifactId": self.source_artifact_id,
+            "runs": [run.as_safe_dict() for run in self.runs],
+            "automaticExecutionAllowed": False,
+            "retryAllowed": False,
+            "stateMutationAllowed": False,
+            "queueAllowed": False,
+            "workerAllowed": False,
+            "networkDispatchAllowed": False,
+            "orchestrationAllowed": False,
+            "engineExecutionAllowed": False,
+        }
+
+
+def _validated_binding(
     minimum_slice: MinimumStagingVerticalSliceResult,
     provider: StagingUploadProvider,
-) -> ControlledStagingJobLifecycleResult:
-    """Persist exact initial Gate D evidence without activating execution."""
-
+) -> SafeSourceJobBindingDecision:
     if (
         type(minimum_slice) is not MinimumStagingVerticalSliceResult
         or type(provider) is not StagingUploadProvider
@@ -185,7 +307,6 @@ def run_controlled_staging_job_lifecycle(
     binding = minimum_slice.binding
     if binding.environment != "staging":
         raise ControlledStagingJobLifecycleError("staging_environment_required")
-
     try:
         verify_safe_source_job_binding_decision(
             binding,
@@ -195,13 +316,12 @@ def run_controlled_staging_job_lifecycle(
         raise ControlledStagingJobLifecycleError(
             "staging_job_source_binding_invalid"
         ) from None
-    try:
-        provider.read_source(binding)
-    except MinimumStagingVerticalSliceError:
-        raise ControlledStagingJobLifecycleError(
-            "staging_job_source_invalid"
-        ) from None
+    return binding
 
+
+def _derive_initial_evidence(
+    binding: SafeSourceJobBindingDecision,
+) -> _ControlledStagingDerivedEvidence:
     try:
         plan = build_orchestration_plan(
             binding.job_id,
@@ -234,6 +354,7 @@ def run_controlled_staging_job_lifecycle(
 
     run_records: list[dict[str, object]] = []
     run_evidence: list[ControlledStagingRunEvidence] = []
+    run_contexts: list[_ControlledStagingRunContext] = []
     try:
         for engine in ENGINE_NAMES:
             identity = build_dispatch_identity(plan.as_dict(), engine)
@@ -266,6 +387,13 @@ def run_controlled_staging_job_lifecycle(
                     provenance_chain_sha256=provenance.chain_sha256,
                 )
             )
+            run_contexts.append(
+                _ControlledStagingRunContext(
+                    snapshot=snapshot,
+                    ledger=ledger,
+                    provenance=provenance,
+                )
+            )
     except (
         DispatchIdentityError,
         DurableJobStateError,
@@ -296,10 +424,34 @@ def run_controlled_staging_job_lifecycle(
             "engineExecutionAllowed": False,
         },
     }
+    return _ControlledStagingDerivedEvidence(
+        record=record,
+        run_evidence=tuple(run_evidence),
+        run_contexts=tuple(run_contexts),
+        lifecycle=lifecycle,
+        manifest=manifest,
+    )
+
+
+def run_controlled_staging_job_lifecycle(
+    *,
+    minimum_slice: MinimumStagingVerticalSliceResult,
+    provider: StagingUploadProvider,
+) -> ControlledStagingJobLifecycleResult:
+    """Persist exact initial Gate D evidence without activating execution."""
+
+    binding = _validated_binding(minimum_slice, provider)
+    try:
+        provider.read_source(binding)
+    except MinimumStagingVerticalSliceError:
+        raise ControlledStagingJobLifecycleError(
+            "staging_job_source_invalid"
+        ) from None
+    derived = _derive_initial_evidence(binding)
     try:
         persistence_state = provider.persist_job_lifecycle_record(
             binding=binding,
-            record=record,
+            record=derived.record,
         )
     except MinimumStagingVerticalSliceError:
         raise ControlledStagingJobLifecycleError(
@@ -310,5 +462,47 @@ def run_controlled_staging_job_lifecycle(
         job_id=binding.job_id,
         source_artifact_id=binding.source_artifact_id,
         persistence_state=persistence_state,
-        runs=tuple(run_evidence),
+        runs=derived.run_evidence,
+    )
+
+
+def recover_controlled_staging_job_lifecycle(
+    *,
+    minimum_slice: MinimumStagingVerticalSliceResult,
+    provider: StagingUploadProvider,
+) -> ControlledStagingJobRecoveryResult:
+    """Restore exact planned evidence and evaluate D.5 without mutating state."""
+
+    binding = _validated_binding(minimum_slice, provider)
+    derived = _derive_initial_evidence(binding)
+    try:
+        stored = provider.read_job_lifecycle_record(binding=binding)
+    except MinimumStagingVerticalSliceError:
+        raise ControlledStagingJobLifecycleError(
+            "staging_job_lifecycle_state_invalid"
+        ) from None
+    if stored != derived.record:
+        raise ControlledStagingJobLifecycleError(
+            "staging_job_lifecycle_state_invalid"
+        )
+
+    try:
+        decisions = tuple(
+            evaluate_durable_restart_recovery(
+                context.snapshot,
+                context.ledger,
+                derived.manifest,
+                lifecycle=derived.lifecycle,
+                provenance=context.provenance,
+            )
+            for context in derived.run_contexts
+        )
+    except DurableRestartRecoveryError:
+        raise ControlledStagingJobLifecycleError(
+            "staging_job_recovery_invalid"
+        ) from None
+    return ControlledStagingJobRecoveryResult(
+        job_id=binding.job_id,
+        source_artifact_id=binding.source_artifact_id,
+        runs=decisions,
     )

@@ -1115,6 +1115,43 @@ class StagingUploadProvider:
                     )
                 return "replay"
 
+    def read_job_lifecycle_record(
+        self,
+        *,
+        binding: SafeSourceJobBindingDecision,
+    ) -> dict[str, object]:
+        """Read one authenticated lifecycle record without granting mutation authority."""
+
+        if type(binding) is not SafeSourceJobBindingDecision:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        try:
+            binding.__post_init__()
+        except Exception:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            ) from None
+        path = self._job_lifecycle_path(binding.job_id)
+        with self._job_lock(binding.job_id):
+            with self._verified_source_guard(binding) as assert_source_stable:
+                stored = self._verify_state_record(
+                    kind="job_lifecycle",
+                    record=_decode_record(
+                        self._read_file_no_follow(
+                            path,
+                            max_bytes=_MAX_STATE_RECORD_BYTES,
+                            overflow_category="staging_state_corrupt",
+                        )
+                    ),
+                )
+                assert_source_stable()
+                if stored.get("job_id") != binding.job_id:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_corrupt"
+                    )
+                return _decode_record(_canonical_json_bytes(stored))
+
 
 def run_minimum_staging_vertical_slice(
     *,

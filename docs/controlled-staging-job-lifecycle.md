@@ -1,6 +1,6 @@
 # Controlled Staging Job Lifecycle
 
-Status: initial provider-backed slice implemented; merge remains separately gated.
+Status: initial provider-backed lifecycle and read-only planned-state recovery implemented.
 
 ## Purpose
 
@@ -15,6 +15,13 @@ initial evidence for every planned engine run:
 
 The orchestration plan is used only as deterministic contract evidence. It is not
 executed.
+
+After a provider restart, the recovery boundary reads the authenticated record
+under the same source/job lock, freshly rederives the exact plan, lifecycle,
+D.1/D.2/D.3/D.4 evidence, and requires exact record content before evaluating
+Gate D.5. Every current run is restored only as `planned`, revision `0`, with
+disposition `pre_dispatch_candidate` and all execution, retry, network-dispatch,
+and state-mutation authority false.
 
 ## Provider behavior
 
@@ -41,10 +48,12 @@ Before persistence, the boundary:
 ## Explicit non-activation
 
 This slice does not create or authorize a queue, worker, state transition beyond
-`planned`, retry, recovery execution, network request, engine receiver call,
+`planned`, transition write, retry, automatic recovery execution, network
+request, engine receiver call,
 orchestration runtime, OMR engine execution, public route, Candidate Safety
 processing, Teacher Review write, approval, or publication.
 
 It is not a new gate or stage and does not change the architecture order. Further
-Controlled staging runtime work must be separately bounded and reviewed before
-Private OMR orchestration is considered.
+Controlled staging runtime work must add provider-backed transition writes in a
+separately bounded and reviewed change before Private OMR orchestration is
+considered.
