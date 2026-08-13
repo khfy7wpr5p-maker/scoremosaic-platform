@@ -22,7 +22,7 @@ Every capability is gated. Code presence alone does not authorize activation; th
 | Internal dispatch security | C.2-G + C-DIAG-1/2 foundations completed | C.1 and C.2-A-C.2-G contract foundations are on `main`, together with C-DIAG-1 bounded engine runtime diagnostic redaction and C-DIAG-2 bounded receiver/dispatch outward diagnostic mapping. Raw engine runtime/provider details and dispatch exception payloads do not cross the current safe surfaces; non-exact diagnostic strings are rejected. Live receiver routes, durable replay persistence, network dispatch, and orchestration activation remain disabled. |
 | Durable job/artifact state and recovery | Completed contract/convergence foundation | Gate D.1-D.6 define fail-closed job state, idempotency, immutable artifact authority, provenance, restart-recovery decisions, and crash-window/partial-output convergence. No database/object-storage provider, queue/worker runtime, durable read/write adapter, or live recovery/orchestration authority is activated. |
 | Production immutable object storage | Not started | Gate D storage authority contracts exist, but no production object-storage provider or storage-write runtime is selected or enabled. |
-| External API authentication/authorization | In progress | Gate E.1 external-principal authentication, E.2 deny-by-default authorization, E.3A authenticated-operation rate-slot reservation, and E.3B external request-idempotency admission foundations exist. Public routes, provider wiring, resource/tenant scope where applicable, durable rate/idempotency runtime adapters, edge/anonymous abuse controls, and safe upload sessions remain blocked. |
+| External API authentication/authorization | In progress | Gate E.1 external-principal authentication, E.2 deny-by-default authorization, E.3A authenticated-operation rate-slot reservation, E.3B external request-idempotency admission, and E.3C external admission composition foundations exist. Public routes, provider wiring, resource/tenant scope where applicable, durable rate/idempotency runtime adapters, edge/anonymous abuse controls, and safe upload sessions remain blocked. |
 | UI-0A visual/application-shell contract | Completed documentation foundation | Visual/application-shell direction exists only as documentation; it creates no frontend runtime or authority. |
 | UI-0B static application shell | Completed isolated prototype | Repository-owned HTML/CSS prototype exists but remains disconnected, non-production, non-authoritative, and without backend/edit/playback runtime. GitHub-hosted executable CI coverage is tracked separately. |
 | Teacher Review Score Editor TR-0A | Completed architecture contract | The future editor trust/authority and secure implementation sequence are documented; no Teacher Review API, writable editor, persistence, playback, approval, or publication runtime is activated. |
@@ -149,8 +149,9 @@ Completed foundations:
 - E.2 external authorization decision — deny-by-default exact `principalId + environment + operationId` authorization evidence from a server-owned policy; wildcard/implicit grants and direct allowed-decision construction are rejected; even an allowed decision grants no operation-execution, upload, job-creation, network-dispatch, or orchestration runtime authority.
 - E.3A external rate-slot reservation — exact E.1 principal and matching allowed E.2 authorization evidence are required before one server-owned, operation-specific fixed-window rate slot can be atomically reserved through a provider-neutral callback seam. Principal/operation/window bucket identity is deterministic and remains stable across budget-only policy changes; malformed or mismatched receipts and provider failures fail closed. E.3A does not select a production rate-state backend, wire HTTP 429 behavior, accept uploads, create jobs, or grant operation-execution/network/orchestration authority.
 - E.3B external request-idempotency admission — exact E.1 principal, matching allowed E.2 authorization, and matching allowed E.3A rate evidence are required before one principal/environment/operation-scoped idempotency slot can be atomically reserved, replayed, or rejected as a conflict. The client key is bounded input rather than authority, request SHA-256 is server-computed over the exact immutable request bytes, exact replay is distinguished from same-slot/different-payload conflict, and provider/receipt failures fail closed. E.3B does not select a durable idempotency backend, register a route, accept uploads, create jobs, or grant operation-execution/network/orchestration authority.
+- E.3C external admission composition convergence — exact E.1/E.2 authority is composed with a fresh E.3A rate reservation and then E.3B idempotency for the same exact immutable request. The resulting binding is deterministic across exact replay, callback-visible reservation requests are defensively cloned, and principal/authorization/rate-policy authority is snapshotted and rechecked across callback seams so mutation fails closed. E.3C grants no upload, job, storage, execution, network-dispatch, or orchestration runtime authority.
 
-The E.3A decision is contract evidence rather than a reusable one-time runtime token. Any future live API composition must evaluate E.3A freshly for the request being admitted before composing it with E.3B; an old allowed rate decision must not become reusable runtime authority.
+E.3C closes the contract-level fresh-composition requirement: an old allowed E.3A decision is not accepted as reusable authority by the composition API. Production rate/idempotency adapters and any future live API wiring must preserve those E.3C semantics.
 
 Remaining requirements before Gate E can close or any public data plane can be activated:
 
@@ -158,11 +159,11 @@ Remaining requirements before Gate E can close or any public data plane can be a
 - resource/user/tenant scope enforcement where an authoritative resource-ownership model actually exists;
 - production/runtime rate-limit adapter plus edge/anonymous abuse protection;
 - safe upload session semantics wired through the completed Safe Intake decision;
-- production/runtime idempotency adapter plus fresh per-request E.3A/E.3B composition;
+- production/runtime idempotency adapter that preserves the E.3C exact-request/fresh-rate composition semantics;
 - privacy-safe logs/errors at the live API boundary;
 - explicit versioned route wiring and negative authorization tests for each activated operation.
 
-No public login, upload, job, review, or mutation route is activated by E.1, E.2, E.3A, or E.3B.
+No public login, upload, job, review, or mutation route is activated by E.1, E.2, E.3A, E.3B, or E.3C.
 
 ### Gate F — Teacher Review and Publication
 
