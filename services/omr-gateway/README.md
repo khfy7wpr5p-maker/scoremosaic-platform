@@ -2,7 +2,7 @@
 
 ## Current status
 
-The Gateway HTTP service remains a private, health-only surface for the shared ScoreMosaic OMR Gateway: it does not accept document files through HTTP, create jobs through HTTP, call an OMR conversion endpoint, or produce MusicXML. The Gateway library now additionally contains the **minimum private staging vertical slice**, which can be invoked internally with exact staging E.3C admission evidence to persist bounded E.4A/E.4B state and one verified immutable source file. That library path is not registered as an HTTP endpoint and does not enable orchestration.
+The Gateway HTTP service remains a private, health-only surface for the shared ScoreMosaic OMR Gateway: it does not accept document files through HTTP, create jobs through HTTP, call an OMR conversion endpoint, or produce MusicXML. The Gateway library contains the **minimum private staging vertical slice**, which persists bounded E.4A/E.4B state and one verified immutable source file, plus the first bounded **Controlled staging runtime** slice, which persists initial D.1/D.2/D.4 job/provenance evidence. Neither library path is registered as an HTTP endpoint or enables orchestration.
 
 Phase 11 added a **versioned orchestration-plan contract library** without enabling orchestration. Phase 12 added a **versioned candidate and artifact lifecycle contract library** without enabling runtime mutation or general storage. Both libraries are deterministic and perform no network, queue, or database operation.
 
@@ -21,6 +21,8 @@ Gate E is in progress. E.1 defines provider-neutral authenticated external-princ
 E.4A/E.4B replay semantics establish stateful-provider obligations: replay must return the original immutable session/finalization records, never refresh TTL or widen budgets, and the same session with different document identity must conflict. The minimum staging provider now demonstrates these semantics for private staging. Production providers remain separately required; the private staging provider is not implicitly selected by deployment configuration.
 
 The minimum staging vertical slice starts from exact staging E.3C admission evidence, persists E.4A session and E.4B finalization evidence in create-once private staging records, runs Gate B and E.4C, independently verifies the E.4C source/job decision, and only then writes exact accepted source bytes create-once under the server-derived storage key. Exact replay converges without overwrite. Corrupted persisted session state, pre-existing symlink state paths, same-session different-document reuse, mismatched payloads, and different existing immutable source content fail closed. The slice does not register a public upload route, enable engine dispatch, or enable orchestration.
+
+The controlled staging job-lifecycle slice starts only from that successful result. It re-verifies the E.4B/E.4C lineage and immutable source, freshly reconstructs the canonical plan/lifecycle/D.3 manifest, and persists authenticated create-once D.1 `planned` revision `0`, D.2 empty idempotency, and D.4 initial provenance evidence for Audiveris, HOMR, and Clarity. Exact replay and provider restart converge without overwrite; malformed state, a wrong integrity key, or symlink redirection fail closed. No queue, worker, transition, recovery execution, dispatch, orchestration, or engine call is enabled.
 
 Implemented now:
 
@@ -66,6 +68,7 @@ Implemented now:
 - Gate E.4C Immutable Source / Job Binding contract with deterministic server-owned source/job/storage identity and exact E.4B verification
 - Gate E.4 convergence verifier with fresh E.4C re-derivation and post-construction/cross-finalization fail-closed checks
 - minimum staging vertical slice with stateful E.4A/E.4B private records plus exact create-once immutable source persistence after E.4C verification
+- controlled staging job lifecycle with authenticated create-once initial D.1/D.2/D.4 evidence after immutable-source reverification
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers

@@ -102,6 +102,8 @@ Gate E.1-E.4 provide the external API security/admission/upload-to-source **cont
 
 The **minimum staging vertical slice** is the first runtime use of those completed contracts. It starts only from exact staging E.3C admission evidence, persists E.4A and E.4B state in a private create-once staging filesystem provider, runs Gate B and E.4C, freshly verifies the E.4C decision, and only then persists the exact accepted source bytes at the server-derived immutable storage key. Exact replay converges without overwrite; same-session different-document input conflicts; malformed state, pre-existing symlink state paths, mismatched source bytes, and immutable-key collisions fail closed. This staging activation does not create a public route, production provider, queue/worker, engine dispatch, or orchestration authority. The boundary is documented in [`minimum-staging-vertical-slice.md`](minimum-staging-vertical-slice.md).
 
+The first **Controlled staging runtime** slice follows that source write and persists authenticated create-once initial Gate D evidence. It re-verifies the exact source and E.4B/E.4C lineage, freshly derives the canonical plan/lifecycle/storage manifest, and stores D.1 `planned` revision `0`, D.2 empty idempotency, and D.4 initial provenance evidence for each fixed engine run. Replay and restart converge without overwrite. It activates no queue, worker, state transition, recovery execution, transport, orchestration, or engine call. The boundary is documented in [`controlled-staging-job-lifecycle.md`](controlled-staging-job-lifecycle.md).
+
 E.4A replay immutability has an explicit operational boundary: a stateful reservation provider must atomically return the **original stored** session identity, creation time, expiry, and budgets for a replay. It must not refresh TTL or widen budgets. E.4B has the analogous finalization-provider obligation: exact replay must return the original immutable finalization record, while the same session with different document identity must conflict. The minimum staging provider now demonstrates those semantics for private staging; production still requires separately reviewed providers.
 
 The bounded E.4 sequence remains closed at the contract/convergence layer. The minimum staging slice is an implementation step over that closed sequence, not a new E.4D/E.4E foundation chain. Wider activation must now extend the real staging path rather than proliferate abstract micro-gates.
@@ -140,6 +142,7 @@ The repository now contains one bounded provider-backed private staging source-i
 - Gate E.4C Immutable Source / Job Binding foundation; exact E.4B evidence derives deterministic server-owned source/job/storage identity using existing Gate D.3 authority.
 - Gate E.4 closure convergence; exact replay converges to one source/job identity and E.4C evidence can be freshly reverified against exact E.4B evidence while post-construction substitution fails closed.
 - Minimum staging vertical slice: stateful private E.4A/E.4B staging records plus one create-once immutable source filesystem write after exact Gate B/E.4C verification; no public route or engine execution is activated.
+- Controlled staging job lifecycle: provider-backed create-once initial D.1/D.2/D.4 evidence after immutable-source reverification; all execution and dispatch authority remains disabled.
 - Canonical Score and Ensemble comparison/report foundations.
 - Immutable candidate/artifact lifecycle contracts.
 - Candidate Safety v1 validation for HOMR, Clarity, and Audiveris outputs.
@@ -152,7 +155,7 @@ The repository now contains one bounded provider-backed private staging source-i
 
 - Public external document upload and any public upload endpoint.
 - Live authenticated Gateway engine dispatch/orchestration and receiver route wiring.
-- Broader provider-backed durable job/candidate/provenance persistence; only the minimum private staging session/finalization/source records are active in this slice.
+- Broader provider-backed job transitions, recovery execution, and candidate persistence; only private staging session/finalization/source records plus initial planned job/provenance evidence are active.
 - Production immutable object storage.
 - Queue/worker/process restart runtime and automatic recovery execution.
 - External authentication-provider/runtime wiring and versioned public API routes.

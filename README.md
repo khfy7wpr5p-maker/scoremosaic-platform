@@ -24,6 +24,8 @@ Gate E is **in progress**. E.1 provides provider-neutral external-principal auth
 
 The **minimum staging vertical slice** is now implemented as the first real provider-backed use of that trust chain. Starting from exact staging E.3C evidence, it persists E.4A reservation and E.4B finalization state, executes Gate B and E.4C, freshly verifies the source/job binding, and writes the exact accepted source bytes create-once under the server-derived immutable key. Exact replay reuses the same session/finalization/job/source identity; different-document reuse, malformed state, symlink state-path escape, payload mismatch, and immutable-source collision fail closed. This remains private staging behavior: public upload, production providers, engine dispatch, and orchestration are still disabled.
 
+The first bounded **Controlled staging runtime** slice now extends that path into provider-backed initial job lifecycle/provenance. After re-verifying the exact E.4B/E.4C lineage and immutable source bytes, it persists one authenticated create-once job record containing D.1 `planned` revision `0`, D.2 empty idempotency, and D.4 initial provenance evidence for each fixed engine run. Exact replay and provider restart converge without overwrite. Queue, worker, state transitions, recovery execution, network dispatch, orchestration, and engine calls remain disabled.
+
 This implementation is **not** a new E.4D/E.4E gate. Future work should extend the real staging path—next toward durable staging job lifecycle and later controlled dispatch—rather than return to open-ended contract micro-gates unless a concrete P1/P2 requires one.
 
 ## Secure target flow
@@ -102,6 +104,7 @@ A successful engine process does **not** make its output trusted. HOMR, Clarity,
 - Gate E.4C Immutable Source / Job Binding foundation; exact E.4B evidence derives deterministic server-owned job/source/storage identity by reusing existing Gate D.3 authority.
 - Gate E.4 closure convergence; exact replay converges to one source/job identity and later consumers can reverify E.4C evidence against exact E.4B evidence while valid-shape post-construction substitutions fail closed.
 - Minimum staging vertical slice: stateful private staging E.4A/E.4B records and one create-once immutable source filesystem write after exact Gate B/E.4C verification, with replay/conflict/corruption/symlink/collision regressions; no public route or engine execution.
+- Controlled staging job lifecycle: authenticated create-once initial D.1/D.2/D.4 evidence for each fixed engine run after immutable source reverification; no queue, worker, transition, dispatch, orchestration, or engine execution authority.
 - Immutable candidate/artifact lifecycle contracts.
 - Canonical Score, Ensemble comparator/report, and fixed evaluation foundations.
 - Candidate Safety v1 for HOMR, Clarity, and Audiveris engine outputs.
@@ -118,7 +121,7 @@ B.6 treats the original filename as metadata only. It rejects unsafe path forms,
 
 The minimum private staging source-ingest slice does not authorize external document upload or live orchestration. Before those capabilities are enabled, the platform still requires at minimum:
 
-1. Extend the private staging path from verified source persistence into provider-backed durable job lifecycle/provenance while preserving Gate D.1-D.6 crash/replay rules and keeping engine dispatch disabled until separately reviewed.
+1. Extend the controlled staging runtime from the persisted initial `planned` evidence into separately reviewed provider-backed recovery/transition behavior while preserving Gate D.1-D.6 crash/replay rules and keeping engine dispatch disabled.
 2. Production E.4A and E.4B stateful providers that preserve original session/finalization replay records and exact conflict semantics without TTL/budget widening or document substitution.
 3. Separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations, with operational credential/replay protections and no security-boundary weakening.
 4. A separately reviewed operational persistence layer/provider for durable replay/job/artifact/provenance state, plus queue/worker/process-recovery behavior if activated.

@@ -19,6 +19,7 @@ from hmac import compare_digest, new as hmac_new
 import json
 import os
 from pathlib import Path
+import re
 import stat
 
 from .external_admission import ExternalAdmissionDecision
@@ -50,7 +51,8 @@ _READ_CHUNK_BYTES = 64 * 1024
 _STATE_INTEGRITY_KEY_BYTES = 32
 _STATE_INTEGRITY_MAC_FIELD = "state_integrity_mac"
 _STATE_INTEGRITY_DOMAIN = b"scoremosaic-minimum-staging-state-v1"
-_STATE_RECORD_KINDS = frozenset({"session", "finalization"})
+_STATE_RECORD_KINDS = frozenset({"session", "finalization", "job_lifecycle"})
+_JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
 _AT_EMPTY_PATH = 0x1000
 
 
@@ -603,6 +605,13 @@ class StagingUploadProvider:
     def _finalization_path(self, session_id: str) -> Path:
         return self._root / "state" / "finalizations" / f"{session_id}.json"
 
+    def _job_lifecycle_path(self, job_id: str) -> Path:
+        if type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        return self._root / "state" / "jobs" / f"{job_id}.json"
+
     def _source_path(self, binding: SafeSourceJobBindingDecision) -> Path:
         if type(binding) is not SafeSourceJobBindingDecision:
             raise MinimumStagingVerticalSliceError("staging_source_binding_invalid")
@@ -844,6 +853,62 @@ class StagingUploadProvider:
         ):
             raise MinimumStagingVerticalSliceError("staging_source_collision")
         return existing
+
+    def persist_job_lifecycle_record(
+        self,
+        *,
+        job_id: str,
+        record: dict[str, object],
+    ) -> str:
+        """Create or exactly replay one authenticated staging job record."""
+
+        path = self._job_lifecycle_path(job_id)
+        if (
+            type(record) is not dict
+            or any(type(key) is not str for key in record)
+            or record.get("job_id") != job_id
+            or _STATE_INTEGRITY_MAC_FIELD in record
+        ):
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        try:
+            payload = _canonical_json_bytes(record)
+            detached = _decode_record(payload)
+        except (TypeError, ValueError, OverflowError):
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            ) from None
+        if detached != record or len(payload) > _MAX_STATE_RECORD_BYTES:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+
+        sealed = self._seal_state_record(kind="job_lifecycle", record=detached)
+        sealed_payload = _canonical_json_bytes(sealed)
+        if len(sealed_payload) > _MAX_STATE_RECORD_BYTES:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_request_invalid"
+            )
+        created = self._atomic_create(path, sealed_payload)
+        if created:
+            return "written"
+
+        stored = self._verify_state_record(
+            kind="job_lifecycle",
+            record=_decode_record(
+                self._read_file_no_follow(
+                    path,
+                    max_bytes=_MAX_STATE_RECORD_BYTES,
+                    overflow_category="staging_state_corrupt",
+                )
+            ),
+        )
+        if stored != detached:
+            raise MinimumStagingVerticalSliceError(
+                "staging_job_lifecycle_conflict"
+            )
+        return "replay"
 
 
 def run_minimum_staging_vertical_slice(
