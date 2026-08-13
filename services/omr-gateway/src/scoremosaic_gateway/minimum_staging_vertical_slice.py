@@ -42,6 +42,10 @@ from .safe_upload_session import (
 )
 
 
+_MAX_STATE_RECORD_BYTES = 64 * 1024
+_READ_CHUNK_BYTES = 64 * 1024
+
+
 class MinimumStagingVerticalSliceError(ValueError):
     """Stable fail-closed minimum staging slice failure category."""
 
@@ -129,29 +133,42 @@ class StagingUploadProvider:
     def __init__(self, root: Path) -> None:
         if not isinstance(root, Path) or not root.is_absolute():
             raise MinimumStagingVerticalSliceError("staging_root_invalid")
-        if root.exists() and root.is_symlink():
-            raise MinimumStagingVerticalSliceError("staging_root_invalid")
+        try:
+            if root.exists() and root.is_symlink():
+                raise MinimumStagingVerticalSliceError("staging_root_invalid")
+        except OSError:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         self._root = root
 
     def _ensure_directory(self, relative: Path) -> Path:
         if relative.is_absolute() or ".." in relative.parts:
             raise MinimumStagingVerticalSliceError("staging_path_invalid")
-        current = self._root
-        if not current.exists():
-            current.mkdir(mode=0o700, parents=True, exist_ok=True)
-        if current.is_symlink() or not current.is_dir():
-            raise MinimumStagingVerticalSliceError("staging_root_invalid")
-        for part in relative.parts:
-            current = current / part
-            if current.exists():
-                if current.is_symlink() or not current.is_dir():
-                    raise MinimumStagingVerticalSliceError("staging_path_invalid")
-            else:
-                current.mkdir(mode=0o700)
-        return current
+        try:
+            current = self._root
+            if not current.exists():
+                current.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if current.is_symlink() or not current.is_dir():
+                raise MinimumStagingVerticalSliceError("staging_root_invalid")
+            for part in relative.parts:
+                current = current / part
+                if current.exists():
+                    if current.is_symlink() or not current.is_dir():
+                        raise MinimumStagingVerticalSliceError("staging_path_invalid")
+                else:
+                    current.mkdir(mode=0o700)
+            return current
+        except OSError:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
 
     @staticmethod
-    def _read_file_no_follow(path: Path) -> bytes:
+    def _read_file_no_follow(
+        path: Path,
+        *,
+        max_bytes: int,
+        overflow_category: str,
+    ) -> bytes:
+        if type(max_bytes) is not int or max_bytes < 0:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable")
         flags = os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
@@ -159,23 +176,47 @@ class StagingUploadProvider:
             fd = os.open(path, flags)
         except OSError:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+
+        chunks: list[bytes] = []
+        observed = 0
         try:
-            chunks: list[bytes] = []
             while True:
-                chunk = os.read(fd, 1024 * 1024)
+                remaining_with_sentinel = max_bytes + 1 - observed
+                if remaining_with_sentinel <= 0:
+                    raise MinimumStagingVerticalSliceError(overflow_category)
+                chunk = os.read(
+                    fd,
+                    min(_READ_CHUNK_BYTES, remaining_with_sentinel),
+                )
                 if not chunk:
                     return b"".join(chunks)
+                observed += len(chunk)
+                if observed > max_bytes:
+                    raise MinimumStagingVerticalSliceError(overflow_category)
                 chunks.append(chunk)
+        except MinimumStagingVerticalSliceError:
+            raise
+        except OSError:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         finally:
-            os.close(fd)
+            try:
+                os.close(fd)
+            except OSError:
+                raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
 
     def _atomic_create(self, path: Path, payload: bytes) -> bool:
-        parent = self._ensure_directory(path.parent.relative_to(self._root))
+        try:
+            relative_parent = path.parent.relative_to(self._root)
+        except ValueError:
+            raise MinimumStagingVerticalSliceError("staging_path_invalid") from None
+        parent = self._ensure_directory(relative_parent)
         if parent != path.parent:
             raise MinimumStagingVerticalSliceError("staging_path_invalid")
-        fd, temp_name = tempfile.mkstemp(prefix=".scoremosaic-", dir=parent)
-        temp_path = Path(temp_name)
+
+        temp_path: Path | None = None
         try:
+            fd, temp_name = tempfile.mkstemp(prefix=".scoremosaic-", dir=parent)
+            temp_path = Path(temp_name)
             os.fchmod(fd, 0o600)
             with os.fdopen(fd, "wb", closefd=True) as handle:
                 handle.write(payload)
@@ -186,13 +227,20 @@ class StagingUploadProvider:
                 return True
             except FileExistsError:
                 return False
-            except OSError:
-                raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+        except MinimumStagingVerticalSliceError:
+            raise
+        except OSError:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         finally:
-            try:
-                temp_path.unlink()
-            except FileNotFoundError:
-                pass
+            if temp_path is not None:
+                try:
+                    temp_path.unlink()
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_unavailable"
+                    ) from None
 
     def _session_path(self, session_id: str) -> Path:
         return self._root / "state" / "sessions" / f"{session_id}.json"
@@ -249,9 +297,19 @@ class StagingUploadProvider:
         path = self._session_path(request.session_id)
         new_record = self._session_record(request)
         created = self._atomic_create(path, _canonical_json_bytes(new_record))
-        record = new_record if created else _decode_record(self._read_file_no_follow(path))
+        record = (
+            new_record
+            if created
+            else _decode_record(
+                self._read_file_no_follow(
+                    path,
+                    max_bytes=_MAX_STATE_RECORD_BYTES,
+                    overflow_category="staging_state_corrupt",
+                )
+            )
+        )
         required_keys = set(new_record)
-        if set(record) != required_keys:
+        if set(record) != required_keys or record.get("version") != request.version:
             raise MinimumStagingVerticalSliceError("staging_state_corrupt")
         try:
             allowed_media_types = tuple(record["allowed_media_types"])
@@ -345,7 +403,13 @@ class StagingUploadProvider:
         if created:
             return self._finalization_receipt(new_record, outcome="reserved")
 
-        stored = _decode_record(self._read_file_no_follow(path))
+        stored = _decode_record(
+            self._read_file_no_follow(
+                path,
+                max_bytes=_MAX_STATE_RECORD_BYTES,
+                overflow_category="staging_state_corrupt",
+            )
+        )
         if set(stored) != set(new_record):
             raise MinimumStagingVerticalSliceError("staging_state_corrupt")
         comparable_keys = set(new_record) - {"finalized_at_epoch_s"}
@@ -388,7 +452,11 @@ class StagingUploadProvider:
         created = self._atomic_create(path, payload)
         if created:
             return "written"
-        existing = self._read_file_no_follow(path)
+        existing = self._read_file_no_follow(
+            path,
+            max_bytes=binding.source_size_bytes,
+            overflow_category="staging_source_collision",
+        )
         if (
             len(existing) != binding.source_size_bytes
             or sha256(existing).hexdigest() != binding.document_sha256
@@ -398,7 +466,18 @@ class StagingUploadProvider:
         return "replay"
 
     def read_source(self, binding: SafeSourceJobBindingDecision) -> bytes:
-        return self._read_file_no_follow(self._source_path(binding))
+        path = self._source_path(binding)
+        existing = self._read_file_no_follow(
+            path,
+            max_bytes=binding.source_size_bytes,
+            overflow_category="staging_source_collision",
+        )
+        if (
+            len(existing) != binding.source_size_bytes
+            or sha256(existing).hexdigest() != binding.document_sha256
+        ):
+            raise MinimumStagingVerticalSliceError("staging_source_collision")
+        return existing
 
 
 def run_minimum_staging_vertical_slice(
