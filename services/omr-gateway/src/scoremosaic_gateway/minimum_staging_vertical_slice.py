@@ -12,12 +12,14 @@ select a production database/object-store provider.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import errno
 from hashlib import sha256
 from hmac import compare_digest, new as hmac_new
 import json
 import os
 from pathlib import Path
-import tempfile
+import secrets
+import stat
 
 from .external_admission import ExternalAdmissionDecision
 from .safe_source_job_binding import (
@@ -49,6 +51,7 @@ _STATE_INTEGRITY_KEY_BYTES = 32
 _STATE_INTEGRITY_MAC_FIELD = "state_integrity_mac"
 _STATE_INTEGRITY_DOMAIN = b"scoremosaic-minimum-staging-state-v1"
 _STATE_RECORD_KINDS = frozenset({"session", "finalization"})
+_TEMP_CREATE_ATTEMPTS = 8
 
 
 class MinimumStagingVerticalSliceError(ValueError):
@@ -144,8 +147,11 @@ class StagingUploadProvider:
         ):
             raise MinimumStagingVerticalSliceError("staging_integrity_key_invalid")
         try:
-            if root.exists() and root.is_symlink():
+            root.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if root.is_symlink() or not root.is_dir():
                 raise MinimumStagingVerticalSliceError("staging_root_invalid")
+        except MinimumStagingVerticalSliceError:
+            raise
         except OSError:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         self._root = root
@@ -196,47 +202,145 @@ class StagingUploadProvider:
             raise MinimumStagingVerticalSliceError("staging_state_corrupt")
         return payload
 
-    def _ensure_directory(self, relative: Path) -> Path:
-        if relative.is_absolute() or ".." in relative.parts:
+    @staticmethod
+    def _directory_open_flags() -> int:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            flags |= os.O_DIRECTORY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_CLOEXEC"):
+            flags |= os.O_CLOEXEC
+        return flags
+
+    @staticmethod
+    def _file_read_flags() -> int:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NONBLOCK"):
+            flags |= os.O_NONBLOCK
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_CLOEXEC"):
+            flags |= os.O_CLOEXEC
+        return flags
+
+    @staticmethod
+    def _file_create_flags() -> int:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_CLOEXEC"):
+            flags |= os.O_CLOEXEC
+        return flags
+
+    @staticmethod
+    def _path_error(exc: OSError) -> MinimumStagingVerticalSliceError:
+        if exc.errno in {
+            errno.ENOENT,
+            errno.ENOTDIR,
+            getattr(errno, "ELOOP", -1),
+        }:
+            return MinimumStagingVerticalSliceError("staging_path_invalid")
+        return MinimumStagingVerticalSliceError("staging_state_unavailable")
+
+    def _relative_path(self, path: Path) -> Path:
+        if not isinstance(path, Path):
             raise MinimumStagingVerticalSliceError("staging_path_invalid")
         try:
-            current = self._root
-            if not current.exists():
-                current.mkdir(mode=0o700, parents=True, exist_ok=True)
-            if current.is_symlink() or not current.is_dir():
-                raise MinimumStagingVerticalSliceError("staging_root_invalid")
-            for part in relative.parts:
-                current = current / part
-                if current.exists():
-                    if current.is_symlink() or not current.is_dir():
-                        raise MinimumStagingVerticalSliceError("staging_path_invalid")
-                else:
-                    current.mkdir(mode=0o700)
-            return current
-        except OSError:
-            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
-
-    def _validate_existing_parent(self, path: Path) -> None:
-        try:
-            relative_parent = path.parent.relative_to(self._root)
+            relative = path.relative_to(self._root)
         except ValueError:
             raise MinimumStagingVerticalSliceError("staging_path_invalid") from None
-        if relative_parent.is_absolute() or ".." in relative_parent.parts:
+        if (
+            relative.is_absolute()
+            or not relative.parts
+            or ".." in relative.parts
+            or "." in relative.parts
+        ):
             raise MinimumStagingVerticalSliceError("staging_path_invalid")
+        return relative
+
+    def _open_root_fd(self) -> int:
         try:
-            current = self._root
-            if not current.exists() or current.is_symlink() or not current.is_dir():
-                raise MinimumStagingVerticalSliceError("staging_path_invalid")
-            for part in relative_parent.parts:
-                current = current / part
-                if (
-                    not current.exists()
-                    or current.is_symlink()
-                    or not current.is_dir()
-                ):
-                    raise MinimumStagingVerticalSliceError("staging_path_invalid")
+            fd = os.open(self._root, self._directory_open_flags())
+        except OSError as exc:
+            raise self._path_error(exc) from None
+        try:
+            if not stat.S_ISDIR(os.fstat(fd).st_mode):
+                raise MinimumStagingVerticalSliceError("staging_root_invalid")
+            return fd
+        except MinimumStagingVerticalSliceError:
+            os.close(fd)
+            raise
         except OSError:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+
+    def _open_directory_chain(self, relative: Path, *, create: bool) -> int:
+        if relative.is_absolute() or ".." in relative.parts or "." in relative.parts:
+            raise MinimumStagingVerticalSliceError("staging_path_invalid")
+        current_fd = self._open_root_fd()
+        try:
+            for part in relative.parts:
+                if create:
+                    try:
+                        os.mkdir(part, mode=0o700, dir_fd=current_fd)
+                    except FileExistsError:
+                        pass
+                    except OSError as exc:
+                        raise self._path_error(exc) from None
+                try:
+                    next_fd = os.open(
+                        part,
+                        self._directory_open_flags(),
+                        dir_fd=current_fd,
+                    )
+                except OSError as exc:
+                    raise self._path_error(exc) from None
+                try:
+                    if not stat.S_ISDIR(os.fstat(next_fd).st_mode):
+                        raise MinimumStagingVerticalSliceError("staging_path_invalid")
+                except MinimumStagingVerticalSliceError:
+                    os.close(next_fd)
+                    raise
+                except OSError:
+                    try:
+                        os.close(next_fd)
+                    except OSError:
+                        pass
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_unavailable"
+                    ) from None
+                os.close(current_fd)
+                current_fd = next_fd
+            return current_fd
+        except MinimumStagingVerticalSliceError:
+            try:
+                os.close(current_fd)
+            except OSError:
+                pass
+            raise
+        except OSError:
+            try:
+                os.close(current_fd)
+            except OSError:
+                pass
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+
+    def _open_parent_fd(self, path: Path, *, create: bool) -> tuple[int, str]:
+        relative = self._relative_path(path)
+        leaf = relative.name
+        if (
+            type(leaf) is not str
+            or not leaf
+            or leaf in {".", ".."}
+            or "/" in leaf
+            or "\\" in leaf
+        ):
+            raise MinimumStagingVerticalSliceError("staging_path_invalid")
+        return self._open_directory_chain(relative.parent, create=create), leaf
 
     def _read_file_no_follow(
         self,
@@ -247,89 +351,135 @@ class StagingUploadProvider:
     ) -> bytes:
         if type(max_bytes) is not int or max_bytes < 0:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable")
-        self._validate_existing_parent(path)
-        flags = os.O_RDONLY
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
+        parent_fd, leaf = self._open_parent_fd(path, create=False)
+        fd: int | None = None
         try:
-            fd = os.open(path, flags)
-        except OSError:
-            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+            try:
+                fd = os.open(leaf, self._file_read_flags(), dir_fd=parent_fd)
+            except OSError as exc:
+                raise self._path_error(exc) from None
+            try:
+                file_stat = os.fstat(fd)
+            except OSError:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
+            if not stat.S_ISREG(file_stat.st_mode):
+                raise MinimumStagingVerticalSliceError("staging_path_invalid")
 
-        chunks: list[bytes] = []
-        observed = 0
-        try:
+            chunks: list[bytes] = []
+            observed = 0
             while True:
                 remaining_with_sentinel = max_bytes + 1 - observed
                 if remaining_with_sentinel <= 0:
                     raise MinimumStagingVerticalSliceError(overflow_category)
-                chunk = os.read(
-                    fd,
-                    min(_READ_CHUNK_BYTES, remaining_with_sentinel),
-                )
+                try:
+                    chunk = os.read(
+                        fd,
+                        min(_READ_CHUNK_BYTES, remaining_with_sentinel),
+                    )
+                except OSError:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_unavailable"
+                    ) from None
                 if not chunk:
                     return b"".join(chunks)
                 observed += len(chunk)
                 if observed > max_bytes:
                     raise MinimumStagingVerticalSliceError(overflow_category)
                 chunks.append(chunk)
-        except MinimumStagingVerticalSliceError:
-            raise
-        except OSError:
-            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         finally:
-            try:
-                os.close(fd)
-            except OSError:
-                raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
-
-    def _atomic_create(self, path: Path, payload: bytes) -> bool:
-        try:
-            relative_parent = path.parent.relative_to(self._root)
-        except ValueError:
-            raise MinimumStagingVerticalSliceError("staging_path_invalid") from None
-        parent = self._ensure_directory(relative_parent)
-        if parent != path.parent:
-            raise MinimumStagingVerticalSliceError("staging_path_invalid")
-
-        fd: int | None = None
-        temp_path: Path | None = None
-        try:
-            fd, temp_name = tempfile.mkstemp(prefix=".scoremosaic-", dir=parent)
-            temp_path = Path(temp_name)
-            os.fchmod(fd, 0o600)
-            handle = os.fdopen(fd, "wb", closefd=True)
-            fd = None
-            with handle:
-                handle.write(payload)
-                handle.flush()
-                os.fsync(handle.fileno())
-            try:
-                os.link(temp_path, path)
-                return True
-            except FileExistsError:
-                return False
-        except MinimumStagingVerticalSliceError:
-            raise
-        except OSError:
-            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
-        finally:
+            close_failed = False
             if fd is not None:
                 try:
                     os.close(fd)
                 except OSError:
-                    raise MinimumStagingVerticalSliceError(
-                        "staging_state_unavailable"
-                    ) from None
-            if temp_path is not None:
+                    close_failed = True
+            try:
+                os.close(parent_fd)
+            except OSError:
+                close_failed = True
+            if close_failed:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
+
+    def _create_temp_file(self, parent_fd: int) -> tuple[int, str]:
+        for _ in range(_TEMP_CREATE_ATTEMPTS):
+            leaf = f".scoremosaic-{secrets.token_hex(16)}"
+            try:
+                fd = os.open(
+                    leaf,
+                    self._file_create_flags(),
+                    0o600,
+                    dir_fd=parent_fd,
+                )
+                return fd, leaf
+            except FileExistsError:
+                continue
+        raise OSError(errno.EEXIST, "temporary staging name collision")
+
+    @staticmethod
+    def _write_all(fd: int, payload: bytes) -> None:
+        view = memoryview(payload)
+        offset = 0
+        while offset < len(view):
+            written = os.write(fd, view[offset:])
+            if written <= 0:
+                raise OSError(errno.EIO, "staging write made no progress")
+            offset += written
+
+    def _atomic_create(self, path: Path, payload: bytes) -> bool:
+        parent_fd, final_leaf = self._open_parent_fd(path, create=True)
+        temp_fd: int | None = None
+        temp_leaf: str | None = None
+        try:
+            try:
+                temp_fd, temp_leaf = self._create_temp_file(parent_fd)
+                os.fchmod(temp_fd, 0o600)
+                self._write_all(temp_fd, payload)
+                os.fsync(temp_fd)
+                os.close(temp_fd)
+                temp_fd = None
                 try:
-                    temp_path.unlink()
+                    os.link(
+                        temp_leaf,
+                        final_leaf,
+                        src_dir_fd=parent_fd,
+                        dst_dir_fd=parent_fd,
+                        follow_symlinks=False,
+                    )
+                    return True
+                except FileExistsError:
+                    return False
+            except MinimumStagingVerticalSliceError:
+                raise
+            except OSError:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
+        finally:
+            close_failed = False
+            if temp_fd is not None:
+                try:
+                    os.close(temp_fd)
+                except OSError:
+                    close_failed = True
+            if temp_leaf is not None:
+                try:
+                    os.unlink(temp_leaf, dir_fd=parent_fd)
                 except FileNotFoundError:
                     pass
                 except OSError:
-                    raise MinimumStagingVerticalSliceError(
-                        "staging_state_unavailable"
-                    ) from None
+                    close_failed = True
+            try:
+                os.close(parent_fd)
+            except OSError:
+                close_failed = True
+            if close_failed:
+                raise MinimumStagingVerticalSliceError(
+                    "staging_state_unavailable"
+                ) from None
 
     def _session_path(self, session_id: str) -> Path:
         return self._root / "state" / "sessions" / f"{session_id}.json"
