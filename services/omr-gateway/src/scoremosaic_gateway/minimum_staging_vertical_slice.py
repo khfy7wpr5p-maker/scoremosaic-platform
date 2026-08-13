@@ -518,6 +518,7 @@ class StagingUploadProvider:
         payload: bytes,
         *,
         prepublish_check: Callable[[], None] | None = None,
+        postpublish_check: Callable[[], None] | None = None,
     ) -> bool:
         parent_fd, final_leaf = self._open_parent_fd(path, create=True)
         temp_fd: int | None = None
@@ -560,6 +561,32 @@ class StagingUploadProvider:
                     raise MinimumStagingVerticalSliceError(
                         "staging_state_unavailable"
                     )
+                if postpublish_check is not None:
+                    try:
+                        postpublish_check()
+                    except MinimumStagingVerticalSliceError:
+                        try:
+                            rollback_stat = os.stat(
+                                final_leaf,
+                                dir_fd=parent_fd,
+                                follow_symlinks=False,
+                            )
+                            if (
+                                not stat.S_ISREG(rollback_stat.st_mode)
+                                or (rollback_stat.st_dev, rollback_stat.st_ino)
+                                != (temp_stat.st_dev, temp_stat.st_ino)
+                            ):
+                                raise OSError(
+                                    errno.EIO,
+                                    "published staging file changed before rollback",
+                                )
+                            os.unlink(final_leaf, dir_fd=parent_fd)
+                            os.fsync(parent_fd)
+                        except OSError:
+                            raise MinimumStagingVerticalSliceError(
+                                "staging_state_unavailable"
+                            ) from None
+                        raise
                 os.fsync(parent_fd)
                 current_parent_fd, current_leaf = self._open_parent_fd(
                     path,
@@ -1095,6 +1122,7 @@ class StagingUploadProvider:
                     path,
                     sealed_payload,
                     prepublish_check=assert_source_stable,
+                    postpublish_check=assert_source_stable,
                 )
                 if created:
                     return "written"

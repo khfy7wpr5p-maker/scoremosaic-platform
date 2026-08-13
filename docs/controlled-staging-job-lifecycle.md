@@ -34,8 +34,10 @@ fails closed.
 Source writes, source reads, and lifecycle publication share one job-scoped
 filesystem lock. Lifecycle publication additionally holds the verified source
 descriptor open and rechecks the canonical source inode, size, and SHA-256 before
-the create-once record is linked and again before the lock is released. A source
-replacement after an earlier verification therefore cannot publish job evidence.
+the create-once record is linked and immediately after linking. If the source
+changes in that check-to-link window, the provider removes and syncs the exact
+newly linked lifecycle inode before failing closed. A source replacement after an
+earlier verification therefore cannot leave published job evidence behind.
 
 Before persistence, the boundary:
 

@@ -377,6 +377,39 @@ class ControlledStagingJobLifecycleTests(unittest.TestCase):
         self.assertEqual(raised.exception.category, "staging_job_lifecycle_state_invalid")
         self.assertFalse(job_path.exists())
 
+    def test_source_replacement_between_final_check_and_link_rolls_back_job(self) -> None:
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        job_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{self.minimum_slice.job_id}.json"
+        )
+        real_link = self.provider._link_unnamed_file
+
+        def replace_immediately_before_link(temp_fd, parent_fd, final_leaf):
+            if final_leaf.endswith(".json"):
+                source_path.chmod(0o600)
+                source_path.write_bytes(
+                    b"X" * self.minimum_slice.binding.source_size_bytes
+                )
+            real_link(temp_fd, parent_fd, final_leaf)
+
+        with patch.object(
+            self.provider,
+            "_link_unnamed_file",
+            side_effect=replace_immediately_before_link,
+        ):
+            with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+                self.run_lifecycle()
+
+        self.assertEqual(raised.exception.category, "staging_job_lifecycle_state_invalid")
+        self.assertFalse(job_path.exists())
+
     def test_wrong_input_types_fail_before_provider_use(self) -> None:
         with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
             run_controlled_staging_job_lifecycle(
