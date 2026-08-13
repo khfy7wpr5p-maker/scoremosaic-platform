@@ -36,13 +36,12 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.now = 2_000_000_000
         self.operation = "platform.operation.alpha"
-        auth_policy = ExternalAuthPolicy(
-            version=EXTERNAL_AUTH_CONTRACT_VERSION,
-            environment="staging",
-            allowed_provider_ids=("test-provider",),
-        )
         self.principal = authenticate_external_principal(
-            policy=auth_policy,
+            policy=ExternalAuthPolicy(
+                version=EXTERNAL_AUTH_CONTRACT_VERSION,
+                environment="staging",
+                allowed_provider_ids=("test-provider",),
+            ),
             provider_id="test-provider",
             credential=b"opaque-authentication-credential",
             verifier=lambda provider_id, credential: VerifiedExternalIdentity(
@@ -53,22 +52,7 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
             ),
             observed_at_epoch_s=self.now,
         )
-        authorization_policy = ExternalAuthorizationPolicy(
-            version=EXTERNAL_AUTHORIZATION_CONTRACT_VERSION,
-            environment="staging",
-            grants=(
-                ExternalAuthorizationGrant(
-                    principal_id=self.principal.principal_id,
-                    operation_id=self.operation,
-                ),
-            ),
-        )
-        self.authorization = authorize_external_operation(
-            policy=authorization_policy,
-            principal=self.principal,
-            operation_id=self.operation,
-            observed_at_epoch_s=self.now + 1,
-        )
+        self.authorization = self.authorization_for(self.operation)
         self.policy = ExternalRateLimitPolicy(
             version=EXTERNAL_RATE_LIMIT_CONTRACT_VERSION,
             environment="staging",
@@ -79,6 +63,23 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
                     max_requests=5,
                 ),
             ),
+        )
+
+    def authorization_for(self, operation_id: str):
+        return authorize_external_operation(
+            policy=ExternalAuthorizationPolicy(
+                version=EXTERNAL_AUTHORIZATION_CONTRACT_VERSION,
+                environment="staging",
+                grants=(
+                    ExternalAuthorizationGrant(
+                        principal_id=self.principal.principal_id,
+                        operation_id=operation_id,
+                    ),
+                ),
+            ),
+            principal=self.principal,
+            operation_id=operation_id,
+            observed_at_epoch_s=self.now + 1,
         )
 
     def reserve(
@@ -121,14 +122,13 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
         )
 
     def test_exact_allowed_authorization_can_reserve_one_atomic_slot(self) -> None:
-        seen: list[ExternalRateReservationRequest] = []
+        seen = []
 
         def reserver(request):
             seen.append(request)
             return self.reserved(request)
 
         decision = self.reserve(reserver=reserver)
-
         self.assertIs(type(decision), ExternalRateDecision)
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, "reserved")
@@ -142,24 +142,24 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
         self.assertEqual(request.window_end_epoch_s, request.window_start_epoch_s + 60)
         self.assertEqual(request.max_requests, 5)
         self.assertRegex(request.reservation_key, r"^[0-9a-f]{64}$")
-
         evidence = decision.as_safe_dict()
         self.assertEqual(evidence["rateState"], "allowed")
         self.assertTrue(evidence["rateSlotReserved"])
-        self.assertFalse(evidence["operationExecutionAllowed"])
-        self.assertFalse(evidence["uploadAllowed"])
-        self.assertFalse(evidence["jobCreationAllowed"])
-        self.assertFalse(evidence["networkDispatchAllowed"])
-        self.assertFalse(evidence["orchestrationAllowed"])
+        for key in (
+            "operationExecutionAllowed",
+            "uploadAllowed",
+            "jobCreationAllowed",
+            "networkDispatchAllowed",
+            "orchestrationAllowed",
+        ):
+            self.assertFalse(evidence[key])
 
     def test_limit_reached_returns_bounded_rate_limited_decision(self) -> None:
         decision = self.reserve(reserver=self.limited)
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "rate_limited")
-        evidence = decision.as_safe_dict()
-        self.assertEqual(evidence["rateState"], "rate_limited")
-        self.assertFalse(evidence["rateSlotReserved"])
-        self.assertFalse(evidence["operationExecutionAllowed"])
+        self.assertEqual(decision.as_safe_dict()["rateState"], "rate_limited")
+        self.assertFalse(decision.as_safe_dict()["rateSlotReserved"])
 
     def test_reserver_is_called_exactly_once_per_admission_attempt(self) -> None:
         calls = 0
@@ -173,13 +173,12 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
         self.assertEqual(calls, 1)
 
     def test_denied_authorization_never_reaches_reserver(self) -> None:
-        denied_policy = ExternalAuthorizationPolicy(
-            version=EXTERNAL_AUTHORIZATION_CONTRACT_VERSION,
-            environment="staging",
-            grants=(),
-        )
         denied = authorize_external_operation(
-            policy=denied_policy,
+            policy=ExternalAuthorizationPolicy(
+                version=EXTERNAL_AUTHORIZATION_CONTRACT_VERSION,
+                environment="staging",
+                grants=(),
+            ),
             principal=self.principal,
             operation_id=self.operation,
             observed_at_epoch_s=self.now + 1,
@@ -196,55 +195,33 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
         self.assertEqual(calls, 0)
 
     def test_authorization_identity_operation_and_environment_must_match(self) -> None:
-        other_operation = "platform.operation.beta"
-        authz_policy = ExternalAuthorizationPolicy(
-            version=EXTERNAL_AUTHORIZATION_CONTRACT_VERSION,
-            environment="staging",
-            grants=(
-                ExternalAuthorizationGrant(
-                    principal_id=self.principal.principal_id,
-                    operation_id=other_operation,
-                ),
-            ),
-        )
-        other_decision = authorize_external_operation(
-            policy=authz_policy,
-            principal=self.principal,
-            operation_id=other_operation,
-            observed_at_epoch_s=self.now + 1,
-        )
+        beta = "platform.operation.beta"
         with self.assertRaisesRegex(ExternalRateLimitError, "authorization_mismatch"):
-            self.reserve(reserver=self.reserved, authorization=other_decision)
+            self.reserve(reserver=self.reserved, authorization=self.authorization_for(beta))
 
         production_policy = ExternalRateLimitPolicy(
             version=EXTERNAL_RATE_LIMIT_CONTRACT_VERSION,
             environment="production",
-            rules=(
-                ExternalRateLimitRule(
-                    operation_id=self.operation,
-                    window_seconds=60,
-                    max_requests=5,
-                ),
-            ),
+            rules=(ExternalRateLimitRule(self.operation, 60, 5),),
         )
         with self.assertRaisesRegex(ExternalRateLimitError, "environment_mismatch"):
             self.reserve(reserver=self.reserved, policy=production_policy)
 
-    def test_rate_policy_is_server_owned_bounded_and_operation_specific(self) -> None:
+    def test_rate_policy_is_bounded_operation_specific_and_rejects_duplicates(self) -> None:
         invalid_rules = (
-            dict(operation_id="*", window_seconds=60, max_requests=5),
-            dict(operation_id="platform.*", window_seconds=60, max_requests=5),
-            dict(operation_id=self.operation, window_seconds=0, max_requests=5),
-            dict(operation_id=self.operation, window_seconds=86_401, max_requests=5),
-            dict(operation_id=self.operation, window_seconds=60, max_requests=0),
-            dict(operation_id=self.operation, window_seconds=60, max_requests=100_001),
-            dict(operation_id=self.operation, window_seconds=True, max_requests=5),
-            dict(operation_id=self.operation, window_seconds=60, max_requests=True),
+            ("*", 60, 5),
+            ("platform.*", 60, 5),
+            (self.operation, 0, 5),
+            (self.operation, 86_401, 5),
+            (self.operation, 60, 0),
+            (self.operation, 60, 100_001),
+            (self.operation, True, 5),
+            (self.operation, 60, True),
         )
-        for kwargs in invalid_rules:
-            with self.subTest(kwargs=kwargs):
+        for values in invalid_rules:
+            with self.subTest(values=values):
                 with self.assertRaises(ExternalRateLimitError):
-                    ExternalRateLimitRule(**kwargs)
+                    ExternalRateLimitRule(*values)
 
         rule = self.policy.rules[0]
         with self.assertRaisesRegex(ExternalRateLimitError, "rate_policy_invalid"):
@@ -254,9 +231,22 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
                 rules=(rule, rule),
             )
 
-    def test_unknown_operation_fails_closed_before_reserver(self) -> None:
+    def test_authorized_operation_missing_from_rate_policy_fails_before_reserver(self) -> None:
+        beta = "platform.operation.beta"
+        calls = 0
+
+        def reserver(request):
+            nonlocal calls
+            calls += 1
+            return self.reserved(request)
+
         with self.assertRaisesRegex(ExternalRateLimitError, "rate_policy_operation_missing"):
-            self.reserve(reserver=self.reserved, operation_id="platform.operation.beta")
+            self.reserve(
+                reserver=reserver,
+                operation_id=beta,
+                authorization=self.authorization_for(beta),
+            )
+        self.assertEqual(calls, 0)
 
     def test_principal_expiry_is_rechecked_before_reservation(self) -> None:
         calls = 0
@@ -296,12 +286,11 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ExternalRateLimitError, "rate_reservation_invalid"):
             self.reserve(reserver=wrong_key)
-
         with self.assertRaisesRegex(ExternalRateLimitError, "rate_reservation_invalid"):
             self.reserve(reserver=lambda request: object())
 
-    def test_reservation_key_is_deterministic_and_principal_operation_scoped(self) -> None:
-        seen: list[str] = []
+    def test_reservation_key_is_deterministic_for_same_principal_operation_window(self) -> None:
+        seen = []
 
         def reserver(request):
             seen.append(request.reservation_key)
@@ -329,17 +318,17 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
         class DerivedPolicy(ExternalRateLimitPolicy):
             pass
 
-        derived = DerivedPolicy(
-            version=EXTERNAL_RATE_LIMIT_CONTRACT_VERSION,
-            environment="staging",
-            rules=self.policy.rules,
-        )
         with self.assertRaisesRegex(ExternalRateLimitError, "rate_policy_invalid"):
-            self.reserve(reserver=self.reserved, policy=derived)
-
+            self.reserve(
+                reserver=self.reserved,
+                policy=DerivedPolicy(
+                    version=EXTERNAL_RATE_LIMIT_CONTRACT_VERSION,
+                    environment="staging",
+                    rules=self.policy.rules,
+                ),
+            )
         with self.assertRaisesRegex(ExternalRateLimitError, "principal_invalid"):
             self.reserve(reserver=self.reserved, principal=object())
-
         with self.assertRaisesRegex(ExternalRateLimitError, "authorization_invalid"):
             self.reserve(reserver=self.reserved, authorization=object())
 
@@ -357,8 +346,7 @@ class ExternalRateSlotReservationContractTests(unittest.TestCase):
             )
 
     def test_safe_evidence_excludes_subject_credential_policy_and_provider_details(self) -> None:
-        decision = self.reserve(reserver=self.reserved)
-        serialized = repr(decision.as_safe_dict())
+        serialized = repr(self.reserve(reserver=self.reserved).as_safe_dict())
         self.assertNotIn(self.principal.subject_id, serialized)
         self.assertNotIn("opaque-authentication-credential", serialized)
         self.assertNotIn("windowSeconds", serialized)
