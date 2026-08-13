@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
+from hmac import compare_digest, new as hmac_new
 import json
 import os
 from pathlib import Path
@@ -44,6 +45,10 @@ from .safe_upload_session import (
 
 _MAX_STATE_RECORD_BYTES = 64 * 1024
 _READ_CHUNK_BYTES = 64 * 1024
+_STATE_INTEGRITY_KEY_BYTES = 32
+_STATE_INTEGRITY_MAC_FIELD = "state_integrity_mac"
+_STATE_INTEGRITY_DOMAIN = b"scoremosaic-minimum-staging-state-v1"
+_STATE_RECORD_KINDS = frozenset({"session", "finalization"})
 
 
 class MinimumStagingVerticalSliceError(ValueError):
@@ -128,17 +133,68 @@ class MinimumStagingVerticalSliceResult:
 
 
 class StagingUploadProvider:
-    """Stateful local staging provider with create-once records and source bytes."""
+    """Stateful local staging provider with authenticated create-once records."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, state_integrity_key: bytes) -> None:
         if not isinstance(root, Path) or not root.is_absolute():
             raise MinimumStagingVerticalSliceError("staging_root_invalid")
+        if (
+            type(state_integrity_key) is not bytes
+            or len(state_integrity_key) != _STATE_INTEGRITY_KEY_BYTES
+        ):
+            raise MinimumStagingVerticalSliceError("staging_integrity_key_invalid")
         try:
             if root.exists() and root.is_symlink():
                 raise MinimumStagingVerticalSliceError("staging_root_invalid")
         except OSError:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         self._root = root
+        self._state_integrity_key = bytes(state_integrity_key)
+
+    def _state_record_mac(self, *, kind: str, record: dict[str, object]) -> str:
+        if type(kind) is not str or kind not in _STATE_RECORD_KINDS:
+            raise MinimumStagingVerticalSliceError("staging_state_corrupt")
+        if type(record) is not dict or _STATE_INTEGRITY_MAC_FIELD in record:
+            raise MinimumStagingVerticalSliceError("staging_state_corrupt")
+        message = b"\0".join(
+            (
+                _STATE_INTEGRITY_DOMAIN,
+                kind.encode("ascii"),
+                _canonical_json_bytes(record),
+            )
+        )
+        return hmac_new(self._state_integrity_key, message, sha256).hexdigest()
+
+    def _seal_state_record(
+        self,
+        *,
+        kind: str,
+        record: dict[str, object],
+    ) -> dict[str, object]:
+        sealed = dict(record)
+        sealed[_STATE_INTEGRITY_MAC_FIELD] = self._state_record_mac(
+            kind=kind,
+            record=record,
+        )
+        return sealed
+
+    def _verify_state_record(
+        self,
+        *,
+        kind: str,
+        record: dict[str, object],
+    ) -> dict[str, object]:
+        if type(record) is not dict:
+            raise MinimumStagingVerticalSliceError("staging_state_corrupt")
+        stored_mac = record.get(_STATE_INTEGRITY_MAC_FIELD)
+        if type(stored_mac) is not str:
+            raise MinimumStagingVerticalSliceError("staging_state_corrupt")
+        payload = dict(record)
+        payload.pop(_STATE_INTEGRITY_MAC_FIELD, None)
+        expected_mac = self._state_record_mac(kind=kind, record=payload)
+        if not compare_digest(stored_mac, expected_mac):
+            raise MinimumStagingVerticalSliceError("staging_state_corrupt")
+        return payload
 
     def _ensure_directory(self, relative: Path) -> Path:
         if relative.is_absolute() or ".." in relative.parts:
@@ -160,8 +216,30 @@ class StagingUploadProvider:
         except OSError:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
 
-    @staticmethod
+    def _validate_existing_parent(self, path: Path) -> None:
+        try:
+            relative_parent = path.parent.relative_to(self._root)
+        except ValueError:
+            raise MinimumStagingVerticalSliceError("staging_path_invalid") from None
+        if relative_parent.is_absolute() or ".." in relative_parent.parts:
+            raise MinimumStagingVerticalSliceError("staging_path_invalid")
+        try:
+            current = self._root
+            if not current.exists() or current.is_symlink() or not current.is_dir():
+                raise MinimumStagingVerticalSliceError("staging_path_invalid")
+            for part in relative_parent.parts:
+                current = current / part
+                if (
+                    not current.exists()
+                    or current.is_symlink()
+                    or not current.is_dir()
+                ):
+                    raise MinimumStagingVerticalSliceError("staging_path_invalid")
+        except OSError:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+
     def _read_file_no_follow(
+        self,
         path: Path,
         *,
         max_bytes: int,
@@ -169,6 +247,7 @@ class StagingUploadProvider:
     ) -> bytes:
         if type(max_bytes) is not int or max_bytes < 0:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable")
+        self._validate_existing_parent(path)
         flags = os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
@@ -213,12 +292,15 @@ class StagingUploadProvider:
         if parent != path.parent:
             raise MinimumStagingVerticalSliceError("staging_path_invalid")
 
+        fd: int | None = None
         temp_path: Path | None = None
         try:
             fd, temp_name = tempfile.mkstemp(prefix=".scoremosaic-", dir=parent)
             temp_path = Path(temp_name)
             os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "wb", closefd=True) as handle:
+            handle = os.fdopen(fd, "wb", closefd=True)
+            fd = None
+            with handle:
                 handle.write(payload)
                 handle.flush()
                 os.fsync(handle.fileno())
@@ -232,6 +314,13 @@ class StagingUploadProvider:
         except OSError:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
         finally:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    raise MinimumStagingVerticalSliceError(
+                        "staging_state_unavailable"
+                    ) from None
             if temp_path is not None:
                 try:
                     temp_path.unlink()
@@ -296,16 +385,20 @@ class StagingUploadProvider:
 
         path = self._session_path(request.session_id)
         new_record = self._session_record(request)
-        created = self._atomic_create(path, _canonical_json_bytes(new_record))
+        sealed_new_record = self._seal_state_record(kind="session", record=new_record)
+        created = self._atomic_create(path, _canonical_json_bytes(sealed_new_record))
         record = (
             new_record
             if created
-            else _decode_record(
-                self._read_file_no_follow(
-                    path,
-                    max_bytes=_MAX_STATE_RECORD_BYTES,
-                    overflow_category="staging_state_corrupt",
-                )
+            else self._verify_state_record(
+                kind="session",
+                record=_decode_record(
+                    self._read_file_no_follow(
+                        path,
+                        max_bytes=_MAX_STATE_RECORD_BYTES,
+                        overflow_category="staging_state_corrupt",
+                    )
+                ),
             )
         )
         required_keys = set(new_record)
@@ -399,16 +492,23 @@ class StagingUploadProvider:
 
         path = self._finalization_path(request.session_id)
         new_record = self._finalization_record(request)
-        created = self._atomic_create(path, _canonical_json_bytes(new_record))
+        sealed_new_record = self._seal_state_record(
+            kind="finalization",
+            record=new_record,
+        )
+        created = self._atomic_create(path, _canonical_json_bytes(sealed_new_record))
         if created:
             return self._finalization_receipt(new_record, outcome="reserved")
 
-        stored = _decode_record(
-            self._read_file_no_follow(
-                path,
-                max_bytes=_MAX_STATE_RECORD_BYTES,
-                overflow_category="staging_state_corrupt",
-            )
+        stored = self._verify_state_record(
+            kind="finalization",
+            record=_decode_record(
+                self._read_file_no_follow(
+                    path,
+                    max_bytes=_MAX_STATE_RECORD_BYTES,
+                    overflow_category="staging_state_corrupt",
+                )
+            ),
         )
         if set(stored) != set(new_record):
             raise MinimumStagingVerticalSliceError("staging_state_corrupt")
