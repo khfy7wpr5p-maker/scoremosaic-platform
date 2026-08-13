@@ -211,9 +211,9 @@ class SafeSourceJobBindingDecision:
             raise SafeSourceJobBindingError("source_binding_invalid")
         if type(self.source_artifact_id) is not str or _ARTIFACT_ID_RE.fullmatch(self.source_artifact_id) is None:
             raise SafeSourceJobBindingError("source_binding_invalid")
-        if self.source_artifact_ref != f"sources/{self.job_id}/original":
+        if type(self.source_artifact_ref) is not str or self.source_artifact_ref != f"sources/{self.job_id}/original":
             raise SafeSourceJobBindingError("source_binding_invalid")
-        if self.source_storage_key != f"immutable/jobs/{self.job_id}/source/{self.source_artifact_id}":
+        if type(self.source_storage_key) is not str or self.source_storage_key != f"immutable/jobs/{self.job_id}/source/{self.source_artifact_id}":
             raise SafeSourceJobBindingError("source_binding_invalid")
         if not _is_exact_sha256(self.source_binding_sha256):
             raise SafeSourceJobBindingError("source_binding_invalid")
