@@ -21,6 +21,7 @@ from typing import Callable
 
 from .external_auth import ALLOWED_ENVIRONMENTS, MAX_TIMESTAMP
 from .intake_decision import SafeIntakeDecision, decide_safe_intake
+from .safe_intake import SAFE_INTAKE_MEDIA_TYPES
 from .safe_upload_session import (
     SAFE_UPLOAD_SESSION_OPERATION_ID,
     SafeUploadSessionDecision,
@@ -81,19 +82,6 @@ def _session_snapshot(value: object) -> tuple[object, ...] | None:
         )
     except Exception:
         return None
-
-
-def _intake_shape(decision: SafeIntakeDecision) -> tuple[object, ...]:
-    return (
-        decision.policy_version,
-        decision.format_id,
-        decision.media_type,
-        decision.observed_bytes,
-        decision.page_count,
-        decision.image_width,
-        decision.image_height,
-        decision.image_pixel_count,
-    )
 
 
 def _finalization_id(*, session_id: str, document_sha256: str, intake: SafeIntakeDecision) -> str:
@@ -430,6 +418,12 @@ def finalize_safe_upload_session(
         raise SafeUploadFinalizationError("upload_session_invalid") from None
     except Exception:
         raise SafeUploadFinalizationError("upload_session_invalid") from None
+    if (
+        type(session.allowed_media_types) is not tuple
+        or session.allowed_media_types != SAFE_INTAKE_MEDIA_TYPES
+        or any(type(value) is not str for value in session.allowed_media_types)
+    ):
+        raise SafeUploadFinalizationError("upload_session_invalid")
 
     initial_session = _session_snapshot(session)
     if initial_session is None:
