@@ -255,6 +255,7 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             / "sessions"
             / f"{first.session.session_id}.json"
         )
+        session_path.chmod(0o600)
         session_path.write_text("{}", encoding="utf-8")
 
         with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
@@ -272,6 +273,7 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         )
         record = json.loads(session_path.read_text(encoding="utf-8"))
         record["version"] = "0.0"
+        session_path.chmod(0o600)
         session_path.write_text(
             json.dumps(record, separators=(",", ":"), sort_keys=True),
             encoding="utf-8",
@@ -293,6 +295,7 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         record = json.loads(session_path.read_text(encoding="utf-8"))
         record["created_at_epoch_s"] -= 1
         record["expires_at_epoch_s"] -= 1
+        session_path.chmod(0o600)
         session_path.write_text(
             json.dumps(record, separators=(",", ":"), sort_keys=True),
             encoding="utf-8",
@@ -311,6 +314,7 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             / "sessions"
             / f"{first.session.session_id}.json"
         )
+        session_path.chmod(0o600)
         session_path.write_bytes(session_path.read_bytes() + (b" " * 70_000))
 
         with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
@@ -424,6 +428,7 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             / Path(first.binding.source_storage_key)
         )
         tampered = b"X" * len(helpers.PNG_1X1)
+        source_path.chmod(0o600)
         source_path.write_bytes(tampered)
 
         with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
@@ -438,6 +443,7 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             / "objects"
             / Path(first.binding.source_storage_key)
         )
+        source_path.chmod(0o600)
         source_path.write_bytes(b"X" * (1024 * 1024))
         real_read = os.read
         observed_bytes = 0
