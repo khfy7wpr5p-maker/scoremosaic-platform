@@ -174,6 +174,7 @@ class SafeUploadFinalizationContractTests(unittest.TestCase):
             operation_id=request.operation_id,
             finalization_id=request.finalization_id,
             document_sha256=request.document_sha256,
+            intake_policy_version=request.intake_policy_version,
             observed_bytes=request.observed_bytes,
             format_id=request.format_id,
             media_type=request.media_type,

@@ -21,7 +21,7 @@ from typing import Callable
 
 from .external_auth import ALLOWED_ENVIRONMENTS, MAX_TIMESTAMP
 from .intake_decision import SafeIntakeDecision, decide_safe_intake
-from .safe_intake import SAFE_INTAKE_MEDIA_TYPES
+from .safe_intake import SAFE_INTAKE_MEDIA_TYPES, SAFE_INTAKE_POLICY_VERSION
 from .safe_upload_session import (
     SAFE_UPLOAD_SESSION_OPERATION_ID,
     SafeUploadSessionDecision,
@@ -148,6 +148,7 @@ class SafeUploadFinalizationRequest:
     operation_id: str
     finalization_id: str
     document_sha256: str
+    intake_policy_version: str
     observed_bytes: int
     format_id: str
     media_type: str
@@ -173,6 +174,11 @@ class SafeUploadFinalizationRequest:
         if type(self.finalization_id) is not str or _FINALIZATION_ID_RE.fullmatch(self.finalization_id) is None:
             raise SafeUploadFinalizationError("upload_finalization_request_invalid")
         if not _is_sha256(self.document_sha256):
+            raise SafeUploadFinalizationError("upload_finalization_request_invalid")
+        if (
+            type(self.intake_policy_version) is not str
+            or self.intake_policy_version != SAFE_INTAKE_POLICY_VERSION
+        ):
             raise SafeUploadFinalizationError("upload_finalization_request_invalid")
         try:
             _validate_intake_fields(
@@ -213,6 +219,7 @@ class SafeUploadFinalizationReceipt:
     operation_id: str
     finalization_id: str
     document_sha256: str
+    intake_policy_version: str
     observed_bytes: int
     format_id: str
     media_type: str
@@ -237,6 +244,11 @@ class SafeUploadFinalizationReceipt:
         if type(self.finalization_id) is not str or _FINALIZATION_ID_RE.fullmatch(self.finalization_id) is None:
             raise SafeUploadFinalizationError("upload_finalization_receipt_invalid")
         if not _is_sha256(self.document_sha256):
+            raise SafeUploadFinalizationError("upload_finalization_receipt_invalid")
+        if (
+            type(self.intake_policy_version) is not str
+            or self.intake_policy_version != SAFE_INTAKE_POLICY_VERSION
+        ):
             raise SafeUploadFinalizationError("upload_finalization_receipt_invalid")
         try:
             _validate_intake_fields(
@@ -273,6 +285,7 @@ class SafeUploadFinalizationDecision:
     replayed: bool
     finalization_id: str
     document_sha256: str
+    intake_policy_version: str
     observed_bytes: int
     format_id: str
     media_type: str
@@ -295,6 +308,7 @@ class SafeUploadFinalizationDecision:
         replayed: bool,
         finalization_id: str,
         document_sha256: str,
+        intake_policy_version: str,
         observed_bytes: int,
         format_id: str,
         media_type: str,
@@ -318,6 +332,7 @@ class SafeUploadFinalizationDecision:
             ("replayed", replayed),
             ("finalization_id", finalization_id),
             ("document_sha256", document_sha256),
+            ("intake_policy_version", intake_policy_version),
             ("observed_bytes", observed_bytes),
             ("format_id", format_id),
             ("media_type", media_type),
@@ -348,6 +363,11 @@ class SafeUploadFinalizationDecision:
         if type(self.finalization_id) is not str or _FINALIZATION_ID_RE.fullmatch(self.finalization_id) is None:
             raise SafeUploadFinalizationError("upload_finalization_decision_invalid")
         if not _is_sha256(self.document_sha256):
+            raise SafeUploadFinalizationError("upload_finalization_decision_invalid")
+        if (
+            type(self.intake_policy_version) is not str
+            or self.intake_policy_version != SAFE_INTAKE_POLICY_VERSION
+        ):
             raise SafeUploadFinalizationError("upload_finalization_decision_invalid")
         try:
             _validate_intake_fields(
@@ -383,6 +403,7 @@ class SafeUploadFinalizationDecision:
             "finalizationState": self.state,
             "replayed": self.replayed,
             "safeIntakeAccepted": True,
+            "safeIntakePolicyVersion": self.intake_policy_version,
             "formatId": self.format_id,
             "mediaType": self.media_type,
             "observedBytes": self.observed_bytes,
@@ -470,6 +491,7 @@ def finalize_safe_upload_session(
             intake=intake,
         ),
         document_sha256=document_sha256,
+        intake_policy_version=intake.policy_version,
         observed_bytes=intake.observed_bytes,
         format_id=intake.format_id,
         media_type=intake.media_type,
@@ -494,6 +516,7 @@ def finalize_safe_upload_session(
         operation_id=request.operation_id,
         finalization_id=request.finalization_id,
         document_sha256=request.document_sha256,
+        intake_policy_version=request.intake_policy_version,
         observed_bytes=request.observed_bytes,
         format_id=request.format_id,
         media_type=request.media_type,
@@ -533,6 +556,7 @@ def finalize_safe_upload_session(
         or receipt.operation_id != request.operation_id
         or receipt.finalization_id != request.finalization_id
         or receipt.document_sha256 != request.document_sha256
+        or receipt.intake_policy_version != request.intake_policy_version
         or receipt.observed_bytes != request.observed_bytes
         or receipt.format_id != request.format_id
         or receipt.media_type != request.media_type
@@ -564,6 +588,7 @@ def finalize_safe_upload_session(
         replayed=replayed,
         finalization_id=request.finalization_id,
         document_sha256=request.document_sha256,
+        intake_policy_version=request.intake_policy_version,
         observed_bytes=request.observed_bytes,
         format_id=request.format_id,
         media_type=request.media_type,

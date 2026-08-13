@@ -45,13 +45,14 @@ E.4C — Immutable Source / Job Binding (next)
 5. The document payload must be exact immutable `bytes`.
 6. Gate B `decide_safe_intake()` runs before the E.4B provider callback, using the E.4A server-owned byte/page budgets.
 7. The document SHA-256 is computed server-side from the exact bytes that passed Gate B.
-8. The finalization provider receives only bounded identity/hash/Safe Intake evidence. It receives no raw document bytes and no original filename.
-9. One stateful provider operation must atomically reserve, replay, or reject a conflict for the exact session finalization.
-10. Exact replay returns the original finalization identity/evidence. The provider must not rewrite the original finalization timestamp or substitute different document evidence.
-11. Reusing one session for different document bytes must fail closed as a finalization conflict.
-12. Session/request mutation across callback seams must fail closed.
-13. Direct construction of trusted finalization decisions is sealed.
-14. Accepted E.4B evidence grants no upload-route, storage-write, source/job creation, operation-execution, network-dispatch, or orchestration authority.
+8. The exact Gate B Safe Intake policy version is explicit in the request, provider receipt, sealed decision, and safe evidence; policy-version substitution fails closed.
+9. The finalization provider receives only bounded identity/hash/Safe Intake evidence. It receives no raw document bytes and no original filename.
+10. One stateful provider operation must atomically reserve, replay, or reject a conflict for the exact session finalization.
+11. Exact replay returns the original finalization identity/evidence. The provider must not rewrite the original finalization timestamp or substitute different document evidence.
+12. Reusing one session for different document bytes must fail closed as a finalization conflict.
+13. Session/request mutation across callback seams must fail closed.
+14. Direct construction of trusted finalization decisions is sealed.
+15. Accepted E.4B evidence grants no upload-route, storage-write, source/job creation, operation-execution, network-dispatch, or orchestration authority.
 
 ## Provider obligation
 
@@ -69,7 +70,7 @@ The provider must therefore preserve the original finalization record on replay 
 - `finalize_safe_upload_session()`;
 - stable fail-closed E.4B error categories.
 
-The finalization request contains no payload bytes or filename. The accepted decision contains only bounded identity, SHA-256, format/size/page-or-image evidence, finalization time, replay state, and explicit false runtime-authority flags.
+The finalization request contains no payload bytes or filename. The accepted decision contains only bounded identity, SHA-256, exact Safe Intake policy version, format/size/page-or-image evidence, finalization time, replay state, and explicit false runtime-authority flags.
 
 ## Explicit exclusions
 
