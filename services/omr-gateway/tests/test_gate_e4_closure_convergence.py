@@ -18,6 +18,14 @@ from scoremosaic_gateway.safe_source_job_binding_verification import (
 from scoremosaic_gateway.safe_upload_finalization import finalize_safe_upload_session
 
 
+class EqualitySpoofingStr(str):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+
 class GateE4ClosureConvergenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture = helpers.SafeUploadFinalizationContractTests(methodName="runTest")
@@ -70,6 +78,21 @@ class GateE4ClosureConvergenceTests(unittest.TestCase):
                 finalization=self.finalization,
             )
         self.assertEqual(raised.exception.category, "source_binding_invalid")
+
+    def test_equality_spoofing_string_substitutions_fail_closed(self) -> None:
+        for field_name, forged_value in (
+            ("source_artifact_ref", EqualitySpoofingStr("../../attacker-controlled")),
+            ("source_storage_key", EqualitySpoofingStr("attacker-controlled")),
+        ):
+            with self.subTest(field_name=field_name):
+                binding = bind_finalized_source_to_job(self.finalization)
+                object.__setattr__(binding, field_name, forged_value)
+                with self.assertRaises(SafeSourceJobBindingError) as raised:
+                    verify_safe_source_job_binding_decision(
+                        binding,
+                        finalization=self.finalization,
+                    )
+                self.assertEqual(raised.exception.category, "source_binding_invalid")
 
     def test_binding_from_one_finalization_cannot_verify_against_another(self) -> None:
         other = finalize_safe_upload_session(
