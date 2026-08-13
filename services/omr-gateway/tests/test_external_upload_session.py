@@ -31,6 +31,7 @@ from scoremosaic_gateway.external_admission import compose_external_admission
 from scoremosaic_gateway.safe_intake import SAFE_INTAKE_MEDIA_TYPES
 from scoremosaic_gateway.safe_upload_session import (
     SAFE_UPLOAD_SESSION_CONTRACT_VERSION,
+    SAFE_UPLOAD_SESSION_OPERATION_ID,
     SafeUploadSessionDecision,
     SafeUploadSessionError,
     SafeUploadSessionPolicy,
@@ -42,7 +43,7 @@ from scoremosaic_gateway.safe_upload_session import (
 class SafeUploadSessionReservationContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.now = 2_000_000_000
-        self.operation = "platform.operation.alpha"
+        self.operation = SAFE_UPLOAD_SESSION_OPERATION_ID
         self.client_key = "request-key-00000001"
         self.payload = b"exact immutable upload request bytes"
         self.principal = authenticate_external_principal(
