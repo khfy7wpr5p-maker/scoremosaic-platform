@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import sys
 import tempfile
 import unittest
@@ -96,41 +97,88 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(replay.job_id, first.job_id)
         self.assertEqual(replay.source_artifact_id, first.source_artifact_id)
 
-    def test_temp_name_swap_cannot_publish_attacker_selected_inode(self) -> None:
-        root = Path(self.temp_dir.name)
-        real_link = os.link
-        swapped = False
+    def test_temporary_inode_has_no_staging_path_before_publication(self) -> None:
+        real_link = self.provider._link_unnamed_file
+        observed_prepublication_names: list[str] = []
 
-        def racing_link(src, dst, *args, **kwargs):
-            nonlocal swapped
-            if not swapped:
-                parent_fd = kwargs["src_dir_fd"]
-                os.unlink(src, dir_fd=parent_fd)
-                attacker_fd = os.open(
-                    src,
-                    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-                    0o600,
-                    dir_fd=parent_fd,
-                )
-                try:
-                    os.write(attacker_fd, b'{"attacker":true}')
-                finally:
-                    os.close(attacker_fd)
-                swapped = True
-            return real_link(src, dst, *args, **kwargs)
+        def tracking_link(temp_fd, parent_fd, final_leaf):
+            observed_prepublication_names.extend(os.listdir(parent_fd))
+            return real_link(temp_fd, parent_fd, final_leaf)
 
-        with patch(
-            "scoremosaic_gateway.minimum_staging_vertical_slice.os.link",
-            side_effect=racing_link,
+        with patch.object(
+            self.provider,
+            "_link_unnamed_file",
+            side_effect=tracking_link,
+        ):
+            result = self.run_slice()
+
+        self.assertEqual(observed_prepublication_names, [])
+        self.assertEqual(self.provider.read_source(result.binding), helpers.PNG_1X1)
+
+    def test_failed_validation_preserves_concurrent_replacement(self) -> None:
+        target = Path(self.temp_dir.name) / "state" / "sessions" / "race.json"
+        expected = b'{"expected":true}'
+        concurrent_winner = b'{"concurrent":true}'
+        real_link = self.provider._link_unnamed_file
+
+        def replacing_link(temp_fd, parent_fd, final_leaf):
+            real_link(temp_fd, parent_fd, final_leaf)
+            os.unlink(final_leaf, dir_fd=parent_fd)
+            winner_fd = os.open(
+                final_leaf,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600,
+                dir_fd=parent_fd,
+            )
+            try:
+                os.write(winner_fd, concurrent_winner)
+            finally:
+                os.close(winner_fd)
+
+        with patch.object(
+            self.provider,
+            "_link_unnamed_file",
+            side_effect=replacing_link,
         ):
             with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
-                self.run_slice()
-        self.assertTrue(swapped)
-        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
-        self.assertEqual(
-            [path for path in root.rglob("*") if path.is_file() or path.is_symlink()],
-            [],
-        )
+                self.provider._atomic_create(target, expected)
+
+        self.assertEqual(raised.exception.category, "staging_state_unavailable")
+        self.assertEqual(target.read_bytes(), concurrent_winner)
+
+    def test_publication_fsyncs_created_ancestry_and_containing_directory(self) -> None:
+        real_fsync = os.fsync
+        real_link = self.provider._link_unnamed_file
+        link_completed = False
+        directory_syncs_before_link = 0
+        directory_syncs_after_link = 0
+
+        def tracking_link(temp_fd, parent_fd, final_leaf):
+            nonlocal link_completed
+            real_link(temp_fd, parent_fd, final_leaf)
+            link_completed = True
+
+        def tracking_fsync(fd):
+            nonlocal directory_syncs_before_link, directory_syncs_after_link
+            if stat.S_ISDIR(os.fstat(fd).st_mode):
+                if link_completed:
+                    directory_syncs_after_link += 1
+                else:
+                    directory_syncs_before_link += 1
+            return real_fsync(fd)
+
+        with patch.object(
+            self.provider,
+            "_link_unnamed_file",
+            side_effect=tracking_link,
+        ), patch(
+            "scoremosaic_gateway.minimum_staging_vertical_slice.os.fsync",
+            side_effect=tracking_fsync,
+        ):
+            self.run_slice()
+
+        self.assertGreater(directory_syncs_before_link, 0)
+        self.assertGreater(directory_syncs_after_link, 0)
 
     def test_replaced_root_directory_fails_closed_and_preserves_original_state(
         self,
@@ -448,9 +496,9 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         captured_fds: list[int] = []
 
         def tracking_create(parent_fd):
-            fd, leaf = real_create(parent_fd)
+            fd = real_create(parent_fd)
             captured_fds.append(fd)
-            return fd, leaf
+            return fd
 
         with patch.object(
             self.provider,

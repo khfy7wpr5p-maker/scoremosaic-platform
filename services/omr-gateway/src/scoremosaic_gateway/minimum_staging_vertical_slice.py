@@ -11,6 +11,7 @@ select a production database/object-store provider.
 
 from __future__ import annotations
 
+import ctypes
 from dataclasses import dataclass
 import errno
 from hashlib import sha256
@@ -18,7 +19,6 @@ from hmac import compare_digest, new as hmac_new
 import json
 import os
 from pathlib import Path
-import secrets
 import stat
 
 from .external_admission import ExternalAdmissionDecision
@@ -51,7 +51,7 @@ _STATE_INTEGRITY_KEY_BYTES = 32
 _STATE_INTEGRITY_MAC_FIELD = "state_integrity_mac"
 _STATE_INTEGRITY_DOMAIN = b"scoremosaic-minimum-staging-state-v1"
 _STATE_RECORD_KINDS = frozenset({"session", "finalization"})
-_TEMP_CREATE_ATTEMPTS = 8
+_AT_EMPTY_PATH = 0x1000
 
 
 class MinimumStagingVerticalSliceError(ValueError):
@@ -233,9 +233,9 @@ class StagingUploadProvider:
 
     @staticmethod
     def _file_create_flags() -> int:
-        flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
+        if not hasattr(os, "O_TMPFILE"):
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable")
+        flags = os.O_RDWR | os.O_TMPFILE
         if hasattr(os, "O_CLOEXEC"):
             flags |= os.O_CLOEXEC
         return flags
@@ -295,12 +295,16 @@ class StagingUploadProvider:
         try:
             for part in relative.parts:
                 if create:
+                    created = False
                     try:
                         os.mkdir(part, mode=0o700, dir_fd=current_fd)
+                        created = True
                     except FileExistsError:
                         pass
                     except OSError as exc:
                         raise self._path_error(exc) from None
+                    if created:
+                        os.fsync(current_fd)
                 try:
                     next_fd = os.open(
                         part,
@@ -414,20 +418,37 @@ class StagingUploadProvider:
                     "staging_state_unavailable"
                 ) from None
 
-    def _create_temp_file(self, parent_fd: int) -> tuple[int, str]:
-        for _ in range(_TEMP_CREATE_ATTEMPTS):
-            leaf = f".scoremosaic-{secrets.token_hex(16)}"
-            try:
-                fd = os.open(
-                    leaf,
-                    self._file_create_flags(),
-                    0o600,
-                    dir_fd=parent_fd,
-                )
-                return fd, leaf
-            except FileExistsError:
-                continue
-        raise OSError(errno.EEXIST, "temporary staging name collision")
+    def _create_temp_file(self, parent_fd: int) -> int:
+        return os.open(
+            ".",
+            self._file_create_flags(),
+            0o600,
+            dir_fd=parent_fd,
+        )
+
+    @staticmethod
+    def _link_unnamed_file(temp_fd: int, parent_fd: int, final_leaf: str) -> None:
+        try:
+            linkat = ctypes.CDLL(None, use_errno=True).linkat
+        except (AttributeError, OSError):
+            raise OSError(errno.ENOSYS, "linkat unavailable") from None
+        linkat.argtypes = (
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+        )
+        linkat.restype = ctypes.c_int
+        if linkat(
+            temp_fd,
+            b"",
+            parent_fd,
+            os.fsencode(final_leaf),
+            _AT_EMPTY_PATH,
+        ) != 0:
+            error_number = ctypes.get_errno()
+            raise OSError(error_number, os.strerror(error_number), final_leaf)
 
     @staticmethod
     def _write_all(fd: int, payload: bytes) -> None:
@@ -453,12 +474,11 @@ class StagingUploadProvider:
     def _atomic_create(self, path: Path, payload: bytes) -> bool:
         parent_fd, final_leaf = self._open_parent_fd(path, create=True)
         temp_fd: int | None = None
-        temp_leaf: str | None = None
         try:
             try:
-                temp_fd, temp_leaf = self._create_temp_file(parent_fd)
-                os.fchmod(temp_fd, 0o600)
+                temp_fd = self._create_temp_file(parent_fd)
                 self._write_all(temp_fd, payload)
+                os.fchmod(temp_fd, 0o400)
                 os.fsync(temp_fd)
                 temp_stat = os.fstat(temp_fd)
                 if (
@@ -467,13 +487,7 @@ class StagingUploadProvider:
                 ):
                     raise OSError(errno.EIO, "temporary staging file is invalid")
                 try:
-                    os.link(
-                        temp_leaf,
-                        final_leaf,
-                        src_dir_fd=parent_fd,
-                        dst_dir_fd=parent_fd,
-                        follow_symlinks=False,
-                    )
+                    self._link_unnamed_file(temp_fd, parent_fd, final_leaf)
                 except FileExistsError:
                     return False
 
@@ -494,13 +508,10 @@ class StagingUploadProvider:
                     and self._fd_matches_payload(temp_fd, payload)
                 )
                 if not publication_valid:
-                    try:
-                        os.unlink(final_leaf, dir_fd=parent_fd)
-                    except FileNotFoundError:
-                        pass
                     raise MinimumStagingVerticalSliceError(
                         "staging_state_unavailable"
                     )
+                os.fsync(parent_fd)
                 return True
             except MinimumStagingVerticalSliceError:
                 raise
@@ -513,13 +524,6 @@ class StagingUploadProvider:
             if temp_fd is not None:
                 try:
                     os.close(temp_fd)
-                except OSError:
-                    close_failed = True
-            if temp_leaf is not None:
-                try:
-                    os.unlink(temp_leaf, dir_fd=parent_fd)
-                except FileNotFoundError:
-                    pass
                 except OSError:
                     close_failed = True
             try:
