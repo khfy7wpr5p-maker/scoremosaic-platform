@@ -11,6 +11,7 @@ engine authority.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import re
 
 from .artifact_lifecycle import (
@@ -73,6 +74,15 @@ _JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
 _ARTIFACT_ID_RE = re.compile(r"artifact_[0-9a-f]{24}\Z")
 _RUN_ID_RE = re.compile(r"run_[0-9a-f]{24}\Z")
 _SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+
+
+def _canonical_record_bytes(value: dict[str, object]) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
 
 
 class ControlledStagingJobLifecycleError(ValueError):
@@ -481,7 +491,7 @@ def recover_controlled_staging_job_lifecycle(
         raise ControlledStagingJobLifecycleError(
             "staging_job_lifecycle_state_invalid"
         ) from None
-    if stored != derived.record:
+    if _canonical_record_bytes(stored) != _canonical_record_bytes(derived.record):
         raise ControlledStagingJobLifecycleError(
             "staging_job_lifecycle_state_invalid"
         )

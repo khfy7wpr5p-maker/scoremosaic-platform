@@ -215,6 +215,38 @@ class ControlledStagingJobLifecycleTests(unittest.TestCase):
             "staging_job_lifecycle_state_invalid",
         )
 
+    def test_recovery_rejects_authenticated_json_type_substitution(self) -> None:
+        created = self.run_lifecycle()
+        path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "jobs"
+            / f"{created.job_id}.json"
+        )
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        stored["runs"][0]["job_state"]["revision"] = False
+        stored.pop("state_integrity_mac")
+        resealed = self.provider._seal_state_record(
+            kind="job_lifecycle",
+            record=stored,
+        )
+        path.chmod(0o600)
+        path.write_text(
+            json.dumps(resealed, separators=(",", ":"), sort_keys=True),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+            recover_controlled_staging_job_lifecycle(
+                minimum_slice=self.minimum_slice,
+                provider=self.provider,
+            )
+
+        self.assertEqual(
+            raised.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
+
     def test_recovery_rejects_wrong_key_or_modified_source(self) -> None:
         self.run_lifecycle()
         wrong_key_provider = StagingUploadProvider(
