@@ -120,6 +120,36 @@ class ExternalRateLimitConvergenceTests(unittest.TestCase):
         self.assertNotEqual(first.principal_id, second.principal_id)
         self.assertNotEqual(first_key, second_key)
 
+    def test_same_window_budget_change_keeps_server_bucket_key_stable(self) -> None:
+        principal = self.principal_for("private-subject-123")
+        authorization = self.authorization_for(principal, self.alpha)
+        requests = []
+
+        def reserver(request):
+            requests.append(request)
+            return self.reserved(request)
+
+        for max_requests in (5, 3):
+            policy = ExternalRateLimitPolicy(
+                version=EXTERNAL_RATE_LIMIT_CONTRACT_VERSION,
+                environment="staging",
+                rules=(ExternalRateLimitRule(self.alpha, 60, max_requests),),
+            )
+            reserve_external_rate_slot(
+                policy=policy,
+                principal=principal,
+                authorization=authorization,
+                operation_id=self.alpha,
+                observed_at_epoch_s=self.now + 2,
+                reserver=reserver,
+            )
+
+        self.assertEqual(len(requests), 2)
+        self.assertEqual(requests[0].window_start_epoch_s, requests[1].window_start_epoch_s)
+        self.assertEqual(requests[0].window_end_epoch_s, requests[1].window_end_epoch_s)
+        self.assertEqual((requests[0].max_requests, requests[1].max_requests), (5, 3))
+        self.assertEqual(requests[0].reservation_key, requests[1].reservation_key)
+
     def test_receipt_window_or_budget_mutation_fails_closed(self) -> None:
         principal = self.principal_for("private-subject-123")
         authorization = self.authorization_for(principal, self.alpha)
