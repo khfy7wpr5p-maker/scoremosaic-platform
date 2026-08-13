@@ -16,7 +16,7 @@ Gate C.2-B through C.2-G contract foundations are present on `main`: exact test/
 
 Gate D.1-D.6 are now complete as a **durable job/artifact state and recovery contract/convergence foundation**. The Gateway library contains fail-closed durable run-state snapshots, server-derived idempotency/replay slots, immutable artifact-storage authority manifests, bounded provenance records/hash chaining, restart-recovery decisions, and partial-output/crash-window convergence. This foundation does not select or operate a database, S3/MinIO/filesystem storage provider, durable replay adapter, queue/worker, process-restart mechanism, or live storage/orchestration runtime.
 
-Gate E is in progress. E.1 defines provider-neutral authenticated external-principal evidence without a provider SDK or HTTP auth route. E.2 defines deny-by-default exact principal/environment/operation authorization decisions from a server-owned policy. E.3A defines provider-neutral authenticated-operation rate-slot reservation evidence. E.3B defines provider-neutral external request-idempotency admission evidence bound to the exact E.1 principal, matching allowed E.2 authorization, matching allowed E.3A rate evidence, bounded client key, and server-computed digest of the exact immutable request bytes. All of this remains contract/admission evidence rather than operation-execution authority: upload, job creation, persistence, network dispatch, and orchestration remain false. Public route wiring, provider/runtime auth, resource/tenant scope where applicable, production rate/idempotency adapters, edge/anonymous abuse controls, safe upload sessions, and privacy-safe live API behavior remain disabled/unimplemented. Any future live composition must evaluate E.3A freshly for the admitted request before composing it with E.3B.
+Gate E is in progress. E.1 defines provider-neutral authenticated external-principal evidence without a provider SDK or HTTP auth route. E.2 defines deny-by-default exact principal/environment/operation authorization decisions from a server-owned policy. E.3A defines provider-neutral authenticated-operation rate-slot reservation evidence. E.3B defines provider-neutral external request-idempotency admission evidence bound to the exact E.1 principal, matching allowed E.2 authorization, matching allowed E.3A rate evidence, bounded client key, and server-computed digest of the exact immutable request bytes. E.3C composes those exact authorities by evaluating E.3A freshly and then E.3B for the same request, derives one deterministic admission binding, uses defensive callback request copies, and detects callback authority mutation fail-closed. All of this remains contract/admission evidence rather than operation-execution authority: upload, job creation, persistence, network dispatch, and orchestration remain false. Public route wiring, provider/runtime auth, resource/tenant scope where applicable, production rate/idempotency adapters that preserve E.3C semantics, edge/anonymous abuse controls, safe upload sessions, and privacy-safe live API behavior remain disabled/unimplemented.
 
 Implemented now:
 
@@ -56,6 +56,7 @@ Implemented now:
 - Gate E.2 deny-by-default external authorization-decision contract with exact principal/environment/operation grants and no runtime operation authority
 - Gate E.3A provider-neutral rate-slot reservation contract with deterministic server-owned operation/window bucket identity and no production rate backend or HTTP 429 wiring
 - Gate E.3B provider-neutral request-idempotency admission contract with exact replay/conflict semantics and no durable idempotency backend or live request wiring
+- Gate E.3C fail-closed external admission composition contract with fresh E.3A evaluation, exact E.3B request binding, defensive provider-request clones, and authority-mutation convergence; no live route or runtime operation authority
 - immutable in-memory job and engine-run record model aligned with the existing OMR job contract
 - versioned `1.0` orchestration-plan JSON Schema
 - deterministic orchestration plan, run, candidate, and artifact identifiers
@@ -85,7 +86,7 @@ GET /health -> 200; gateway process is running
 GET /ready  -> 503; orchestration and upload are disabled
 ```
 
-All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, external auth/authz/rate/idempotency endpoints, and an artifact lifecycle endpoint do not exist in this foundation. The reserved engine target `/internal/transcribe` remains a contract value only and is not registered by the Gateway or engine services.
+All other paths return 404. Non-GET methods return 405. In particular, `/internal/jobs`, an upload endpoint, an orchestration endpoint, external auth/authz/rate/idempotency/admission endpoints, and an artifact lifecycle endpoint do not exist in this foundation. The reserved engine target `/internal/transcribe` remains a contract value only and is not registered by the Gateway or engine services.
 
 The health payload declares:
 
@@ -221,7 +222,7 @@ See `docs/candidate-artifact-lifecycle-v1.md` for the complete state and securit
 }
 ```
 
-An allowed E.2 authorization decision, an allowed E.3A rate decision, or a reserved/replay E.3B idempotency decision is contract evidence only. Their safe evidence keeps `operationExecutionAllowed`, `uploadAllowed`, `jobCreationAllowed`, `networkDispatchAllowed`, and `orchestrationAllowed` false. Therefore this section remains authoritative for runtime capability activation.
+An allowed E.2 authorization decision, an allowed E.3A rate decision, a reserved/replay E.3B idempotency decision, or an E.3C exact-request admission binding is contract evidence only. Their safe evidence keeps `operationExecutionAllowed`, `uploadAllowed`, `jobCreationAllowed`, `networkDispatchAllowed`, and `orchestrationAllowed` false. Therefore this section remains authoritative for runtime capability activation.
 
 ## Existing job model boundary
 
@@ -264,7 +265,7 @@ No engine is allowed to overwrite another engine's candidate.
 
 The engine addresses are deployment configuration, never orchestration-plan, lifecycle, or user input. Gate C.2-B separately constrains authenticated future dispatch targets to the immutable exact test/staging allowlist before signing; deployment configuration alone does not authorize a target. Readiness probes read at most 64 KiB from each response and use a strict timeout.
 
-No E.1 authentication provider, E.2 authorization policy runtime, E.3A rate-state adapter, or E.3B idempotency backend is loaded from these deployment variables yet. Provider/runtime and policy/adapter wiring remain later reviewed Gate E work rather than implicit configuration authority.
+No E.1 authentication provider, E.2 authorization policy runtime, E.3A rate-state adapter, E.3B idempotency backend, or E.3C live request wiring is loaded from these deployment variables yet. Provider/runtime and policy/adapter wiring remain later reviewed Gate E work rather than implicit configuration authority.
 
 ## Dependency boundary
 
@@ -284,7 +285,7 @@ Docker validation is performed in GitHub Actions and later in Coolify staging.
 
 ## Required gates before real orchestration, storage, and external API activation
 
-Gate B Safe Intake, Gate C dispatch-security contracts, Gate D.1-D.6 durable state/recovery contract/convergence foundations, and Gate E.1-E.3B external API security foundations do not activate an upload or execution surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
+Gate B Safe Intake, Gate C dispatch-security contracts, Gate D.1-D.6 durable state/recovery contract/convergence foundations, and Gate E.1-E.3C external API security foundations do not activate an upload or execution surface. Before real orchestration, storage, or external upload is enabled, the platform still requires:
 
 - separately approved live receiver/dispatch wiring on top of the completed C.1/C.2-A-C.2-G and C-DIAG-1/C-DIAG-2 foundations, with operational credential-generation/rotation and durable replay implementation consistent with those contracts
 - provider-backed durable replay/job/run/candidate/artifact/provenance persistence and immutable storage writes consistent with Gate D.1-D.6; no concrete database/S3/MinIO/filesystem provider is currently active
@@ -295,7 +296,7 @@ Gate B Safe Intake, Gate C dispatch-security contracts, Gate D.1-D.6 durable sta
 - E.1-compatible real authentication-provider/runtime wiring without exposing credentials or raw subjects
 - E.2-compatible deny-by-default authorization wired independently for each activated operation, plus resource/user/tenant scope enforcement where an authoritative ownership model exists
 - E.3A-compatible production/runtime rate limiting plus edge/anonymous abuse protection
-- E.3B-compatible production/runtime request-idempotency persistence, with fresh E.3A evaluation for each admitted request and privacy-safe external error/log handling
+- production/runtime request-idempotency persistence that preserves E.3C fresh-rate, exact-request replay/conflict composition semantics, with privacy-safe external error/log handling
 - a safe upload-session path that must pass `decide_safe_intake()` before later processing
 - real engine adapters with pinned versions
 - no automatic teacher approval or publication; reviewer RBAC remains Gate F/TR-8A rather than E.2
