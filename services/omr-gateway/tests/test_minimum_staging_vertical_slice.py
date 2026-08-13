@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
@@ -118,6 +121,41 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(raised.exception.category, "staging_upload_session_failed")
         self.assertEqual(self.provider.read_source(first.binding), helpers.PNG_1X1)
 
+    def test_persisted_session_version_mismatch_fails_closed(self) -> None:
+        first = self.run_slice()
+        session_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "sessions"
+            / f"{first.session.session_id}.json"
+        )
+        record = json.loads(session_path.read_text(encoding="utf-8"))
+        record["version"] = "0.0"
+        session_path.write_text(
+            json.dumps(record, separators=(",", ":"), sort_keys=True),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.run_slice()
+        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
+        self.assertEqual(self.provider.read_source(first.binding), helpers.PNG_1X1)
+
+    def test_oversized_persisted_session_record_fails_closed(self) -> None:
+        first = self.run_slice()
+        session_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "sessions"
+            / f"{first.session.session_id}.json"
+        )
+        session_path.write_bytes(session_path.read_bytes() + (b" " * 70_000))
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.run_slice()
+        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
+        self.assertEqual(self.provider.read_source(first.binding), helpers.PNG_1X1)
+
     def test_preexisting_symlink_state_directory_cannot_escape_staging_root(self) -> None:
         outside = tempfile.TemporaryDirectory()
         self.addCleanup(outside.cleanup)
@@ -143,6 +181,58 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
             self.run_slice()
         self.assertEqual(raised.exception.category, "staging_source_collision")
         self.assertEqual(source_path.read_bytes(), tampered)
+
+    def test_existing_source_read_stops_at_expected_size_plus_one(self) -> None:
+        first = self.run_slice()
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / Path(first.binding.source_storage_key)
+        )
+        source_path.write_bytes(b"X" * (1024 * 1024))
+        real_read = os.read
+        observed_bytes = 0
+
+        def tracking_read(fd, size):
+            nonlocal observed_bytes
+            chunk = real_read(fd, size)
+            observed_bytes += len(chunk)
+            return chunk
+
+        with patch(
+            "scoremosaic_gateway.minimum_staging_vertical_slice.os.read",
+            side_effect=tracking_read,
+        ):
+            with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+                self.provider.write_source(
+                    binding=first.binding,
+                    finalization=first.finalization,
+                    payload=helpers.PNG_1X1,
+                )
+        self.assertEqual(raised.exception.category, "staging_source_collision")
+        self.assertLessEqual(observed_bytes, len(helpers.PNG_1X1) + 1)
+
+    def test_source_write_oserror_maps_to_stable_slice_error(self) -> None:
+        first = self.run_slice()
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / Path(first.binding.source_storage_key)
+        )
+        source_path.unlink()
+
+        with patch(
+            "scoremosaic_gateway.minimum_staging_vertical_slice.tempfile.mkstemp",
+            side_effect=OSError("sensitive filesystem detail"),
+        ):
+            with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+                self.provider.write_source(
+                    binding=first.binding,
+                    finalization=first.finalization,
+                    payload=helpers.PNG_1X1,
+                )
+        self.assertEqual(raised.exception.category, "staging_state_unavailable")
+        self.assertEqual(str(raised.exception), "staging_state_unavailable")
 
     def test_slice_is_staging_only_and_does_not_activate_http_or_dispatch_authority(self) -> None:
         object.__setattr__(self.admission, "environment", "production")
