@@ -11,6 +11,8 @@ import test_safe_upload_finalization as helpers
 from scoremosaic_gateway.safe_source_job_binding import (
     SafeSourceJobBindingError,
     bind_finalized_source_to_job,
+)
+from scoremosaic_gateway.safe_source_job_binding_verification import (
     verify_safe_source_job_binding_decision,
 )
 from scoremosaic_gateway.safe_upload_finalization import finalize_safe_upload_session
