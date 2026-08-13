@@ -1,8 +1,9 @@
 """Provider-neutral Safe Upload Session reservation contract for Gate E.4A.
 
-The contract consumes one exact Gate E.3C admission decision, derives one
-server-owned session identity, and delegates one atomic reserve/replay operation to
-a future runtime adapter. It carries bounded Safe Intake budgets only.
+The contract consumes one exact Gate E.3C admission decision for the canonical
+Safe Upload Session operation, derives one server-owned session identity, and
+delegates one atomic reserve/replay operation to a future runtime adapter. It
+carries bounded Safe Intake budgets only.
 
 No document bytes are accepted here. This module does not run Safe Intake, register
 an HTTP route, create a job, persist state, write storage, dispatch a network
@@ -18,12 +19,12 @@ from typing import Callable
 
 from .external_admission import ExternalAdmissionDecision
 from .external_auth import ALLOWED_ENVIRONMENTS, MAX_TIMESTAMP
-from .external_authorization import _is_operation_id as _is_operation_id
 from .external_idempotency import MAX_EXTERNAL_REQUEST_BYTES
 from .safe_intake import SAFE_INTAKE_MEDIA_TYPES
 
 
 SAFE_UPLOAD_SESSION_CONTRACT_VERSION = "scoremosaic-safe-upload-session-v1"
+SAFE_UPLOAD_SESSION_OPERATION_ID = "platform.safe_upload_session"
 MIN_SAFE_UPLOAD_SESSION_TTL_SECONDS = 1
 MAX_SAFE_UPLOAD_SESSION_TTL_SECONDS = 3600
 MAX_SAFE_UPLOAD_SESSION_PDF_PAGES = 200
@@ -178,7 +179,7 @@ class SafeUploadSessionReservationRequest:
             raise SafeUploadSessionError("upload_session_request_invalid")
         if type(self.environment) is not str or self.environment not in ALLOWED_ENVIRONMENTS:
             raise SafeUploadSessionError("upload_session_request_invalid")
-        if type(self.operation_id) is not str or not _is_operation_id(self.operation_id):
+        if type(self.operation_id) is not str or self.operation_id != SAFE_UPLOAD_SESSION_OPERATION_ID:
             raise SafeUploadSessionError("upload_session_request_invalid")
         if not _is_sha256(self.request_sha256):
             raise SafeUploadSessionError("upload_session_request_invalid")
@@ -233,7 +234,7 @@ class SafeUploadSessionReservationReceipt:
             raise SafeUploadSessionError("upload_session_receipt_invalid")
         if type(self.environment) is not str or self.environment not in ALLOWED_ENVIRONMENTS:
             raise SafeUploadSessionError("upload_session_receipt_invalid")
-        if type(self.operation_id) is not str or not _is_operation_id(self.operation_id):
+        if type(self.operation_id) is not str or self.operation_id != SAFE_UPLOAD_SESSION_OPERATION_ID:
             raise SafeUploadSessionError("upload_session_receipt_invalid")
         if not _is_sha256(self.request_sha256):
             raise SafeUploadSessionError("upload_session_receipt_invalid")
@@ -337,7 +338,7 @@ class SafeUploadSessionDecision:
             raise SafeUploadSessionError("upload_session_decision_invalid")
         if not _is_principal_id(self.principal_id):
             raise SafeUploadSessionError("upload_session_decision_invalid")
-        if type(self.operation_id) is not str or not _is_operation_id(self.operation_id):
+        if type(self.operation_id) is not str or self.operation_id != SAFE_UPLOAD_SESSION_OPERATION_ID:
             raise SafeUploadSessionError("upload_session_decision_invalid")
         if type(self.state) is not str or self.state not in {"reserved", "replay"}:
             raise SafeUploadSessionError("upload_session_decision_invalid")
@@ -405,7 +406,7 @@ def reserve_safe_upload_session(
     observed_at_epoch_s: int,
     reserver: SafeUploadSessionReserver,
 ) -> SafeUploadSessionDecision:
-    """Reserve/replay exactly one session for the exact freshly evaluated admission."""
+    """Reserve/replay exactly one session for the canonical freshly evaluated admission."""
 
     if type(policy) is not SafeUploadSessionPolicy:
         raise SafeUploadSessionError("upload_session_policy_invalid")
@@ -422,6 +423,8 @@ def reserve_safe_upload_session(
         admission.__post_init__()
     except Exception:
         raise SafeUploadSessionError("admission_invalid") from None
+    if admission.operation_id != SAFE_UPLOAD_SESSION_OPERATION_ID:
+        raise SafeUploadSessionError("upload_session_operation_mismatch")
 
     initial_policy = _policy_snapshot(policy)
     initial_admission = _admission_snapshot(admission)
