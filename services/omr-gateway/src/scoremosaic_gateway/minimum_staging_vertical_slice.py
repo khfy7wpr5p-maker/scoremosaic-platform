@@ -154,7 +154,14 @@ class StagingUploadProvider:
             raise
         except OSError:
             raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+        try:
+            root_stat = root.stat(follow_symlinks=False)
+        except OSError:
+            raise MinimumStagingVerticalSliceError("staging_state_unavailable") from None
+        if not stat.S_ISDIR(root_stat.st_mode):
+            raise MinimumStagingVerticalSliceError("staging_root_invalid")
         self._root = root
+        self._root_identity = (root_stat.st_dev, root_stat.st_ino)
         self._state_integrity_key = bytes(state_integrity_key)
 
     def _state_record_mac(self, *, kind: str, record: dict[str, object]) -> str:
@@ -265,7 +272,10 @@ class StagingUploadProvider:
         except OSError as exc:
             raise self._path_error(exc) from None
         try:
-            if not stat.S_ISDIR(os.fstat(fd).st_mode):
+            root_stat = os.fstat(fd)
+            if not stat.S_ISDIR(root_stat.st_mode):
+                raise MinimumStagingVerticalSliceError("staging_root_invalid")
+            if (root_stat.st_dev, root_stat.st_ino) != self._root_identity:
                 raise MinimumStagingVerticalSliceError("staging_root_invalid")
             return fd
         except MinimumStagingVerticalSliceError:

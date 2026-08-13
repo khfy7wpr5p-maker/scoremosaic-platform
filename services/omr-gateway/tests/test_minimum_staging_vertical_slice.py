@@ -96,6 +96,36 @@ class MinimumStagingVerticalSliceTests(unittest.TestCase):
         self.assertEqual(replay.job_id, first.job_id)
         self.assertEqual(replay.source_artifact_id, first.source_artifact_id)
 
+    def test_replaced_root_directory_fails_closed_and_preserves_original_state(
+        self,
+    ) -> None:
+        first = self.run_slice()
+        configured_root = Path(self.temp_dir.name)
+        original_root = configured_root.with_name(
+            f"{configured_root.name}-original"
+        )
+        self.addCleanup(shutil.rmtree, original_root, True)
+        configured_root.rename(original_root)
+        configured_root.mkdir(mode=0o700)
+
+        with self.assertRaises(MinimumStagingVerticalSliceError) as raised:
+            self.run_slice(
+                payload=helpers.JPEG_1X1,
+                filename="scan.jpg",
+                media_type="image/jpeg",
+            )
+        self.assertEqual(raised.exception.category, "staging_upload_session_failed")
+        self.assertEqual(list(configured_root.rglob("*")), [])
+
+        preserved_provider = StagingUploadProvider(
+            original_root,
+            state_integrity_key=self.state_integrity_key,
+        )
+        self.assertEqual(
+            preserved_provider.read_source(first.binding),
+            helpers.PNG_1X1,
+        )
+
     def test_same_session_with_different_document_fails_closed_and_preserves_original(self) -> None:
         first = self.run_slice()
 
