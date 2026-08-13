@@ -7,12 +7,30 @@ supplied E.4C decision to match that authoritative derivation exactly.
 
 from __future__ import annotations
 
+from dataclasses import fields
+
 from .safe_source_job_binding import (
     SafeSourceJobBindingDecision,
     SafeSourceJobBindingError,
     bind_finalized_source_to_job,
 )
 from .safe_upload_finalization import SafeUploadFinalizationDecision
+
+
+def _matches_exact_primitive_fields(
+    decision: SafeSourceJobBindingDecision,
+    expected: SafeSourceJobBindingDecision,
+) -> bool:
+    for field in fields(SafeSourceJobBindingDecision):
+        actual_value = getattr(decision, field.name)
+        expected_value = getattr(expected, field.name)
+        if type(actual_value) is not type(expected_value):
+            return False
+        if type(actual_value) not in (str, int):
+            return False
+        if actual_value != expected_value:
+            return False
+    return True
 
 
 def verify_safe_source_job_binding_decision(
@@ -33,5 +51,5 @@ def verify_safe_source_job_binding_decision(
     except Exception:
         raise SafeSourceJobBindingError("source_binding_invalid") from None
 
-    if decision != expected:
+    if not _matches_exact_primitive_fields(decision, expected):
         raise SafeSourceJobBindingError("source_binding_invalid")
