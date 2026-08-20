@@ -41,12 +41,14 @@ from .credential_rotation import (
     sign_rotation_authenticated_request,
 )
 from .dispatch_identity import (
+    MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES,
     DispatchIdentityError,
     build_dispatch_identity,
     dispatch_identity_payload,
     require_authenticated_dispatch_identity,
 )
 from .dispatch_target import (
+    APPROVED_ENGINE_ORIGINS,
     DISPATCH_METHOD,
     DISPATCH_PATH,
     DispatchTargetError,
@@ -106,6 +108,11 @@ class ControlledStagingSigningPreflightResult:
     revision: int
 
     def __post_init__(self) -> None:
+        expected_origin = (
+            APPROVED_ENGINE_ORIGINS["staging"].get(self.engine)
+            if type(self.engine) is str
+            else None
+        )
         if (
             type(self.job_id) is not str
             or _JOB_ID_RE.fullmatch(self.job_id) is None
@@ -126,7 +133,7 @@ class ControlledStagingSigningPreflightResult:
             or type(self.request_nonce_sha256) is not str
             or _SHA256_RE.fullmatch(self.request_nonce_sha256) is None
             or type(self.payload_bytes) is not int
-            or self.payload_bytes <= 0
+            or not 1 <= self.payload_bytes <= MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES
             or type(self.payload_sha256) is not str
             or _SHA256_RE.fullmatch(self.payload_sha256) is None
             or type(self.envelope_signature_sha256) is not str
@@ -134,7 +141,7 @@ class ControlledStagingSigningPreflightResult:
             or type(self.generation_signature_sha256) is not str
             or _SHA256_RE.fullmatch(self.generation_signature_sha256) is None
             or type(self.target_origin) is not str
-            or not self.target_origin
+            or self.target_origin != expected_origin
             or type(self.target_method) is not str
             or self.target_method != DISPATCH_METHOD
             or type(self.target_path) is not str
