@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -185,6 +186,27 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
 
         with self.assertRaises(ControlledStagingQueuedTransitionError) as raised:
             self.recover(provider=wrong_key)
+        self.assertEqual(raised.exception.category, "staging_transition_state_invalid")
+
+    def test_modified_transition_mac_fails_closed(self) -> None:
+        result = self.queue()
+        transition_path = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "job_transitions"
+            / result.job_id
+            / f"{result.run_id}-revision-1.json"
+        )
+        stored = json.loads(transition_path.read_text(encoding="utf-8"))
+        stored["transition_integrity_mac"] = "0" * 64
+        transition_path.chmod(0o600)
+        transition_path.write_text(
+            json.dumps(stored, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(ControlledStagingQueuedTransitionError) as raised:
+            self.recover()
         self.assertEqual(raised.exception.category, "staging_transition_state_invalid")
 
     def test_invalid_engine_type_fails_closed(self) -> None:
