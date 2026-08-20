@@ -14,9 +14,14 @@ and terminal revision-2 evidence supersedes the preflight fail-closed.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
+import fcntl
 from hashlib import sha256
+import os
 import re
+import stat
+from collections.abc import Iterator
 
 from .authenticated_request import (
     MAX_FUTURE_SKEW_SECONDS,
@@ -58,6 +63,7 @@ from .minimum_staging_vertical_slice import (
     MinimumStagingVerticalSliceError,
     MinimumStagingVerticalSliceResult,
     StagingUploadProvider,
+    _JOB_LOCK_PAYLOAD,
 )
 from .orchestration import (
     ENGINE_NAMES,
@@ -342,6 +348,88 @@ def _require_rotation_binding(selected, target) -> None:
         )
 
 
+@contextmanager
+def _existing_job_lock(
+    provider: StagingUploadProvider,
+    job_id: str,
+) -> Iterator[None]:
+    """Lock the existing job-lock inode without creating or replacing anything."""
+
+    try:
+        path = provider._job_lock_path(job_id)
+        parent_fd, leaf = provider._open_parent_fd(path, create=False)
+    except MinimumStagingVerticalSliceError:
+        raise ControlledStagingSigningPreflightError(
+            "staging_signing_preflight_lock_invalid"
+        ) from None
+
+    lock_fd: int | None = None
+    locked = False
+    try:
+        try:
+            lock_fd = os.open(leaf, provider._file_read_flags(), dir_fd=parent_fd)
+            opened_stat = os.fstat(lock_fd)
+            if (
+                not stat.S_ISREG(opened_stat.st_mode)
+                or opened_stat.st_size != len(_JOB_LOCK_PAYLOAD)
+            ):
+                raise ControlledStagingSigningPreflightError(
+                    "staging_signing_preflight_lock_invalid"
+                )
+            payload = os.read(lock_fd, len(_JOB_LOCK_PAYLOAD) + 1)
+            if payload != _JOB_LOCK_PAYLOAD:
+                raise ControlledStagingSigningPreflightError(
+                    "staging_signing_preflight_lock_invalid"
+                )
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            locked = True
+
+            current_stat = os.stat(
+                leaf,
+                dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+            retained_stat = os.fstat(lock_fd)
+            if (
+                not stat.S_ISREG(current_stat.st_mode)
+                or (current_stat.st_dev, current_stat.st_ino)
+                != (opened_stat.st_dev, opened_stat.st_ino)
+                or (retained_stat.st_dev, retained_stat.st_ino)
+                != (opened_stat.st_dev, opened_stat.st_ino)
+                or retained_stat.st_size != len(_JOB_LOCK_PAYLOAD)
+            ):
+                raise ControlledStagingSigningPreflightError(
+                    "staging_signing_preflight_lock_invalid"
+                )
+        except ControlledStagingSigningPreflightError:
+            raise
+        except OSError:
+            raise ControlledStagingSigningPreflightError(
+                "staging_signing_preflight_lock_invalid"
+            ) from None
+        yield
+    finally:
+        close_failed = False
+        if lock_fd is not None:
+            if locked:
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                except OSError:
+                    close_failed = True
+            try:
+                os.close(lock_fd)
+            except OSError:
+                close_failed = True
+        try:
+            os.close(parent_fd)
+        except OSError:
+            close_failed = True
+        if close_failed:
+            raise ControlledStagingSigningPreflightError(
+                "staging_signing_preflight_lock_invalid"
+            ) from None
+
+
 def build_controlled_staging_signing_preflight(
     *,
     minimum_slice: MinimumStagingVerticalSliceResult,
@@ -417,7 +505,7 @@ def build_controlled_staging_signing_preflight(
         )
 
     try:
-        with checked_provider._job_lock(binding.job_id):
+        with _existing_job_lock(checked_provider, binding.job_id):
             with checked_provider._verified_source_guard(
                 binding
             ) as assert_source_stable:
