@@ -43,6 +43,7 @@ _EXPECTED_BODY_KEYS = frozenset(
 _EXPECTED_ENGINE_RUN_KEYS = frozenset(
     {"runId", "engine", "candidateId", "candidateNamespace", "expectedArtifacts"}
 )
+_MAX_CANONICAL_PLAN_BYTES = 64 * 1024
 _TRUSTED_RESOLUTION_SEAL = object()
 
 
@@ -90,11 +91,19 @@ def _require_payload(value: object) -> bytes:
     return value
 
 
-def _parse_canonical_payload(payload: bytes) -> dict[str, Any]:
+def _parse_canonical_json_bytes(
+    payload: bytes,
+    *,
+    maximum_bytes: int,
+    invalid_category: str,
+    noncanonical_category: str,
+) -> dict[str, Any]:
+    if type(payload) is not bytes or not payload or len(payload) > maximum_bytes:
+        raise TrustedReceiverPlanLookupError(invalid_category)
     try:
         text = payload.decode("ascii")
     except UnicodeDecodeError:
-        raise TrustedReceiverPlanLookupError("receiver_plan_payload_invalid") from None
+        raise TrustedReceiverPlanLookupError(invalid_category) from None
     try:
         value = json.loads(
             text,
@@ -102,14 +111,27 @@ def _parse_canonical_payload(payload: bytes) -> dict[str, Any]:
             parse_constant=_reject_json_constant,
         )
     except TrustedReceiverPlanLookupError:
-        raise
+        raise TrustedReceiverPlanLookupError(invalid_category) from None
     except (TypeError, ValueError, json.JSONDecodeError):
-        raise TrustedReceiverPlanLookupError("receiver_plan_payload_invalid") from None
+        raise TrustedReceiverPlanLookupError(invalid_category) from None
     if type(value) is not dict:
-        raise TrustedReceiverPlanLookupError("receiver_plan_payload_invalid")
-    if _canonical_json_bytes(value) != payload:
-        raise TrustedReceiverPlanLookupError("receiver_plan_payload_not_canonical")
+        raise TrustedReceiverPlanLookupError(invalid_category)
+    try:
+        canonical = _canonical_json_bytes(value)
+    except TrustedReceiverPlanLookupError:
+        raise TrustedReceiverPlanLookupError(invalid_category) from None
+    if canonical != payload:
+        raise TrustedReceiverPlanLookupError(noncanonical_category)
     return value
+
+
+def _parse_canonical_payload(payload: bytes) -> dict[str, Any]:
+    return _parse_canonical_json_bytes(
+        payload,
+        maximum_bytes=MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES,
+        invalid_category="receiver_plan_payload_invalid",
+        noncanonical_category="receiver_plan_payload_not_canonical",
+    )
 
 
 def _require_pattern(value: object, pattern: re.Pattern[str], category: str) -> str:
@@ -233,11 +255,52 @@ class TrustedReceiverPlanResolution:
             or _SHA256_RE.fullmatch(self.canonical_plan_sha256) is None
             or type(self._canonical_plan_json) is not bytes
             or not self._canonical_plan_json
+            or len(self._canonical_plan_json) > _MAX_CANONICAL_PLAN_BYTES
             or self.plan_id != self.hint.plan_id
             or self.plan_sha256 != self.hint.plan_sha256
             or self.job_id != self.hint.job_id
             or self.run_id != self.hint.run_id
             or self.engine != self.hint.engine
+            or self.dispatch_identity_sha256 != self.hint.body_sha256
+            or sha256(self._canonical_plan_json).hexdigest()
+            != self.canonical_plan_sha256
+        ):
+            raise TrustedReceiverPlanLookupError("trusted_receiver_plan_result_invalid")
+
+        try:
+            plan = _parse_canonical_json_bytes(
+                self._canonical_plan_json,
+                maximum_bytes=_MAX_CANONICAL_PLAN_BYTES,
+                invalid_category="trusted_receiver_plan_result_invalid",
+                noncanonical_category="trusted_receiver_plan_result_invalid",
+            )
+            verify_orchestration_plan(plan)
+            identity = build_dispatch_identity(plan, self.engine)
+            expected_body = dispatch_identity_payload(identity)
+        except (
+            TrustedReceiverPlanLookupError,
+            OrchestrationContractError,
+            DispatchIdentityError,
+            TypeError,
+            ValueError,
+            KeyError,
+        ):
+            raise TrustedReceiverPlanLookupError(
+                "trusted_receiver_plan_result_invalid"
+            ) from None
+
+        if (
+            plan.get("planId") != self.plan_id
+            or plan.get("planSha256") != self.plan_sha256
+            or plan.get("jobId") != self.job_id
+            or identity.plan_id != self.plan_id
+            or identity.plan_sha256 != self.plan_sha256
+            or identity.job_id != self.job_id
+            or identity.run_id != self.run_id
+            or identity.engine != self.engine
+            or identity.identity_sha256 != self.dispatch_identity_sha256
+            or len(expected_body) != self.hint.body_bytes
+            or sha256(expected_body).hexdigest() != self.hint.body_sha256
         ):
             raise TrustedReceiverPlanLookupError("trusted_receiver_plan_result_invalid")
 
@@ -392,6 +455,8 @@ def resolve_trusted_receiver_plan(
         raise TrustedReceiverPlanLookupError("trusted_receiver_plan_mismatch")
 
     canonical_plan_json = _canonical_json_bytes(plan)
+    if len(canonical_plan_json) > _MAX_CANONICAL_PLAN_BYTES:
+        raise TrustedReceiverPlanLookupError("trusted_receiver_plan_invalid")
     return TrustedReceiverPlanResolution(
         version=TRUSTED_RECEIVER_PLAN_LOOKUP_VERSION,
         hint=hint,
