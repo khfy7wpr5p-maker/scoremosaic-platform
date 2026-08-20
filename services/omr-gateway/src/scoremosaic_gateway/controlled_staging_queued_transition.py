@@ -50,6 +50,8 @@ CONTROLLED_STAGING_QUEUED_TRANSITION_VERSION = (
 _TRANSITION_MAC_FIELD = "transition_integrity_mac"
 _TRANSITION_MAC_DOMAIN = b"scoremosaic-controlled-staging-queued-transition-v1"
 _SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+_JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
+_ARTIFACT_ID_RE = re.compile(r"artifact_[0-9a-f]{24}\Z")
 _RUN_ID_RE = re.compile(r"run_[0-9a-f]{24}\Z")
 
 
@@ -217,7 +219,11 @@ class ControlledStagingQueuedTransitionResult:
 
     def __post_init__(self) -> None:
         if (
-            type(self.engine) is not str
+            type(self.job_id) is not str
+            or _JOB_ID_RE.fullmatch(self.job_id) is None
+            or type(self.source_artifact_id) is not str
+            or _ARTIFACT_ID_RE.fullmatch(self.source_artifact_id) is None
+            or type(self.engine) is not str
             or self.engine not in ENGINE_NAMES
             or type(self.run_id) is not str
             or _RUN_ID_RE.fullmatch(self.run_id) is None
@@ -238,6 +244,10 @@ class ControlledStagingQueuedTransitionResult:
             raise ControlledStagingQueuedTransitionError(
                 "staging_transition_result_invalid"
             )
+
+    @property
+    def queue_allowed(self) -> bool:
+        return False
 
     @property
     def worker_allowed(self) -> bool:
@@ -270,6 +280,7 @@ class ControlledStagingQueuedTransitionResult:
             "provenanceRecordCount": self.provenance_record_count,
             "provenanceChainSha256": self.provenance_chain_sha256,
             "persistenceState": self.persistence_state,
+            "queueAllowed": False,
             "workerAllowed": False,
             "networkDispatchAllowed": False,
             "orchestrationAllowed": False,
@@ -310,6 +321,7 @@ def _derive_queued(binding, engine: str):
         "idempotency": transitioned.ledger.as_safe_dict(),
         "provenance": provenance_result.chain.as_safe_dict(),
         "boundaries": {
+            "queueAllowed": False,
             "workerAllowed": False,
             "networkDispatchAllowed": False,
             "orchestrationAllowed": False,
