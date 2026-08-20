@@ -32,7 +32,7 @@ from .controlled_staging_job_lifecycle import (
 from .controlled_staging_transition_state import (
     ControlledStagingTransitionStateError,
     _optional_regular_file_exists,
-    any_transition_record_exists,
+    _transition_record_exists_under_lock,
 )
 from .minimum_staging_vertical_slice import (
     MinimumStagingVerticalSliceError,
@@ -55,6 +55,7 @@ CONTROLLED_STAGING_TRUSTED_PLAN_STORE_VERSION = (
 )
 _PLAN_MAC_FIELD = "trusted_plan_integrity_mac"
 _PLAN_MAC_DOMAIN = b"scoremosaic-controlled-staging-trusted-plan-store-v1"
+_SUPPORTED_TRANSITION_REVISIONS = (1, 2)
 _JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
 _ARTIFACT_ID_RE = re.compile(r"artifact_[0-9a-f]{24}\Z")
 _PLAN_ID_RE = re.compile(r"plan_[0-9a-f]{24}\Z")
@@ -189,9 +190,13 @@ def _validate_record_shape(record: dict[str, object]) -> dict[str, object]:
         raise ControlledStagingTrustedPlanStoreError(
             "staging_trusted_plan_state_invalid"
         ) from None
+    source = plan.get("sourceArtifact")
     canonical_plan = _canonical_json_bytes(plan)
     if (
-        plan.get("jobId") != record["job_id"]
+        type(source) is not dict
+        or source.get("artifactId") != record["source_artifact_id"]
+        or source.get("sha256") != record["source_sha256"]
+        or plan.get("jobId") != record["job_id"]
         or plan.get("planId") != record["orchestration_plan_id"]
         or plan.get("planSha256") != record["orchestration_plan_sha256"]
         or sha256(canonical_plan).hexdigest() != record["canonical_plan_sha256"]
@@ -265,6 +270,26 @@ def _derive_record(binding) -> dict[str, object]:
             "canonical_plan_sha256": sha256(canonical_plan).hexdigest(),
             "plan": plan_dict,
         }
+    )
+
+
+def _any_transition_exists_under_lock(
+    provider: StagingUploadProvider,
+    *,
+    job_id: str,
+    run_ids: tuple[str, ...],
+) -> bool:
+    """Scan exact rev1/rev2 paths while the caller already holds the job lock."""
+
+    return any(
+        _transition_record_exists_under_lock(
+            provider,
+            job_id=job_id,
+            run_id=run_id,
+            revision=revision,
+        )
+        for run_id in run_ids
+        for revision in _SUPPORTED_TRANSITION_REVISIONS
     )
 
 
@@ -396,7 +421,7 @@ def persist_controlled_staging_trusted_receiver_plan(
                     assert_source_stable()
                     persistence_state = "replay"
                 else:
-                    if any_transition_record_exists(
+                    if _any_transition_exists_under_lock(
                         checked_provider,
                         job_id=binding.job_id,
                         run_ids=run_ids,
