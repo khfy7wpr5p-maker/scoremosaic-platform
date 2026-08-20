@@ -196,11 +196,14 @@ class ControlledStagingDispatchPreflightTests(unittest.TestCase):
             "staging_dispatch_preflight_input_invalid",
         )
 
-    def test_result_identity_subclasses_fail_closed(self) -> None:
+    def test_result_string_subclasses_fail_closed(self) -> None:
         self.queue()
         result = self.preflight()
 
         class RunId(str):
+            pass
+
+        class State(str):
             pass
 
         base = {
@@ -216,14 +219,21 @@ class ControlledStagingDispatchPreflightTests(unittest.TestCase):
             "target_path": result.target_path,
             "identity_payload_bytes": result.identity_payload_bytes,
         }
-        invalid = dict(base)
-        invalid["run_id"] = RunId(result.run_id)
-        with self.assertRaises(ControlledStagingDispatchPreflightError) as raised:
-            ControlledStagingDispatchPreflightResult(**invalid)
-        self.assertEqual(
-            raised.exception.category,
-            "staging_dispatch_preflight_result_invalid",
-        )
+        for field, invalid_value in (
+            ("run_id", RunId(result.run_id)),
+            ("state", State(result.state)),
+        ):
+            with self.subTest(field=field):
+                invalid = dict(base)
+                invalid[field] = invalid_value
+                with self.assertRaises(
+                    ControlledStagingDispatchPreflightError
+                ) as raised:
+                    ControlledStagingDispatchPreflightResult(**invalid)
+                self.assertEqual(
+                    raised.exception.category,
+                    "staging_dispatch_preflight_result_invalid",
+                )
 
 
 if __name__ == "__main__":
