@@ -15,6 +15,7 @@ from scoremosaic_gateway.controlled_staging_job_lifecycle import (
 )
 from scoremosaic_gateway.controlled_staging_queued_transition import (
     ControlledStagingQueuedTransitionError,
+    ControlledStagingQueuedTransitionResult,
     queue_controlled_staging_run,
     recover_controlled_staging_queued_run,
 )
@@ -73,10 +74,12 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
         self.assertEqual(result.idempotency_record_count, 1)
         self.assertEqual(result.provenance_record_count, 2)
         self.assertEqual(result.persistence_state, "written")
+        self.assertFalse(result.queue_allowed)
         self.assertFalse(result.worker_allowed)
         self.assertFalse(result.network_dispatch_allowed)
         self.assertFalse(result.orchestration_allowed)
         self.assertFalse(result.engine_execution_allowed)
+        self.assertIs(result.as_safe_dict()["queueAllowed"], False)
 
         recovered = self.recover()
         self.assertEqual(recovered.state, "queued")
@@ -191,6 +194,42 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
         with self.assertRaises(ControlledStagingQueuedTransitionError) as raised:
             self.queue(engine=EngineName("audiveris"))
         self.assertEqual(raised.exception.category, "staging_transition_engine_invalid")
+
+    def test_result_identity_subclasses_fail_closed(self) -> None:
+        result = self.queue()
+
+        class JobId(str):
+            pass
+
+        class ArtifactId(str):
+            pass
+
+        base = {
+            "job_id": result.job_id,
+            "source_artifact_id": result.source_artifact_id,
+            "engine": result.engine,
+            "run_id": result.run_id,
+            "dispatch_identity_sha256": result.dispatch_identity_sha256,
+            "state": result.state,
+            "revision": result.revision,
+            "idempotency_record_count": result.idempotency_record_count,
+            "provenance_record_count": result.provenance_record_count,
+            "provenance_chain_sha256": result.provenance_chain_sha256,
+            "persistence_state": result.persistence_state,
+        }
+        for field, invalid in (
+            ("job_id", JobId(result.job_id)),
+            ("source_artifact_id", ArtifactId(result.source_artifact_id)),
+        ):
+            with self.subTest(field=field):
+                kwargs = dict(base)
+                kwargs[field] = invalid
+                with self.assertRaises(ControlledStagingQueuedTransitionError) as raised:
+                    ControlledStagingQueuedTransitionResult(**kwargs)
+                self.assertEqual(
+                    raised.exception.category,
+                    "staging_transition_result_invalid",
+                )
 
 
 if __name__ == "__main__":
