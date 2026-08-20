@@ -3,7 +3,9 @@
 This module advances exactly one fixed engine run from ``planned`` revision 0 to
 ``queued`` revision 1. ``queued`` is durable lifecycle evidence only: no queue
 runtime, worker, transport, dispatch, orchestration, or engine execution is
-created or authorized here.
+created or authorized here. A durable revision-2 terminal record supersedes the
+queued snapshot and prevents replay/recovery from presenting stale pre-dispatch
+evidence.
 """
 
 from __future__ import annotations
@@ -20,6 +22,10 @@ from .controlled_staging_job_lifecycle import (
     _canonical_record_bytes,
     _derive_initial_evidence,
     _validated_binding,
+)
+from .controlled_staging_transition_state import (
+    ControlledStagingTransitionStateError,
+    _transition_record_exists_under_lock,
 )
 from .durable_idempotency import (
     DurableIdempotencyError,
@@ -190,6 +196,25 @@ def _initial_record_under_lock(
         )
 
 
+def _terminal_revision_exists_under_lock(
+    provider: StagingUploadProvider,
+    *,
+    job_id: str,
+    run_id: str,
+) -> bool:
+    try:
+        return _transition_record_exists_under_lock(
+            provider,
+            job_id=job_id,
+            run_id=run_id,
+            revision=2,
+        )
+    except ControlledStagingTransitionStateError:
+        raise ControlledStagingQueuedTransitionError(
+            "staging_transition_state_invalid"
+        ) from None
+
+
 @dataclass(frozen=True, slots=True)
 class _QueuedDerived:
     engine: str
@@ -229,6 +254,7 @@ class ControlledStagingQueuedTransitionResult:
             or _RUN_ID_RE.fullmatch(self.run_id) is None
             or type(self.dispatch_identity_sha256) is not str
             or _SHA256_RE.fullmatch(self.dispatch_identity_sha256) is None
+            or type(self.state) is not str
             or self.state != "queued"
             or type(self.revision) is not int
             or self.revision != 1
@@ -400,6 +426,14 @@ def queue_controlled_staging_run(
                     binding=binding,
                     expected=initial.record,
                 )
+                if _terminal_revision_exists_under_lock(
+                    checked_provider,
+                    job_id=binding.job_id,
+                    run_id=queued.run_id,
+                ):
+                    raise ControlledStagingQueuedTransitionError(
+                        "staging_transition_superseded"
+                    )
                 assert_source_stable()
                 created = checked_provider._atomic_create(
                     path,
@@ -425,6 +459,14 @@ def queue_controlled_staging_run(
                     ):
                         raise ControlledStagingQueuedTransitionError(
                             "staging_transition_state_invalid"
+                        )
+                    if _terminal_revision_exists_under_lock(
+                        checked_provider,
+                        job_id=binding.job_id,
+                        run_id=queued.run_id,
+                    ):
+                        raise ControlledStagingQueuedTransitionError(
+                            "staging_transition_superseded"
                         )
                     assert_source_stable()
                     persistence_state = "replay"
@@ -476,6 +518,14 @@ def recover_controlled_staging_queued_run(
                     binding=binding,
                     expected=initial.record,
                 )
+                if _terminal_revision_exists_under_lock(
+                    checked_provider,
+                    job_id=binding.job_id,
+                    run_id=queued.run_id,
+                ):
+                    raise ControlledStagingQueuedTransitionError(
+                        "staging_transition_superseded"
+                    )
                 try:
                     sealed = _decode_record(
                         checked_provider._read_file_no_follow(
@@ -496,6 +546,14 @@ def recover_controlled_staging_queued_run(
                 ):
                     raise ControlledStagingQueuedTransitionError(
                         "staging_transition_state_invalid"
+                    )
+                if _terminal_revision_exists_under_lock(
+                    checked_provider,
+                    job_id=binding.job_id,
+                    run_id=queued.run_id,
+                ):
+                    raise ControlledStagingQueuedTransitionError(
+                        "staging_transition_superseded"
                     )
                 assert_source_stable()
     except ControlledStagingQueuedTransitionError:

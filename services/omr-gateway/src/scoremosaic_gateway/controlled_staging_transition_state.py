@@ -1,8 +1,8 @@
 """Hardened presence checks for controlled-staging transition records.
 
 This module grants no transition, queue, worker, dispatch, orchestration, or
-engine authority. It only answers whether an exact server-derived later-revision
-record is already present while holding the existing job-scoped staging lock.
+engine authority. It only answers whether exact server-derived transition
+records are present while callers hold the existing job-scoped staging lock.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from .minimum_staging_vertical_slice import (
 
 _JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
 _RUN_ID_RE = re.compile(r"run_[0-9a-f]{24}\Z")
+_SUPPORTED_REVISIONS = (1, 2)
 
 
 class ControlledStagingTransitionStateError(ValueError):
@@ -37,7 +38,7 @@ def transition_record_path(
     run_id: str,
     revision: int = 1,
 ) -> Path:
-    """Derive the exact private staging path for the bounded revision-1 record."""
+    """Derive the exact private staging path for a supported transition record."""
 
     if type(provider) is not StagingUploadProvider:
         raise ControlledStagingTransitionStateError(
@@ -51,7 +52,7 @@ def transition_record_path(
         raise ControlledStagingTransitionStateError(
             "transition_state_input_invalid"
         )
-    if type(revision) is not int or revision != 1:
+    if type(revision) is not int or revision not in _SUPPORTED_REVISIONS:
         raise ControlledStagingTransitionStateError(
             "transition_state_input_invalid"
         )
@@ -81,7 +82,8 @@ def _same_current_parent(
             current_leaf != path.name
             or not stat.S_ISDIR(retained.st_mode)
             or not stat.S_ISDIR(current.st_mode)
-            or (retained.st_dev, retained.st_ino) != (current.st_dev, current.st_ino)
+            or (retained.st_dev, retained.st_ino)
+            != (current.st_dev, current.st_ino)
         ):
             raise ControlledStagingTransitionStateError(
                 "transition_state_path_invalid"
@@ -205,16 +207,38 @@ def _optional_regular_file_exists(
             ) from None
 
 
+def _transition_record_exists_under_lock(
+    provider: StagingUploadProvider,
+    *,
+    job_id: str,
+    run_id: str,
+    revision: int,
+) -> bool:
+    """Inspect one exact transition path while the caller holds the job lock."""
+
+    return _optional_regular_file_exists(
+        provider,
+        transition_record_path(
+            provider,
+            job_id=job_id,
+            run_id=run_id,
+            revision=revision,
+        ),
+    )
+
+
 def any_transition_record_exists(
     provider: StagingUploadProvider,
     *,
     job_id: str,
     run_ids: tuple[str, ...],
 ) -> bool:
-    """Return whether any exact revision-1 transition exists for the fixed job.
+    """Return whether any supported transition revision exists for the fixed job.
 
     The whole scan is serialized by the same job lock used by transition writes,
-    giving planned recovery one deterministic linearization point.
+    giving planned recovery one deterministic linearization point. Revision 2 is
+    included so damaged or missing revision-1 evidence can never revive a
+    terminally-cancelled run as planned.
     """
 
     if type(provider) is not StagingUploadProvider:
@@ -241,15 +265,14 @@ def any_transition_record_exists(
     try:
         with provider._job_lock(job_id):
             return any(
-                _optional_regular_file_exists(
+                _transition_record_exists_under_lock(
                     provider,
-                    transition_record_path(
-                        provider,
-                        job_id=job_id,
-                        run_id=run_id,
-                    ),
+                    job_id=job_id,
+                    run_id=run_id,
+                    revision=revision,
                 )
                 for run_id in run_ids
+                for revision in _SUPPORTED_REVISIONS
             )
     except ControlledStagingTransitionStateError:
         raise
