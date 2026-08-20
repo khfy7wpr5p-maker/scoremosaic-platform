@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
@@ -105,6 +106,46 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
         self.assertEqual(first.provenance_chain_sha256, after_restart.provenance_chain_sha256)
         self.assertEqual(recovered.state, "queued")
         self.assertEqual(recovered.revision, 1)
+
+    def test_replay_rechecks_source_after_existing_transition_is_verified(self) -> None:
+        self.queue()
+        source_path = (
+            Path(self.temp_dir.name)
+            / "objects"
+            / self.minimum_slice.binding.source_storage_key
+        )
+        original_atomic_create = StagingUploadProvider._atomic_create
+
+        def replace_source_after_replay_check(
+            provider,
+            path,
+            payload,
+            *,
+            prepublish_check=None,
+            postpublish_check=None,
+        ):
+            created = original_atomic_create(
+                provider,
+                path,
+                payload,
+                prepublish_check=prepublish_check,
+                postpublish_check=postpublish_check,
+            )
+            if "job_transitions" in path.parts and not created:
+                source_path.chmod(0o600)
+                source_path.write_bytes(
+                    b"X" * self.minimum_slice.binding.source_size_bytes
+                )
+            return created
+
+        with mock.patch.object(
+            StagingUploadProvider,
+            "_atomic_create",
+            new=replace_source_after_replay_check,
+        ):
+            with self.assertRaises(ControlledStagingQueuedTransitionError) as raised:
+                self.queue()
+        self.assertEqual(raised.exception.category, "staging_transition_source_invalid")
 
     def test_transition_is_scoped_to_one_engine_run(self) -> None:
         audiveris = self.queue(engine="audiveris")
