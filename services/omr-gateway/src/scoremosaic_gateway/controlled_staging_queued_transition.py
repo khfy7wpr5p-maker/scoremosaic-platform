@@ -414,6 +414,7 @@ def queue_controlled_staging_run(
                         raise ControlledStagingQueuedTransitionError(
                             "staging_transition_state_invalid"
                         )
+                    assert_source_stable()
                     persistence_state = "replay"
     except ControlledStagingQueuedTransitionError:
         raise
