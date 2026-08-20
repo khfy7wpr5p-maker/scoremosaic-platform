@@ -27,7 +27,6 @@ from .artifact_lifecycle import (
 )
 from .controlled_staging_job_lifecycle import (
     ControlledStagingJobLifecycleError,
-    _canonical_record_bytes,
     _validated_binding,
 )
 from .controlled_staging_queued_transition import (
@@ -328,7 +327,13 @@ class ControlledStagingTerminalCancellationResult:
 
 
 def _derive_cancelled(binding, engine: str):
-    initial, queued = _derive_queued(binding, engine)
+    try:
+        initial, queued = _derive_queued(binding, engine)
+    except ControlledStagingQueuedTransitionError:
+        raise ControlledStagingTerminalCancellationError(
+            "staging_cancellation_contract_invalid"
+        ) from None
+
     candidates = tuple(
         candidate
         for candidate in queued.lifecycle.candidates
@@ -340,6 +345,7 @@ def _derive_cancelled(binding, engine: str):
         )
     candidate = candidates[0]
     lifecycle = queued.lifecycle
+
     try:
         for artifact in candidate.artifacts:
             lifecycle = transition_artifact(
@@ -398,7 +404,9 @@ def _derive_cancelled(binding, engine: str):
         )
 
     cancelled_candidate = next(
-        item for item in lifecycle.candidates if item.candidate_id == candidate.candidate_id
+        item
+        for item in lifecycle.candidates
+        if item.candidate_id == candidate.candidate_id
     )
     if (
         cancelled_candidate.state != "cancelled"
@@ -411,13 +419,10 @@ def _derive_cancelled(binding, engine: str):
             or artifact.media_type is not None
             for artifact in cancelled_candidate.artifacts
         )
-    ):
-        raise ControlledStagingTerminalCancellationError(
-            "staging_cancellation_contract_invalid"
+        or any(
+            record.candidate_id == cancelled_candidate.candidate_id
+            for record in queued.manifest.records
         )
-    if any(
-        record.candidate_id == cancelled_candidate.candidate_id
-        for record in queued.manifest.records
     ):
         raise ControlledStagingTerminalCancellationError(
             "staging_cancellation_contract_invalid"
@@ -477,11 +482,17 @@ def _verify_queued_under_lock(
     initial,
     queued,
 ) -> None:
-    _initial_record_under_lock(
-        provider=provider,
-        binding=binding,
-        expected=initial.record,
-    )
+    try:
+        _initial_record_under_lock(
+            provider=provider,
+            binding=binding,
+            expected=initial.record,
+        )
+    except ControlledStagingQueuedTransitionError:
+        raise ControlledStagingTerminalCancellationError(
+            "staging_cancellation_state_invalid"
+        ) from None
+
     try:
         present = _transition_record_exists_under_lock(
             provider,
@@ -493,17 +504,19 @@ def _verify_queued_under_lock(
         raise ControlledStagingTerminalCancellationError(
             "staging_cancellation_state_invalid"
         ) from None
+
     if not present:
         raise ControlledStagingTerminalCancellationError(
             "staging_cancellation_queued_missing"
         )
-    path = transition_record_path(
-        provider,
-        job_id=binding.job_id,
-        run_id=queued.run_id,
-        revision=1,
-    )
+
     try:
+        path = transition_record_path(
+            provider,
+            job_id=binding.job_id,
+            run_id=queued.run_id,
+            revision=1,
+        )
         stored = _verify_queued_transition(
             provider,
             _decode_record(
@@ -514,10 +527,15 @@ def _verify_queued_under_lock(
                 )
             ),
         )
-    except ControlledStagingQueuedTransitionError:
+    except (
+        ControlledStagingQueuedTransitionError,
+        ControlledStagingTransitionStateError,
+        MinimumStagingVerticalSliceError,
+    ):
         raise ControlledStagingTerminalCancellationError(
             "staging_cancellation_state_invalid"
         ) from None
+
     if _queued_canonical_json_bytes(stored) != _queued_canonical_json_bytes(
         queued.record
     ):
@@ -550,6 +568,54 @@ def _result(
     )
 
 
+def _load_and_verify_cancellation_under_lock(
+    *,
+    provider: StagingUploadProvider,
+    binding,
+    cancelled: _CancelledDerived,
+) -> None:
+    try:
+        if not _transition_record_exists_under_lock(
+            provider,
+            job_id=binding.job_id,
+            run_id=cancelled.run_id,
+            revision=2,
+        ):
+            raise ControlledStagingTerminalCancellationError(
+                "staging_cancellation_missing"
+            )
+        path = transition_record_path(
+            provider,
+            job_id=binding.job_id,
+            run_id=cancelled.run_id,
+            revision=2,
+        )
+        stored = _verify_cancellation(
+            provider,
+            _decode_record(
+                provider._read_file_no_follow(
+                    path,
+                    max_bytes=_MAX_STATE_RECORD_BYTES,
+                    overflow_category="staging_state_corrupt",
+                )
+            ),
+        )
+    except ControlledStagingTerminalCancellationError:
+        raise
+    except (
+        ControlledStagingTransitionStateError,
+        MinimumStagingVerticalSliceError,
+    ):
+        raise ControlledStagingTerminalCancellationError(
+            "staging_cancellation_state_invalid"
+        ) from None
+
+    if _canonical_json_bytes(stored) != _canonical_json_bytes(cancelled.record):
+        raise ControlledStagingTerminalCancellationError(
+            "staging_cancellation_state_invalid"
+        )
+
+
 def cancel_controlled_staging_queued_run(
     *,
     minimum_slice: MinimumStagingVerticalSliceResult,
@@ -566,6 +632,7 @@ def cancel_controlled_staging_queued_run(
         raise ControlledStagingTerminalCancellationError(
             "staging_cancellation_input_invalid"
         ) from None
+
     initial, queued, cancelled = _derive_cancelled(binding, checked_engine)
     path = transition_record_path(
         checked_provider,
@@ -583,7 +650,9 @@ def cancel_controlled_staging_queued_run(
 
     try:
         with checked_provider._job_lock(binding.job_id):
-            with checked_provider._verified_source_guard(binding) as assert_source_stable:
+            with checked_provider._verified_source_guard(
+                binding
+            ) as assert_source_stable:
                 _verify_queued_under_lock(
                     provider=checked_provider,
                     binding=binding,
@@ -600,34 +669,26 @@ def cancel_controlled_staging_queued_run(
                 if created:
                     persistence_state = "written"
                 else:
-                    stored = _verify_cancellation(
-                        checked_provider,
-                        _decode_record(
-                            checked_provider._read_file_no_follow(
-                                path,
-                                max_bytes=_MAX_STATE_RECORD_BYTES,
-                                overflow_category="staging_state_corrupt",
-                            )
-                        ),
+                    _load_and_verify_cancellation_under_lock(
+                        provider=checked_provider,
+                        binding=binding,
+                        cancelled=cancelled,
                     )
-                    if _canonical_json_bytes(stored) != _canonical_json_bytes(
-                        cancelled.record
-                    ):
-                        raise ControlledStagingTerminalCancellationError(
-                            "staging_cancellation_state_invalid"
-                        )
                     assert_source_stable()
                     persistence_state = "replay"
     except ControlledStagingTerminalCancellationError:
         raise
-    except (MinimumStagingVerticalSliceError, ControlledStagingTransitionStateError) as exc:
+    except MinimumStagingVerticalSliceError as exc:
         category = (
             "staging_cancellation_source_invalid"
-            if isinstance(exc, MinimumStagingVerticalSliceError)
-            and exc.category == "staging_source_collision"
+            if exc.category == "staging_source_collision"
             else "staging_cancellation_state_invalid"
         )
         raise ControlledStagingTerminalCancellationError(category) from None
+    except ControlledStagingTransitionStateError:
+        raise ControlledStagingTerminalCancellationError(
+            "staging_cancellation_state_invalid"
+        ) from None
 
     return _result(
         binding=binding,
@@ -652,58 +713,38 @@ def recover_controlled_staging_cancelled_run(
         raise ControlledStagingTerminalCancellationError(
             "staging_cancellation_input_invalid"
         ) from None
+
     initial, queued, cancelled = _derive_cancelled(binding, checked_engine)
-    path = transition_record_path(
-        checked_provider,
-        job_id=binding.job_id,
-        run_id=cancelled.run_id,
-        revision=2,
-    )
 
     try:
         with checked_provider._job_lock(binding.job_id):
-            with checked_provider._verified_source_guard(binding) as assert_source_stable:
+            with checked_provider._verified_source_guard(
+                binding
+            ) as assert_source_stable:
                 _verify_queued_under_lock(
                     provider=checked_provider,
                     binding=binding,
                     initial=initial,
                     queued=queued,
                 )
-                if not _transition_record_exists_under_lock(
-                    checked_provider,
-                    job_id=binding.job_id,
-                    run_id=cancelled.run_id,
-                    revision=2,
-                ):
-                    raise ControlledStagingTerminalCancellationError(
-                        "staging_cancellation_missing"
-                    )
-                stored = _verify_cancellation(
-                    checked_provider,
-                    _decode_record(
-                        checked_provider._read_file_no_follow(
-                            path,
-                            max_bytes=_MAX_STATE_RECORD_BYTES,
-                            overflow_category="staging_state_corrupt",
-                        )
-                    ),
+                _load_and_verify_cancellation_under_lock(
+                    provider=checked_provider,
+                    binding=binding,
+                    cancelled=cancelled,
                 )
-                if _canonical_json_bytes(stored) != _canonical_json_bytes(
-                    cancelled.record
-                ):
-                    raise ControlledStagingTerminalCancellationError(
-                        "staging_cancellation_state_invalid"
-                    )
                 assert_source_stable()
     except ControlledStagingTerminalCancellationError:
         raise
-    except (MinimumStagingVerticalSliceError, ControlledStagingTransitionStateError) as exc:
+    except MinimumStagingVerticalSliceError as exc:
         category = (
             "staging_cancellation_source_invalid"
-            if isinstance(exc, MinimumStagingVerticalSliceError)
-            and exc.category == "staging_source_collision"
+            if exc.category == "staging_source_collision"
             else "staging_cancellation_state_invalid"
         )
         raise ControlledStagingTerminalCancellationError(category) from None
+    except ControlledStagingTransitionStateError:
+        raise ControlledStagingTerminalCancellationError(
+            "staging_cancellation_state_invalid"
+        ) from None
 
     return cancelled.recovery
