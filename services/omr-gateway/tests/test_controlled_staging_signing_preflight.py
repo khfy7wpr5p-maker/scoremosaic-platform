@@ -41,6 +41,7 @@ from scoremosaic_gateway.credential_rotation import (
     build_rotation_set,
     resolve_engine_credential_generation,
 )
+from scoremosaic_gateway.dispatch_identity import MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES
 from scoremosaic_gateway.dispatch_target import APPROVED_ENGINE_ORIGINS
 from scoremosaic_gateway.minimum_staging_vertical_slice import (
     StagingUploadProvider,
@@ -388,7 +389,7 @@ class ControlledStagingSigningPreflightTests(unittest.TestCase):
             self.resolver_calls_after_construction,
         )
 
-    def test_result_type_subclasses_fail_closed(self) -> None:
+    def test_result_type_and_target_bounds_fail_closed(self) -> None:
         result = self._preflight()
 
         class State(str):
@@ -401,11 +402,14 @@ class ControlledStagingSigningPreflightTests(unittest.TestCase):
             pass
 
         base = asdict(result)
-        for field, invalid in (
+        cases = (
             ("state", State("queued")),
             ("run_id", RunId(result.run_id)),
             ("request_timestamp", Timestamp(result.request_timestamp)),
-        ):
+            ("target_origin", "http://attacker.invalid:9999"),
+            ("payload_bytes", MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES + 1),
+        )
+        for field, invalid in cases:
             with self.subTest(field=field):
                 kwargs = dict(base)
                 kwargs[field] = invalid
