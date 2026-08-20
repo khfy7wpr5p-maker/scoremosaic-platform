@@ -1,14 +1,13 @@
 """Immutable provider-backed trusted receiver-plan state for controlled staging.
 
-This slice persists the exact deterministic orchestration plan only while the job
-is still at its initial planned revision and before any controlled-staging
-transition exists. The record is create-once, HMAC sealed, source-bound, and
-separate from the existing append-only lifecycle/transition records.
+A new plan record may be created only while the job is still at its initial
+planned revision and before any controlled-staging transition exists. Once the
+record exists, exact read-only replay remains valid after later transitions so a
+restart can re-establish trusted receiver-plan evidence without reopening state.
 
-The paired resolver is read-only and accepts only a bounded untrusted
-``ReceiverPlanLookupHint``. The hint's job id selects one private immutable plan
-record; every other hint field remains non-authoritative and is converged by the
-existing trusted receiver-plan lookup contract.
+The paired resolver is read-only. An untrusted ``ReceiverPlanLookupHint`` may
+select only the canonical job-id record; all other hint fields remain
+non-authoritative and are converged by ``trusted_receiver_plan_lookup``.
 
 No HTTP route, credential resolution, request signing, replay reservation, job
 state mutation, queue/worker runtime, network dispatch, orchestration runtime, or
@@ -32,6 +31,7 @@ from .controlled_staging_job_lifecycle import (
 )
 from .controlled_staging_transition_state import (
     ControlledStagingTransitionStateError,
+    _optional_regular_file_exists,
     any_transition_record_exists,
 )
 from .minimum_staging_vertical_slice import (
@@ -75,8 +75,6 @@ _RECORD_KEYS = frozenset(
 
 
 class ControlledStagingTrustedPlanStoreError(ValueError):
-    """Stable fail-closed category for staging trusted-plan persistence/lookup."""
-
     def __init__(self, category: str) -> None:
         self.category = category
         super().__init__(category)
@@ -113,10 +111,7 @@ def _plan_path(provider: StagingUploadProvider, *, job_id: str) -> Path:
     return provider._root / "state" / "trusted_receiver_plans" / f"{job_id}.json"
 
 
-def _plan_mac(
-    provider: StagingUploadProvider,
-    record: dict[str, object],
-) -> str:
+def _plan_mac(provider: StagingUploadProvider, record: dict[str, object]) -> str:
     key = getattr(provider, "_state_integrity_key", None)
     if type(key) is not bytes or len(key) != 32:
         raise ControlledStagingTrustedPlanStoreError(
@@ -154,8 +149,7 @@ def _verify_record_mac(
         )
     record = dict(sealed)
     del record[_PLAN_MAC_FIELD]
-    expected = _plan_mac(provider, record)
-    if not compare_digest(observed, expected):
+    if not compare_digest(observed, _plan_mac(provider, record)):
         raise ControlledStagingTrustedPlanStoreError(
             "staging_trusted_plan_state_invalid"
         )
@@ -213,10 +207,9 @@ def _load_verified_record(
     *,
     job_id: str,
 ) -> dict[str, object]:
-    path = _plan_path(provider, job_id=job_id)
     try:
         raw = provider._read_file_no_follow(
-            path,
+            _plan_path(provider, job_id=job_id),
             max_bytes=_MAX_STATE_RECORD_BYTES,
             overflow_category="staging_state_corrupt",
         )
@@ -260,18 +253,19 @@ def _derive_record(binding) -> dict[str, object]:
             "staging_trusted_plan_contract_invalid"
         )
     canonical_plan = _canonical_json_bytes(plan_dict)
-    record: dict[str, object] = {
-        "version": CONTROLLED_STAGING_TRUSTED_PLAN_STORE_VERSION,
-        "environment": "staging",
-        "job_id": binding.job_id,
-        "source_artifact_id": binding.source_artifact_id,
-        "source_sha256": binding.document_sha256,
-        "orchestration_plan_id": plan.plan_id,
-        "orchestration_plan_sha256": plan.plan_sha256,
-        "canonical_plan_sha256": sha256(canonical_plan).hexdigest(),
-        "plan": plan_dict,
-    }
-    return _validate_record_shape(record)
+    return _validate_record_shape(
+        {
+            "version": CONTROLLED_STAGING_TRUSTED_PLAN_STORE_VERSION,
+            "environment": "staging",
+            "job_id": binding.job_id,
+            "source_artifact_id": binding.source_artifact_id,
+            "source_sha256": binding.document_sha256,
+            "orchestration_plan_id": plan.plan_id,
+            "orchestration_plan_sha256": plan.plan_sha256,
+            "canonical_plan_sha256": sha256(canonical_plan).hexdigest(),
+            "plan": plan_dict,
+        }
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -360,18 +354,14 @@ def persist_controlled_staging_trusted_receiver_plan(
     minimum_slice: MinimumStagingVerticalSliceResult,
     provider: StagingUploadProvider,
 ) -> ControlledStagingTrustedPlanStoreResult:
-    """Persist one exact trusted plan before any controlled staging transition."""
+    """Create once before transitions; exactly replay an existing plan afterward."""
 
     checked_provider = _require_provider(provider)
     try:
         binding = _validated_binding(minimum_slice, checked_provider)
         initial = _derive_initial_evidence(binding)
         stored_lifecycle = checked_provider.read_job_lifecycle_record(binding=binding)
-    except ControlledStagingJobLifecycleError:
-        raise ControlledStagingTrustedPlanStoreError(
-            "staging_trusted_plan_lifecycle_invalid"
-        ) from None
-    except MinimumStagingVerticalSliceError:
+    except (ControlledStagingJobLifecycleError, MinimumStagingVerticalSliceError):
         raise ControlledStagingTrustedPlanStoreError(
             "staging_trusted_plan_lifecycle_invalid"
         ) from None
@@ -394,24 +384,7 @@ def persist_controlled_staging_trusted_receiver_plan(
             with checked_provider._verified_source_guard(
                 binding
             ) as assert_source_stable:
-                if any_transition_record_exists(
-                    checked_provider,
-                    job_id=binding.job_id,
-                    run_ids=run_ids,
-                ):
-                    raise ControlledStagingTrustedPlanStoreError(
-                        "staging_trusted_plan_superseded"
-                    )
-                assert_source_stable()
-                created = checked_provider._atomic_create(
-                    path,
-                    sealed_payload,
-                    prepublish_check=assert_source_stable,
-                    postpublish_check=assert_source_stable,
-                )
-                if created:
-                    persistence_state = "written"
-                else:
+                if _optional_regular_file_exists(checked_provider, path):
                     stored = _load_verified_record(
                         checked_provider,
                         job_id=binding.job_id,
@@ -422,6 +395,35 @@ def persist_controlled_staging_trusted_receiver_plan(
                         )
                     assert_source_stable()
                     persistence_state = "replay"
+                else:
+                    if any_transition_record_exists(
+                        checked_provider,
+                        job_id=binding.job_id,
+                        run_ids=run_ids,
+                    ):
+                        raise ControlledStagingTrustedPlanStoreError(
+                            "staging_trusted_plan_superseded"
+                        )
+                    assert_source_stable()
+                    created = checked_provider._atomic_create(
+                        path,
+                        sealed_payload,
+                        prepublish_check=assert_source_stable,
+                        postpublish_check=assert_source_stable,
+                    )
+                    if created:
+                        persistence_state = "written"
+                    else:
+                        stored = _load_verified_record(
+                            checked_provider,
+                            job_id=binding.job_id,
+                        )
+                        if _canonical_json_bytes(stored) != _canonical_json_bytes(record):
+                            raise ControlledStagingTrustedPlanStoreError(
+                                "staging_trusted_plan_conflict"
+                            )
+                        assert_source_stable()
+                        persistence_state = "replay"
     except ControlledStagingTrustedPlanStoreError:
         raise
     except ControlledStagingTransitionStateError:
