@@ -1,16 +1,18 @@
 """Durable staging replay reservation for the authenticated receiver boundary.
 
 This bounded Gate C slice persists only a one-way HMAC-sealed tombstone for the
-C.2-D generation-scoped replay key after a request has already passed the
-cryptographic/freshness checks that precede the replay callback. It stores no raw
-nonce, credential key, credential generation label, signature, payload, or
-secret material.
+C.2-D generation-scoped replay key. C.2-E reaches its replay callback only after
+semantic identity, generation proof, C.2-A HMAC, observed target, payload, and
+request freshness have already passed; this store deliberately does not duplicate
+that freshness policy.
 
-The first exact reservation is accepted. Any later request deriving the same
-binding+generation+nonce key is rejected as replay even after the advisory
-expiry. V1 intentionally performs no cleanup or nonce reuse: deleting an expired
-record could resurrect a replay. No HTTP route, network dispatch, worker, state
-transition, orchestration, or engine execution is enabled here.
+Persisted state contains no raw nonce, credential key, credential generation
+label, signature, payload, or secret material. The first exact reservation is
+accepted. Any later request deriving the same binding+generation+nonce key is
+rejected as replay even after the advisory expiry. V1 intentionally performs no
+cleanup or nonce reuse: deleting an expired record could resurrect a replay. No
+HTTP route, network dispatch, worker, state transition, orchestration, or engine
+execution is enabled here.
 """
 
 from __future__ import annotations
@@ -21,9 +23,7 @@ from hmac import compare_digest, new as hmac_new
 import json
 from pathlib import Path
 import re
-from typing import Callable
 
-from .authenticated_request import MAX_FUTURE_SKEW_SECONDS, MAX_REQUEST_AGE_SECONDS
 from .credential_rotation import (
     MAX_REPLAY_RESERVATION_SECONDS,
     CredentialRotationError,
@@ -193,28 +193,12 @@ def _require_binding(value: object) -> EngineAuthBinding:
     return value
 
 
-def _require_now(value: object) -> int:
+def _require_request_timestamp(value: object) -> int:
     if type(value) is not int or value < 0:
         raise ControlledStagingReplayReservationError(
             "staging_replay_timestamp_invalid"
         )
     return value
-
-
-def _require_fresh_timestamp(request_timestamp: object, now_seconds: int) -> int:
-    if type(request_timestamp) is not int or request_timestamp < 0:
-        raise ControlledStagingReplayReservationError(
-            "staging_replay_timestamp_invalid"
-        )
-    if request_timestamp > now_seconds + MAX_FUTURE_SKEW_SECONDS:
-        raise ControlledStagingReplayReservationError(
-            "staging_replay_timestamp_in_future"
-        )
-    if now_seconds - request_timestamp > MAX_REQUEST_AGE_SECONDS:
-        raise ControlledStagingReplayReservationError(
-            "staging_replay_timestamp_expired"
-        )
-    return request_timestamp
 
 
 def _replay_path(provider: StagingUploadProvider, key: str) -> Path:
@@ -296,19 +280,20 @@ def _validate_stored_record(record: dict[str, object], expected_key: str) -> int
         raise ControlledStagingReplayReservationError(
             "staging_replay_state_invalid"
         )
+    expires_at = record.get("expires_at")
     if (
         record.get("version") != CONTROLLED_STAGING_REPLAY_RESERVATION_VERSION
         or record.get("environment") != "staging"
         or record.get("reservation_key") != expected_key
-        or type(record.get("expires_at")) is not int
-        or record["expires_at"] < 0
+        or type(expires_at) is not int
+        or expires_at < 0
         or record.get("retention_mode") != REPLAY_RETENTION_MODE
         or record.get("boundaries") != _EXPECTED_BOUNDARIES
     ):
         raise ControlledStagingReplayReservationError(
             "staging_replay_state_invalid"
         )
-    return record["expires_at"]
+    return expires_at
 
 
 def reserve_controlled_staging_generation_replay(
@@ -318,14 +303,12 @@ def reserve_controlled_staging_generation_replay(
     generation_id: str,
     nonce: str,
     request_timestamp: int,
-    now_seconds: int,
 ) -> ControlledStagingReplayReservationResult:
-    """Atomically reserve one generation-scoped nonce or report exact replay."""
+    """Atomically reserve one already-authenticated generation-scoped nonce."""
 
     checked_provider = _require_provider(provider)
     checked_binding = _require_binding(binding)
-    now = _require_now(now_seconds)
-    timestamp = _require_fresh_timestamp(request_timestamp, now)
+    timestamp = _require_request_timestamp(request_timestamp)
 
     try:
         reservation = build_replay_reservation(
@@ -390,12 +373,10 @@ def reserve_controlled_staging_generation_replay(
 def build_controlled_staging_generation_replay_checker(
     *,
     provider: StagingUploadProvider,
-    now_seconds: int,
 ) -> GenerationReplayChecker:
-    """Return the exact C.2-D callback backed by durable staging tombstones."""
+    """Return the durable callback used only after C.2-E authentication succeeds."""
 
     checked_provider = _require_provider(provider)
-    now = _require_now(now_seconds)
 
     def replay_checker(
         binding: EngineAuthBinding,
@@ -409,7 +390,6 @@ def build_controlled_staging_generation_replay_checker(
             generation_id=generation_id,
             nonce=nonce,
             request_timestamp=request_timestamp,
-            now_seconds=now,
         )
         return result.accepted
 
