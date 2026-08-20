@@ -326,8 +326,15 @@ class TrustedReceiverPlanLookupTests(unittest.TestCase):
         self.assertFalse(safe["networkDispatchAllowed"])
         self.assertFalse(safe["jobStateMutationAllowed"])
         self.assertFalse(safe["engineExecutionAllowed"])
-        with self.assertRaises(TrustedReceiverPlanLookupError):
-            replace(resolution, run_id=True)
+        for field, value in (
+            ("run_id", True),
+            ("dispatch_identity_sha256", "0" * 64),
+            ("canonical_plan_sha256", "0" * 64),
+            ("_canonical_plan_json", b"{}"),
+        ):
+            with self.subTest(field=field):
+                with self.assertRaises(TrustedReceiverPlanLookupError):
+                    replace(resolution, **{field: value})
 
     def test_resolved_plan_composes_with_existing_c2e_receiver_verification(self) -> None:
         resolution = resolve_trusted_receiver_plan(
