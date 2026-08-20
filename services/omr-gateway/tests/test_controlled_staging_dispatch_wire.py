@@ -288,7 +288,10 @@ class ControlledStagingDispatchWireTests(unittest.TestCase):
                 now_seconds=self.timestamp,
                 replay_checker=lambda binding, generation_id, nonce, timestamp: True,
             )
-        self.assertEqual(context.exception.category, "signature_invalid")
+        # C.2-D authenticates the complete inner C.2-A envelope, including its
+        # request signature, so the outer generation proof fails before the inner
+        # signature verifier is reached.
+        self.assertEqual(context.exception.category, "generation_request_signature_invalid")
 
     def test_structurally_valid_tampered_generation_signature_is_rejected_by_receiver(self) -> None:
         generation_signature_header = WIRE_HEADER_NAMES[6]
