@@ -82,7 +82,8 @@ def _same_current_parent(
             current_leaf != path.name
             or not stat.S_ISDIR(retained.st_mode)
             or not stat.S_ISDIR(current.st_mode)
-            or (retained.st_dev, retained.st_ino) != (current.st_dev, current.st_ino)
+            or (retained.st_dev, retained.st_ino)
+            != (current.st_dev, current.st_ino)
         ):
             raise ControlledStagingTransitionStateError(
                 "transition_state_path_invalid"
@@ -232,10 +233,12 @@ def any_transition_record_exists(
     job_id: str,
     run_ids: tuple[str, ...],
 ) -> bool:
-    """Return whether any exact revision-1 transition exists for the fixed job.
+    """Return whether any supported transition revision exists for the fixed job.
 
     The whole scan is serialized by the same job lock used by transition writes,
-    giving planned recovery one deterministic linearization point.
+    giving planned recovery one deterministic linearization point. Revision 2 is
+    included so damaged or missing revision-1 evidence can never revive a
+    terminally-cancelled run as planned.
     """
 
     if type(provider) is not StagingUploadProvider:
@@ -266,9 +269,10 @@ def any_transition_record_exists(
                     provider,
                     job_id=job_id,
                     run_id=run_id,
-                    revision=1,
+                    revision=revision,
                 )
                 for run_id in run_ids
+                for revision in _SUPPORTED_REVISIONS
             )
     except ControlledStagingTransitionStateError:
         raise
