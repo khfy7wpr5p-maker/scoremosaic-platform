@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -12,6 +13,8 @@ sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
 import test_safe_upload_finalization as helpers
 from scoremosaic_gateway.controlled_staging_job_lifecycle import (
+    ControlledStagingJobLifecycleError,
+    recover_controlled_staging_job_lifecycle,
     run_controlled_staging_job_lifecycle,
 )
 from scoremosaic_gateway.controlled_staging_queued_transition import (
@@ -66,6 +69,12 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
             engine=engine,
         )
 
+    def recover_job(self, *, provider=None):
+        return recover_controlled_staging_job_lifecycle(
+            minimum_slice=self.minimum_slice,
+            provider=self.provider if provider is None else provider,
+        )
+
     def test_persists_only_planned_to_queued_revision(self) -> None:
         result = self.queue()
 
@@ -90,6 +99,43 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
         self.assertFalse(recovered.retry_allowed)
         self.assertFalse(recovered.network_dispatch_allowed)
         self.assertFalse(recovered.state_mutation_allowed)
+
+    def test_job_level_planned_recovery_rejects_after_queued_revision(self) -> None:
+        self.queue()
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+            self.recover_job()
+        self.assertEqual(
+            raised.exception.category,
+            "staging_job_recovery_superseded",
+        )
+
+    def test_job_level_recovery_fails_closed_on_transition_symlink(self) -> None:
+        lifecycle = run_controlled_staging_job_lifecycle(
+            minimum_slice=self.minimum_slice,
+            provider=self.provider,
+        )
+        run = lifecycle.runs[0]
+        transition_dir = (
+            Path(self.temp_dir.name)
+            / "state"
+            / "job_transitions"
+            / lifecycle.job_id
+        )
+        transition_dir.mkdir(parents=True)
+        outside = Path(self.temp_dir.name) / "outside-transition.json"
+        outside.write_text("{}", encoding="utf-8")
+        os.symlink(
+            outside,
+            transition_dir / f"{run.run_id}-revision-1.json",
+        )
+
+        with self.assertRaises(ControlledStagingJobLifecycleError) as raised:
+            self.recover_job()
+        self.assertEqual(
+            raised.exception.category,
+            "staging_job_lifecycle_state_invalid",
+        )
 
     def test_exact_replay_and_restart_do_not_duplicate_revision(self) -> None:
         first = self.queue()
@@ -201,7 +247,12 @@ class ControlledStagingQueuedTransitionTests(unittest.TestCase):
         stored["transition_integrity_mac"] = "0" * 64
         transition_path.chmod(0o600)
         transition_path.write_text(
-            json.dumps(stored, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
+            json.dumps(
+                stored,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
             encoding="utf-8",
         )
 
