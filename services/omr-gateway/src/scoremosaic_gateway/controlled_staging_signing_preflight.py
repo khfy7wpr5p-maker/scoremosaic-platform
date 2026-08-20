@@ -310,6 +310,8 @@ def _map_intent_error(exc: ControlledStagingDispatchIntentError) -> None:
         category = "staging_signing_preflight_superseded"
     elif exc.category == "staging_dispatch_intent_queued_missing":
         category = "staging_signing_preflight_queued_missing"
+    elif exc.category == "staging_dispatch_intent_missing":
+        category = "staging_signing_preflight_intent_missing"
     elif exc.category == "staging_dispatch_intent_source_invalid":
         category = "staging_signing_preflight_source_invalid"
     else:
