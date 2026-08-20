@@ -14,6 +14,7 @@ and terminal revision-2 evidence supersedes the preflight fail-closed.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 import fcntl
@@ -21,7 +22,6 @@ from hashlib import sha256
 import os
 import re
 import stat
-from collections.abc import Iterator
 
 from .authenticated_request import (
     MAX_FUTURE_SKEW_SECONDS,
@@ -353,7 +353,7 @@ def _existing_job_lock(
     provider: StagingUploadProvider,
     job_id: str,
 ) -> Iterator[None]:
-    """Lock the existing job-lock inode without creating or replacing anything."""
+    """Lock the existing job-lock path without creating or replacing anything."""
 
     try:
         path = provider._job_lock_path(job_id)
@@ -376,31 +376,61 @@ def _existing_job_lock(
                 raise ControlledStagingSigningPreflightError(
                     "staging_signing_preflight_lock_invalid"
                 )
-            payload = os.read(lock_fd, len(_JOB_LOCK_PAYLOAD) + 1)
-            if payload != _JOB_LOCK_PAYLOAD:
+            if os.read(lock_fd, len(_JOB_LOCK_PAYLOAD) + 1) != _JOB_LOCK_PAYLOAD:
                 raise ControlledStagingSigningPreflightError(
                     "staging_signing_preflight_lock_invalid"
                 )
+
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             locked = True
 
-            current_stat = os.stat(
-                leaf,
-                dir_fd=parent_fd,
-                follow_symlinks=False,
-            )
-            retained_stat = os.fstat(lock_fd)
-            if (
-                not stat.S_ISREG(current_stat.st_mode)
-                or (current_stat.st_dev, current_stat.st_ino)
-                != (opened_stat.st_dev, opened_stat.st_ino)
-                or (retained_stat.st_dev, retained_stat.st_ino)
-                != (opened_stat.st_dev, opened_stat.st_ino)
-                or retained_stat.st_size != len(_JOB_LOCK_PAYLOAD)
-            ):
+            os.lseek(lock_fd, 0, os.SEEK_SET)
+            if os.read(lock_fd, len(_JOB_LOCK_PAYLOAD) + 1) != _JOB_LOCK_PAYLOAD:
                 raise ControlledStagingSigningPreflightError(
                     "staging_signing_preflight_lock_invalid"
                 )
+            retained_stat = os.fstat(lock_fd)
+            retained_parent_stat = os.fstat(parent_fd)
+
+            try:
+                current_parent_fd, current_leaf = provider._open_parent_fd(
+                    path,
+                    create=False,
+                )
+            except MinimumStagingVerticalSliceError:
+                raise ControlledStagingSigningPreflightError(
+                    "staging_signing_preflight_lock_invalid"
+                ) from None
+            try:
+                current_parent_stat = os.fstat(current_parent_fd)
+                current_stat = os.stat(
+                    current_leaf,
+                    dir_fd=current_parent_fd,
+                    follow_symlinks=False,
+                )
+                if (
+                    current_leaf != leaf
+                    or not stat.S_ISDIR(retained_parent_stat.st_mode)
+                    or not stat.S_ISDIR(current_parent_stat.st_mode)
+                    or (current_parent_stat.st_dev, current_parent_stat.st_ino)
+                    != (retained_parent_stat.st_dev, retained_parent_stat.st_ino)
+                    or not stat.S_ISREG(current_stat.st_mode)
+                    or (current_stat.st_dev, current_stat.st_ino)
+                    != (opened_stat.st_dev, opened_stat.st_ino)
+                    or (retained_stat.st_dev, retained_stat.st_ino)
+                    != (opened_stat.st_dev, opened_stat.st_ino)
+                    or retained_stat.st_size != len(_JOB_LOCK_PAYLOAD)
+                ):
+                    raise ControlledStagingSigningPreflightError(
+                        "staging_signing_preflight_lock_invalid"
+                    )
+            finally:
+                try:
+                    os.close(current_parent_fd)
+                except OSError:
+                    raise ControlledStagingSigningPreflightError(
+                        "staging_signing_preflight_lock_invalid"
+                    ) from None
         except ControlledStagingSigningPreflightError:
             raise
         except OSError:
