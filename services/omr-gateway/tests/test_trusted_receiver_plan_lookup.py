@@ -327,7 +327,7 @@ class TrustedReceiverPlanLookupTests(unittest.TestCase):
         self.assertFalse(safe["jobStateMutationAllowed"])
         self.assertFalse(safe["engineExecutionAllowed"])
         with self.assertRaises(TrustedReceiverPlanLookupError):
-            replace(resolution, run_id=str(resolution.run_id))
+            replace(resolution, run_id=True)
 
     def test_resolved_plan_composes_with_existing_c2e_receiver_verification(self) -> None:
         resolution = resolve_trusted_receiver_plan(
