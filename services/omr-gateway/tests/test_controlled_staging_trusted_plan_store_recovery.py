@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -16,7 +17,10 @@ from scoremosaic_gateway.controlled_staging_queued_transition import (
     queue_controlled_staging_run,
 )
 from scoremosaic_gateway.controlled_staging_trusted_plan_store import (
+    ControlledStagingTrustedPlanStoreError,
+    _load_verified_record,
     _plan_path,
+    _seal_record,
     persist_controlled_staging_trusted_receiver_plan,
 )
 from scoremosaic_gateway.minimum_staging_vertical_slice import (
@@ -80,6 +84,29 @@ class ControlledStagingTrustedPlanStoreRecoveryTests(unittest.TestCase):
         self.assertEqual(replay.job_id, first.job_id)
         self.assertEqual(replay.canonical_plan_sha256, first.canonical_plan_sha256)
         self.assertEqual(path.read_bytes(), before)
+
+    def test_valid_mac_cannot_hide_source_record_mismatch(self) -> None:
+        persist_controlled_staging_trusted_receiver_plan(
+            minimum_slice=self.minimum_slice,
+            provider=self.provider,
+        )
+        job_id = self.minimum_slice.binding.job_id
+        path = _plan_path(self.provider, job_id=job_id)
+        record = _load_verified_record(self.provider, job_id=job_id)
+        record["source_sha256"] = "0" * 64
+        sealed = _seal_record(self.provider, record)
+        path.chmod(0o600)
+        path.write_text(
+            json.dumps(sealed, ensure_ascii=True, sort_keys=True, separators=(",", ":")),
+            "ascii",
+        )
+
+        with self.assertRaises(ControlledStagingTrustedPlanStoreError) as context:
+            _load_verified_record(self.provider, job_id=job_id)
+        self.assertEqual(
+            context.exception.category,
+            "staging_trusted_plan_state_invalid",
+        )
 
 
 if __name__ == "__main__":
