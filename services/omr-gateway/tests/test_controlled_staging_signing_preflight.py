@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -166,6 +167,9 @@ class ControlledStagingSigningPreflightTests(unittest.TestCase):
             / f"{self.intent.run_id}.json"
         )
 
+    def _lock_path(self) -> Path:
+        return self.provider._job_lock_path(self.intent.job_id)
+
     def test_signs_exact_persisted_intent_without_export_or_state_mutation(self) -> None:
         before = self._snapshot()
         result = self._preflight()
@@ -250,6 +254,55 @@ class ControlledStagingSigningPreflightTests(unittest.TestCase):
         self.assertEqual(
             len(self.resolver_calls),
             self.resolver_calls_after_construction,
+        )
+
+    def test_missing_lock_fails_closed_without_recreation_or_credential_touch(self) -> None:
+        lock_path = self._lock_path()
+        self.assertTrue(lock_path.exists())
+        lock_path.unlink()
+        before = self._snapshot()
+
+        with patch(
+            "scoremosaic_gateway.controlled_staging_signing_preflight.select_signing_credential",
+            side_effect=AssertionError("credential touched"),
+        ):
+            with self.assertRaises(ControlledStagingSigningPreflightError) as raised:
+                self._preflight()
+
+        self.assertEqual(
+            raised.exception.category,
+            "staging_signing_preflight_lock_invalid",
+        )
+        self.assertFalse(lock_path.exists())
+        self.assertEqual(self._snapshot(), before)
+
+    def test_lock_inode_replacement_after_acquire_fails_before_credential_touch(self) -> None:
+        lock_path = self._lock_path()
+        original_payload = lock_path.read_bytes()
+        replaced = False
+
+        def adversarial_flock(fd: int, operation: int) -> None:
+            nonlocal replaced
+            if operation == fcntl.LOCK_EX and not replaced:
+                replaced = True
+                lock_path.unlink()
+                lock_path.write_bytes(original_payload)
+                lock_path.chmod(0o400)
+
+        with patch(
+            "scoremosaic_gateway.controlled_staging_signing_preflight.fcntl.flock",
+            side_effect=adversarial_flock,
+        ), patch(
+            "scoremosaic_gateway.controlled_staging_signing_preflight.select_signing_credential",
+            side_effect=AssertionError("credential touched"),
+        ):
+            with self.assertRaises(ControlledStagingSigningPreflightError) as raised:
+                self._preflight()
+
+        self.assertTrue(replaced)
+        self.assertEqual(
+            raised.exception.category,
+            "staging_signing_preflight_lock_invalid",
         )
 
     def test_terminal_cancellation_blocks_before_credential_selection(self) -> None:
