@@ -4,8 +4,8 @@ The boundary begins only after the minimum staging vertical slice has written an
 reverified one immutable source. It persists the deterministic D.1 planned state,
 D.2 empty idempotency ledger, and D.4 initial provenance record for each planned
 engine run. A restarted provider can restore that exact evidence into read-only
-D.5 decisions. It creates no queue, worker, transition, transport, dispatch, or
-engine authority.
+D.5 decisions only while no later controlled-staging transition exists. It creates
+no queue, worker, transition, transport, dispatch, or engine authority.
 """
 
 from __future__ import annotations
@@ -18,6 +18,10 @@ from .artifact_lifecycle import (
     ArtifactLifecycleError,
     CandidateArtifactLifecycle,
     build_artifact_lifecycle,
+)
+from .controlled_staging_transition_state import (
+    ControlledStagingTransitionStateError,
+    any_transition_record_exists,
 )
 from .dispatch_identity import DispatchIdentityError, build_dispatch_identity
 from .durable_artifact_storage import (
@@ -481,7 +485,7 @@ def recover_controlled_staging_job_lifecycle(
     minimum_slice: MinimumStagingVerticalSliceResult,
     provider: StagingUploadProvider,
 ) -> ControlledStagingJobRecoveryResult:
-    """Restore exact planned evidence and evaluate D.5 without mutating state."""
+    """Restore exact planned evidence only when no later revision exists."""
 
     binding = _validated_binding(minimum_slice, provider)
     derived = _derive_initial_evidence(binding)
@@ -494,6 +498,23 @@ def recover_controlled_staging_job_lifecycle(
     if _canonical_record_bytes(stored) != _canonical_record_bytes(derived.record):
         raise ControlledStagingJobLifecycleError(
             "staging_job_lifecycle_state_invalid"
+        )
+
+    try:
+        superseded = any_transition_record_exists(
+            provider,
+            job_id=binding.job_id,
+            run_ids=tuple(
+                context.snapshot.run_id for context in derived.run_contexts
+            ),
+        )
+    except ControlledStagingTransitionStateError:
+        raise ControlledStagingJobLifecycleError(
+            "staging_job_lifecycle_state_invalid"
+        ) from None
+    if superseded:
+        raise ControlledStagingJobLifecycleError(
+            "staging_job_recovery_superseded"
         )
 
     try:
