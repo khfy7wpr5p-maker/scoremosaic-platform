@@ -93,6 +93,7 @@ class ControlledStagingDispatchPreflightResult:
             or _RUN_ID_RE.fullmatch(self.run_id) is None
             or type(self.dispatch_identity_sha256) is not str
             or _SHA256_RE.fullmatch(self.dispatch_identity_sha256) is None
+            or type(self.state) is not str
             or self.state != "queued"
             or type(self.revision) is not int
             or self.revision != 1
