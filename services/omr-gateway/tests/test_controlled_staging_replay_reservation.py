@@ -12,10 +12,7 @@ import unittest
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SERVICE_ROOT / "src"))
 
-from scoremosaic_gateway.authenticated_request import (
-    MAX_FUTURE_SKEW_SECONDS,
-    MAX_REQUEST_AGE_SECONDS,
-)
+from scoremosaic_gateway.authenticated_request import MAX_REQUEST_AGE_SECONDS
 from scoremosaic_gateway.config import EngineEndpoint
 from scoremosaic_gateway.controlled_staging_replay_reservation import (
     ControlledStagingReplayReservationError,
@@ -61,7 +58,6 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
         self.generation = "gen-2026-08-replay"
         self.nonce = "abcdef0123456789abcdef0123456789"
         self.timestamp = 1_800_200_000
-        self.now_seconds = self.timestamp
 
     def reserve(self, **overrides):
         values = {
@@ -70,7 +66,6 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
             "generation_id": self.generation,
             "nonce": self.nonce,
             "request_timestamp": self.timestamp,
-            "now_seconds": self.now_seconds,
         }
         values.update(overrides)
         return reserve_controlled_staging_generation_replay(**values)
@@ -161,23 +156,14 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
         self.assertNotEqual(first.reservation_key, second.reservation_key)
         self.assertEqual(len(self.replay_files()), 2)
 
-    def test_timestamp_and_environment_fail_before_persistence(self) -> None:
-        cases = (
-            (
-                {"request_timestamp": self.now_seconds + MAX_FUTURE_SKEW_SECONDS + 1},
-                "staging_replay_timestamp_in_future",
-            ),
-            (
-                {"request_timestamp": self.now_seconds - MAX_REQUEST_AGE_SECONDS - 1},
-                "staging_replay_timestamp_expired",
-            ),
+    def test_invalid_timestamp_and_environment_fail_before_persistence(self) -> None:
+        with self.assertRaises(ControlledStagingReplayReservationError) as raised:
+            self.reserve(request_timestamp=-1)
+        self.assertEqual(
+            raised.exception.category,
+            "staging_replay_timestamp_invalid",
         )
-        for overrides, category in cases:
-            with self.subTest(category=category):
-                with self.assertRaises(ControlledStagingReplayReservationError) as raised:
-                    self.reserve(**overrides)
-                self.assertEqual(raised.exception.category, category)
-                self.assertEqual(self.replay_files(), [])
+        self.assertEqual(self.replay_files(), [])
 
         test_binding = build_engine_auth_binding(self.endpoint, "test")
         with self.assertRaises(ControlledStagingReplayReservationError) as raised:
@@ -212,7 +198,7 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
             self.reserve()
         self.assertEqual(raised.exception.category, "staging_replay_state_invalid")
 
-    def test_receiver_accepts_first_signed_request_and_rejects_exact_replay(self) -> None:
+    def _signed_receiver_fixture(self, *, job_id: str, source_sha: str):
         secret = b"V" * MIN_CREDENTIAL_BYTES
         generation_credential = resolve_engine_credential_generation(
             self.binding,
@@ -231,9 +217,9 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
             previous_valid_until=None,
         )
         plan = build_orchestration_plan(
-            "job_c2edurablereplay01",
-            source_artifact_ref="sources/job_c2edurablereplay01/source.pdf",
-            source_sha256="7" * 64,
+            job_id,
+            source_artifact_ref=f"sources/{job_id}/source.pdf",
+            source_sha256=source_sha,
             source_size_bytes=4096,
             source_media_type="application/pdf",
         ).as_dict()
@@ -247,11 +233,19 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
             timestamp=self.timestamp,
             nonce=self.nonce,
             payload=payload,
-            now_seconds=self.now_seconds,
+            now_seconds=self.timestamp,
         )
         checker = build_controlled_staging_generation_replay_checker(
             provider=self.provider,
-            now_seconds=self.now_seconds,
+        )
+        return rotation, plan, target, identity, payload, request, checker
+
+    def test_receiver_accepts_first_signed_request_and_rejects_exact_replay(self) -> None:
+        rotation, plan, target, identity, payload, request, checker = (
+            self._signed_receiver_fixture(
+                job_id="job_c2edurablereplay01",
+                source_sha="7" * 64,
+            )
         )
 
         verified = verify_receiver_dispatch_request(
@@ -262,7 +256,7 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
             observed_method="POST",
             observed_path="/internal/transcribe",
             payload=payload,
-            now_seconds=self.now_seconds,
+            now_seconds=self.timestamp,
             replay_checker=checker,
         )
         self.assertEqual(verified.dispatch_identity, identity)
@@ -277,50 +271,20 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
                 observed_method="POST",
                 observed_path="/internal/transcribe",
                 payload=payload,
-                now_seconds=self.now_seconds,
+                now_seconds=self.timestamp,
                 replay_checker=checker,
             )
         self.assertEqual(raised.exception.category, "replay_detected")
         self.assertEqual(len(self.replay_files()), 1)
 
-    def test_invalid_receiver_proof_never_consumes_durable_reservation(self) -> None:
-        secret = b"W" * MIN_CREDENTIAL_BYTES
-        generation_credential = resolve_engine_credential_generation(
-            self.binding,
-            self.generation,
-            lambda credential_key, generation_id: secret,
-        )
-        rotation = build_rotation_set(
-            current=generation_credential,
-            previous=None,
-            rotation_started_at=self.timestamp,
-            previous_valid_until=None,
-        )
-        plan = build_orchestration_plan(
-            "job_c2edurablereplay02",
-            source_artifact_ref="sources/job_c2edurablereplay02/source.pdf",
-            source_sha256="8" * 64,
-            source_size_bytes=4096,
-            source_media_type="application/pdf",
-        ).as_dict()
-        target = build_engine_dispatch_target(self.binding, self.endpoint)
-        identity = build_dispatch_identity(plan, "homr")
-        payload = dispatch_identity_payload(identity)
-        request = sign_rotation_authenticated_request(
-            rotation,
-            method=target.method,
-            path=target.path,
-            timestamp=self.timestamp,
-            nonce=self.nonce,
-            payload=payload,
-            now_seconds=self.now_seconds,
+    def test_invalid_or_expired_receiver_request_never_consumes_reservation(self) -> None:
+        rotation, plan, target, identity, payload, request, checker = (
+            self._signed_receiver_fixture(
+                job_id="job_c2edurablereplay02",
+                source_sha="8" * 64,
+            )
         )
         tampered = replace(request, generation_signature="0" * 64)
-        checker = build_controlled_staging_generation_replay_checker(
-            provider=self.provider,
-            now_seconds=self.now_seconds,
-        )
-
         with self.assertRaises(ReceiverVerificationError) as raised:
             verify_receiver_dispatch_request(
                 plan,
@@ -330,13 +294,28 @@ class ControlledStagingReplayReservationTests(unittest.TestCase):
                 observed_method="POST",
                 observed_path="/internal/transcribe",
                 payload=payload,
-                now_seconds=self.now_seconds,
+                now_seconds=self.timestamp,
                 replay_checker=checker,
             )
         self.assertEqual(
             raised.exception.category,
             "generation_request_signature_invalid",
         )
+        self.assertEqual(self.replay_files(), [])
+
+        with self.assertRaises(ReceiverVerificationError) as raised:
+            verify_receiver_dispatch_request(
+                plan,
+                target,
+                rotation,
+                request,
+                observed_method="POST",
+                observed_path="/internal/transcribe",
+                payload=payload,
+                now_seconds=self.timestamp + MAX_REQUEST_AGE_SECONDS + 1,
+                replay_checker=checker,
+            )
+        self.assertEqual(raised.exception.category, "timestamp_expired")
         self.assertEqual(self.replay_files(), [])
 
     def test_result_type_subclasses_fail_closed(self) -> None:
