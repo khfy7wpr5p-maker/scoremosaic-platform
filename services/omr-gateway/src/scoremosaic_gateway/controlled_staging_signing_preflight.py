@@ -25,6 +25,7 @@ from .authenticated_request import (
 from .config import EngineEndpoint
 from .controlled_staging_dispatch_intent import (
     ControlledStagingDispatchIntentError,
+    _canonical_json_bytes as _intent_canonical_json_bytes,
     _derive_intent,
     _load_and_verify_intent_under_lock,
     _verify_queued_and_not_terminal_under_lock,
@@ -386,15 +387,7 @@ def build_controlled_staging_signing_preflight(
         ) from None
 
     payload_sha256 = sha256(payload).hexdigest()
-    intent_sha256 = sha256(
-        __import__("json").dumps(
-            intent.record,
-            ensure_ascii=True,
-            allow_nan=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    ).hexdigest()
+    intent_sha256 = sha256(_intent_canonical_json_bytes(intent.record)).hexdigest()
 
     if (
         identity.job_id != binding.job_id
@@ -413,17 +406,6 @@ def build_controlled_staging_signing_preflight(
         raise ControlledStagingSigningPreflightError(
             "staging_signing_preflight_contract_invalid"
         )
-
-    try:
-        selected = select_signing_credential(
-            checked_rotation,
-            now_seconds=checked_now,
-        )
-    except CredentialRotationError:
-        raise ControlledStagingSigningPreflightError(
-            "staging_signing_preflight_credential_invalid"
-        ) from None
-    _require_rotation_binding(selected, target)
 
     try:
         with checked_provider._job_lock(binding.job_id):
@@ -446,6 +428,17 @@ def build_controlled_staging_signing_preflight(
                     _map_intent_error(exc)
 
                 assert_source_stable()
+                try:
+                    selected = select_signing_credential(
+                        checked_rotation,
+                        now_seconds=checked_now,
+                    )
+                except CredentialRotationError:
+                    raise ControlledStagingSigningPreflightError(
+                        "staging_signing_preflight_credential_invalid"
+                    ) from None
+                _require_rotation_binding(selected, target)
+
                 try:
                     request = sign_rotation_authenticated_request(
                         checked_rotation,
