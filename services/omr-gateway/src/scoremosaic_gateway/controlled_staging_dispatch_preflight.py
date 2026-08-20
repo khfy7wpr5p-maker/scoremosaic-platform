@@ -21,6 +21,7 @@ from .controlled_staging_queued_transition import (
     recover_controlled_staging_queued_run,
 )
 from .dispatch_identity import (
+    MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES,
     DispatchIdentityError,
     build_dispatch_identity,
     dispatch_identity_payload,
@@ -38,16 +39,15 @@ from .minimum_staging_vertical_slice import (
 )
 from .orchestration import (
     ENGINE_NAMES,
-    MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES if False else ENGINE_NAMES,
+    OrchestrationContractError,
+    build_orchestration_plan,
 )
-from .orchestration import OrchestrationContractError, build_orchestration_plan
 from .service_auth import ServiceAuthError, build_engine_auth_binding
 
 
 CONTROLLED_STAGING_DISPATCH_PREFLIGHT_VERSION = (
     "scoremosaic-controlled-staging-dispatch-preflight-v1"
 )
-_MAX_IDENTITY_PAYLOAD_BYTES = 4096
 _JOB_ID_RE = re.compile(r"job_[0-9a-f]{32}\Z")
 _ARTIFACT_ID_RE = re.compile(r"artifact_[0-9a-f]{24}\Z")
 _RUN_ID_RE = re.compile(r"run_[0-9a-f]{24}\Z")
@@ -103,7 +103,9 @@ class ControlledStagingDispatchPreflightResult:
             or type(self.target_path) is not str
             or self.target_path != DISPATCH_PATH
             or type(self.identity_payload_bytes) is not int
-            or not 1 <= self.identity_payload_bytes <= _MAX_IDENTITY_PAYLOAD_BYTES
+            or not 1
+            <= self.identity_payload_bytes
+            <= MAX_DISPATCH_IDENTITY_PAYLOAD_BYTES
         ):
             raise ControlledStagingDispatchPreflightError(
                 "staging_dispatch_preflight_result_invalid"
