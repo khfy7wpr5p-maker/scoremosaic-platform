@@ -40,13 +40,21 @@ def transition_record_path(
     """Derive the exact private staging path for the bounded revision-1 record."""
 
     if type(provider) is not StagingUploadProvider:
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
     if type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None:
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
     if type(run_id) is not str or _RUN_ID_RE.fullmatch(run_id) is None:
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
     if type(revision) is not int or revision != 1:
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
     return (
         provider._root
         / "state"
@@ -115,7 +123,6 @@ def _optional_regular_file_exists(
 
     try:
         for part in relative.parent.parts:
-            next_fd: int | None = None
             try:
                 next_fd = os.open(
                     part,
@@ -128,29 +135,34 @@ def _optional_regular_file_exists(
                 raise ControlledStagingTransitionStateError(
                     "transition_state_path_invalid"
                 ) from None
+
             try:
                 if not stat.S_ISDIR(os.fstat(next_fd).st_mode):
                     raise ControlledStagingTransitionStateError(
                         "transition_state_path_invalid"
                     )
             except ControlledStagingTransitionStateError:
+                try:
+                    os.close(next_fd)
+                except OSError:
+                    pass
                 raise
             except OSError:
+                try:
+                    os.close(next_fd)
+                except OSError:
+                    pass
                 raise ControlledStagingTransitionStateError(
                     "transition_state_path_invalid"
                 ) from None
-            finally:
-                if next_fd is not None and next_fd != current_fd:
-                    # Ownership transfers below only on the success path.
-                    pass
+
             try:
                 os.close(current_fd)
             except OSError:
-                if next_fd is not None:
-                    try:
-                        os.close(next_fd)
-                    except OSError:
-                        pass
+                try:
+                    os.close(next_fd)
+                except OSError:
+                    pass
                 raise ControlledStagingTransitionStateError(
                     "transition_state_path_invalid"
                 ) from None
@@ -206,16 +218,25 @@ def any_transition_record_exists(
     """
 
     if type(provider) is not StagingUploadProvider:
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
     if type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None:
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
     if (
         type(run_ids) is not tuple
         or not run_ids
-        or any(type(run_id) is not str or _RUN_ID_RE.fullmatch(run_id) is None for run_id in run_ids)
+        or any(
+            type(run_id) is not str or _RUN_ID_RE.fullmatch(run_id) is None
+            for run_id in run_ids
+        )
         or len(set(run_ids)) != len(run_ids)
     ):
-        raise ControlledStagingTransitionStateError("transition_state_input_invalid")
+        raise ControlledStagingTransitionStateError(
+            "transition_state_input_invalid"
+        )
 
     try:
         with provider._job_lock(job_id):
