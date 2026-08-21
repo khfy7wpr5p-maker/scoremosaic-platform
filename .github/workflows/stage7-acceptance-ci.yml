@@ -1,0 +1,58 @@
+name: Stage 7 Acceptance and UI Readiness CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage7-acceptance-ui-readiness-v1"
+    paths:
+      - ".github/workflows/stage7-acceptance-ci.yml"
+      - "contracts/stage7-ui-readiness.json"
+      - "docs/architecture-stage5-7-current.md"
+      - "services/omr-gateway/tests/test_stage7_acceptance_contract.py"
+      - "services/*-service/src/scoremosaic_*/candidate_safety.py"
+      - "services/ensemble-service/pyproject.toml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage7-acceptance-ci.yml"
+      - "contracts/stage7-ui-readiness.json"
+      - "docs/architecture-stage5-7-current.md"
+      - "services/omr-gateway/tests/test_stage7_acceptance_contract.py"
+      - "services/*-service/src/scoremosaic_*/candidate_safety.py"
+      - "services/ensemble-service/pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage7-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage7-acceptance:
+    name: Verify Stage 7 acceptance contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Stage 7 acceptance drift guards
+        run: python -m unittest discover -s services/omr-gateway/tests -p 'test_stage7_acceptance_contract.py' -v
+
+      - name: Validate readiness JSON
+        run: python -m json.tool contracts/stage7-ui-readiness.json > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check
