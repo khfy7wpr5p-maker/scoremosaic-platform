@@ -129,4 +129,4 @@ __all__ = [
     "validate_fixed_dataset",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.3.0"
