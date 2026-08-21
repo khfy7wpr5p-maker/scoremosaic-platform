@@ -1,0 +1,66 @@
+name: Stage 8 Teacher Review Contract CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage8-teacher-review-contract-foundation-v1"
+    paths:
+      - ".github/workflows/stage8-teacher-review-contract-ci.yml"
+      - "contracts/teacher-review-authorization-v1.schema.json"
+      - "contracts/score-edit-command-v1.schema.json"
+      - "contracts/teacher-score-revision-v1.schema.json"
+      - "docs/stage8-teacher-review-contract-foundation.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage8-teacher-review-contract-ci.yml"
+      - "contracts/teacher-review-authorization-v1.schema.json"
+      - "contracts/score-edit-command-v1.schema.json"
+      - "contracts/teacher-score-revision-v1.schema.json"
+      - "docs/stage8-teacher-review-contract-foundation.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage8-teacher-review-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage8-contract:
+    name: Verify Stage 8 Teacher Review contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Teacher Review contract library
+        run: python -m compileall -q services/teacher-review-service/src
+
+      - name: Run Stage 8 security and determinism tests
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_contract_foundation.py' -v
+
+      - name: Validate Stage 8 JSON contracts
+        run: |
+          python -m json.tool contracts/teacher-review-authorization-v1.schema.json > /dev/null
+          python -m json.tool contracts/score-edit-command-v1.schema.json > /dev/null
+          python -m json.tool contracts/teacher-score-revision-v1.schema.json > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check

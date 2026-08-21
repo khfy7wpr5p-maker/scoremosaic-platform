@@ -1,0 +1,17 @@
+[project]
+name = "scoremosaic-teacher-review-service"
+version = "0.1.0"
+description = "Contract-only Stage 8 Teacher Review authorization and immutable revision foundation"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.scoremosaic]
+teacher-review-contract-version = "0.1"
+authorization-foundation-enabled = true
+revision-contract-enabled = true
+write-api-enabled = false
+public-api-enabled = false
+approval-enabled = false
+publication-enabled = false
+corrected-musicxml-materialization-enabled = false
+production-durable-store-enabled = false

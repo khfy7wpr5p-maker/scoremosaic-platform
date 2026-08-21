@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-score-revision-v1.schema.json",
+  "title": "ScoreMosaic Immutable TeacherScoreRevision v1",
+  "description": "Immutable draft revision identity/provenance record. Approval, publication, corrected MusicXML generation, and public mutation APIs remain disabled.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "revisionId", "revisionSha256", "jobId", "reviewerId", "tenantId", "authorizationDecisionId", "authorizationGrantSha256", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256", "parentRevisionId", "parentRevisionSha256", "commandId", "commandSha256", "resultingMusicalStateSha256", "validationReportSha256", "blockingIssueCount", "unresolvedIssueCount", "createdAt", "previousAuditEventSha256", "auditEventSha256", "status", "immutable", "approvalEligible", "publicationEligible"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-teacher-score-revision-v1"},
+    "revisionId": {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+    "revisionSha256": {"$ref": "#/$defs/sha256"},
+    "jobId": {"type": "string", "pattern": "^job_[A-Za-z0-9_-]{8,80}$"},
+    "reviewerId": {"$ref": "#/$defs/id"},
+    "tenantId": {"$ref": "#/$defs/id"},
+    "authorizationDecisionId": {"$ref": "#/$defs/id"},
+    "authorizationGrantSha256": {"$ref": "#/$defs/sha256"},
+    "reviewReportId": {"$ref": "#/$defs/id"},
+    "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+    "baseCanonicalSha256": {"$ref": "#/$defs/sha256"},
+    "parentRevisionId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "parentRevisionSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "commandId": {"$ref": "#/$defs/id"},
+    "commandSha256": {"$ref": "#/$defs/sha256"},
+    "resultingMusicalStateSha256": {"$ref": "#/$defs/sha256"},
+    "validationReportSha256": {"$ref": "#/$defs/sha256"},
+    "blockingIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "unresolvedIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "createdAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "previousAuditEventSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "auditEventSha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "draft"},
+    "immutable": {"const": true},
+    "approvalEligible": {"const": false},
+    "publicationEligible": {"const": false}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

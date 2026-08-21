@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/score-edit-command-v1.schema.json",
+  "title": "ScoreMosaic ScoreEditCommand v1",
+  "description": "Closed allowlisted musical edit request bound to exact review/canonical/parent identities. Arbitrary XML, paths, patches, and renderer-native mutation objects are prohibited.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "commandId", "jobId", "reviewerId", "authorizationDecisionId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256", "baseRevisionId", "baseRevisionSha256", "issueId", "location", "operation", "oldValueSha256", "reason", "commandSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-score-edit-command-v1"},
+    "commandId": {"$ref": "#/$defs/id"},
+    "jobId": {"type": "string", "pattern": "^job_[A-Za-z0-9_-]{8,80}$"},
+    "reviewerId": {"$ref": "#/$defs/id"},
+    "authorizationDecisionId": {"$ref": "#/$defs/id"},
+    "reviewReportId": {"$ref": "#/$defs/id"},
+    "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+    "baseCanonicalSha256": {"$ref": "#/$defs/sha256"},
+    "baseRevisionId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "baseRevisionSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "issueId": {"oneOf": [{"type": "string", "pattern": "^issue_[A-Za-z0-9_-]{6,80}$"}, {"type": "null"}]},
+    "location": {"$ref": "#/$defs/location"},
+    "operation": {"$ref": "#/$defs/operation"},
+    "oldValueSha256": {"$ref": "#/$defs/sha256"},
+    "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 2000},
+    "commandSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {"numerator": {"type": "integer"}, "denominator": {"type": "integer", "minimum": 1, "maximum": 1000000}}
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "measureId", "eventId", "staff", "voice", "onset"],
+      "properties": {
+        "partId": {"$ref": "#/$defs/id"},
+        "measureId": {"$ref": "#/$defs/id"},
+        "eventId": {"$ref": "#/$defs/id"},
+        "staff": {"type": "integer", "minimum": 1, "maximum": 128},
+        "voice": {"type": "string", "minLength": 1, "maxLength": 40},
+        "onset": {"$ref": "#/$defs/rational"}
+      }
+    },
+    "operation": {"oneOf": [{"$ref": "#/$defs/setPitch"}, {"$ref": "#/$defs/setEffectiveDuration"}, {"$ref": "#/$defs/setWrittenType"}, {"$ref": "#/$defs/setDots"}, {"$ref": "#/$defs/setStaffVoice"}, {"$ref": "#/$defs/setTimeSignature"}, {"$ref": "#/$defs/setTab"}, {"$ref": "#/$defs/removeEvent"}]},
+    "setPitch": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_pitch"}, "value": {"type": "object", "additionalProperties": false, "required": ["step", "alter", "octave"], "properties": {"step": {"enum": ["A", "B", "C", "D", "E", "F", "G"]}, "alter": {"$ref": "#/$defs/rational"}, "octave": {"type": "integer", "minimum": -2, "maximum": 12}}}}},
+    "setEffectiveDuration": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_effective_duration"}, "value": {"allOf": [{"$ref": "#/$defs/rational"}, {"properties": {"numerator": {"minimum": 0}}}]}}},
+    "setWrittenType": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_written_type"}, "value": {"type": "string", "minLength": 1, "maxLength": 40}}},
+    "setDots": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_dots"}, "value": {"type": "integer", "minimum": 0, "maximum": 8}}},
+    "setStaffVoice": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_staff_voice"}, "value": {"type": "object", "additionalProperties": false, "required": ["staff", "voice"], "properties": {"staff": {"type": "integer", "minimum": 1, "maximum": 128}, "voice": {"type": "string", "minLength": 1, "maxLength": 40}}}}},
+    "setTimeSignature": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_time_signature"}, "value": {"type": "object", "additionalProperties": false, "required": ["beats", "beatType"], "properties": {"beats": {"type": "string", "pattern": "^[1-9][0-9]*(\\+[1-9][0-9]*)*$", "maxLength": 40}, "beatType": {"type": "integer", "minimum": 1, "maximum": 1024}}}}},
+    "setTab": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "set_tab"}, "value": {"type": "object", "additionalProperties": false, "required": ["string", "fret"], "properties": {"string": {"type": "integer", "minimum": 1, "maximum": 24}, "fret": {"type": "integer", "minimum": 0, "maximum": 96}}}}},
+    "removeEvent": {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"const": "remove_event"}, "value": {"type": "null"}}}
+  }
+}
