@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
 import json
 from pathlib import Path
 import secrets
@@ -96,12 +95,23 @@ class EngineResultIngestionTests(unittest.TestCase):
             separators=(",", ":"),
         ).encode("ascii")
 
-    def _signed(self, engine: str, *, xml: bytes = MUSICXML, diagnostic: bytes | None = None, raw: bytes | None = None):
+    def _signed(
+        self,
+        engine: str,
+        *,
+        xml: bytes = MUSICXML,
+        diagnostic: bytes | None = None,
+        raw: bytes | None = None,
+    ):
         identity = build_dispatch_identity(self.plan, engine)
         frame = build_engine_result_frame(
-            raw_engine_result=raw if raw is not None else f"raw-{engine}".encode("ascii"),
+            raw_engine_result=(
+                raw if raw is not None else f"raw-{engine}".encode("ascii")
+            ),
             musicxml=xml,
-            diagnostic=diagnostic if diagnostic is not None else self._diagnostic(engine),
+            diagnostic=(
+                diagnostic if diagnostic is not None else self._diagnostic(engine)
+            ),
         )
         credential = self._credential(engine)
         result_identity = build_dispatch_result_identity(credential, identity, frame)
@@ -149,8 +159,7 @@ class EngineResultIngestionTests(unittest.TestCase):
 
     def test_cross_engine_result_is_rejected_before_parse(self) -> None:
         credential, homr_identity, _, _ = self._signed("homr")
-        clarity_credential, clarity_identity, clarity_result, clarity_frame = self._signed("clarity")
-        del clarity_credential, clarity_identity
+        _, _, clarity_result, clarity_frame = self._signed("clarity")
         with self.assertRaises(EngineResultIngestionError) as ctx:
             ingest_authenticated_engine_result(
                 credential=credential,
@@ -192,8 +201,13 @@ class EngineResultIngestionTests(unittest.TestCase):
         self.assertEqual(ctx.exception.category, "engine_result_raw_oversized")
 
     def test_unsafe_xml_and_pathological_depth_fail_closed(self) -> None:
-        unsafe = b'<!DOCTYPE score-partwise [<!ENTITY x "x">]><score-partwise>&x;</score-partwise>'
-        credential, identity, result_identity, frame = self._signed("clarity", xml=unsafe)
+        unsafe = (
+            b'<!DOCTYPE score-partwise [<!ENTITY x "x">]>'
+            b'<score-partwise>&x;</score-partwise>'
+        )
+        credential, identity, result_identity, frame = self._signed(
+            "clarity", xml=unsafe
+        )
         with self.assertRaises(EngineResultIngestionError) as ctx:
             ingest_authenticated_engine_result(
                 credential=credential,
@@ -203,8 +217,15 @@ class EngineResultIngestionTests(unittest.TestCase):
             )
         self.assertEqual(ctx.exception.category, "engine_result_musicxml_unsafe_xml")
 
-        deep = b"<score-partwise>" + b"<x>" * 260 + b"</x>" * 260 + b"</score-partwise>"
-        credential, identity, result_identity, frame = self._signed("clarity", xml=deep)
+        deep = (
+            b"<score-partwise>"
+            + b"<x>" * 260
+            + b"</x>" * 260
+            + b"</score-partwise>"
+        )
+        credential, identity, result_identity, frame = self._signed(
+            "clarity", xml=deep
+        )
         with self.assertRaises(EngineResultIngestionError) as ctx:
             ingest_authenticated_engine_result(
                 credential=credential,
@@ -280,8 +301,12 @@ class EngineResultIngestionTests(unittest.TestCase):
 
         with ThreadPoolExecutor(max_workers=8) as executor:
             results = list(executor.map(lambda _: persist(), range(8)))
-        self.assertEqual(sum(item.persistence_state == "written" for item in results), 1)
-        self.assertEqual(sum(item.persistence_state == "replay" for item in results), 7)
+        self.assertEqual(
+            sum(item.persistence_state == "written" for item in results), 1
+        )
+        self.assertEqual(
+            sum(item.persistence_state == "replay" for item in results), 7
+        )
         self.assertEqual(len({item.record_sha256 for item in results}), 1)
 
     def test_partial_success_contract_is_deterministic_for_3_to_0_successes(self) -> None:
@@ -295,7 +320,9 @@ class EngineResultIngestionTests(unittest.TestCase):
                     outcomes.append(
                         failure_outcome(
                             engine=engine,
-                            candidate_id=build_dispatch_identity(self.plan, engine).candidate_id,
+                            candidate_id=build_dispatch_identity(
+                                self.plan, engine
+                            ).candidate_id,
                             reason_code="engine_timeout",
                         )
                     )
@@ -304,7 +331,9 @@ class EngineResultIngestionTests(unittest.TestCase):
             self.assertEqual(first.comparison_eligible, success_count >= 2)
             for _ in range(10):
                 self.assertEqual(
-                    summarize_partial_success(self.plan, tuple(reversed(outcomes))).as_safe_dict(),
+                    summarize_partial_success(
+                        self.plan, tuple(reversed(outcomes))
+                    ).as_safe_dict(),
                     first.as_safe_dict(),
                 )
 
@@ -328,7 +357,9 @@ class EngineResultIngestionTests(unittest.TestCase):
         outcomes.append(
             failure_outcome(
                 engine=failed_engine,
-                candidate_id=build_dispatch_identity(self.plan, failed_engine).candidate_id,
+                candidate_id=build_dispatch_identity(
+                    self.plan, failed_engine
+                ).candidate_id,
                 reason_code="engine_crash",
             )
         )
@@ -343,7 +374,9 @@ class EngineResultIngestionTests(unittest.TestCase):
         self.assertEqual(state_by_engine[ENGINE_NAMES[1]], "sealed")
         self.assertEqual(state_by_engine[failed_engine], "failed")
         self.assertTrue(summary.comparison_eligible)
-        self.assertEqual(len(lifecycle.events), 17)
+        # Two successful candidates: 2 * (candidate collect + 3*(write+seal) + seal)
+        # One failed candidate: 3 artifact abandon events + candidate failed.
+        self.assertEqual(len(lifecycle.events), 20)
 
 
 if __name__ == "__main__":
