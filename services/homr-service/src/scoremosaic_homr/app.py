@@ -1,4 +1,4 @@
-"""Private HTTP health and readiness adapter for the HOMR runtime."""
+"""Private HTTP health, readiness, and authenticated receiver adapter for HOMR."""
 
 from __future__ import annotations
 
@@ -11,6 +11,11 @@ from urllib.parse import urlsplit
 
 from . import __version__
 from .config import ConfigError, ServiceConfig, load_config
+from .receiver_http import (
+    ReceiverHttpContext,
+    is_receiver_target,
+    read_and_handle_receiver_http,
+)
 from .runtime import MODEL_SPECS, RuntimeProbe, probe_runtime
 
 
@@ -62,7 +67,7 @@ def route_request(
     *,
     runtime_probe: RuntimeProbeCallable = probe_runtime,
 ) -> RouteResponse:
-    """Return deterministic private status responses without accepting OMR input."""
+    """Return deterministic status responses without accepting public OMR input."""
 
     path = urlsplit(target).path
     if method == "GET" and path == "/health":
@@ -120,30 +125,42 @@ def route_request(
     return RouteResponse(status=404, payload={"error": "not_found"})
 
 
-def make_handler(config: ServiceConfig) -> type[BaseHTTPRequestHandler]:
-    """Create a request handler bound to validated immutable configuration."""
+def make_handler(
+    config: ServiceConfig,
+    *,
+    receiver_context: ReceiverHttpContext | None = None,
+) -> type[BaseHTTPRequestHandler]:
+    """Create a handler with fail-closed authenticated internal receiver routes."""
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "ScoreMosaicHOMR"
         sys_version = ""
 
-        def do_GET(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_GET(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_POST(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_POST(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_PUT(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_PUT(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_PATCH(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_PATCH(self) -> None:  # noqa: N802
             self._respond()
 
-        def do_DELETE(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        def do_DELETE(self) -> None:  # noqa: N802
             self._respond()
 
         def _respond(self) -> None:
-            response = route_request(self.command, self.path, config)
+            if is_receiver_target(self.path):
+                response = read_and_handle_receiver_http(
+                    self,
+                    context=receiver_context,
+                )
+                self.close_connection = True
+            else:
+                response = route_request(self.command, self.path, config)
+
             body = json.dumps(
                 response.payload,
                 ensure_ascii=True,
@@ -182,11 +199,15 @@ def make_handler(config: ServiceConfig) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def run(config: ServiceConfig | None = None) -> None:
+def run(
+    config: ServiceConfig | None = None,
+    *,
+    receiver_context: ReceiverHttpContext | None = None,
+) -> None:
     service_config = load_config() if config is None else config
     server = ThreadingHTTPServer(
         (service_config.host, service_config.port),
-        make_handler(service_config),
+        make_handler(service_config, receiver_context=receiver_context),
     )
     print(
         json.dumps(
