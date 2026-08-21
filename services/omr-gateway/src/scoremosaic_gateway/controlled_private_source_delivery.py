@@ -114,9 +114,10 @@ def _reserve_claim(provider:StagingUploadProvider,capsule:DispatchInputCapsule,e
     try:
         created=provider._atomic_create(path,payload)
         if created: return key
-        stored=_decode_record(provider._read_file_no_follow(path,max_bytes=_MAX_STATE_RECORD_BYTES,overflow_category="staging_state_corrupt"))
+        raw=provider._read_file_no_follow(path,max_bytes=_MAX_STATE_RECORD_BYTES,overflow_category="staging_state_corrupt")
+        stored=_decode_record(raw)
     except MinimumStagingVerticalSliceError: raise ControlledPrivateSourceDeliveryError("staging_source_state_invalid") from None
-    if type(stored) is not dict or _CLAIM_MAC_FIELD not in stored: raise ControlledPrivateSourceDeliveryError("staging_source_state_invalid")
+    if type(stored) is not dict or _CLAIM_MAC_FIELD not in stored or _canonical_json(stored)!=raw: raise ControlledPrivateSourceDeliveryError("staging_source_state_invalid")
     observed=stored.get(_CLAIM_MAC_FIELD); raw_record=dict(stored); raw_record.pop(_CLAIM_MAC_FIELD,None)
     if type(observed) is not str or not compare_digest(observed,_claim_mac(provider,raw_record)) or raw_record!=record: raise ControlledPrivateSourceDeliveryError("staging_source_state_invalid")
     raise ControlledPrivateSourceDeliveryError("staging_source_reconciliation_required")
