@@ -91,8 +91,6 @@ class ReceiverHttpResponse:
 
 
 def is_receiver_target(target: str) -> bool:
-    """Return whether a target belongs to one reserved receiver path."""
-
     if type(target) is not str:
         return False
     try:
@@ -122,9 +120,7 @@ def _safe_header_pair(name: object, value: object) -> tuple[str, str]:
     return name.lower(), value
 
 
-def _normalized_headers(
-    headers: Sequence[tuple[str, str]],
-) -> dict[str, list[str]]:
+def _normalized_headers(headers: Sequence[tuple[str, str]]) -> dict[str, list[str]]:
     if type(headers) not in {tuple, list}:
         raise ReceiverHttpError("receiver_headers_invalid", 400)
     normalized: dict[str, list[str]] = {}
@@ -188,17 +184,14 @@ def receiver_body_length(
 
     path = _exact_target(method, target)
     normalized = _normalized_headers(headers)
-
     if "transfer-encoding" in normalized:
         raise ReceiverHttpError("receiver_transfer_encoding_forbidden", 400)
-
     content_length = _canonical_positive_decimal(
         _single_header(normalized, "content-length", missing_status=411)
     )
     content_type = _single_header(normalized, "content-type", missing_status=415)
     if content_type != "application/json":
         raise ReceiverHttpError("receiver_content_type_invalid", 415)
-
     expected_x_headers = (
         {PROVISIONING_SIGNATURE_HEADER}
         if path == TRUSTED_PLAN_PROVISIONING_PATH
@@ -211,7 +204,6 @@ def receiver_body_length(
         raise ReceiverHttpError("receiver_security_headers_invalid", 400)
     for name in expected_x_headers:
         _single_header(normalized, name)
-
     maximum = (
         MAX_PROVISIONING_REQUEST_BYTES
         if path == TRUSTED_PLAN_PROVISIONING_PATH
@@ -237,28 +229,16 @@ def _business_error(exc: Exception) -> ReceiverHttpResponse:
     if type(category) is not str:
         category = ""
     if "replay" in category:
-        return ReceiverHttpResponse(
-            status=409,
-            payload={"error": "receiver_replay_detected"},
-        )
+        return ReceiverHttpResponse(status=409, payload={"error": "receiver_replay_detected"})
     if "conflict" in category:
-        return ReceiverHttpResponse(
-            status=409,
-            payload={"error": "receiver_conflict"},
-        )
+        return ReceiverHttpResponse(status=409, payload={"error": "receiver_conflict"})
     if (
         "state_invalid" in category
         or "authority_invalid" in category
         or "credential_unavailable" in category
     ):
-        return ReceiverHttpResponse(
-            status=503,
-            payload={"error": "receiver_state_unavailable"},
-        )
-    return ReceiverHttpResponse(
-        status=403,
-        payload={"error": "receiver_rejected"},
-    )
+        return ReceiverHttpResponse(status=503, payload={"error": "receiver_state_unavailable"})
+    return ReceiverHttpResponse(status=403, payload={"error": "receiver_rejected"})
 
 
 def handle_receiver_http_request(
@@ -272,37 +252,24 @@ def handle_receiver_http_request(
     """Handle one already-bounded internal receiver request."""
 
     try:
-        expected_length = receiver_body_length(
-            method=method,
-            target=target,
-            headers=headers,
-        )
+        expected_length = receiver_body_length(method=method, target=target, headers=headers)
     except ReceiverHttpError as exc:
         return ReceiverHttpResponse(
             status=exc.status,
             payload={"error": exc.category},
             allow=exc.allow,
         )
-
     if type(body) is not bytes or len(body) != expected_length:
-        return ReceiverHttpResponse(
-            status=400,
-            payload={"error": "receiver_body_length_mismatch"},
-        )
-    if context is None:
-        return ReceiverHttpResponse(
-            status=503,
-            payload={"error": "receiver_context_unavailable"},
-        )
-    if type(context) is not ReceiverHttpContext:
-        return ReceiverHttpResponse(
-            status=503,
-            payload={"error": "receiver_context_unavailable"},
-        )
+        return ReceiverHttpResponse(status=400, payload={"error": "receiver_body_length_mismatch"})
+    if context is None or type(context) is not ReceiverHttpContext:
+        return ReceiverHttpResponse(status=503, payload={"error": "receiver_context_unavailable"})
 
     normalized = _normalized_headers(headers)
     path = urlsplit(target).path
-    now = _now(context)
+    try:
+        now = _now(context)
+    except ReceiverHttpError:
+        return ReceiverHttpResponse(status=503, payload={"error": "receiver_state_unavailable"})
 
     if path == TRUSTED_PLAN_PROVISIONING_PATH:
         signature = _single_header(normalized, PROVISIONING_SIGNATURE_HEADER)
@@ -327,8 +294,7 @@ def handle_receiver_http_request(
         )
 
     dispatch_headers = tuple(
-        (name, _single_header(normalized, name))
-        for name in WIRE_HEADER_NAMES
+        (name, _single_header(normalized, name)) for name in WIRE_HEADER_NAMES
     )
     try:
         accepted_dispatch = accept_authenticated_dispatch(
@@ -373,11 +339,7 @@ def read_and_handle_receiver_http(
         or not hasattr(header_object, "raw_items")
         or not hasattr(stream, "read")
     ):
-        return ReceiverHttpResponse(
-            status=400,
-            payload={"error": "receiver_http_request_invalid"},
-        )
-
+        return ReceiverHttpResponse(status=400, payload={"error": "receiver_http_request_invalid"})
     try:
         header_pairs = tuple(header_object.raw_items())
         expected_length = receiver_body_length(
@@ -392,27 +354,20 @@ def read_and_handle_receiver_http(
             allow=exc.allow,
         )
     except Exception:
-        return ReceiverHttpResponse(
-            status=400,
-            payload={"error": "receiver_headers_invalid"},
-        )
-
+        return ReceiverHttpResponse(status=400, payload={"error": "receiver_headers_invalid"})
     try:
         body = stream.read(expected_length)
     except Exception:
-        return ReceiverHttpResponse(
-            status=400,
-            payload={"error": "receiver_body_read_failed"},
-        )
+        return ReceiverHttpResponse(status=400, payload={"error": "receiver_body_read_failed"})
     if type(body) is not bytes or len(body) != expected_length:
-        return ReceiverHttpResponse(
-            status=400,
-            payload={"error": "receiver_body_length_mismatch"},
+        return ReceiverHttpResponse(status=400, payload={"error": "receiver_body_length_mismatch"})
+    try:
+        return handle_receiver_http_request(
+            method=method,
+            target=target,
+            headers=header_pairs,
+            body=body,
+            context=context,
         )
-    return handle_receiver_http_request(
-        method=method,
-        target=target,
-        headers=header_pairs,
-        body=body,
-        context=context,
-    )
+    except Exception:
+        return ReceiverHttpResponse(status=503, payload={"error": "receiver_state_unavailable"})
