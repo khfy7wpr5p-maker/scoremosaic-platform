@@ -219,12 +219,32 @@ class EngineSourceDeliveryTests(unittest.TestCase):
             previous_generation_id=self.generation,
             previous_valid_until=self.now + 10,
         )
+        endpoint = EngineEndpoint(
+            ENGINE,
+            APPROVED_ENGINE_ORIGINS["staging"][ENGINE],
+        )
+        binding = build_source_delivery_binding(endpoint)
+        previous_credential = resolve_source_delivery_credential(
+            binding,
+            generation_id=self.generation,
+            resolver=lambda key, generation: (
+                self.secret
+                if key == binding.credential_key and generation == self.generation
+                else None
+            ),
+        )
+        previous_request = build_source_delivery_request(
+            capsule=self.capsule,
+            credential=previous_credential,
+            timestamp=self.now - 11,
+            nonce="66" * 16,
+        )
         accepted = accept_source_delivery(
             authority=self.authority,
             store=self.store,
             rotation=rotation,
-            headers=self.request.headers,
-            body=self.request.body,
+            headers=previous_request.headers,
+            body=previous_request.body,
             now_seconds=self.now,
             credential_resolver=self.resolver,
         )
@@ -237,8 +257,8 @@ class EngineSourceDeliveryTests(unittest.TestCase):
                     integrity_key=secrets.token_bytes(32),
                 ),
                 rotation=rotation,
-                headers=self.request.headers,
-                body=self.request.body,
+                headers=previous_request.headers,
+                body=previous_request.body,
                 now_seconds=self.now + 11,
                 credential_resolver=self.resolver,
             )
