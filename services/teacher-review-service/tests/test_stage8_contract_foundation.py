@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[3]
 SRC = ROOT / "services" / "teacher-review-service" / "src"
 sys.path.insert(0, str(SRC))
 
-from scoremosaic_teacher_review.contracts import (  # noqa: E402
+import scoremosaic_teacher_review as public_api  # noqa: E402
+from scoremosaic_teacher_review import (  # noqa: E402
     COMMAND_VERSION,
     Stage8ContractError,
     build_score_edit_command,
@@ -61,11 +62,11 @@ def command_payload(**overrides):
     return payload
 
 
-def make_grant(parent_id=None, parent_sha=None, actions=("revision:read", "revision:propose")):
+def make_grant(parent_id=None, parent_sha=None, actions=("revision:read", "revision:propose"), tenant="school_001"):
     return issue_authorization_grant(
         decision_id="authz_stage8_0001",
         reviewer_id="teacher_001",
-        tenant_id="school_001",
+        tenant_id=tenant,
         job_id="job_stage8_0001",
         review_report_id="report_stage8_0001",
         review_report_sha256=H_A,
@@ -77,11 +78,12 @@ def make_grant(parent_id=None, parent_sha=None, actions=("revision:read", "revis
     )
 
 
-def verify(grant, parent_id=None, parent_sha=None):
+def verify(grant, *, tenant="school_001", parent_id=None, parent_sha=None, key=KEY):
     return verify_authorization_grant(
         grant,
-        signing_key=KEY,
+        signing_key=key,
         required_action="revision:propose",
+        expected_tenant_id=tenant,
         expected_job_id="job_stage8_0001",
         expected_reviewer_id="teacher_001",
         expected_review_report_id="report_stage8_0001",
@@ -89,6 +91,28 @@ def verify(grant, parent_id=None, parent_sha=None):
         expected_canonical_score_sha256=H_B,
         expected_parent_revision_id=parent_id,
         expected_parent_revision_sha256=parent_sha,
+    )
+
+
+def build_revision(grant, command, *, tenant="school_001", parent_id=None, parent_sha=None, result_hash=H_C, validation_hash=H_D, created_at="2026-08-21T20:00:00Z", previous_audit=None):
+    return build_teacher_score_revision(
+        grant=grant,
+        signing_key=KEY,
+        expected_tenant_id=tenant,
+        expected_job_id="job_stage8_0001",
+        expected_reviewer_id="teacher_001",
+        expected_review_report_id="report_stage8_0001",
+        expected_review_report_sha256=H_A,
+        expected_canonical_score_sha256=H_B,
+        command=command,
+        current_parent_revision_id=parent_id,
+        current_parent_revision_sha256=parent_sha,
+        resulting_musical_state_sha256=result_hash,
+        validation_report_sha256=validation_hash,
+        blocking_issue_count=0,
+        unresolved_issue_count=0,
+        created_at=created_at,
+        previous_audit_event_sha256=previous_audit,
     )
 
 
@@ -100,34 +124,34 @@ class Stage8AuthorizationTests(unittest.TestCase):
         self.assertNotIn(grants[0].signature_hex, repr(grants[0]))
         self.assertEqual("<redacted>", grants[0].safe_dict()["signature"])
 
+    def test_verified_result_is_diagnostic_not_authority_capability(self):
+        evidence = verify(make_grant())
+        self.assertFalse(evidence["authoritativeCapability"])
+        self.assertEqual("school_001", evidence["tenantId"])
+        self.assertNotIn("VerifiedReviewAuthorization", public_api.__all__)
+        self.assertNotIn("assert_authorized_command", public_api.__all__)
+
     def test_tampered_grant_and_wrong_key_fail_closed(self):
         grant = make_grant()
         with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_GRANT_HASH_MISMATCH"):
             verify(replace(grant, job_id="job_stage8_9999"))
         with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_SIGNATURE_INVALID"):
-            verify_authorization_grant(
-                grant,
-                signing_key=OTHER_KEY,
-                required_action="revision:propose",
-                expected_job_id="job_stage8_0001",
-                expected_reviewer_id="teacher_001",
-                expected_review_report_id="report_stage8_0001",
-                expected_review_report_sha256=H_A,
-                expected_canonical_score_sha256=H_B,
-                expected_parent_revision_id=None,
-                expected_parent_revision_sha256=None,
-            )
+            verify(grant, key=OTHER_KEY)
+
+    def test_cross_tenant_replay_fails_closed(self):
+        with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_TENANT_MISMATCH"):
+            verify(make_grant(tenant="school_001"), tenant="school_002")
 
     def test_cross_resource_and_denied_action_fail_closed(self):
-        grant = make_grant(actions=("revision:read",))
         with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_ACTION_DENIED"):
-            verify(grant)
+            verify(make_grant(actions=("revision:read",)))
         grant = make_grant()
         with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_CANONICAL_HASH_MISMATCH"):
             verify_authorization_grant(
                 grant,
                 signing_key=KEY,
                 required_action="revision:propose",
+                expected_tenant_id="school_001",
                 expected_job_id="job_stage8_0001",
                 expected_reviewer_id="teacher_001",
                 expected_review_report_id="report_stage8_0001",
@@ -139,7 +163,7 @@ class Stage8AuthorizationTests(unittest.TestCase):
 
 
 class Stage8EditCommandTests(unittest.TestCase):
-    def test_command_is_closed_deterministic_and_immutable(self):
+    def test_command_is_closed_deterministic_and_deeply_immutable(self):
         commands = [build_score_edit_command(command_payload()) for _ in range(10)]
         self.assertEqual(1, len({c.command_sha256 for c in commands}))
         with self.assertRaises(TypeError):
@@ -148,23 +172,19 @@ class Stage8EditCommandTests(unittest.TestCase):
             commands[0].location["onset"]["numerator"] = 99
         with self.assertRaises(TypeError):
             commands[0].operation["value"]["octave"] = 9
-        self.assertEqual("C", commands[0].to_dict()["operation"]["value"]["step"])
         with self.assertRaises(FrozenInstanceError):
             commands[0].reason = "changed"
+        self.assertEqual("C", commands[0].to_dict()["operation"]["value"]["step"])
 
-    def test_arbitrary_path_xml_and_extra_fields_are_rejected(self):
+    def test_arbitrary_xml_path_and_extra_fields_are_rejected(self):
         payload = command_payload()
         payload["xml"] = "<score-partwise/>"
         with self.assertRaisesRegex(Stage8ContractError, "COMMAND_SCHEMA_CLOSED"):
             build_score_edit_command(payload)
-
-        payload = command_payload(operation={"type": "replace_xml", "value": "<evil/>"})
         with self.assertRaisesRegex(Stage8ContractError, "COMMAND_OPERATION_NOT_ALLOWED"):
-            build_score_edit_command(payload)
-
-        payload = command_payload(location={**command_payload()["location"], "path": "$.parts[0]"})
+            build_score_edit_command(command_payload(operation={"type": "replace_xml", "value": "<evil/>"}))
         with self.assertRaisesRegex(Stage8ContractError, "COMMAND_LOCATION_INVALID"):
-            build_score_edit_command(payload)
+            build_score_edit_command(command_payload(location={**command_payload()["location"], "path": "$.parts[0]"}))
 
     def test_operation_domains_are_bounded(self):
         bad = [
@@ -186,81 +206,43 @@ class Stage8EditCommandTests(unittest.TestCase):
 
 
 class Stage8RevisionTests(unittest.TestCase):
-    def test_revision_is_deterministic_immutable_and_never_approved_or_publishable(self):
-        authorization = verify(make_grant())
+    def test_revision_boundary_reverifies_raw_sealed_grant(self):
         command = build_score_edit_command(command_payload())
-        revisions = [
-            build_teacher_score_revision(
-                authorization=authorization,
-                command=command,
-                current_parent_revision_id=None,
-                current_parent_revision_sha256=None,
-                resulting_musical_state_sha256=H_C,
-                validation_report_sha256=H_D,
-                blocking_issue_count=0,
-                unresolved_issue_count=1,
-                created_at="2026-08-21T20:00:00Z",
-                previous_audit_event_sha256=None,
-            )
-            for _ in range(10)
-        ]
+        forged = replace(make_grant(), tenant_id="school_002")
+        with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_GRANT_HASH_MISMATCH"):
+            build_revision(forged, command, tenant="school_002")
+
+    def test_revision_is_deterministic_immutable_and_locked(self):
+        grant = make_grant()
+        command = build_score_edit_command(command_payload())
+        revisions = [build_revision(grant, command) for _ in range(10)]
         self.assertEqual(1, len({r.record["revisionSha256"] for r in revisions}))
         record = revisions[0].record
         self.assertEqual("draft", record["status"])
+        self.assertTrue(record["immutable"])
         self.assertFalse(record["approvalEligible"])
         self.assertFalse(record["publicationEligible"])
-        self.assertTrue(record["immutable"])
         with self.assertRaises(TypeError):
             record["status"] = "approved"
-        self.assertEqual(record["revisionId"], revisions[0].to_dict()["revisionId"])
 
     def test_stale_parent_rejected_after_first_revision(self):
-        root_auth = verify(make_grant())
-        root_command = build_score_edit_command(command_payload())
-        first = build_teacher_score_revision(
-            authorization=root_auth,
-            command=root_command,
-            current_parent_revision_id=None,
-            current_parent_revision_sha256=None,
-            resulting_musical_state_sha256=H_C,
-            validation_report_sha256=H_D,
-            blocking_issue_count=0,
-            unresolved_issue_count=0,
-            created_at="2026-08-21T20:00:00Z",
-            previous_audit_event_sha256=None,
-        )
-        with self.assertRaisesRegex(Stage8ContractError, "COMMAND_STALE_PARENT"):
-            build_teacher_score_revision(
-                authorization=root_auth,
-                command=root_command,
-                current_parent_revision_id=first.record["revisionId"],
-                current_parent_revision_sha256=first.record["revisionSha256"],
-                resulting_musical_state_sha256=H_D,
-                validation_report_sha256=H_C,
-                blocking_issue_count=0,
-                unresolved_issue_count=0,
-                created_at="2026-08-21T20:00:01Z",
-                previous_audit_event_sha256=first.record["auditEventSha256"],
+        grant = make_grant()
+        command = build_score_edit_command(command_payload())
+        first = build_revision(grant, command)
+        with self.assertRaisesRegex(Stage8ContractError, "AUTHZ_STALE_PARENT"):
+            build_revision(
+                grant,
+                command,
+                parent_id=first.record["revisionId"],
+                parent_sha=first.record["revisionSha256"],
+                previous_audit=first.record["auditEventSha256"],
             )
 
     def test_second_revision_binds_exact_parent_and_audit_chain(self):
-        root_auth = verify(make_grant())
-        root_command = build_score_edit_command(command_payload())
-        first = build_teacher_score_revision(
-            authorization=root_auth,
-            command=root_command,
-            current_parent_revision_id=None,
-            current_parent_revision_sha256=None,
-            resulting_musical_state_sha256=H_C,
-            validation_report_sha256=H_D,
-            blocking_issue_count=0,
-            unresolved_issue_count=0,
-            created_at="2026-08-21T20:00:00Z",
-            previous_audit_event_sha256=None,
-        )
+        first = build_revision(make_grant(), build_score_edit_command(command_payload()))
         parent_id = first.record["revisionId"]
         parent_sha = first.record["revisionSha256"]
-        auth2 = verify(make_grant(parent_id, parent_sha), parent_id, parent_sha)
+        grant2 = make_grant(parent_id, parent_sha)
         command2 = build_score_edit_command(
             command_payload(
                 commandId="cmd_stage8_0002",
@@ -269,17 +251,15 @@ class Stage8RevisionTests(unittest.TestCase):
                 operation={"type": "set_dots", "value": 1},
             )
         )
-        second = build_teacher_score_revision(
-            authorization=auth2,
-            command=command2,
-            current_parent_revision_id=parent_id,
-            current_parent_revision_sha256=parent_sha,
-            resulting_musical_state_sha256=H_D,
-            validation_report_sha256=H_C,
-            blocking_issue_count=0,
-            unresolved_issue_count=0,
+        second = build_revision(
+            grant2,
+            command2,
+            parent_id=parent_id,
+            parent_sha=parent_sha,
+            result_hash=H_D,
+            validation_hash=H_C,
             created_at="2026-08-21T20:00:01Z",
-            previous_audit_event_sha256=first.record["auditEventSha256"],
+            previous_audit=first.record["auditEventSha256"],
         )
         self.assertEqual(parent_id, second.record["parentRevisionId"])
         self.assertEqual(parent_sha, second.record["parentRevisionSha256"])
@@ -308,9 +288,8 @@ class Stage8RepositoryContractTests(unittest.TestCase):
             document = json.loads((ROOT / "contracts" / name).read_text(encoding="utf-8"))
             self.assertFalse(document["additionalProperties"])
         revision = json.loads((ROOT / "contracts" / "teacher-score-revision-v1.schema.json").read_text(encoding="utf-8"))
-        props = revision["properties"]
-        self.assertEqual({"const": False}, props["approvalEligible"])
-        self.assertEqual({"const": False}, props["publicationEligible"])
+        self.assertEqual({"const": False}, revision["properties"]["approvalEligible"])
+        self.assertEqual({"const": False}, revision["properties"]["publicationEligible"])
 
 
 if __name__ == "__main__":
