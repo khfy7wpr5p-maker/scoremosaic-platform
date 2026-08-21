@@ -55,6 +55,9 @@ jobs:
       - name: Run cross-service convergence integration tests
         run: python -m unittest discover -s services/ensemble-service/tests -p 'test_stage7_convergence_integration.py' -v
 
+      - name: Run hermetic Stage 5-to-7 vertical slice
+        run: python -m unittest discover -s services/ensemble-service/tests -p 'test_stage7_hermetic_vertical_slice.py' -v
+
       - name: Run Ensemble regression suite
         run: python -m unittest discover -s services/ensemble-service/tests -v
 
