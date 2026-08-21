@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -369,6 +370,7 @@ class AuthenticatedEngineReceiverTests(unittest.TestCase):
             / f"{self.identity.job_id}.json"
         )
         original = path.read_bytes()
+        os.chmod(path, 0o600)
         path.write_bytes(original[:-1] + (b"0" if original[-1:] != b"0" else b"1"))
 
         with self.assertRaisesRegex(
