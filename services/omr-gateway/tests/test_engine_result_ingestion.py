@@ -24,7 +24,7 @@ from scoremosaic_gateway.engine_result_ingestion import (
     ClarityResultAdapter,
     EngineResultIngestionError,
     HomrResultAdapter,
-    build_candidate_lifecycle_from_outcomes,
+    build_candidate_lifecycle_from_persistence,
     build_engine_result_frame,
     failure_outcome,
     ingest_authenticated_engine_result,
@@ -364,10 +364,10 @@ class EngineResultIngestionTests(unittest.TestCase):
             )
         )
         summary = summarize_partial_success(self.plan, tuple(outcomes))
-        lifecycle = build_candidate_lifecycle_from_outcomes(
-            self.plan,
-            summary.outcomes,
-            successful,
+        lifecycle = build_candidate_lifecycle_from_persistence(
+            provider=self.provider,
+            orchestration_plan=self.plan,
+            outcomes=summary.outcomes,
         )
         state_by_engine = {item.engine: item.state for item in lifecycle.candidates}
         self.assertEqual(state_by_engine[ENGINE_NAMES[0]], "sealed")
