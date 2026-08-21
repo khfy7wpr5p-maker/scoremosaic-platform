@@ -17,12 +17,11 @@ from .source_delivery import EngineSourceStore, SourceDeliveryReceiverError
 
 ENGINE_EXECUTION_CAPABILITY_VERSION = "scoremosaic-engine-execution-capability-v1"
 
-_CAPABILITIES = {
+ENGINE_EXECUTION_MEDIA_TYPES = MappingProxyType({
     "audiveris": frozenset({"application/pdf", "image/jpeg", "image/png"}),
     "homr": frozenset({"image/jpeg", "image/png"}),
     "clarity": frozenset({"application/pdf"}),
-}
-ENGINE_EXECUTION_MEDIA_TYPES = MappingProxyType(_CAPABILITIES)
+})
 _MEDIA_SUFFIX = MappingProxyType({
     "application/pdf": ".pdf",
     "image/jpeg": ".jpg",

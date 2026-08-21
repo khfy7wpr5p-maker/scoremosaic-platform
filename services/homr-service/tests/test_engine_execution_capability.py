@@ -143,7 +143,7 @@ class EngineExecutionCapabilityTests(unittest.TestCase):
                 self.assertEqual(safe["candidateId"], identity.candidate_id)
 
     def test_dispatch_acceptance_is_required_before_source_lookup(self) -> None:
-        job_id, source, _plan, identity = self.prepare(next(iter(EXPECTED[ENGINE])))
+        job_id, source, _plan, identity = self.prepare(sorted(EXPECTED[ENGINE])[0])
         self.source_store.publish(
             job_id=identity.job_id,
             run_id=identity.run_id,
@@ -165,7 +165,7 @@ class EngineExecutionCapabilityTests(unittest.TestCase):
         self.assertEqual(caught.exception.category, "engine_execution_dispatch_not_accepted")
 
     def test_missing_source_is_fail_closed_after_dispatch(self) -> None:
-        job_id, _source, _plan, identity = self.prepare(next(iter(EXPECTED[ENGINE])))
+        job_id, _source, _plan, identity = self.prepare(sorted(EXPECTED[ENGINE])[0])
         self.acceptance.publish(
             job_id=identity.job_id,
             run_id=identity.run_id,
@@ -206,7 +206,7 @@ class EngineExecutionCapabilityTests(unittest.TestCase):
         )
 
     def test_wrong_run_or_dispatch_identity_never_converges(self) -> None:
-        job_id, source, _plan, identity = self.prepare(next(iter(EXPECTED[ENGINE])))
+        job_id, source, _plan, identity = self.prepare(sorted(EXPECTED[ENGINE])[0])
         self.persist_dispatch_and_source(source=source, identity=identity)
         with self.assertRaises(EngineExecutionCapabilityError):
             evaluate_engine_execution_eligibility(
