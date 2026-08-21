@@ -13,8 +13,9 @@ import json
 import re
 from typing import Any, Mapping
 
-from .dispatch_identity import DispatchIdentityError, build_dispatch_identity
+from .dispatch_identity import DispatchIdentityBinding, DispatchIdentityError, build_dispatch_identity
 from .engine_result_ingestion import (
+    ENGINE_RESULT_INGESTION_VERSION,
     EngineIngestionOutcome,
     EngineResultIngestionError,
     load_persisted_candidate_musicxml,
@@ -35,6 +36,7 @@ _CANDIDATE_RE = re.compile(r"candidate_[0-9a-f]{24}\Z")
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _SAFE_REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,499}\Z")
 _SAFE_VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}\Z")
+_ARTIFACT_KINDS = ("raw_engine_result", "musicxml", "diagnostic")
 
 
 class CandidateConvergenceHandoffError(ValueError):
@@ -193,16 +195,70 @@ def _musicxml_artifact_ref(plan: Mapping[str, Any], engine: str) -> str:
         raise CandidateConvergenceHandoffError("stage7_handoff_plan_invalid") from None
 
 
-def _musicxml_metadata(record: Mapping[str, Any]) -> Mapping[str, Any]:
+def _artifact_metadata(record: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
     artifacts = record.get("artifacts")
-    if type(artifacts) is not list:
+    if type(artifacts) is not list or len(artifacts) != 3:
         raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
-    matches = [
-        item for item in artifacts if type(item) is dict and item.get("kind") == "musicxml"
-    ]
-    if len(matches) != 1:
+    result: dict[str, Mapping[str, Any]] = {}
+    for item in artifacts:
+        if type(item) is not dict:
+            raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
+        kind = item.get("kind")
+        if kind not in _ARTIFACT_KINDS or kind in result:
+            raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
+        if (
+            not _matches(_ARTIFACT_RE, item.get("artifactId"))
+            or not _matches(_SHA_RE, item.get("sha256"))
+            or type(item.get("sizeBytes")) is not int
+            or item["sizeBytes"] <= 0
+        ):
+            raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
+        result[kind] = item
+    if set(result) != set(_ARTIFACT_KINDS):
         raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
-    return matches[0]
+    return result
+
+
+def _recompute_candidate_sha256(
+    record: Mapping[str, Any],
+    identity: DispatchIdentityBinding,
+    artifacts: Mapping[str, Mapping[str, Any]],
+) -> str:
+    raw = artifacts["raw_engine_result"]
+    musicxml = artifacts["musicxml"]
+    diagnostic = artifacts["diagnostic"]
+    if (
+        musicxml.get("artifactId") != identity.musicxml_artifact_id
+        or diagnostic.get("artifactId") != identity.diagnostic_artifact_id
+    ):
+        raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
+    payload = {
+        "version": ENGINE_RESULT_INGESTION_VERSION,
+        "engine": identity.engine,
+        "jobId": identity.job_id,
+        "runId": identity.run_id,
+        "planId": identity.plan_id,
+        "planSha256": identity.plan_sha256,
+        "sourceArtifactId": identity.source_artifact_id,
+        "sourceSha256": identity.source_sha256,
+        "candidateId": identity.candidate_id,
+        "candidateNamespace": identity.candidate_namespace,
+        "musicxmlArtifactId": identity.musicxml_artifact_id,
+        "diagnosticArtifactId": identity.diagnostic_artifact_id,
+        "dispatchIdentitySha256": identity.identity_sha256,
+        "authenticatedResultSha256": record.get("authenticatedResultSha256"),
+        "rawSha256": raw.get("sha256"),
+        "rawBytes": raw.get("sizeBytes"),
+        "musicxmlSha256": musicxml.get("sha256"),
+        "musicxmlBytes": musicxml.get("sizeBytes"),
+        "diagnosticSha256": diagnostic.get("sha256"),
+        "diagnosticBytes": diagnostic.get("sizeBytes"),
+        "engineVersion": record.get("engineVersion"),
+        "modelVersion": record.get("modelVersion"),
+    }
+    if not _matches(_SHA_RE, payload["authenticatedResultSha256"]):
+        raise CandidateConvergenceHandoffError("stage7_handoff_persistence_invalid")
+    return sha256(_canonical_json(payload)).hexdigest()
 
 
 def load_verified_candidate_handoff(
@@ -232,12 +288,14 @@ def load_verified_candidate_handoff(
 
     if len(document) > MAX_CONVERGENCE_MUSICXML_BYTES:
         raise CandidateConvergenceHandoffError("stage7_handoff_musicxml_oversized")
-    metadata = _musicxml_metadata(record)
+    artifacts = _artifact_metadata(record)
+    metadata = artifacts["musicxml"]
     artifact_ref = _musicxml_artifact_ref(orchestration_plan, engine)
     record_sha = sha256(_canonical_json(record)).hexdigest()
+    expected_candidate_sha = _recompute_candidate_sha256(record, identity, artifacts)
     if (
         record.get("candidateId") != identity.candidate_id
-        or record.get("candidateSha256") is None
+        or record.get("candidateSha256") != expected_candidate_sha
         or metadata.get("artifactId") != identity.musicxml_artifact_id
         or metadata.get("sha256") != sha256(document).hexdigest()
         or metadata.get("sizeBytes") != len(document)
@@ -254,7 +312,7 @@ def load_verified_candidate_handoff(
         engine=identity.engine,
         run_id=identity.run_id,
         candidate_id=identity.candidate_id,
-        candidate_sha256=record["candidateSha256"],
+        candidate_sha256=expected_candidate_sha,
         persistence_record_sha256=record_sha,
         musicxml_artifact_id=identity.musicxml_artifact_id,
         musicxml_artifact_ref=artifact_ref,
