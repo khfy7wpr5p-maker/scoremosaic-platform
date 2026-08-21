@@ -1,4 +1,4 @@
-"""ScoreMosaic Ensemble canonical, comparison, report, and evaluation contracts."""
+"""ScoreMosaic Ensemble canonical, comparison, convergence, report, and evaluation contracts."""
 
 from .admission import (
     ADMISSION_FORMAT_VERSION,
@@ -35,6 +35,15 @@ from .comparator import (
     ComparisonResult,
     compare_candidates,
 )
+from .convergence import (
+    CANDIDATE_CONVERGENCE_HANDOFF_VERSION,
+    CONVERGENCE_FORMAT_VERSION,
+    CandidateConvergenceError,
+    ConvergenceCandidateInput,
+    Stage7ConvergenceResult,
+    converge_verified_candidates,
+    parse_verified_candidate_handoff,
+)
 from .evaluation import (
     CORE_METRIC_NAMES,
     DATASET_SCHEMA_VERSION,
@@ -62,7 +71,9 @@ from .report import (
 
 __all__ = [
     "ADMISSION_FORMAT_VERSION",
+    "CANDIDATE_CONVERGENCE_HANDOFF_VERSION",
     "COMPARISON_FORMAT_VERSION",
+    "CONVERGENCE_FORMAT_VERSION",
     "CORE_METRIC_NAMES",
     "DATASET_SCHEMA_VERSION",
     "DATASET_TYPE",
@@ -72,6 +83,7 @@ __all__ = [
     "RESULT_SCHEMA_VERSION",
     "RESULT_TYPE",
     "CandidateAdmissionError",
+    "CandidateConvergenceError",
     "CandidateObservation",
     "CandidateSummary",
     "CanonicalAdmissionEvidence",
@@ -86,6 +98,7 @@ __all__ = [
     "ComparisonLocation",
     "ComparisonReportError",
     "ComparisonResult",
+    "ConvergenceCandidateInput",
     "DivisionsChange",
     "EnsembleAdmissionResult",
     "EnsembleComparisonReport",
@@ -97,6 +110,7 @@ __all__ = [
     "NormalizationDiagnostic",
     "Pitch",
     "SourceIdentity",
+    "Stage7ConvergenceResult",
     "TabPosition",
     "TimeSignature",
     "TimeSignatureChange",
@@ -105,9 +119,11 @@ __all__ = [
     "admit_and_compare_candidates",
     "build_comparison_report",
     "compare_candidates",
+    "converge_verified_candidates",
     "evaluate_candidate",
     "load_fixed_dataset",
     "normalize_musicxml",
+    "parse_verified_candidate_handoff",
     "validate_comparison_report_payload",
     "validate_evaluation_result_payload",
     "validate_fixed_dataset",
