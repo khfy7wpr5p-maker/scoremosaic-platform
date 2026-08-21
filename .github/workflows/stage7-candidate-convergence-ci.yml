@@ -1,0 +1,62 @@
+name: Stage 7 Candidate Convergence CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage7-candidate-convergence-v1"
+    paths:
+      - ".github/workflows/stage7-candidate-convergence-ci.yml"
+      - "services/omr-gateway/**"
+      - "services/ensemble-service/**"
+      - "docs/stage7-candidate-convergence.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage7-candidate-convergence-ci.yml"
+      - "services/omr-gateway/**"
+      - "services/ensemble-service/**"
+      - "docs/stage7-candidate-convergence.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage7-candidate-convergence-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-stage7-candidate-convergence:
+    name: Test Stage 7 candidate convergence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Stage 7 source boundaries
+        run: |
+          python -m compileall -q services/omr-gateway/src
+          python -m compileall -q services/ensemble-service/src
+
+      - name: Run Gateway verified-handoff tests
+        run: python -m unittest discover -s services/omr-gateway/tests -p 'test_candidate_convergence_handoff.py' -v
+
+      - name: Run cross-service convergence integration tests
+        run: python -m unittest discover -s services/ensemble-service/tests -p 'test_stage7_convergence_integration.py' -v
+
+      - name: Run Ensemble regression suite
+        run: python -m unittest discover -s services/ensemble-service/tests -v
+
+      - name: Check repository diff formatting
+        run: git diff --check
