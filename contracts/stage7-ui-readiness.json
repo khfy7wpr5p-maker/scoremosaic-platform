@@ -1,0 +1,49 @@
+{
+  "version": "scoremosaic-ui-readiness-v1",
+  "stage": 7,
+  "status": "UI_READY_WITH_LOCKED_FEATURES",
+  "contractReadiness": {
+    "uploadSource": true,
+    "jobStatus": true,
+    "progressStateMachine": true,
+    "omrResult": true,
+    "candidateComparatorEvidence": true,
+    "readOnlyErrorTaxonomy": true
+  },
+  "liveBackendReadiness": {
+    "publicUploadEndpoint": false,
+    "publicJobStatusEndpoint": false,
+    "publicResultEndpoint": false,
+    "authenticatedGatewayToEnsembleTransport": false,
+    "liveProductionEngineExecution": false,
+    "teacherReviewMutationApi": false
+  },
+  "safeUiStartMode": "contract-first-mock-read-only",
+  "backendWorkRemaining": [
+    "versioned authenticated public API routing",
+    "production durable provider selection and deployment",
+    "public job-status read model",
+    "public Stage 7 result read model",
+    "purpose-separated authenticated Gateway-to-Ensemble transport",
+    "live engine-result transport and production runtime validation"
+  ],
+  "stage8TeacherReviewContractsRequired": [
+    "immutable TeacherScoreRevision identity and provenance",
+    "bounded edit operation schema",
+    "optimistic concurrency and stale-revision rejection",
+    "deterministic musical and structural validation",
+    "authorization and tenant/resource scope",
+    "append-only audit evidence",
+    "approval and publication barriers"
+  ],
+  "lockedFeatures": [
+    "engine ranking",
+    "winner selection",
+    "automatic merge",
+    "automatic correction",
+    "authoritative score publication",
+    "teacher approval",
+    "writable review UI",
+    "production public API mutation"
+  ]
+}
