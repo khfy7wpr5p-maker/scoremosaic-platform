@@ -34,7 +34,10 @@ from .controlled_staging_queued_transition import (
     ControlledStagingQueuedTransitionError,
     _derive_queued,
 )
-from .controlled_staging_terminal_cancellation import _verify_queued_under_lock
+from .controlled_staging_terminal_cancellation import (
+    ControlledStagingTerminalCancellationError,
+    _verify_queued_under_lock,
+)
 from .controlled_staging_transition_state import (
     ControlledStagingTransitionStateError,
     _transition_record_exists_under_lock,
@@ -527,6 +530,10 @@ def transition_controlled_staging_queued_to_dispatching(
         raise ControlledStagingDispatchingTransitionError(
             "staging_dispatching_intent_invalid"
         ) from None
+    except ControlledStagingTerminalCancellationError:
+        raise ControlledStagingDispatchingTransitionError(
+            "staging_dispatching_state_invalid"
+        ) from None
     except ControlledStagingTransitionStateError:
         raise ControlledStagingDispatchingTransitionError(
             "staging_dispatching_state_invalid"
@@ -591,6 +598,10 @@ def recover_controlled_staging_dispatching_run(
     except ControlledStagingDispatchIntentError:
         raise ControlledStagingDispatchingTransitionError(
             "staging_dispatching_intent_invalid"
+        ) from None
+    except ControlledStagingTerminalCancellationError:
+        raise ControlledStagingDispatchingTransitionError(
+            "staging_dispatching_state_invalid"
         ) from None
     except ControlledStagingTransitionStateError:
         raise ControlledStagingDispatchingTransitionError(
