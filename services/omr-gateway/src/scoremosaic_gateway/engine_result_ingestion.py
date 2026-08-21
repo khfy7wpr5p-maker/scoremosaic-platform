@@ -1,13 +1,8 @@
 """Stage 6 authenticated, bounded, deterministic engine-result ingestion.
 
-This module deliberately starts *after* a result transport has delivered exact
-bytes and an authenticated ``DispatchResultIdentity``. It never trusts raw
-engine output directly, never mutates authoritative score state, and never
-accepts caller-controlled filesystem paths.
-
-The three engine adapters share one provider-neutral transport frame but remain
-engine-bound: a HOMR result cannot be admitted through the Audiveris or Clarity
-adapter. Successful candidates are immutable evidence, not canonical scores.
+This module starts after a result transport has delivered exact bytes and an
+existing authenticated ``DispatchResultIdentity``. Engine output is evidence,
+never authoritative score state. Persistence uses server-derived paths only.
 """
 from __future__ import annotations
 
@@ -40,7 +35,11 @@ from .minimum_staging_vertical_slice import (
     _MAX_STATE_RECORD_BYTES,
     _decode_record,
 )
-from .orchestration import ENGINE_NAMES, OrchestrationContractError, verify_orchestration_plan
+from .orchestration import (
+    ENGINE_NAMES,
+    OrchestrationContractError,
+    verify_orchestration_plan,
+)
 from .service_auth import EngineCredential
 
 ENGINE_RESULT_FRAME_VERSION = "scoremosaic-engine-result-frame-v1"
@@ -72,7 +71,13 @@ MAX_DIAGNOSTIC_TOTAL_NODES = 4096
 _PERSISTENCE_MAC_DOMAIN = b"scoremosaic-candidate-persistence-v1"
 _PERSISTENCE_MAC_FIELD = "integrityMac"
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
+_JOB_RE = re.compile(r"job_[A-Za-z0-9_-]{8,80}\Z")
+_RUN_RE = re.compile(r"run_[0-9a-f]{24}\Z")
+_PLAN_RE = re.compile(r"plan_[0-9a-f]{24}\Z")
+_ARTIFACT_RE = re.compile(r"artifact_[0-9a-f]{24}\Z")
+_CANDIDATE_RE = re.compile(r"candidate_[0-9a-f]{24}\Z")
 _SAFE_VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}\Z")
+_FORBIDDEN_XML_MARKERS = (b"<!DOCTYPE", b"<!ENTITY", b"<?xml-stylesheet")
 _ALLOWED_FAILURE_REASONS = {
     "engine_crash",
     "engine_timeout",
@@ -83,6 +88,16 @@ _ALLOWED_FAILURE_REASONS = {
     "engine_result_invalid_schema",
     "engine_unavailable",
 }
+_MEDIA_BY_KIND = {
+    "raw_engine_result": "application/octet-stream",
+    "musicxml": "application/vnd.recordare.musicxml+xml",
+    "diagnostic": "application/json",
+}
+_MAX_BY_KIND = {
+    "raw_engine_result": MAX_RAW_ENGINE_RESULT_BYTES,
+    "musicxml": MAX_MUSICXML_BYTES,
+    "diagnostic": MAX_DIAGNOSTIC_BYTES,
+}
 
 
 class EngineResultIngestionError(ValueError):
@@ -91,6 +106,10 @@ class EngineResultIngestionError(ValueError):
     def __init__(self, category: str) -> None:
         self.category = category
         super().__init__(category)
+
+
+def _matches(pattern: re.Pattern[str], value: object) -> bool:
+    return type(value) is str and pattern.fullmatch(value) is not None
 
 
 def _canonical_json(value: Any, category: str) -> bytes:
@@ -146,8 +165,6 @@ def build_engine_result_frame(
     musicxml: bytes,
     diagnostic: bytes,
 ) -> bytes:
-    """Build an unambiguous deterministic binary frame with three bounded fields."""
-
     raw = _require_bytes(
         raw_engine_result,
         maximum=MAX_RAW_ENGINE_RESULT_BYTES,
@@ -163,10 +180,16 @@ def build_engine_result_frame(
         maximum=MAX_DIAGNOSTIC_BYTES,
         category="engine_result_diagnostic_invalid",
     )
-    total = _checked_sum((len(raw), len(xml), len(diag)))
-    header = _FRAME_HEADER.pack(_FRAME_MAGIC, len(raw), len(xml), len(diag))
-    frame = b"".join((header, raw, xml, diag))
-    if len(frame) != total:
+    expected = _checked_sum((len(raw), len(xml), len(diag)))
+    frame = b"".join(
+        (
+            _FRAME_HEADER.pack(_FRAME_MAGIC, len(raw), len(xml), len(diag)),
+            raw,
+            xml,
+            diag,
+        )
+    )
+    if len(frame) != expected:
         raise EngineResultIngestionError("engine_result_frame_invalid")
     return frame
 
@@ -225,12 +248,11 @@ def parse_engine_result_frame(payload: bytes) -> ParsedEngineResultFrame:
         raise EngineResultIngestionError("engine_result_diagnostic_oversized")
     expected = _checked_sum((raw_len, xml_len, diag_len))
     if expected != len(body):
-        category = (
+        raise EngineResultIngestionError(
             "engine_result_frame_truncated"
             if expected > len(body)
             else "engine_result_frame_trailing_data"
         )
-        raise EngineResultIngestionError(category)
     offset = _FRAME_HEADER.size
     raw_end = offset + raw_len
     xml_end = raw_end + xml_len
@@ -247,17 +269,26 @@ def _xml_local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def _reject_forbidden_xml_constructs(body: bytes) -> None:
+    """Scan the complete bounded document without allocating one full lowercase copy."""
+
+    overlap = max(len(marker) for marker in _FORBIDDEN_XML_MARKERS) - 1
+    carry = b""
+    view = memoryview(body)
+    for start in range(0, len(view), 64 * 1024):
+        chunk = carry + view[start : start + 64 * 1024].tobytes()
+        if any(marker in chunk for marker in _FORBIDDEN_XML_MARKERS):
+            raise EngineResultIngestionError("engine_result_musicxml_unsafe_xml")
+        carry = chunk[-overlap:] if overlap else b""
+
+
 def _validate_musicxml_stream(document: bytes) -> str:
     body = _require_bytes(
         document,
         maximum=MAX_MUSICXML_BYTES,
         category="engine_result_musicxml_invalid",
     )
-    lowered = body[: min(len(body), 1024 * 1024)].lower()
-    for forbidden in (b"<!doctype", b"<!entity", b"<?xml-stylesheet"):
-        if forbidden in lowered:
-            raise EngineResultIngestionError("engine_result_musicxml_unsafe_xml")
-
+    _reject_forbidden_xml_constructs(body)
     parser = ET.XMLPullParser(events=("start", "end"))
     depth = 0
     element_count = 0
@@ -301,9 +332,7 @@ def _validate_musicxml_stream(document: bytes) -> str:
                     element.clear()
                     depth -= 1
                     if depth < 0:
-                        raise EngineResultIngestionError(
-                            "engine_result_musicxml_invalid"
-                        )
+                        raise EngineResultIngestionError("engine_result_musicxml_invalid")
         parser.close()
     except EngineResultIngestionError:
         raise
@@ -318,29 +347,23 @@ def _validate_diagnostic_node(value: Any, *, depth: int, counter: list[int]) -> 
     counter[0] += 1
     if counter[0] > MAX_DIAGNOSTIC_TOTAL_NODES or depth > MAX_DIAGNOSTIC_DEPTH:
         raise EngineResultIngestionError("engine_result_diagnostic_complexity_exceeded")
-    if value is None or type(value) is bool or type(value) is int:
+    if value is None or type(value) in {bool, int}:
         return
     if type(value) is float:
         raise EngineResultIngestionError("engine_result_diagnostic_invalid")
     if type(value) is str:
         if len(value) > MAX_DIAGNOSTIC_STRING_LENGTH:
-            raise EngineResultIngestionError(
-                "engine_result_diagnostic_complexity_exceeded"
-            )
+            raise EngineResultIngestionError("engine_result_diagnostic_complexity_exceeded")
         return
     if type(value) is list:
         if len(value) > MAX_DIAGNOSTIC_COLLECTION_ITEMS:
-            raise EngineResultIngestionError(
-                "engine_result_diagnostic_complexity_exceeded"
-            )
+            raise EngineResultIngestionError("engine_result_diagnostic_complexity_exceeded")
         for item in value:
             _validate_diagnostic_node(item, depth=depth + 1, counter=counter)
         return
     if type(value) is dict:
         if len(value) > MAX_DIAGNOSTIC_COLLECTION_ITEMS:
-            raise EngineResultIngestionError(
-                "engine_result_diagnostic_complexity_exceeded"
-            )
+            raise EngineResultIngestionError("engine_result_diagnostic_complexity_exceeded")
         for key, item in value.items():
             if type(key) is not str or len(key) > MAX_DIAGNOSTIC_STRING_LENGTH:
                 raise EngineResultIngestionError("engine_result_diagnostic_invalid")
@@ -368,22 +391,17 @@ def _normalize_diagnostic(document: bytes, engine: str) -> tuple[bytes, str | No
     if type(value) is not dict:
         raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
     allowed = {"engine", "status", "engineVersion", "modelVersion", "warnings"}
-    if set(value) - allowed:
-        raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
-    if value.get("engine") != engine or value.get("status") != "success":
+    if set(value) - allowed or value.get("engine") != engine or value.get("status") != "success":
         raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
     for key in ("engineVersion", "modelVersion"):
         item = value.get(key)
-        if item is not None and (
-            type(item) is not str or _SAFE_VERSION_RE.fullmatch(item) is None
-        ):
+        if item is not None and (type(item) is not str or _SAFE_VERSION_RE.fullmatch(item) is None):
             raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
     warnings = value.get("warnings", [])
     if type(warnings) is not list or len(warnings) > 64:
         raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
-    for warning in warnings:
-        if type(warning) is not str or len(warning) > 256:
-            raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
+    if any(type(item) is not str or len(item) > 256 for item in warnings):
+        raise EngineResultIngestionError("engine_result_diagnostic_schema_invalid")
     normalized = {
         "engine": engine,
         "status": "success",
@@ -424,39 +442,23 @@ class NormalizedEngineCandidate:
         if (
             self.version != ENGINE_RESULT_INGESTION_VERSION
             or self.engine not in ENGINE_NAMES
-            or type(self.job_id) is not str
-            or type(self.run_id) is not str
-            or type(self.plan_id) is not str
-            or type(self.plan_sha256) is not str
-            or _SHA_RE.fullmatch(self.plan_sha256) is None
-            or type(self.source_artifact_id) is not str
-            or type(self.source_sha256) is not str
-            or _SHA_RE.fullmatch(self.source_sha256) is None
-            or type(self.candidate_id) is not str
+            or not _matches(_JOB_RE, self.job_id)
+            or not _matches(_RUN_RE, self.run_id)
+            or not _matches(_PLAN_RE, self.plan_id)
+            or not _matches(_SHA_RE, self.plan_sha256)
+            or not _matches(_ARTIFACT_RE, self.source_artifact_id)
+            or not _matches(_SHA_RE, self.source_sha256)
+            or not _matches(_CANDIDATE_RE, self.candidate_id)
             or type(self.candidate_namespace) is not str
-            or type(self.musicxml_artifact_id) is not str
-            or type(self.diagnostic_artifact_id) is not str
-            or type(self.dispatch_identity_sha256) is not str
-            or _SHA_RE.fullmatch(self.dispatch_identity_sha256) is None
-            or type(self.authenticated_result_sha256) is not str
-            or _SHA_RE.fullmatch(self.authenticated_result_sha256) is None
+            or not _matches(_ARTIFACT_RE, self.musicxml_artifact_id)
+            or not _matches(_ARTIFACT_RE, self.diagnostic_artifact_id)
+            or not _matches(_SHA_RE, self.dispatch_identity_sha256)
+            or not _matches(_SHA_RE, self.authenticated_result_sha256)
         ):
             raise EngineResultIngestionError("normalized_candidate_invalid")
-        _require_bytes(
-            self.raw_engine_result,
-            maximum=MAX_RAW_ENGINE_RESULT_BYTES,
-            category="normalized_candidate_invalid",
-        )
-        _require_bytes(
-            self.musicxml,
-            maximum=MAX_MUSICXML_BYTES,
-            category="normalized_candidate_invalid",
-        )
-        _require_bytes(
-            self.diagnostic,
-            maximum=MAX_DIAGNOSTIC_BYTES,
-            category="normalized_candidate_invalid",
-        )
+        _require_bytes(self.raw_engine_result, maximum=MAX_RAW_ENGINE_RESULT_BYTES, category="normalized_candidate_invalid")
+        _require_bytes(self.musicxml, maximum=MAX_MUSICXML_BYTES, category="normalized_candidate_invalid")
+        _require_bytes(self.diagnostic, maximum=MAX_DIAGNOSTIC_BYTES, category="normalized_candidate_invalid")
 
     def __repr__(self) -> str:
         return (
@@ -528,20 +530,9 @@ class NormalizedEngineCandidate:
             "engineVersion": self.engine_version,
             "modelVersion": self.model_version,
             "artifacts": {
-                "raw_engine_result": {
-                    "sha256": self.raw_sha256,
-                    "sizeBytes": len(self.raw_engine_result),
-                },
-                "musicxml": {
-                    "artifactId": self.musicxml_artifact_id,
-                    "sha256": self.musicxml_sha256,
-                    "sizeBytes": len(self.musicxml),
-                },
-                "diagnostic": {
-                    "artifactId": self.diagnostic_artifact_id,
-                    "sha256": self.diagnostic_sha256,
-                    "sizeBytes": len(self.diagnostic),
-                },
+                "raw_engine_result": {"sha256": self.raw_sha256, "sizeBytes": len(self.raw_engine_result)},
+                "musicxml": {"artifactId": self.musicxml_artifact_id, "sha256": self.musicxml_sha256, "sizeBytes": len(self.musicxml)},
+                "diagnostic": {"artifactId": self.diagnostic_artifact_id, "sha256": self.diagnostic_sha256, "sizeBytes": len(self.diagnostic)},
             },
             "authoritativeScore": False,
             "candidateOnly": True,
@@ -568,26 +559,14 @@ class EngineResultAdapter:
             raise EngineResultIngestionError("engine_result_identity_invalid")
         if expected_identity.engine != self.engine:
             raise EngineResultIngestionError("engine_result_cross_engine_reuse")
-        body = _require_bytes(
-            result_payload,
-            maximum=MAX_FRAME_BYTES,
-            category="engine_result_payload_invalid",
-        )
+        body = _require_bytes(result_payload, maximum=MAX_FRAME_BYTES, category="engine_result_payload_invalid")
         try:
-            require_dispatch_result_identity(
-                credential,
-                expected_identity,
-                result_identity,
-                body,
-            )
+            require_dispatch_result_identity(credential, expected_identity, result_identity, body)
         except DispatchIdentityError:
             raise EngineResultIngestionError("engine_result_authentication_failed") from None
         frame = parse_engine_result_frame(body)
         _validate_musicxml_stream(frame.musicxml)
-        diagnostic, engine_version, model_version = _normalize_diagnostic(
-            frame.diagnostic,
-            self.engine,
-        )
+        diagnostic, engine_version, model_version = _normalize_diagnostic(frame.diagnostic, self.engine)
         return NormalizedEngineCandidate(
             version=ENGINE_RESULT_INGESTION_VERSION,
             engine=self.engine,
@@ -660,32 +639,12 @@ def _provider_key(provider: StagingUploadProvider) -> bytes:
     return key
 
 
-def _candidate_record_path(
-    provider: StagingUploadProvider,
-    candidate: NormalizedEngineCandidate,
-):
-    return (
-        provider._root
-        / "state"
-        / "candidate_ingestion"
-        / candidate.job_id
-        / candidate.engine
-        / f"{candidate.candidate_id}.json"
-    )
+def _candidate_record_path(provider: StagingUploadProvider, *, job_id: str, engine: str, candidate_id: str):
+    return provider._root / "state" / "candidate_ingestion" / job_id / engine / f"{candidate_id}.json"
 
 
-def _candidate_artifact_paths(
-    provider: StagingUploadProvider,
-    candidate: NormalizedEngineCandidate,
-) -> dict[str, Any]:
-    root = (
-        provider._root
-        / "artifacts"
-        / "candidates"
-        / candidate.job_id
-        / candidate.engine
-        / candidate.candidate_id
-    )
+def _candidate_artifact_paths(provider: StagingUploadProvider, *, job_id: str, engine: str, candidate_id: str) -> dict[str, Any]:
+    root = provider._root / "artifacts" / "candidates" / job_id / engine / candidate_id
     return {
         "raw_engine_result": root / "raw-engine-result.bin",
         "musicxml": root / "candidate.musicxml",
@@ -698,41 +657,20 @@ def _persistence_mac(provider: StagingUploadProvider, record: dict[str, Any]) ->
         raise EngineResultIngestionError("candidate_persistence_state_invalid")
     return hmac_new(
         _provider_key(provider),
-        b"\0".join(
-            (
-                _PERSISTENCE_MAC_DOMAIN,
-                _canonical_json(record, "candidate_persistence_state_invalid"),
-            )
-        ),
+        b"\0".join((_PERSISTENCE_MAC_DOMAIN, _canonical_json(record, "candidate_persistence_state_invalid"))),
         sha256,
     ).hexdigest()
 
 
-def _persist_exact_file(
-    provider: StagingUploadProvider,
-    path,
-    payload: bytes,
-    *,
-    maximum: int,
-) -> str:
-    body = _require_bytes(
-        payload,
-        maximum=maximum,
-        category="candidate_persistence_artifact_invalid",
-    )
+def _persist_exact_file(provider: StagingUploadProvider, path, payload: bytes, *, maximum: int) -> str:
+    body = _require_bytes(payload, maximum=maximum, category="candidate_persistence_artifact_invalid")
     try:
         if provider._atomic_create(path, body):
             return "written"
-        stored = provider._read_file_no_follow(
-            path,
-            max_bytes=maximum,
-            overflow_category="staging_state_corrupt",
-        )
+        stored = provider._read_file_no_follow(path, max_bytes=maximum, overflow_category="staging_state_corrupt")
     except MinimumStagingVerticalSliceError:
         raise EngineResultIngestionError("candidate_persistence_state_invalid") from None
-    if not compare_digest(sha256(stored).digest(), sha256(body).digest()):
-        raise EngineResultIngestionError("candidate_persistence_conflict")
-    if stored != body:
+    if len(stored) != len(body) or not compare_digest(sha256(stored).digest(), sha256(body).digest()) or stored != body:
         raise EngineResultIngestionError("candidate_persistence_conflict")
     return "replay"
 
@@ -763,13 +701,11 @@ class CandidatePersistenceResult:
         if (
             self.version != CANDIDATE_PERSISTENCE_VERSION
             or self.engine not in ENGINE_NAMES
-            or type(self.job_id) is not str
-            or type(self.run_id) is not str
-            or type(self.candidate_id) is not str
-            or type(self.candidate_sha256) is not str
-            or _SHA_RE.fullmatch(self.candidate_sha256) is None
-            or type(self.record_sha256) is not str
-            or _SHA_RE.fullmatch(self.record_sha256) is None
+            or not _matches(_JOB_RE, self.job_id)
+            or not _matches(_RUN_RE, self.run_id)
+            or not _matches(_CANDIDATE_RE, self.candidate_id)
+            or not _matches(_SHA_RE, self.candidate_sha256)
+            or not _matches(_SHA_RE, self.record_sha256)
             or self.persistence_state not in {"written", "replay"}
         ):
             raise EngineResultIngestionError("candidate_persistence_result_invalid")
@@ -790,25 +726,23 @@ class CandidatePersistenceResult:
         }
 
 
-def _candidate_record(
-    plan: Mapping[str, Any], candidate: NormalizedEngineCandidate
-) -> dict[str, Any]:
+def _candidate_record(plan: Mapping[str, Any], candidate: NormalizedEngineCandidate) -> dict[str, Any]:
     expected = build_dispatch_identity(plan, candidate.engine)
-    if (
-        expected.job_id != candidate.job_id
-        or expected.run_id != candidate.run_id
-        or expected.plan_id != candidate.plan_id
-        or expected.plan_sha256 != candidate.plan_sha256
-        or expected.source_artifact_id != candidate.source_artifact_id
-        or expected.source_sha256 != candidate.source_sha256
-        or expected.candidate_id != candidate.candidate_id
-        or expected.candidate_namespace != candidate.candidate_namespace
-        or expected.musicxml_artifact_id != candidate.musicxml_artifact_id
-        or expected.diagnostic_artifact_id != candidate.diagnostic_artifact_id
-        or expected.identity_sha256 != candidate.dispatch_identity_sha256
-    ):
+    checks = (
+        (expected.job_id, candidate.job_id),
+        (expected.run_id, candidate.run_id),
+        (expected.plan_id, candidate.plan_id),
+        (expected.plan_sha256, candidate.plan_sha256),
+        (expected.source_artifact_id, candidate.source_artifact_id),
+        (expected.source_sha256, candidate.source_sha256),
+        (expected.candidate_id, candidate.candidate_id),
+        (expected.candidate_namespace, candidate.candidate_namespace),
+        (expected.musicxml_artifact_id, candidate.musicxml_artifact_id),
+        (expected.diagnostic_artifact_id, candidate.diagnostic_artifact_id),
+        (expected.identity_sha256, candidate.dispatch_identity_sha256),
+    )
+    if any(left != right for left, right in checks):
         raise EngineResultIngestionError("candidate_persistence_identity_invalid")
-    raw_artifact_id = _raw_artifact_id(plan, candidate.candidate_id)
     return {
         "version": CANDIDATE_PERSISTENCE_VERSION,
         "jobId": candidate.job_id,
@@ -826,36 +760,67 @@ def _candidate_record(
         "engineVersion": candidate.engine_version,
         "modelVersion": candidate.model_version,
         "artifacts": [
-            {
-                "kind": "raw_engine_result",
-                "artifactId": raw_artifact_id,
-                "sha256": candidate.raw_sha256,
-                "sizeBytes": len(candidate.raw_engine_result),
-                "mediaType": "application/octet-stream",
-            },
-            {
-                "kind": "musicxml",
-                "artifactId": candidate.musicxml_artifact_id,
-                "sha256": candidate.musicxml_sha256,
-                "sizeBytes": len(candidate.musicxml),
-                "mediaType": "application/vnd.recordare.musicxml+xml",
-            },
-            {
-                "kind": "diagnostic",
-                "artifactId": candidate.diagnostic_artifact_id,
-                "sha256": candidate.diagnostic_sha256,
-                "sizeBytes": len(candidate.diagnostic),
-                "mediaType": "application/json",
-            },
+            {"kind": "raw_engine_result", "artifactId": _raw_artifact_id(plan, candidate.candidate_id), "sha256": candidate.raw_sha256, "sizeBytes": len(candidate.raw_engine_result), "mediaType": _MEDIA_BY_KIND["raw_engine_result"]},
+            {"kind": "musicxml", "artifactId": candidate.musicxml_artifact_id, "sha256": candidate.musicxml_sha256, "sizeBytes": len(candidate.musicxml), "mediaType": _MEDIA_BY_KIND["musicxml"]},
+            {"kind": "diagnostic", "artifactId": candidate.diagnostic_artifact_id, "sha256": candidate.diagnostic_sha256, "sizeBytes": len(candidate.diagnostic), "mediaType": _MEDIA_BY_KIND["diagnostic"]},
         ],
-        "policies": {
-            "immutable": True,
-            "overwriteAllowed": False,
-            "crossEngineWriteAllowed": False,
-            "authoritativeScore": False,
-            "candidateOnly": True,
-        },
+        "policies": {"immutable": True, "overwriteAllowed": False, "crossEngineWriteAllowed": False, "authoritativeScore": False, "candidateOnly": True},
     }
+
+
+def _decode_verified_record(provider: StagingUploadProvider, raw: bytes) -> dict[str, Any]:
+    sealed = _decode_record(raw)
+    if type(sealed) is not dict or _PERSISTENCE_MAC_FIELD not in sealed:
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    if _canonical_json(sealed, "candidate_persistence_state_invalid") != raw:
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    observed = sealed.get(_PERSISTENCE_MAC_FIELD)
+    record = dict(sealed)
+    record.pop(_PERSISTENCE_MAC_FIELD, None)
+    if type(observed) is not str or not compare_digest(observed, _persistence_mac(provider, record)):
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    return record
+
+
+def _verified_artifact_metadata(record: Mapping[str, Any], identity: DispatchIdentityBinding) -> dict[str, dict[str, Any]]:
+    artifacts = record.get("artifacts")
+    if type(artifacts) is not list or len(artifacts) != 3:
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    by_kind: dict[str, dict[str, Any]] = {}
+    for item in artifacts:
+        if type(item) is not dict or type(item.get("kind")) is not str or item["kind"] in by_kind:
+            raise EngineResultIngestionError("candidate_persistence_state_invalid")
+        by_kind[item["kind"]] = item
+    if set(by_kind) != set(_MEDIA_BY_KIND):
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    if by_kind["musicxml"].get("artifactId") != identity.musicxml_artifact_id or by_kind["diagnostic"].get("artifactId") != identity.diagnostic_artifact_id:
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    for kind, item in by_kind.items():
+        if (
+            not _matches(_ARTIFACT_RE, item.get("artifactId"))
+            or not _matches(_SHA_RE, item.get("sha256"))
+            or type(item.get("sizeBytes")) is not int
+            or not 1 <= item["sizeBytes"] <= _MAX_BY_KIND[kind]
+            or item.get("mediaType") != _MEDIA_BY_KIND[kind]
+        ):
+            raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    return by_kind
+
+
+def _verify_persisted_artifacts(provider: StagingUploadProvider, record: Mapping[str, Any], identity: DispatchIdentityBinding) -> dict[str, bytes]:
+    metadata = _verified_artifact_metadata(record, identity)
+    paths = _candidate_artifact_paths(provider, job_id=identity.job_id, engine=identity.engine, candidate_id=identity.candidate_id)
+    verified: dict[str, bytes] = {}
+    for kind in ("raw_engine_result", "musicxml", "diagnostic"):
+        item = metadata[kind]
+        try:
+            body = provider._read_file_no_follow(paths[kind], max_bytes=_MAX_BY_KIND[kind], overflow_category="staging_state_corrupt")
+        except MinimumStagingVerticalSliceError:
+            raise EngineResultIngestionError("candidate_persistence_artifact_invalid") from None
+        if len(body) != item["sizeBytes"] or not compare_digest(sha256(body).hexdigest(), item["sha256"]):
+            raise EngineResultIngestionError("candidate_persistence_artifact_invalid")
+        verified[kind] = body
+    return verified
 
 
 def persist_normalized_candidate_once(
@@ -864,83 +829,41 @@ def persist_normalized_candidate_once(
     orchestration_plan: Mapping[str, Any],
     candidate: NormalizedEngineCandidate,
 ) -> CandidatePersistenceResult:
-    if type(provider) is not StagingUploadProvider:
-        raise EngineResultIngestionError("candidate_persistence_provider_invalid")
-    if type(candidate) is not NormalizedEngineCandidate:
-        raise EngineResultIngestionError("candidate_persistence_candidate_invalid")
+    if type(provider) is not StagingUploadProvider or type(candidate) is not NormalizedEngineCandidate:
+        raise EngineResultIngestionError("candidate_persistence_input_invalid")
     try:
         verify_orchestration_plan(orchestration_plan)
-    except (OrchestrationContractError, TypeError, ValueError):
-        raise EngineResultIngestionError("candidate_persistence_plan_invalid") from None
-    try:
         record = _candidate_record(orchestration_plan, candidate)
-    except (DispatchIdentityError, ArtifactLifecycleError):
+    except (OrchestrationContractError, DispatchIdentityError, ArtifactLifecycleError, TypeError, ValueError):
         raise EngineResultIngestionError("candidate_persistence_identity_invalid") from None
-    paths = _candidate_artifact_paths(provider, candidate)
-    states = (
-        _persist_exact_file(
-            provider,
-            paths["raw_engine_result"],
-            candidate.raw_engine_result,
-            maximum=MAX_RAW_ENGINE_RESULT_BYTES,
-        ),
-        _persist_exact_file(
-            provider,
-            paths["musicxml"],
-            candidate.musicxml,
-            maximum=MAX_MUSICXML_BYTES,
-        ),
-        _persist_exact_file(
-            provider,
-            paths["diagnostic"],
-            candidate.diagnostic,
-            maximum=MAX_DIAGNOSTIC_BYTES,
-        ),
-    )
+    paths = _candidate_artifact_paths(provider, job_id=candidate.job_id, engine=candidate.engine, candidate_id=candidate.candidate_id)
+    _persist_exact_file(provider, paths["raw_engine_result"], candidate.raw_engine_result, maximum=MAX_RAW_ENGINE_RESULT_BYTES)
+    _persist_exact_file(provider, paths["musicxml"], candidate.musicxml, maximum=MAX_MUSICXML_BYTES)
+    _persist_exact_file(provider, paths["diagnostic"], candidate.diagnostic, maximum=MAX_DIAGNOSTIC_BYTES)
     sealed = dict(record)
     sealed[_PERSISTENCE_MAC_FIELD] = _persistence_mac(provider, record)
     payload = _canonical_json(sealed, "candidate_persistence_state_invalid")
     if len(payload) > _MAX_STATE_RECORD_BYTES:
         raise EngineResultIngestionError("candidate_persistence_state_invalid")
-    path = _candidate_record_path(provider, candidate)
+    path = _candidate_record_path(provider, job_id=candidate.job_id, engine=candidate.engine, candidate_id=candidate.candidate_id)
     try:
-        created = provider._atomic_create(path, payload)
-        if created:
-            persistence_state = "written"
+        if provider._atomic_create(path, payload):
+            state = "written"
         else:
-            stored_raw = provider._read_file_no_follow(
-                path,
-                max_bytes=_MAX_STATE_RECORD_BYTES,
-                overflow_category="staging_state_corrupt",
-            )
-            stored = _decode_record(stored_raw)
-            if (
-                type(stored) is not dict
-                or _PERSISTENCE_MAC_FIELD not in stored
-                or _canonical_json(stored, "candidate_persistence_state_invalid")
-                != stored_raw
-            ):
-                raise EngineResultIngestionError("candidate_persistence_state_invalid")
-            observed_mac = stored.get(_PERSISTENCE_MAC_FIELD)
-            unsealed = dict(stored)
-            unsealed.pop(_PERSISTENCE_MAC_FIELD, None)
-            if (
-                type(observed_mac) is not str
-                or not compare_digest(observed_mac, _persistence_mac(provider, unsealed))
-                or unsealed != record
-            ):
+            stored_raw = provider._read_file_no_follow(path, max_bytes=_MAX_STATE_RECORD_BYTES, overflow_category="staging_state_corrupt")
+            stored_record = _decode_verified_record(provider, stored_raw)
+            if stored_record != record:
                 raise EngineResultIngestionError("candidate_persistence_conflict")
-            persistence_state = "replay"
+            state = "replay"
     except EngineResultIngestionError:
         raise
     except MinimumStagingVerticalSliceError:
         raise EngineResultIngestionError("candidate_persistence_state_invalid") from None
-    if persistence_state == "written" and states == ("replay", "replay", "replay"):
-        # Crash recovery is safe because all exact immutable bytes were already present.
-        persistence_state = "written"
-    record_sha256 = sha256(
-        _canonical_json(record, "candidate_persistence_state_invalid")
-    ).hexdigest()
+    # Read-after-write/replay verification authenticates both record and actual bytes.
+    verified_record = load_persisted_candidate_record(provider=provider, orchestration_plan=orchestration_plan, engine=candidate.engine)
+    if verified_record != record:
+        raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    record_sha = sha256(_canonical_json(record, "candidate_persistence_state_invalid")).hexdigest()
     return CandidatePersistenceResult(
         version=CANDIDATE_PERSISTENCE_VERSION,
         engine=candidate.engine,
@@ -948,8 +871,8 @@ def persist_normalized_candidate_once(
         run_id=candidate.run_id,
         candidate_id=candidate.candidate_id,
         candidate_sha256=candidate.candidate_sha256,
-        record_sha256=record_sha256,
-        persistence_state=persistence_state,
+        record_sha256=record_sha,
+        persistence_state=state,
     )
 
 
@@ -965,39 +888,38 @@ def load_persisted_candidate_record(
         identity = build_dispatch_identity(orchestration_plan, engine)
     except DispatchIdentityError:
         raise EngineResultIngestionError("candidate_persistence_plan_invalid") from None
-    placeholder = type("_IdentityPath", (), {
-        "job_id": identity.job_id,
-        "engine": identity.engine,
-        "candidate_id": identity.candidate_id,
-    })()
-    path = _candidate_record_path(provider, placeholder)  # server-derived identity only
+    path = _candidate_record_path(provider, job_id=identity.job_id, engine=identity.engine, candidate_id=identity.candidate_id)
     try:
-        raw = provider._read_file_no_follow(
-            path,
-            max_bytes=_MAX_STATE_RECORD_BYTES,
-            overflow_category="staging_state_corrupt",
-        )
-        sealed = _decode_record(raw)
+        raw = provider._read_file_no_follow(path, max_bytes=_MAX_STATE_RECORD_BYTES, overflow_category="staging_state_corrupt")
     except MinimumStagingVerticalSliceError:
         raise EngineResultIngestionError("candidate_persistence_missing") from None
-    if type(sealed) is not dict or _PERSISTENCE_MAC_FIELD not in sealed:
-        raise EngineResultIngestionError("candidate_persistence_state_invalid")
-    if _canonical_json(sealed, "candidate_persistence_state_invalid") != raw:
-        raise EngineResultIngestionError("candidate_persistence_state_invalid")
-    observed = sealed.get(_PERSISTENCE_MAC_FIELD)
-    record = dict(sealed)
-    record.pop(_PERSISTENCE_MAC_FIELD, None)
+    record = _decode_verified_record(provider, raw)
     if (
-        type(observed) is not str
-        or not compare_digest(observed, _persistence_mac(provider, record))
+        record.get("version") != CANDIDATE_PERSISTENCE_VERSION
         or record.get("engine") != engine
         or record.get("jobId") != identity.job_id
         or record.get("runId") != identity.run_id
+        or record.get("planId") != identity.plan_id
+        or record.get("planSha256") != identity.plan_sha256
+        or record.get("sourceArtifactId") != identity.source_artifact_id
+        or record.get("sourceSha256") != identity.source_sha256
         or record.get("candidateId") != identity.candidate_id
+        or record.get("candidateNamespace") != identity.candidate_namespace
         or record.get("dispatchIdentitySha256") != identity.identity_sha256
+        or not _matches(_SHA_RE, record.get("candidateSha256"))
+        or not _matches(_SHA_RE, record.get("authenticatedResultSha256"))
     ):
         raise EngineResultIngestionError("candidate_persistence_state_invalid")
+    _verify_persisted_artifacts(provider, record, identity)
     return record
+
+
+def load_persisted_candidate_musicxml(
+    *, provider: StagingUploadProvider, orchestration_plan: Mapping[str, Any], engine: str
+) -> bytes:
+    record = load_persisted_candidate_record(provider=provider, orchestration_plan=orchestration_plan, engine=engine)
+    identity = build_dispatch_identity(orchestration_plan, engine)
+    return _verify_persisted_artifacts(provider, record, identity)["musicxml"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1009,14 +931,10 @@ class EngineIngestionOutcome:
     reason_code: str | None
 
     def __post_init__(self) -> None:
-        if self.engine not in ENGINE_NAMES or type(self.candidate_id) is not str:
+        if self.engine not in ENGINE_NAMES or not _matches(_CANDIDATE_RE, self.candidate_id):
             raise EngineResultIngestionError("engine_outcome_invalid")
         if self.status == "success":
-            if (
-                type(self.candidate_sha256) is not str
-                or _SHA_RE.fullmatch(self.candidate_sha256) is None
-                or self.reason_code is not None
-            ):
+            if not _matches(_SHA_RE, self.candidate_sha256) or self.reason_code is not None:
                 raise EngineResultIngestionError("engine_outcome_invalid")
         elif self.status == "failed":
             if self.candidate_sha256 is not None or self.reason_code not in _ALLOWED_FAILURE_REASONS:
@@ -1025,37 +943,17 @@ class EngineIngestionOutcome:
             raise EngineResultIngestionError("engine_outcome_invalid")
 
     def as_safe_dict(self) -> dict[str, Any]:
-        return {
-            "engine": self.engine,
-            "candidateId": self.candidate_id,
-            "status": self.status,
-            "candidateSha256": self.candidate_sha256,
-            "reasonCode": self.reason_code,
-        }
+        return {"engine": self.engine, "candidateId": self.candidate_id, "status": self.status, "candidateSha256": self.candidate_sha256, "reasonCode": self.reason_code}
 
 
 def success_outcome(candidate: NormalizedEngineCandidate) -> EngineIngestionOutcome:
     if type(candidate) is not NormalizedEngineCandidate:
         raise EngineResultIngestionError("engine_outcome_invalid")
-    return EngineIngestionOutcome(
-        engine=candidate.engine,
-        candidate_id=candidate.candidate_id,
-        status="success",
-        candidate_sha256=candidate.candidate_sha256,
-        reason_code=None,
-    )
+    return EngineIngestionOutcome(candidate.engine, candidate.candidate_id, "success", candidate.candidate_sha256, None)
 
 
-def failure_outcome(
-    *, engine: str, candidate_id: str, reason_code: str
-) -> EngineIngestionOutcome:
-    return EngineIngestionOutcome(
-        engine=engine,
-        candidate_id=candidate_id,
-        status="failed",
-        candidate_sha256=None,
-        reason_code=reason_code,
-    )
+def failure_outcome(*, engine: str, candidate_id: str, reason_code: str) -> EngineIngestionOutcome:
+    return EngineIngestionOutcome(engine, candidate_id, "failed", None, reason_code)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1100,10 +998,7 @@ class PartialSuccessSummary:
         }
 
 
-def summarize_partial_success(
-    orchestration_plan: Mapping[str, Any],
-    outcomes: tuple[EngineIngestionOutcome, ...],
-) -> PartialSuccessSummary:
+def summarize_partial_success(orchestration_plan: Mapping[str, Any], outcomes: tuple[EngineIngestionOutcome, ...]) -> PartialSuccessSummary:
     try:
         verify_orchestration_plan(orchestration_plan)
     except (OrchestrationContractError, TypeError, ValueError):
@@ -1115,7 +1010,10 @@ def summarize_partial_success(
     for outcome in outcomes:
         if type(outcome) is not EngineIngestionOutcome or outcome.engine in by_engine:
             raise EngineResultIngestionError("partial_success_outcomes_invalid")
-        expected = build_dispatch_identity(orchestration_plan, outcome.engine)
+        try:
+            expected = build_dispatch_identity(orchestration_plan, outcome.engine)
+        except DispatchIdentityError:
+            raise EngineResultIngestionError("partial_success_outcomes_invalid") from None
         if outcome.candidate_id != expected.candidate_id:
             raise EngineResultIngestionError("partial_success_outcomes_invalid")
         by_engine[outcome.engine] = outcome
@@ -1124,66 +1022,41 @@ def summarize_partial_success(
     ordered = tuple(by_engine[engine] for engine in requested)
     success_count = sum(item.status == "success" for item in ordered)
     return PartialSuccessSummary(
-        version=PARTIAL_SUCCESS_VERSION,
-        total_engine_count=len(ordered),
-        success_count=success_count,
-        failure_count=len(ordered) - success_count,
-        status=f"{success_count}_of_{len(ordered)}_success",
-        comparison_eligible=success_count >= 2,
-        canonical_convergence_eligible=success_count >= 2,
-        outcomes=ordered,
+        PARTIAL_SUCCESS_VERSION,
+        len(ordered),
+        success_count,
+        len(ordered) - success_count,
+        f"{success_count}_of_{len(ordered)}_success",
+        success_count >= 2,
+        success_count >= 2,
+        ordered,
     )
 
 
-def build_candidate_lifecycle_from_outcomes(
+def _build_lifecycle_from_verified_records(
     orchestration_plan: Mapping[str, Any],
-    outcomes: tuple[EngineIngestionOutcome, ...],
-    persisted_records: Mapping[str, Mapping[str, Any]],
+    summary: PartialSuccessSummary,
+    records: Mapping[str, Mapping[str, Any]],
 ) -> CandidateArtifactLifecycle:
-    """Deterministically converge append-only candidate lifecycle evidence.
-
-    Successful artifact metadata comes only from authenticated HMAC-sealed
-    persistence records. Failed engines terminalize only their own candidate.
-    """
-
-    summary = summarize_partial_success(orchestration_plan, outcomes)
     lifecycle = build_artifact_lifecycle(orchestration_plan)
     for outcome in summary.outcomes:
-        candidate = next(
-            item for item in lifecycle.candidates if item.engine == outcome.engine
-        )
+        candidate = next(item for item in lifecycle.candidates if item.engine == outcome.engine)
         if outcome.status == "success":
-            record = persisted_records.get(outcome.engine)
-            if type(record) is not dict:
-                raise EngineResultIngestionError("candidate_lifecycle_record_missing")
-            if (
-                record.get("engine") != outcome.engine
-                or record.get("candidateId") != outcome.candidate_id
-                or record.get("candidateSha256") != outcome.candidate_sha256
-            ):
+            record = records.get(outcome.engine)
+            if type(record) is not dict or record.get("candidateSha256") != outcome.candidate_sha256:
                 raise EngineResultIngestionError("candidate_lifecycle_record_invalid")
             artifacts = record.get("artifacts")
             if type(artifacts) is not list or len(artifacts) != 3:
                 raise EngineResultIngestionError("candidate_lifecycle_record_invalid")
-            by_kind = {
-                item.get("kind"): item for item in artifacts if type(item) is dict
-            }
-            if set(by_kind) != {"raw_engine_result", "musicxml", "diagnostic"}:
+            by_kind = {item.get("kind"): item for item in artifacts if type(item) is dict}
+            if set(by_kind) != set(_MEDIA_BY_KIND):
                 raise EngineResultIngestionError("candidate_lifecycle_record_invalid")
-            lifecycle = transition_candidate(
-                lifecycle,
-                candidate.candidate_id,
-                "collecting",
-            )
+            lifecycle = transition_candidate(lifecycle, candidate.candidate_id, "collecting")
             for artifact in candidate.artifacts:
                 metadata = by_kind.get(artifact.kind)
                 if type(metadata) is not dict or metadata.get("artifactId") != artifact.artifact_id:
                     raise EngineResultIngestionError("candidate_lifecycle_record_invalid")
-                lifecycle = transition_artifact(
-                    lifecycle,
-                    artifact.artifact_id,
-                    "writing",
-                )
+                lifecycle = transition_artifact(lifecycle, artifact.artifact_id, "writing")
                 lifecycle = transition_artifact(
                     lifecycle,
                     artifact.artifact_id,
@@ -1192,29 +1065,35 @@ def build_candidate_lifecycle_from_outcomes(
                     size_bytes=metadata.get("sizeBytes"),
                     media_type=metadata.get("mediaType"),
                 )
-            lifecycle = transition_candidate(
-                lifecycle,
-                candidate.candidate_id,
-                "sealed",
-            )
+            lifecycle = transition_candidate(lifecycle, candidate.candidate_id, "sealed")
         else:
             reason = outcome.reason_code
             if reason is None:
                 raise EngineResultIngestionError("candidate_lifecycle_failure_invalid")
-            lifecycle_reason = (
-                reason if len(reason) <= 63 else "engine_result_invalid_schema"
-            )
             for artifact in candidate.artifacts:
-                lifecycle = transition_artifact(
-                    lifecycle,
-                    artifact.artifact_id,
-                    "abandoned",
-                    reason_code=lifecycle_reason,
-                )
-            lifecycle = transition_candidate(
-                lifecycle,
-                candidate.candidate_id,
-                "failed",
-                reason_code=lifecycle_reason,
-            )
+                lifecycle = transition_artifact(lifecycle, artifact.artifact_id, "abandoned", reason_code=reason)
+            lifecycle = transition_candidate(lifecycle, candidate.candidate_id, "failed", reason_code=reason)
     return lifecycle
+
+
+def build_candidate_lifecycle_from_persistence(
+    *,
+    provider: StagingUploadProvider,
+    orchestration_plan: Mapping[str, Any],
+    outcomes: tuple[EngineIngestionOutcome, ...],
+) -> CandidateArtifactLifecycle:
+    """Build lifecycle only from records re-authenticated from the durable store."""
+
+    summary = summarize_partial_success(orchestration_plan, outcomes)
+    records: dict[str, Mapping[str, Any]] = {}
+    for outcome in summary.outcomes:
+        if outcome.status == "success":
+            records[outcome.engine] = load_persisted_candidate_record(
+                provider=provider,
+                orchestration_plan=orchestration_plan,
+                engine=outcome.engine,
+            )
+    try:
+        return _build_lifecycle_from_verified_records(orchestration_plan, summary, records)
+    except ArtifactLifecycleError:
+        raise EngineResultIngestionError("candidate_lifecycle_invalid") from None
