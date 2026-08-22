@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A, Stage 8-B and Stage 8-C merged; Stage 8-D authorized read-only review workspace in review**.
+Status: **Stage 8-A, Stage 8-B, Stage 8-C and Stage 8-D merged; Stage 8-E read-only browser workspace in review**.
 
-Current Stage 8-C main: `8dde189042844e79a63b5d76024889e30a5e2e4b`.
+Current Stage 8-D main: `1b5f85f71134cc824c63192a7b83e251e087f488`.
 
 ## Current trust chain
 
@@ -25,7 +25,7 @@ Stage 7 immutable read-only evidence
   -> revision:read authorization + exact base/revision snapshot
   -> independently revalidated Stage 7 comparison evidence
   -> bounded deterministic read-only projection/focus
-  -> [LOCKED] browser read-only rendering adapter
+  -> local fail-closed read-only browser adapter
   -> [LOCKED] corrected MusicXML derivative
   -> [LOCKED] browser mutation transport/UI
   -> [LOCKED] cursor/playback authority
@@ -83,9 +83,9 @@ The deterministic review-state layer proves:
 
 The review state remains narrower than corrected MusicXML and never grants approval/publication authority.
 
-## Stage 8-D — proof target
+## Stage 8-D — merged
 
-The read-only workspace boundary adds:
+The read-only workspace boundary proves:
 
 - exact `revision:read` HMAC authorization for tenant/job/reviewer/report/Canonical/snapshot;
 - base snapshots must equal a fresh deterministic Canonical materialization;
@@ -96,7 +96,25 @@ The read-only workspace boundary adds:
 - no raw MusicXML, XML path, artifact reference, source artifact hash, credential, signature or action list in the projection;
 - capabilities frozen to read-only/non-authoritative/non-approvable/non-publishable.
 
-This is a server-side projection contract only. It does not expose an HTTP route and it does not yet bind the static browser shell.
+Stage 8-D is a server-side projection contract only. It exposes no HTTP route and no browser mutation authority.
+
+## Stage 8-E — proof target
+
+The read-only browser gate binds the Stage 8-D projection to the repository-owned application shell without widening server authority:
+
+- a separate replaceable prototype preserves the original UI-0B no-script/disconnected baseline;
+- only one embedded `scoremosaic-teacher-review-projection-v1` payload is consumed;
+- unknown projection fields or capability expansion fail closed;
+- `connect-src 'none'` keeps all network access disabled;
+- browser storage, cookies, navigation, forms and dynamic code execution remain absent;
+- projection content reaches the DOM only through safe textual sinks;
+- issue order is preserved and the first item is selected deterministically;
+- Arrow Up/Down, Home and End provide keyboard issue navigation;
+- focus and candidate observations are presentation-only;
+- absent events remain explicit evidence rather than being silently repaired;
+- edit, approval, publication and playback controls remain disabled.
+
+No public/internal Teacher Review route is added by Stage 8-E. The browser cannot create ScoreEditCommand or TeacherScoreRevision objects.
 
 ## Still locked / not proved
 
@@ -104,7 +122,6 @@ This is a server-side projection contract only. It does not expose an HTTP route
 - public or internal Teacher Review HTTP routes;
 - production DB/object-store deployment;
 - multi-host distributed consensus and full-store anti-rollback authority;
-- browser read-only adapter/accessibility behavior;
 - corrected MusicXML generation;
 - MusicXML safety validation and Canonical round-trip for teacher derivatives;
 - browser writable editor activation;
@@ -112,6 +129,6 @@ This is a server-side projection contract only. It does not expose an HTTP route
 - exact teacher approval;
 - publication.
 
-## Safe continuation after Stage 8-D
+## Safe continuation after Stage 8-E
 
-After Stage 8-D passes exact-head CI and merges, bind the projection to the existing static UI shell as a read-only review workspace with deterministic issue selection/focus, keyboard navigation and accessible status semantics. Do not introduce mutation controls or a write endpoint. Corrected MusicXML remains a later isolated derivative gate; approval/publication remain separate from draft saving.
+After Stage 8-E passes exact-head CI and merges, isolate corrected MusicXML as a deterministic derivative of one exact TeacherScoreRevision. Safety validation must precede Canonical re-normalization, and the re-normalized Canonical state must match the exact teacher revision before any browser write transport, approval or publication authority is considered. Browser mutation remains locked while this derivative gate is incomplete.
