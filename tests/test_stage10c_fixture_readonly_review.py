@@ -47,7 +47,11 @@ class Stage10CFixtureReadonlyReviewTests(unittest.TestCase):
             "insertAdjacentHTML": r"insertAdjacentHTML",
             "eval": r"\beval\s*\(",
             "Function": r"new\s+Function",
-            "location": r"(?:window\.)?location\s*[=.]",
+            "windowLocation": r"\bwindow\.location\b",
+            "documentLocation": r"\bdocument\.location\b",
+            "directLocationAssignment": r"(?<![\w.])location\s*=",
+            "locationHrefAssignment": r"(?<![\w.])location\s*\.\s*href\s*=",
+            "locationNavigationMethod": r"(?<![\w.])location\s*\.\s*(?:assign|replace)\s*\(",
         }
         for name, pattern in banned_patterns.items():
             self.assertIsNone(re.search(pattern, combined), name)
