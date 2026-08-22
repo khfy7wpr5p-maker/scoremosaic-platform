@@ -100,6 +100,21 @@ def projection(scope, base, report, state, *, revision=None, grant=None, offset=
     )
 
 
+def first_location(state):
+    payload = state.to_dict()
+    part = payload["parts"][0]
+    measure = part["measures"][0]
+    event = measure["events"][0]
+    return event, {
+        "partId": part["partId"],
+        "measureId": measure["measureId"],
+        "eventId": event["eventId"],
+        "staff": event["staff"],
+        "voice": event["voice"],
+        "onset": event["onset"],
+    }
+
+
 class Stage8DReadOnlyProjectionTests(unittest.TestCase):
     def setUp(self):
         self.base, self.alternate, self.report = evidence()
@@ -154,22 +169,10 @@ class Stage8DReadOnlyProjectionTests(unittest.TestCase):
     def test_cross_tenant_and_missing_read_authority_fail_closed(self):
         wrong_tenant = read_grant(self.scope, tenant="school_other")
         with self.assertRaisesRegex(Stage8ProjectionError, "PROJECTION_AUTHORIZATION_DENIED"):
-            projection(
-                self.scope,
-                self.base,
-                self.report,
-                self.state,
-                grant=wrong_tenant,
-            )
+            projection(self.scope, self.base, self.report, self.state, grant=wrong_tenant)
         propose_only = read_grant(self.scope, actions=("revision:propose",))
         with self.assertRaisesRegex(Stage8ProjectionError, "PROJECTION_AUTHORIZATION_DENIED"):
-            projection(
-                self.scope,
-                self.base,
-                self.report,
-                self.state,
-                grant=propose_only,
-            )
+            projection(self.scope, self.base, self.report, self.state, grant=propose_only)
 
     def test_pagination_is_bounded_and_explicit(self):
         payload = projection(self.scope, self.base, self.report, self.state, limit=1).to_dict()
@@ -181,15 +184,7 @@ class Stage8DReadOnlyProjectionTests(unittest.TestCase):
             projection(self.scope, self.base, self.report, self.state, limit=201)
 
     def test_unpersisted_edited_state_cannot_masquerade_as_base_snapshot(self):
-        event = self.state.to_dict()["parts"][0]["measures"][0]["events"][0]
-        location = {
-            "partId": "P1",
-            "measureId": "P1:M1",
-            "eventId": event["eventId"],
-            "staff": event["staff"],
-            "voice": event["voice"],
-            "onset": event["onset"],
-        }
+        _, location = first_location(self.state)
         command = build_score_edit_command(
             {
                 "schemaVersion": COMMAND_VERSION,
@@ -216,15 +211,7 @@ class Stage8DReadOnlyProjectionTests(unittest.TestCase):
             projection(self.scope, self.base, self.report, edited)
 
     def test_exact_revision_snapshot_binds_revision_hash_to_state_and_focus(self):
-        event = self.state.to_dict()["parts"][0]["measures"][0]["events"][0]
-        location = {
-            "partId": "P1",
-            "measureId": "P1:M1",
-            "eventId": event["eventId"],
-            "staff": event["staff"],
-            "voice": event["voice"],
-            "onset": event["onset"],
-        }
+        event, location = first_location(self.state)
         decision_id = "authz_stage8d_remove"
         command = build_score_edit_command(
             {
@@ -296,13 +283,7 @@ class Stage8DReadOnlyProjectionTests(unittest.TestCase):
         self.assertFalse(selected[0]["focus"]["eventPresentInSnapshot"])
 
         with self.assertRaisesRegex(Stage8ProjectionError, "PROJECTION_REVISION_STATE_MISMATCH"):
-            projection(
-                self.scope,
-                self.base,
-                self.report,
-                self.state,
-                revision=revision,
-            )
+            projection(self.scope, self.base, self.report, self.state, revision=revision)
 
 
 if __name__ == "__main__":
