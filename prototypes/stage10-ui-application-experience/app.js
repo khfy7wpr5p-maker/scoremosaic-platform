@@ -24,12 +24,33 @@
     return fixture.issues.filter((issue) => issue.severity === state.filter);
   };
 
+  const focusRenderedIssue = (issueId) => {
+    const list = byId('issue-list');
+    if (!list) return;
+    const button = Array.from(list.querySelectorAll('[data-issue-id]'))
+      .find((candidate) => candidate.dataset.issueId === issueId);
+    button?.focus();
+  };
+
+  const selectIssue = (issueId, focusMode = 'score') => {
+    const exists = fixture.issues.some((issue) => issue.id === issueId);
+    if (!exists) return;
+    state.selectedIssueId = issueId;
+    render();
+    if (focusMode === 'issue') {
+      focusRenderedIssue(issueId);
+    } else if (focusMode === 'score') {
+      byId('score-view')?.focus();
+    }
+  };
+
   const createIssueButton = (issue) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `issue-button issue-button--${issue.severity}`;
     button.dataset.issueId = issue.id;
     button.setAttribute('aria-pressed', issue.id === state.selectedIssueId ? 'true' : 'false');
+    button.setAttribute('aria-label', `${issue.severity}: ${issue.title}. Page ${issue.location.page}, measure ${issue.location.measure}.`);
 
     const severity = document.createElement('span');
     severity.className = 'issue-severity';
@@ -43,11 +64,7 @@
     locationLabel.textContent = `Page ${issue.location.page} · Measure ${issue.location.measure} · Event ${issue.location.event}`;
 
     button.append(severity, title, locationLabel);
-    button.addEventListener('click', () => {
-      state.selectedIssueId = issue.id;
-      render();
-      byId('score-view')?.focus();
-    });
+    button.addEventListener('click', () => selectIssue(issue.id, 'score'));
     return button;
   };
 
@@ -112,6 +129,21 @@
       }
       render();
     });
+  });
+
+  const issueList = byId('issue-list');
+  issueList?.addEventListener('keydown', (event) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const visible = filteredIssues();
+    if (visible.length === 0) return;
+    const currentIndex = Math.max(0, visible.findIndex((issue) => issue.id === state.selectedIssueId));
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowDown') nextIndex = Math.min(currentIndex + 1, visible.length - 1);
+    if (event.key === 'ArrowUp') nextIndex = Math.max(currentIndex - 1, 0);
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = visible.length - 1;
+    event.preventDefault();
+    selectIssue(visible[nextIndex].id, 'issue');
   });
 
   render();

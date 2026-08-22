@@ -8,6 +8,7 @@
   <title>ScoreMosaic — Stage 10 Product Experience</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="edit-intent.css">
+  <link rel="stylesheet" href="accessibility.css">
   <script src="fixture.js" defer></script>
   <script src="app.js" defer></script>
   <script src="edit-intent.js" defer></script>
@@ -36,14 +37,15 @@
     <aside class="panel issues-panel" aria-labelledby="issues-title">
       <div class="panel-header">
         <div><p class="eyebrow">Review queue</p><h1 id="issues-title">Issues</h1></div>
-        <span id="issue-count" class="badge badge--neutral">0 shown</span>
+        <span id="issue-count" class="badge badge--neutral" role="status" aria-live="polite" aria-atomic="true">0 shown</span>
       </div>
       <div class="toolbar" aria-label="Issue filters">
         <button type="button" data-filter="all" aria-pressed="true">All</button>
         <button type="button" data-filter="blocking" aria-pressed="false">Blocking</button>
         <button type="button" data-filter="warning" aria-pressed="false">Warnings</button>
       </div>
-      <div id="issue-list" class="issue-list" aria-label="Fixture review issues"></div>
+      <p id="issue-keyboard-help" class="sr-only">Use Arrow Up, Arrow Down, Home, or End while focused on an issue to move through the visible issue list.</p>
+      <div id="issue-list" class="issue-list" role="group" aria-label="Fixture review issues" aria-describedby="issue-keyboard-help"></div>
       <div class="mini-summary" aria-label="Issue summary">
         <span><strong>Blocking</strong> <span id="blocking-count">—</span></span>
         <span><strong>Warnings</strong> <span id="warning-count">—</span></span>
@@ -51,7 +53,7 @@
       </div>
     </aside>
 
-    <section id="score-view" class="panel score-panel" aria-labelledby="score-title" tabindex="-1">
+    <section id="score-view" class="panel score-panel" aria-labelledby="score-title" aria-describedby="score-authority-note" tabindex="-1">
       <div class="panel-header panel-header--wide">
         <div><p class="eyebrow">Primary workspace</p><h2 id="score-title">Score View</h2></div>
         <div class="panel-actions" aria-label="Score view status">
@@ -60,6 +62,7 @@
           <button type="button" disabled>100%</button>
         </div>
       </div>
+      <p id="score-authority-note" class="sr-only">This score presentation is a repository fixture and is not authoritative musical truth.</p>
       <div class="score-canvas" role="img" aria-label="Repository-owned fixture score presentation; not musical authority.">
         <div class="paper-sheet" aria-hidden="true">
           <span class="staff"></span><span class="staff"></span><span class="staff"></span>
@@ -97,24 +100,25 @@
       <section class="edit-section" aria-labelledby="intent-title">
         <div class="intent-heading">
           <h3 id="intent-title">Edit intent</h3>
-          <span id="intent-status" class="intent-status" data-kind="neutral">Local draft only</span>
+          <span id="intent-status" class="intent-status" data-kind="neutral" role="status" aria-live="polite" aria-atomic="true">Local draft only</span>
         </div>
+        <p id="edit-intent-help" class="sr-only">This editor creates only a disconnected local intent preview. It cannot create a ScoreEditCommand, revision, approval, or publication.</p>
         <label class="field-label" for="edit-operation">Operation</label>
-        <select id="edit-operation" class="edit-control">
+        <select id="edit-operation" class="edit-control" aria-describedby="edit-intent-help">
           <option value="set_pitch">Set pitch</option>
           <option value="set_effective_duration">Set effective duration</option>
           <option value="set_dots">Set dots</option>
           <option value="remove_event">Remove event</option>
         </select>
         <label class="field-label" for="edit-value">Proposed value</label>
-        <input id="edit-value" class="edit-control" type="text" maxlength="16" autocomplete="off" spellcheck="false">
+        <input id="edit-value" class="edit-control" type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-describedby="edit-intent-help">
         <label class="field-label" for="edit-reason">Reviewer note <span>(optional)</span></label>
-        <textarea id="edit-reason" class="edit-control edit-reason" maxlength="300" rows="3"></textarea>
+        <textarea id="edit-reason" class="edit-control edit-reason" maxlength="300" rows="3" aria-describedby="edit-intent-help"></textarea>
         <div class="intent-actions">
-          <button id="prepare-intent" class="primary-button" data-local-action="prepare-intent" type="button" disabled>Prepare local intent</button>
+          <button id="prepare-intent" class="primary-button" data-local-action="prepare-intent" type="button" disabled aria-describedby="edit-intent-help">Prepare local intent</button>
           <button id="clear-intent" type="button" disabled>Clear</button>
         </div>
-        <pre id="intent-preview" class="intent-preview" aria-live="polite">No local intent prepared.</pre>
+        <pre id="intent-preview" class="intent-preview" role="status" aria-live="polite" aria-atomic="true">No local intent prepared.</pre>
       </section>
       <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created. Local intent is non-authoritative and contains no server authorization, old-value precondition, or command identity.</p>
     </aside>
