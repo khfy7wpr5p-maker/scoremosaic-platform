@@ -75,27 +75,32 @@ def _bounded_walk(value: Any, *, depth: int = 0, counter: list[int] | None = Non
     counter[0] += 1
     if counter[0] > _MAX_REQUEST_NODES or depth > _MAX_REQUEST_DEPTH:
         _fail("WRITE_REQUEST_TOO_COMPLEX")
-    if isinstance(value, Mapping):
+
+    if type(value) is dict:
         if len(value) > 32:
             _fail("WRITE_REQUEST_TOO_COMPLEX")
         for key, item in value.items():
-            if not isinstance(key, str) or not key or len(key) > 200:
+            if type(key) is not str or not key or len(key) > 200:
                 _fail("WRITE_REQUEST_INVALID")
             _bounded_walk(item, depth=depth + 1, counter=counter)
-    elif isinstance(value, (list, tuple)):
+        return
+    if type(value) is list:
         if len(value) > 32:
             _fail("WRITE_REQUEST_TOO_COMPLEX")
         for item in value:
             _bounded_walk(item, depth=depth + 1, counter=counter)
-    elif isinstance(value, str):
+        return
+    if type(value) is str:
         if len(value) > _MAX_REQUEST_STRING:
             _fail("WRITE_REQUEST_TOO_COMPLEX")
-    elif value is not None and not isinstance(value, (bool, int)):
-        _fail("WRITE_REQUEST_INVALID")
+        return
+    if value is None or type(value) in {bool, int}:
+        return
+    _fail("WRITE_REQUEST_INVALID")
 
 
-def _request_body(payload: Mapping[str, Any]) -> tuple[dict[str, Any], bytes]:
-    if not isinstance(payload, Mapping):
+def _request_body(payload: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
+    if type(payload) is not dict:
         _fail("WRITE_REQUEST_INVALID")
     _bounded_walk(payload)
     if set(payload) != set(_REQUEST_KEYS):
@@ -103,7 +108,7 @@ def _request_body(payload: Mapping[str, Any]) -> tuple[dict[str, Any], bytes]:
     if payload.get("schemaVersion") != WRITE_REQUEST_VERSION:
         _fail("WRITE_REQUEST_VERSION_INVALID")
     claimed = payload.get("requestSha256")
-    if not isinstance(claimed, str) or _HASH_RE.fullmatch(claimed) is None:
+    if type(claimed) is not str or _HASH_RE.fullmatch(claimed) is None:
         _fail("WRITE_REQUEST_HASH_INVALID")
     body = {
         "schemaVersion": WRITE_REQUEST_VERSION,
@@ -119,7 +124,9 @@ def _request_body(payload: Mapping[str, Any]) -> tuple[dict[str, Any], bytes]:
         normalized = json.loads(encoded.decode("utf-8"))
     except (UnicodeError, json.JSONDecodeError):
         _fail("WRITE_REQUEST_INVALID")
-    return normalized, encoded
+    if type(normalized) is not dict:
+        _fail("WRITE_REQUEST_INVALID")
+    return normalized, computed
 
 
 def build_write_request(command: ScoreEditCommand) -> dict[str, Any]:
@@ -167,16 +174,24 @@ class WriteIdempotencyReservationRequest:
     parent_revision_sha256: str | None
 
     def __post_init__(self) -> None:
-        if self.version != WRITE_IDEMPOTENCY_VERSION:
+        if type(self.version) is not str or self.version != WRITE_IDEMPOTENCY_VERSION:
             _fail("WRITE_IDEMPOTENCY_REQUEST_INVALID")
         for value in (self.slot_id, self.request_sha256, self.command_sha256):
-            if not isinstance(value, str) or _HASH_RE.fullmatch(value) is None:
+            if type(value) is not str or _HASH_RE.fullmatch(value) is None:
                 _fail("WRITE_IDEMPOTENCY_REQUEST_INVALID")
-        if not isinstance(self.command_id, str) or not self.command_id:
+        if type(self.command_id) is not str or not self.command_id:
             _fail("WRITE_IDEMPOTENCY_REQUEST_INVALID")
         if (self.parent_revision_id is None) != (self.parent_revision_sha256 is None):
             _fail("WRITE_IDEMPOTENCY_REQUEST_INVALID")
-        if self.parent_revision_sha256 is not None and _HASH_RE.fullmatch(self.parent_revision_sha256) is None:
+        if self.parent_revision_id is not None and type(self.parent_revision_id) is not str:
+            _fail("WRITE_IDEMPOTENCY_REQUEST_INVALID")
+        if (
+            self.parent_revision_sha256 is not None
+            and (
+                type(self.parent_revision_sha256) is not str
+                or _HASH_RE.fullmatch(self.parent_revision_sha256) is None
+            )
+        ):
             _fail("WRITE_IDEMPOTENCY_REQUEST_INVALID")
 
 
@@ -190,14 +205,17 @@ class WriteIdempotencyReservationReceipt:
 
     def __post_init__(self) -> None:
         for value in (self.slot_id, self.request_sha256, self.command_sha256):
-            if not isinstance(value, str) or _HASH_RE.fullmatch(value) is None:
+            if type(value) is not str or _HASH_RE.fullmatch(value) is None:
                 _fail("WRITE_IDEMPOTENCY_RECEIPT_INVALID")
-        if self.outcome not in {"reserved", "replay", "conflict"}:
+        if type(self.outcome) is not str or self.outcome not in {"reserved", "replay", "conflict"}:
             _fail("WRITE_IDEMPOTENCY_RECEIPT_INVALID")
         if self.outcome == "conflict":
             if self.created_at is not None:
                 _fail("WRITE_IDEMPOTENCY_RECEIPT_INVALID")
-        elif not isinstance(self.created_at, str) or _TIMESTAMP_RE.fullmatch(self.created_at) is None:
+        elif (
+            type(self.created_at) is not str
+            or _TIMESTAMP_RE.fullmatch(self.created_at) is None
+        ):
             _fail("WRITE_IDEMPOTENCY_RECEIPT_INVALID")
 
 
@@ -219,6 +237,25 @@ class Stage8ServerWriteResult:
     idempotent_replay: bool
     idempotency_state: str
 
+    def __post_init__(self) -> None:
+        for value in (self.request_sha256, self.command_sha256):
+            if type(value) is not str or _HASH_RE.fullmatch(value) is None:
+                _fail("WRITE_RESULT_INVALID")
+        if type(self.command_id) is not str or not self.command_id:
+            _fail("WRITE_RESULT_INVALID")
+        if not isinstance(self.revision, TeacherScoreRevision):
+            _fail("WRITE_RESULT_INVALID")
+        if not isinstance(self.state, ReviewMusicalState):
+            _fail("WRITE_RESULT_INVALID")
+        if not isinstance(self.validation, RevisionValidationReport):
+            _fail("WRITE_RESULT_INVALID")
+        if type(self.append_applied) is not bool or type(self.idempotent_replay) is not bool:
+            _fail("WRITE_RESULT_INVALID")
+        if self.append_applied == self.idempotent_replay:
+            _fail("WRITE_RESULT_INVALID")
+        if self.idempotency_state not in {"reserved", "replay"}:
+            _fail("WRITE_RESULT_INVALID")
+
     def to_safe_dict(self) -> dict[str, Any]:
         revision = self.revision.to_dict()
         return {
@@ -237,6 +274,7 @@ class Stage8ServerWriteResult:
             "immutable": True,
             "approvalEligible": False,
             "publicationEligible": False,
+            "authoritativeCapability": False,
             "publicApiEnabled": False,
             "browserWriteEnabled": False,
         }
@@ -257,6 +295,8 @@ def _verify_authorization_first(
     reviewer_id: str,
     head: DurableRevisionHead | None,
 ) -> dict[str, Any]:
+    if type(reviewer_id) is not str or not reviewer_id:
+        _fail("WRITE_SERVER_CONFIGURATION_INVALID")
     parent_id = head.revision_id if head is not None else None
     parent_sha = head.revision_sha256 if head is not None else None
     try:
@@ -274,7 +314,11 @@ def _verify_authorization_first(
             expected_parent_revision_sha256=parent_sha,
         )
     except Stage8ContractError as exc:
-        code = "WRITE_STALE_PARENT" if exc.code == "AUTHZ_STALE_PARENT" else "WRITE_AUTHORIZATION_DENIED"
+        code = (
+            "WRITE_STALE_PARENT"
+            if exc.code == "AUTHZ_STALE_PARENT"
+            else "WRITE_AUTHORIZATION_DENIED"
+        )
         raise Stage8WriteBoundaryError(code) from exc
 
 
@@ -361,8 +405,10 @@ def _reserve_idempotency(
     try:
         receipt = reserver(request)
     except Exception as exc:
+        # The provider seam is a trust boundary. Provider implementation details
+        # must not cross into the outward write error surface.
         raise Stage8WriteBoundaryError("WRITE_IDEMPOTENCY_UNAVAILABLE") from exc
-    if not isinstance(receipt, WriteIdempotencyReservationReceipt):
+    if type(receipt) is not WriteIdempotencyReservationReceipt:
         _fail("WRITE_IDEMPOTENCY_RECEIPT_INVALID")
     receipt.__post_init__()
     if (
@@ -409,7 +455,7 @@ def submit_score_edit_request(
         head=head,
     )
 
-    normalized_request, _ = _request_body(request_payload)
+    normalized_request, request_sha256 = _request_body(request_payload)
     try:
         command = validate_score_edit_command(normalized_request["command"])
     except Stage8ContractError as exc:
@@ -449,10 +495,11 @@ def submit_score_edit_request(
         scope=scope,
         reviewer_id=reviewer_id,
         command=command,
-        request_sha256=request_payload["requestSha256"],
+        request_sha256=request_sha256,
         reserver=idempotency_reserver,
     )
-    assert receipt.created_at is not None
+    if receipt.created_at is None:
+        _fail("WRITE_IDEMPOTENCY_RECEIPT_INVALID")
 
     parent_id = head.revision_id if head is not None else None
     parent_sha = head.revision_sha256 if head is not None else None
@@ -478,7 +525,11 @@ def submit_score_edit_request(
             previous_audit_event_sha256=previous_audit,
         )
     except Stage8ContractError as exc:
-        code = "WRITE_STALE_PARENT" if exc.code in {"AUTHZ_STALE_PARENT", "COMMAND_STALE_PARENT"} else "WRITE_AUTHORIZATION_DENIED"
+        code = (
+            "WRITE_STALE_PARENT"
+            if exc.code in {"AUTHZ_STALE_PARENT", "COMMAND_STALE_PARENT"}
+            else "WRITE_AUTHORIZATION_DENIED"
+        )
         raise Stage8WriteBoundaryError(code) from exc
 
     try:
@@ -491,7 +542,10 @@ def submit_score_edit_request(
     except DurableRevisionStoreError as exc:
         code = (
             "WRITE_STALE_PARENT"
-            if exc.category in {"revision_store_stale_parent", "revision_store_append_conflict"}
+            if exc.category in {
+                "revision_store_stale_parent",
+                "revision_store_append_conflict",
+            }
             else "WRITE_STORE_INVALID"
         )
         raise Stage8WriteBoundaryError(code) from exc
@@ -504,7 +558,7 @@ def submit_score_edit_request(
         _fail("WRITE_STORE_RESULT_MISMATCH")
 
     return Stage8ServerWriteResult(
-        request_sha256=request_payload["requestSha256"],
+        request_sha256=request_sha256,
         command_id=command.command_id,
         command_sha256=command.command_sha256,
         revision=revision,
