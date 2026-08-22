@@ -4,9 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <title>ScoreMosaic — Stage 10 Product Experience</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="fixture.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#score-view">Skip to Score View</a>
@@ -18,13 +20,13 @@
     </div>
     <div class="document-context" aria-label="Document context">
       <span class="context-label">Document</span>
-      <strong>Fixture score — disconnected</strong>
+      <strong id="document-label">Local fixture</strong>
       <span class="context-separator" aria-hidden="true">/</span>
-      <span>Revision —</span>
+      <span>Revision <strong id="revision-label">—</strong></span>
     </div>
     <div class="security-state" aria-label="Runtime state">
       <span class="state-dot" aria-hidden="true"></span>
-      <span>Local shell · no backend</span>
+      <span>Local fixture · no backend</span>
     </div>
   </header>
 
@@ -32,21 +34,18 @@
     <aside class="panel issues-panel" aria-labelledby="issues-title">
       <div class="panel-header">
         <div><p class="eyebrow">Review queue</p><h1 id="issues-title">Issues</h1></div>
-        <span class="badge badge--neutral">0 connected</span>
+        <span id="issue-count" class="badge badge--neutral">0 shown</span>
       </div>
       <div class="toolbar" aria-label="Issue filters">
-        <button type="button" disabled>All</button>
-        <button type="button" disabled>Blocking</button>
-        <button type="button" disabled>Warnings</button>
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="blocking" aria-pressed="false">Blocking</button>
+        <button type="button" data-filter="warning" aria-pressed="false">Warnings</button>
       </div>
-      <div class="empty-card" role="status">
-        <span class="empty-symbol" aria-hidden="true">!</span>
-        <div><strong>No fixture loaded yet</strong><p>Stage 10-C will supply deterministic local review evidence.</p></div>
-      </div>
+      <div id="issue-list" class="issue-list" aria-label="Fixture review issues"></div>
       <div class="mini-summary" aria-label="Issue summary">
-        <span><strong>Blocking</strong> —</span>
-        <span><strong>Warnings</strong> —</span>
-        <span><strong>Info</strong> —</span>
+        <span><strong>Blocking</strong> <span id="blocking-count">—</span></span>
+        <span><strong>Warnings</strong> <span id="warning-count">—</span></span>
+        <span><strong>Info</strong> <span id="info-count">—</span></span>
       </div>
     </aside>
 
@@ -54,59 +53,73 @@
       <div class="panel-header panel-header--wide">
         <div><p class="eyebrow">Primary workspace</p><h2 id="score-title">Score View</h2></div>
         <div class="panel-actions" aria-label="Score view status">
-          <span class="badge badge--safe">Presentation only</span>
+          <span class="badge badge--safe">Fixture presentation</span>
           <button type="button" disabled>Fit width</button>
           <button type="button" disabled>100%</button>
         </div>
       </div>
-      <div class="score-canvas" role="img" aria-label="Disconnected score canvas placeholder. No musical data is loaded.">
+      <div class="score-canvas" role="img" aria-label="Repository-owned fixture score presentation; not musical authority.">
         <div class="paper-sheet" aria-hidden="true">
           <span class="staff"></span><span class="staff"></span><span class="staff"></span>
           <span class="measure-line measure-line--one"></span>
           <span class="measure-line measure-line--two"></span>
         </div>
         <div class="canvas-message">
-          <strong>Deterministic fixture renderer not connected</strong>
-          <p>The browser is not reading MusicXML, Canonical Score, source files, or production artifacts.</p>
+          <strong id="score-focus-label">Select a fixture issue</strong>
+          <p id="selected-issue-summary">This presentation is local evidence only and does not read production MusicXML or Canonical Score artifacts.</p>
         </div>
       </div>
       <div class="focus-strip" aria-label="Focused musical location">
-        <span><strong>Page</strong> —</span><span><strong>Measure</strong> —</span><span><strong>Staff</strong> —</span><span><strong>Voice</strong> —</span><span><strong>Event</strong> —</span>
+        <span><strong>Page</strong> <span id="focused-page">—</span></span>
+        <span><strong>Measure</strong> <span id="focused-measure">—</span></span>
+        <span><strong>Staff</strong> <span id="focused-staff">—</span></span>
+        <span><strong>Voice</strong> <span id="focused-voice">—</span></span>
+        <span><strong>Event</strong> <span id="focused-event">—</span></span>
       </div>
     </section>
 
     <aside class="panel edit-panel" aria-labelledby="edit-title">
       <div class="panel-header">
         <div><p class="eyebrow">Bounded correction</p><h2 id="edit-title">Structured Edit</h2></div>
-        <span class="badge badge--locked">Disconnected</span>
+        <span class="badge badge--locked">Read-only</span>
       </div>
       <section class="edit-section" aria-labelledby="selection-title">
         <h3 id="selection-title">Selected event</h3>
-        <dl class="detail-list"><div><dt>Pitch</dt><dd>—</dd></div><div><dt>Duration</dt><dd>—</dd></div><div><dt>Voice</dt><dd>—</dd></div></dl>
+        <p id="selected-issue-title" class="selection-title">—</p>
+        <dl class="detail-list">
+          <div><dt>Pitch</dt><dd id="selected-pitch">—</dd></div>
+          <div><dt>Duration</dt><dd id="selected-duration">—</dd></div>
+          <div><dt>Voice</dt><dd id="selected-voice">—</dd></div>
+        </dl>
       </section>
       <section class="edit-section" aria-labelledby="intent-title">
         <h3 id="intent-title">Edit intent</h3>
-        <div class="locked-field"><span>Operation</span><strong>Unavailable</strong></div>
+        <div class="locked-field"><span>Operation</span><strong>Stage 10-D</strong></div>
         <div class="locked-field"><span>New value</span><strong>Unavailable</strong></div>
         <button class="primary-button" type="button" disabled>Prepare local intent</button>
       </section>
-      <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created from this shell.</p>
+      <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created from this local review surface.</p>
     </aside>
 
     <section class="panel evidence-panel" aria-labelledby="evidence-title">
       <div class="panel-header panel-header--wide">
         <div><p class="eyebrow">Immutable comparison</p><h2 id="evidence-title">Source Evidence</h2></div>
-        <span class="badge badge--neutral">No source read</span>
+        <span class="badge badge--neutral">Fixture only</span>
       </div>
       <div class="evidence-layout">
-        <div class="source-placeholder" role="img" aria-label="Source evidence placeholder; no source image is loaded.">
+        <div class="source-placeholder" role="img" aria-label="Synthetic source-region presentation for repository fixture only.">
           <div class="source-page" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          <strong>Source crop reserved</strong>
+          <strong id="source-region">—</strong>
         </div>
         <div class="evidence-copy">
           <p class="eyebrow">Evidence chain</p>
-          <h3>Exact source identity unavailable</h3>
-          <dl class="detail-list"><div><dt>Source SHA-256</dt><dd>—</dd></div><div><dt>Candidate</dt><dd>—</dd></div><div><dt>Canonical</dt><dd>—</dd></div></dl>
+          <h3>Repository-owned synthetic identifiers</h3>
+          <dl class="detail-list">
+            <div><dt>Source SHA-256</dt><dd id="source-sha">—</dd></div>
+            <div><dt>Candidate</dt><dd id="candidate-id">—</dd></div>
+            <div><dt>Canonical</dt><dd id="canonical-id">—</dd></div>
+            <div><dt>Canonical SHA-256</dt><dd id="canonical-sha">—</dd></div>
+          </dl>
         </div>
       </div>
     </section>
@@ -125,11 +138,11 @@
   </section>
 
   <footer class="statusbar" aria-label="Validation and revision status">
-    <span><strong>Validation</strong> not connected</span>
-    <span><strong>Blocking issues</strong> —</span>
-    <span><strong>Revision</strong> —</span>
+    <span><strong>Validation</strong> <span id="validation-label">—</span></span>
+    <span><strong>Blocking issues</strong> <span id="status-blocking">—</span></span>
+    <span><strong>Revision</strong> <span id="status-revision">—</span></span>
     <span><strong>Approval</strong> unavailable</span>
-    <span class="statusbar-lock">No API · no persistence · no playback · no publication</span>
+    <span class="statusbar-lock">Fixture only · no API · no persistence · no playback · no publication</span>
   </footer>
 </body>
 </html>

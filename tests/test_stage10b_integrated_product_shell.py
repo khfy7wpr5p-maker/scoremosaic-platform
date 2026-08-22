@@ -61,7 +61,7 @@ class Stage10BIntegratedProductShellTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.html)
 
-    def test_csp_blocks_script_and_network_execution(self) -> None:
+    def test_csp_keeps_network_forms_frames_and_objects_closed(self) -> None:
         csp = next(
             meta.get("content", "")
             for meta in self.parser.meta
@@ -70,7 +70,7 @@ class Stage10BIntegratedProductShellTests(unittest.TestCase):
         for directive in (
             "default-src 'none'",
             "connect-src 'none'",
-            "script-src 'none'",
+            "script-src 'self'",
             "object-src 'none'",
             "frame-src 'none'",
             "base-uri 'none'",
@@ -78,37 +78,38 @@ class Stage10BIntegratedProductShellTests(unittest.TestCase):
         ):
             self.assertIn(directive, csp)
 
-    def test_shell_has_no_scripts_forms_or_remote_resources(self) -> None:
-        self.assertEqual(self.parser.scripts, [])
+    def test_shell_has_no_forms_or_remote_resources(self) -> None:
         self.assertEqual(self.parser.forms, 0)
         for url in self.parser.urls:
             self.assertFalse(re.match(r"^(?:https?:)?//", url), url)
+        for script in self.parser.scripts:
+            self.assertIn(script.get("src"), {"fixture.js", "app.js", "edit-intent.js"})
 
-    def test_every_button_is_disabled_in_stage10b(self) -> None:
+    def test_future_authority_controls_remain_disabled(self) -> None:
         self.assertGreater(len(self.parser.buttons), 0)
         for button in self.parser.buttons:
-            self.assertIn("disabled", button)
+            if button.get("data-filter") is None:
+                self.assertIn("disabled", button)
 
     def test_authority_and_runtime_locks_are_visible(self) -> None:
         for marker in (
-            "Local shell · no backend",
+            "no backend",
             "No ScoreEditCommand, revision, approval, or publication can be created",
-            "No API · no persistence · no playback · no publication",
-            "No source read",
+            "no API · no persistence · no playback · no publication",
+            "Fixture only",
         ):
-            self.assertIn(marker, self.html)
+            self.assertIn(marker.lower(), self.html.lower())
 
     def test_responsive_and_reduced_motion_contract_exists(self) -> None:
         self.assertIn("@media (max-width: 760px)", self.css)
         self.assertIn("@media (prefers-reduced-motion: reduce)", self.css)
         self.assertIn(".score-panel { order: 1; }", self.css)
 
-    def test_readme_preserves_stage10c_boundary(self) -> None:
+    def test_readme_preserves_nonproduction_boundary(self) -> None:
         for marker in (
-            "no JavaScript",
+            "non-production",
             "no network",
             "no Teacher Review write",
-            "Stage 10-C may add deterministic checked-in fixture data",
         ):
             self.assertIn(marker, self.readme)
 
