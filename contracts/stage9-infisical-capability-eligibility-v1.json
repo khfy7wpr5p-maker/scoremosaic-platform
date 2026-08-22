@@ -1,0 +1,60 @@
+{
+  "version": "scoremosaic-stage9-infisical-capability-eligibility-v1",
+  "stage": "9-G",
+  "baselineRef": "scoremosaic-stage9-production-foundation-baseline-v1",
+  "identitySecretsRef": "scoremosaic-stage9-service-identity-secrets-v1",
+  "status": "NOT_YET_PRODUCTION_ELIGIBLE_REQUIRES_LIVE_CAPABILITY_VERIFICATION",
+  "target": {
+    "product": "infisical",
+    "deployment": "self-hosted-target",
+    "selectedAsArchitectureTarget": true,
+    "productionEligibilityGranted": false,
+    "paidCapabilitiesAssumed": false
+  },
+  "requiredCapabilityEvidence": [
+    "machine-identity-authentication",
+    "least-privilege-secret-scoping",
+    "development-staging-production-isolation",
+    "secret-version-history",
+    "credential-rotation-or-safe-external-rotation-integration",
+    "credential-revocation",
+    "bounded-audit-evidence",
+    "backup-and-recovery",
+    "administrative-access-protection",
+    "documented-self-host-upgrade-path"
+  ],
+  "verificationPolicy": {
+    "currentDocumentationMustBeCheckedAtActivationTime": true,
+    "selectedLicenseMustBeCheckedAtActivationTime": true,
+    "requiredCapabilitiesMayNotBeInferredFromProductName": true,
+    "missingCapabilityMayBeSilentlyWaived": false,
+    "missingCapabilityRequiresAlternativeDesignOrProvider": true,
+    "verificationEvidenceMustBeRetained": true
+  },
+  "bootstrapBoundary": {
+    "coolifyMayStoreMinimalBootstrapOnly": true,
+    "coolifyMayBecomeGeneralSecretStore": false,
+    "repositoryMayContainProductionSecretValues": false,
+    "browserMayReceiveMachineSecret": false
+  },
+  "eligibility": {
+    "machineIdentityVerified": false,
+    "leastPrivilegeVerified": false,
+    "environmentIsolationVerified": false,
+    "rotationRevocationVerified": false,
+    "auditVerified": false,
+    "backupRecoveryVerified": false,
+    "licenseCompatibilityVerified": false,
+    "productionEligible": false
+  },
+  "activationLocks": {
+    "infisicalInstalled": false,
+    "productionProjectCreated": false,
+    "machineIdentityCreated": false,
+    "productionSecretsImported": false,
+    "coolifyBootstrapConfigured": false,
+    "rotationConfigured": false,
+    "auditIntegrationActivated": false,
+    "backupConfigured": false
+  }
+}
