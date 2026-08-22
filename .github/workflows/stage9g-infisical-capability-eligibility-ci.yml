@@ -1,0 +1,59 @@
+name: Stage 9-G Infisical Capability Eligibility CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage9g-infisical-capability-eligibility-v1"
+    paths:
+      - ".github/workflows/stage9g-infisical-capability-eligibility-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/stage9-service-identity-secrets-v1.json"
+      - "contracts/stage9-infisical-capability-eligibility-v1.json"
+      - "docs/stage9g-infisical-capability-eligibility.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+      - "tests/test_stage9c_service_identity_secrets_contract.py"
+      - "tests/test_stage9g_infisical_capability_eligibility.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage9g-infisical-capability-eligibility-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/stage9-service-identity-secrets-v1.json"
+      - "contracts/stage9-infisical-capability-eligibility-v1.json"
+      - "docs/stage9g-infisical-capability-eligibility.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+      - "tests/test_stage9c_service_identity_secrets_contract.py"
+      - "tests/test_stage9g_infisical_capability_eligibility.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage9g-infisical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate Stage 9 contracts
+        run: |
+          python -m json.tool contracts/stage9-production-foundation-baseline-v1.json > /dev/null
+          python -m json.tool contracts/stage9-service-identity-secrets-v1.json > /dev/null
+          python -m json.tool contracts/stage9-infisical-capability-eligibility-v1.json > /dev/null
+      - name: Run Stage 9-A regression
+        run: python -m unittest discover -s tests -p 'test_stage9a_production_foundation_baseline.py' -v
+      - name: Run Stage 9-C regression
+        run: python -m unittest discover -s tests -p 'test_stage9c_service_identity_secrets_contract.py' -v
+      - name: Run Stage 9-G eligibility regression
+        run: python -m unittest discover -s tests -p 'test_stage9g_infisical_capability_eligibility.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
