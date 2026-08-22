@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-transport-plan-v1.schema.json",
+  "title": "ScoreMosaic Review Transport Plan v1",
+  "description": "Deterministic presentation-only cursor plan derived from one freshly authorized Stage 8-I timeline. It grants no audio, loop, mutation, approval, or publication execution authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "timelineSha256", "scope", "snapshot", "validation", "capabilities", "cursorPoints", "planSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-review-transport-plan-v1"},
+    "timelineSha256": {"$ref": "#/$defs/sha256"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "validation": {"$ref": "#/$defs/validation"},
+    "capabilities": {"$ref": "#/$defs/capabilities"},
+    "cursorPoints": {
+      "type": "array",
+      "maxItems": 500000,
+      "items": {"$ref": "#/$defs/cursorPoint"}
+    },
+    "planSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewerId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"$ref": "#/$defs/id"},
+        "jobId": {"$ref": "#/$defs/id"},
+        "reviewerId": {"$ref": "#/$defs/id"},
+        "reviewReportId": {"$ref": "#/$defs/id"},
+        "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+        "baseCanonicalSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "kind": {"enum": ["base", "revision"]},
+        "revisionId": {"type": ["string", "null"], "maxLength": 200},
+        "revisionSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validationReportSha256", "blockingIssueCount", "unresolvedIssueCount"],
+      "properties": {
+        "validationReportSha256": {"$ref": "#/$defs/sha256"},
+        "blockingIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "unresolvedIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["presentationOnly", "cursorAdvanceAllowed", "seekAllowed", "loopExecutionAllowed", "audioExecutionAllowed", "mutationAllowed", "approvalAllowed", "publicationAllowed"],
+      "properties": {
+        "presentationOnly": {"const": true},
+        "cursorAdvanceAllowed": {"const": true},
+        "seekAllowed": {"const": true},
+        "loopExecutionAllowed": {"const": false},
+        "audioExecutionAllowed": {"const": false},
+        "mutationAllowed": {"const": false},
+        "approvalAllowed": {"const": false},
+        "publicationAllowed": {"const": false}
+      }
+    },
+    "eventRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "measureId", "eventId", "staff", "voice", "kind"],
+      "properties": {
+        "partId": {"$ref": "#/$defs/id"},
+        "measureId": {"$ref": "#/$defs/id"},
+        "eventId": {"$ref": "#/$defs/id"},
+        "staff": {"type": "integer", "minimum": 1, "maximum": 128},
+        "voice": {"type": "string", "minLength": 1, "maxLength": 40},
+        "kind": {"enum": ["note", "rest", "unpitched"]}
+      }
+    },
+    "cursorPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "cursorPointId", "measureOrdinal", "onset", "eventRefs"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 499999},
+        "cursorPointId": {"type": "string", "pattern": "^cursor_[0-9a-f]{24}$"},
+        "measureOrdinal": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "onset": {"$ref": "#/$defs/rational"},
+        "eventRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "items": {"$ref": "#/$defs/eventRef"}
+        }
+      }
+    }
+  }
+}
