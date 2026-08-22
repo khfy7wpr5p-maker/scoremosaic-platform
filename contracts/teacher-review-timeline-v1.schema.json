@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-timeline-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review Rational Timeline v1",
+  "description": "Read-only exact-current rational cursor projection. It carries no playback, mutation, approval, or publication authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scope", "snapshot", "validation", "capabilities", "parts", "timelineSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-teacher-review-timeline-v1"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "validation": {"$ref": "#/$defs/validation"},
+    "capabilities": {"$ref": "#/$defs/capabilities"},
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/part"}
+    },
+    "timelineSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {"type": "integer"},
+        "denominator": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewerId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"$ref": "#/$defs/id"},
+        "jobId": {"$ref": "#/$defs/id"},
+        "reviewerId": {"$ref": "#/$defs/id"},
+        "reviewReportId": {"$ref": "#/$defs/id"},
+        "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+        "baseCanonicalSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "kind": {"enum": ["base", "revision"]},
+        "revisionId": {
+          "oneOf": [
+            {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+            {"type": "null"}
+          ]
+        },
+        "revisionSha256": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validationReportSha256", "blockingIssueCount", "unresolvedIssueCount"],
+      "properties": {
+        "validationReportSha256": {"$ref": "#/$defs/sha256"},
+        "blockingIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "unresolvedIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readOnly", "cursorNavigation", "canSeek", "canLoop", "canPlay", "canMutate", "canApprove", "canPublish", "authoritativeTruth"],
+      "properties": {
+        "readOnly": {"const": true},
+        "cursorNavigation": {"const": true},
+        "canSeek": {"const": true},
+        "canLoop": {"const": false},
+        "canPlay": {"const": false},
+        "canMutate": {"const": false},
+        "canApprove": {"const": false},
+        "canPublish": {"const": false},
+        "authoritativeTruth": {"const": false}
+      }
+    },
+    "timeSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beats", "beatType"],
+      "properties": {
+        "beats": {"type": "string", "pattern": "^[1-9][0-9]*(\\+[1-9][0-9]*)*$", "maxLength": 40},
+        "beatType": {"type": "integer", "minimum": 1, "maximum": 1024}
+      }
+    },
+    "beat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beatUnit", "beatIndex", "offsetWithinBeat", "insideDeclaredMeter"],
+      "properties": {
+        "beatUnit": {"oneOf": [{"$ref": "#/$defs/rational"}, {"type": "null"}]},
+        "beatIndex": {"type": ["integer", "null"], "minimum": 1},
+        "offsetWithinBeat": {"oneOf": [{"$ref": "#/$defs/rational"}, {"type": "null"}]},
+        "insideDeclaredMeter": {"type": ["boolean", "null"]}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventId", "xmlOrder", "kind", "onset", "effectiveDuration", "end", "staff", "voice", "grace", "chordGroup", "chordIndex", "beat", "simultaneityId", "simultaneousEventIds"],
+      "properties": {
+        "eventId": {"$ref": "#/$defs/id"},
+        "xmlOrder": {"type": "integer", "minimum": 0},
+        "kind": {"enum": ["note", "rest", "unpitched"]},
+        "onset": {"$ref": "#/$defs/rational"},
+        "effectiveDuration": {"$ref": "#/$defs/rational"},
+        "end": {"$ref": "#/$defs/rational"},
+        "staff": {"type": "integer", "minimum": 1, "maximum": 128},
+        "voice": {"type": "string", "minLength": 1, "maxLength": 40},
+        "grace": {"type": "boolean"},
+        "chordGroup": {"type": ["string", "null"], "maxLength": 200},
+        "chordIndex": {"type": ["integer", "null"], "minimum": 0},
+        "beat": {"$ref": "#/$defs/beat"},
+        "simultaneityId": {"type": "string", "pattern": "^sim_[0-9a-f]{24}$"},
+        "simultaneousEventIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "loopBounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "expectedEnd", "eventExtentEnd", "safeWithinExpectedDuration", "playbackAuthority"],
+      "properties": {
+        "start": {"$ref": "#/$defs/rational"},
+        "expectedEnd": {"oneOf": [{"$ref": "#/$defs/rational"}, {"type": "null"}]},
+        "eventExtentEnd": {"$ref": "#/$defs/rational"},
+        "safeWithinExpectedDuration": {"type": "boolean"},
+        "playbackAuthority": {"const": false}
+      }
+    },
+    "measure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measureId", "number", "ordinal", "timeSignatureAtStart", "expectedDuration", "observedDuration", "eventExtentEnd", "loopBounds", "events"],
+      "properties": {
+        "measureId": {"$ref": "#/$defs/id"},
+        "number": {"type": "string", "minLength": 1, "maxLength": 40},
+        "ordinal": {"type": "integer", "minimum": 1},
+        "timeSignatureAtStart": {"oneOf": [{"$ref": "#/$defs/timeSignature"}, {"type": "null"}]},
+        "expectedDuration": {"oneOf": [{"$ref": "#/$defs/rational"}, {"type": "null"}]},
+        "observedDuration": {"$ref": "#/$defs/rational"},
+        "eventExtentEnd": {"$ref": "#/$defs/rational"},
+        "loopBounds": {"$ref": "#/$defs/loopBounds"},
+        "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "ordinal", "measures"],
+      "properties": {
+        "partId": {"$ref": "#/$defs/id"},
+        "ordinal": {"type": "integer", "minimum": 1},
+        "measures": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/measure"}}
+      }
+    }
+  }
+}
