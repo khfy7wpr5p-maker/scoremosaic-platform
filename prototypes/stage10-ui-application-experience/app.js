@@ -38,11 +38,11 @@
     const title = document.createElement('strong');
     title.textContent = issue.title;
 
-    const location = document.createElement('span');
-    location.className = 'issue-location';
-    location.textContent = `Page ${issue.location.page} · Measure ${issue.location.measure} · Event ${issue.location.event}`;
+    const locationLabel = document.createElement('span');
+    locationLabel.className = 'issue-location';
+    locationLabel.textContent = `Page ${issue.location.page} · Measure ${issue.location.measure} · Event ${issue.location.event}`;
 
-    button.append(severity, title, location);
+    button.append(severity, title, locationLabel);
     button.addEventListener('click', () => {
       state.selectedIssueId = issue.id;
       render();
