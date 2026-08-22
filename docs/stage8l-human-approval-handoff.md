@@ -2,7 +2,9 @@
 
 ## Status
 
-Repository/server-only contract foundation. No live route, production identity provider, approval decision, approval record, publication, or score mutation is activated.
+**Merged. Human approval authority boundary reached.** Repository/server-only contract foundation; no live route, production identity provider, approval decision, approval record, publication, or score mutation is activated.
+
+Merge commit: `1c05e2c1258e8dea9ddb4bdc0e40f77bc93ccd93`.
 
 ## Purpose
 
@@ -95,7 +97,7 @@ Stage 8-L does not add:
 - score mutation;
 - audio/MIDI/playback execution.
 
-The existing repository flags remain authoritative:
+The repository flags remain authoritative:
 
 ```text
 approval-handoff-foundation-enabled=true
@@ -108,7 +110,7 @@ production-durable-store-enabled=false
 
 ## Verification gate
 
-Stage 8-L CI reruns Foundation and Stage 8-A through Stage 8-K regressions before Stage 8-L tests. Stage 8-L adds evidence for:
+The merged Stage 8-L CI reran Foundation and Stage 8-A through Stage 8-K regressions before Stage 8-L tests. The exact PR head passed:
 
 - deterministic exact-current handoff construction;
 - purpose-separated HMAC authorization;
@@ -124,6 +126,6 @@ Stage 8-L CI reruns Foundation and Stage 8-A through Stage 8-K regressions befor
 - closed JSON schema validation;
 - repository diff formatting.
 
-## Stop condition
+## Stop condition — reached
 
-If Stage 8-L passes and merges, the safe autonomous Teacher Review path has reached the human authority boundary. The next semantic transition is an actual teacher approval decision. That decision must not be generated autonomously on behalf of the teacher.
+The safe autonomous Teacher Review path has reached the human authority boundary. The next semantic transition is an actual teacher approval decision. That decision must not be generated autonomously on behalf of the teacher.
