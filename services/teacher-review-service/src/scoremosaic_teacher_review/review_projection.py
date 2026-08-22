@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 from .contracts import (
     ReviewAuthorizationGrant,
+    Stage8ContractError,
     TeacherScoreRevision,
     verify_authorization_grant,
 )
@@ -570,8 +571,6 @@ def build_review_projection_page(
 ) -> ReviewProjectionPage:
     if not isinstance(scope, RevisionScope):
         _fail("PROJECTION_SCOPE_INVALID")
-    if not isinstance(state, ReviewMusicalState):
-        _fail("PROJECTION_STATE_INVALID")
     if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
         _fail("PROJECTION_PAGE_INVALID")
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= _MAX_PAGE_SIZE:
@@ -579,27 +578,13 @@ def build_review_projection_page(
 
     revision_id: str | None = None
     revision_sha: str | None = None
+    record: dict[str, Any] | None = None
     if revision is not None:
         if not isinstance(revision, TeacherScoreRevision):
             _fail("PROJECTION_REVISION_INVALID")
         record = revision.to_dict()
         revision_id = record.get("revisionId")
         revision_sha = record.get("revisionSha256")
-        validated, _ = validate_revision_for_store(
-            scope,
-            revision,
-            expected_parent_revision_id=record.get("parentRevisionId"),
-            expected_parent_revision_sha256=record.get("parentRevisionSha256"),
-            expected_previous_audit_event_sha256=record.get("previousAuditEventSha256"),
-        )
-        if not hmac.compare_digest(validated["resultingMusicalStateSha256"], state.state_sha256):
-            _fail("PROJECTION_REVISION_STATE_MISMATCH")
-        snapshot_kind = "revision"
-    else:
-        base_state = materialize_canonical_state(scope, base_canonical_payload)
-        if not hmac.compare_digest(base_state.state_sha256, state.state_sha256):
-            _fail("PROJECTION_BASE_STATE_MISMATCH")
-        snapshot_kind = "base"
 
     try:
         verify_authorization_grant(
@@ -615,8 +600,29 @@ def build_review_projection_page(
             expected_parent_revision_id=revision_id,
             expected_parent_revision_sha256=revision_sha,
         )
-    except Exception as exc:
-        _fail(f"PROJECTION_AUTHORIZATION_DENIED:{type(exc).__name__}")
+    except Stage8ContractError as exc:
+        raise Stage8ProjectionError("PROJECTION_AUTHORIZATION_DENIED") from exc
+
+    if not isinstance(state, ReviewMusicalState):
+        _fail("PROJECTION_STATE_INVALID")
+
+    if revision is not None:
+        assert record is not None
+        validated, _ = validate_revision_for_store(
+            scope,
+            revision,
+            expected_parent_revision_id=record.get("parentRevisionId"),
+            expected_parent_revision_sha256=record.get("parentRevisionSha256"),
+            expected_previous_audit_event_sha256=record.get("previousAuditEventSha256"),
+        )
+        if not hmac.compare_digest(validated["resultingMusicalStateSha256"], state.state_sha256):
+            _fail("PROJECTION_REVISION_STATE_MISMATCH")
+        snapshot_kind = "revision"
+    else:
+        base_state = materialize_canonical_state(scope, base_canonical_payload)
+        if not hmac.compare_digest(base_state.state_sha256, state.state_sha256):
+            _fail("PROJECTION_BASE_STATE_MISMATCH")
+        snapshot_kind = "base"
 
     report = validate_review_report_for_projection(
         comparison_report,
