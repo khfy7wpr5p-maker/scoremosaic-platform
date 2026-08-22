@@ -1,0 +1,81 @@
+{
+  "version": "scoremosaic-stage9-publication-persistence-protocol-v1",
+  "stage": "9-H",
+  "stage8HandoffSchema": "teacher-review-publication-handoff-v1",
+  "rbacRef": "scoremosaic-stage9-authentik-rbac-binding-v1",
+  "databaseRef": "scoremosaic-stage9-postgresql-persistence-backup-v1",
+  "storageRef": "scoremosaic-stage9-object-storage-immutability-v1",
+  "status": "REPOSITORY_ONLY_PUBLICATION_EXECUTION_PROTOCOL_WITH_RUNTIME_LOCKS",
+  "preconditions": {
+    "freshStage8ORevalidationRequired": true,
+    "suppliedVsRebuiltHandoffEqualityRequired": true,
+    "exactCurrentRevisionRequired": true,
+    "exactApprovedArtifactRequired": true,
+    "exactPublisherPrincipalRequired": true,
+    "exactTenantResourceOperationAuthorizationRequired": true,
+    "publicationOperation": "publication:execute",
+    "humanApprovalMayBeInferred": false
+  },
+  "executionIdentity": {
+    "serverDerivedPublicationIdRequired": true,
+    "handoffSha256Required": true,
+    "approvalRecordSha256Required": true,
+    "musicXmlSha256Required": true,
+    "publisherPrincipalBindingRequired": true,
+    "tenantAndResourceBindingRequired": true,
+    "callerSelectedObjectKeyAllowed": false
+  },
+  "stateMachine": {
+    "states": ["prepared", "artifact-written", "published"],
+    "initialPersistentState": "prepared",
+    "terminalState": "published",
+    "preparedCountsAsPublished": false,
+    "artifactWrittenCountsAsPublished": false,
+    "publishedStateMayReopen": false,
+    "stateAdvanceRequiresExactPriorState": true
+  },
+  "preparedRecord": {
+    "createOnceRequired": true,
+    "exactReplayIdempotent": true,
+    "differentRequestSamePublicationIdConflicts": true,
+    "containsNoRawCredentials": true,
+    "visibility": "private"
+  },
+  "artifactWrite": {
+    "serverDerivedObjectIdentityRequired": true,
+    "createOnceRequired": true,
+    "exactMusicXmlBytesRequired": true,
+    "postWriteHashVerificationRequired": true,
+    "postWriteSizeVerificationRequired": true,
+    "versioningEvidenceRequired": true,
+    "objectLockEvidenceRequired": true,
+    "conflictingExistingBytesFailClosed": true,
+    "failureMayDeleteExistingProtectedArtifact": false
+  },
+  "finalization": {
+    "databaseRecordMustBindExactObjectIdentity": true,
+    "databaseRecordMustBindExactObjectVersion": true,
+    "databaseRecordMustBindExactMusicXmlSha256": true,
+    "databaseRecordMustBindExactPublisher": true,
+    "databaseRecordMustBindExactApprovalRecord": true,
+    "defaultVisibility": "private",
+    "publishedImpliesPublic": false,
+    "authoritativeMusicalTruth": false
+  },
+  "crashRecovery": {
+    "preparedWithoutObjectMayResume": true,
+    "objectWithoutPublishedFinalizationRequiresExactObjectReverification": true,
+    "conflictingObjectRequiresManualFailureResolution": true,
+    "publishedExactReplayReturnsExistingRecord": true,
+    "automaticOverwriteAllowed": false,
+    "automaticProtectedObjectDeletionAllowed": false
+  },
+  "activationLocks": {
+    "publicationDatabasePreparedWriteActivated": false,
+    "publishedObjectWriteActivated": false,
+    "publicationFinalizationWriteActivated": false,
+    "publicationRouteActivated": false,
+    "externalPublicVisibilityActivated": false,
+    "realPublicationExecuted": false
+  }
+}
