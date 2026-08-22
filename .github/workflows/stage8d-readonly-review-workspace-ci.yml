@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "feature/stage8d-readonly-review-workspace-v1"
+      - "fix/stage8-projection-auth-first"
     paths:
       - ".github/workflows/stage8d-readonly-review-workspace-ci.yml"
       - "contracts/teacher-review-projection-v1.schema.json"
@@ -70,8 +71,8 @@ jobs:
       - name: Run Stage 8-C materialization regression suite
         run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8c_revision_materialization.py' -v
 
-      - name: Run Stage 8-D projection security and integration suite
-        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8d_readonly_review_projection.py' -v
+      - name: Run Stage 8-D projection security and integration suites
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8d_*.py' -v
 
       - name: Validate Stage 8-D JSON contract
         run: python -m json.tool contracts/teacher-review-projection-v1.schema.json > /dev/null
