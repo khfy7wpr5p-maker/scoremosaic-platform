@@ -1,0 +1,74 @@
+{
+  "version": "scoremosaic-stage9-authentik-rbac-binding-v1",
+  "stage": "9-F",
+  "baselineRef": "scoremosaic-stage9-production-foundation-baseline-v1",
+  "topologyRef": "scoremosaic-stage9-resource-topology-v1",
+  "identitySecretsRef": "scoremosaic-stage9-service-identity-secrets-v1",
+  "status": "REPOSITORY_ONLY_IDENTITY_RBAC_POLICY_WITH_RUNTIME_LOCKS",
+  "identityProvider": {
+    "provider": "authentik",
+    "protocol": "oidc",
+    "exactIssuerRequired": true,
+    "exactAudienceRequired": true,
+    "signatureVerificationRequired": true,
+    "authorizationCodeFlowRequired": true,
+    "pkceRequired": true,
+    "stateAndNonceValidationRequired": true,
+    "idpGroupOrRoleClaimMayGrantScoremosaicAuthorityDirectly": false
+  },
+  "principalMapping": {
+    "serverOwnedPrincipalIdRequired": true,
+    "externalSubjectBoundToIssuerRequired": true,
+    "emailMayBeUsedAsAuthorityKey": false,
+    "displayNameMayBeUsedAsAuthorityKey": false,
+    "principalMappingMustBeDeterministic": true
+  },
+  "roleVocabulary": ["viewer", "user", "teacher", "publisher", "admin"],
+  "authorizationBinding": {
+    "exactPrincipalRequired": true,
+    "exactTenantRequired": true,
+    "exactResourceRequired": true,
+    "exactOperationRequired": true,
+    "denyByDefault": true,
+    "wildcardTenantGrantAllowed": false,
+    "wildcardResourceGrantAllowed": false,
+    "implicitCrossTenantAccessAllowed": false,
+    "authenticatedMeansAuthorized": false
+  },
+  "operationSeparation": {
+    "reviewRead": "review:read",
+    "reviewEdit": "review:edit",
+    "approve": "review:approve",
+    "publish": "publication:execute",
+    "approveImpliesPublish": false,
+    "publishImpliesApprove": false,
+    "adminRoleAutomaticallyPublishes": false
+  },
+  "sessionPolicy": {
+    "secureCookieRequired": true,
+    "httpOnlyCookieRequired": true,
+    "sameSitePolicyRequired": true,
+    "csrfProtectionRequiredForStateChangingRequests": true,
+    "sessionRotationAfterAuthenticationRequired": true,
+    "rawProviderTokenMayBeStoredInBrowserStorage": false
+  },
+  "auditPolicy": {
+    "principalIdRequired": true,
+    "tenantIdRequired": true,
+    "resourceIdRequired": true,
+    "operationIdRequired": true,
+    "authorizationDecisionRequired": true,
+    "timestampRequired": true,
+    "rawAccessTokenMayBeLogged": false
+  },
+  "activationLocks": {
+    "authentikUserCreated": false,
+    "authentikOidcClientCreated": false,
+    "productionIssuerConfigured": false,
+    "productionSessionRuntimeActivated": false,
+    "productionRoleAssignmentsCreated": false,
+    "publicLoginRouteActivated": false,
+    "teacherReviewAuthorizationActivated": false,
+    "publicationAuthorizationActivated": false
+  }
+}
