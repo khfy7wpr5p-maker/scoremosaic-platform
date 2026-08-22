@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ScoreMosaic — Stage 8-E Read-Only Teacher Review</title>
+  <link rel="stylesheet" href="../ui-0b-static-shell/styles.css">
+  <link rel="stylesheet" href="../ui-0b-static-shell/mobile-disclosure.css">
+  <link rel="stylesheet" href="readonly-adapter.css">
+  <script id="scoremosaic-projection" type="application/json">
+{
+  "schemaVersion": "scoremosaic-teacher-review-projection-v1",
+  "scope": {
+    "tenantId": "tenant_demo",
+    "jobId": "job_demo",
+    "reviewerId": "reviewer_demo",
+    "reviewReportId": "ensemble_report_demo",
+    "reviewReportSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "baseCanonicalSha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "snapshot": {
+    "kind": "revision",
+    "revisionId": "rev_33333333333333333333333333333333",
+    "revisionSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "stateSha256": "5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "page": {
+    "offset": 0,
+    "limit": 100,
+    "returned": 2,
+    "totalDifferences": 2,
+    "hasMore": false
+  },
+  "capabilities": {
+    "readOnly": true,
+    "canEdit": false,
+    "canApprove": false,
+    "canPublish": false,
+    "authoritativeTruth": false
+  },
+  "baseCandidateIds": [
+    "candidate_aaaaaaaaaaaaaaaaaaaaaaaa"
+  ],
+  "differences": [
+    {
+      "differenceId": "difference_bbbbbbbbbbbbbbbbbbbbbbbb",
+      "category": "pitch",
+      "field": "pitch.step",
+      "label": "pitch · pitch.step",
+      "focus": {
+        "partOrdinal": 1,
+        "measureOrdinal": 1,
+        "eventOrdinal": 1,
+        "partId": "part_1",
+        "measureId": "measure_1",
+        "eventId": "event_1",
+        "partPresentInSnapshot": true,
+        "measurePresentInSnapshot": true,
+        "eventPresentInSnapshot": true
+      },
+      "observations": [
+        {
+          "candidateId": "candidate_aaaaaaaaaaaaaaaaaaaaaaaa",
+          "canonicalSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "present": true,
+          "value": "C"
+        },
+        {
+          "candidateId": "candidate_cccccccccccccccccccccccc",
+          "canonicalSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+          "present": true,
+          "value": "D"
+        }
+      ]
+    },
+    {
+      "differenceId": "difference_dddddddddddddddddddddddd",
+      "category": "duration",
+      "field": "effectiveDuration",
+      "label": "duration · effectiveDuration",
+      "focus": {
+        "partOrdinal": 1,
+        "measureOrdinal": 2,
+        "eventOrdinal": 3,
+        "partId": "part_1",
+        "measureId": "measure_2",
+        "eventId": "event_7",
+        "partPresentInSnapshot": true,
+        "measurePresentInSnapshot": true,
+        "eventPresentInSnapshot": false
+      },
+      "observations": [
+        {
+          "candidateId": "candidate_aaaaaaaaaaaaaaaaaaaaaaaa",
+          "canonicalSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "present": true,
+          "value": {"numerator": 1, "denominator": 4}
+        },
+        {
+          "candidateId": "candidate_cccccccccccccccccccccccc",
+          "canonicalSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+          "present": true,
+          "value": {"numerator": 1, "denominator": 8}
+        }
+      ]
+    }
+  ],
+  "projectionSha256": "4efb4ea8e9ceb938534766ff15e2ae6a411b410087dd8ac3307020ff242c1685"
+}
+  </script>
+  <script src="adapter.js" defer></script>
+</head>
+<body data-review-state="initializing">
+  <a class="skip-link" href="#score-view">Skip to Score View</a>
+
+  <header class="topbar" aria-label="Application context">
+    <div class="brand" aria-label="ScoreMosaic">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <span class="brand-copy">
+        <strong>SCOREMOSAIC</strong>
+        <small>TEACHER REVIEW</small>
+      </span>
+    </div>
+
+    <div class="context-strip" aria-label="Review status">
+      <span class="context-chip">Stage 8-E</span>
+      <span class="context-chip context-chip--safe">Read-only projection</span>
+      <span class="context-chip context-chip--muted">No network · no writes</span>
+    </div>
+
+    <div class="account-placeholder" aria-label="Reviewer context">
+      Reviewer
+      <span aria-hidden="true">—</span>
+      <span id="reviewer-label">verifying</span>
+    </div>
+  </header>
+
+  <main class="workspace" aria-label="Teacher Review read-only workspace">
+    <input class="mobile-disclosure-toggle" type="checkbox" id="issues-toggle" aria-controls="issues-panel">
+    <label class="mobile-disclosure-label" for="issues-toggle">
+      <span>Issues</span>
+      <span>
+        <span class="disclosure-action-open">Open panel</span>
+        <span class="disclosure-action-close">Close panel</span>
+      </span>
+    </label>
+
+    <aside id="issues-panel" class="panel issues-panel" aria-labelledby="issues-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Review evidence</p>
+          <h1 id="issues-title">Issues</h1>
+        </div>
+        <span id="issues-status" class="status-pill status-pill--neutral">Verifying</span>
+      </div>
+      <div id="issue-list" class="readonly-issue-list" role="listbox" aria-labelledby="issues-title" tabindex="0"></div>
+      <p class="security-note">Selection changes browser focus only. It never changes musical state.</p>
+    </aside>
+
+    <section id="score-view" class="panel score-panel" aria-labelledby="score-title" tabindex="-1">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Exact snapshot focus</p>
+          <h2 id="score-title">Score View</h2>
+        </div>
+        <span class="status-pill status-pill--neutral">Textual focus only</span>
+      </div>
+      <div class="score-placeholder" role="group" aria-label="Read-only score focus summary">
+        <div class="score-placeholder-copy">
+          <strong id="focus-title">No issue selected</strong>
+          <p id="focus-location">The adapter has not accepted a projection.</p>
+          <p id="focus-presence" class="readonly-focus-presence"></p>
+        </div>
+      </div>
+    </section>
+
+    <input class="mobile-disclosure-toggle" type="checkbox" id="structured-edit-toggle" aria-controls="structured-edit">
+    <label class="mobile-disclosure-label" for="structured-edit-toggle">
+      <span>Structured Edit</span>
+      <span>
+        <span class="disclosure-action-open">Open panel</span>
+        <span class="disclosure-action-close">Close panel</span>
+      </span>
+    </label>
+
+    <aside id="structured-edit" class="panel edit-panel" aria-labelledby="edit-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Mutation boundary</p>
+          <h2 id="edit-title">Structured Edit</h2>
+        </div>
+        <span class="status-pill status-pill--locked">Locked</span>
+      </div>
+      <div class="edit-groups" aria-label="Locked editor sections">
+        <section class="edit-group" aria-labelledby="note-fields-title">
+          <h3 id="note-fields-title">Note fields</h3>
+          <div class="field-placeholder"><span>Pitch</span><span>Read-only</span></div>
+          <div class="field-placeholder"><span>Duration</span><span>Read-only</span></div>
+          <div class="field-placeholder"><span>Staff / Voice</span><span>Read-only</span></div>
+        </section>
+      </div>
+      <button type="button" disabled>Apply correction</button>
+      <button type="button" disabled>Approve revision</button>
+      <button type="button" disabled>Publish</button>
+      <p class="security-note">Mutation, approval and publication remain outside Stage 8-E authority.</p>
+    </aside>
+
+    <section id="source-evidence" class="panel evidence-panel" aria-labelledby="evidence-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Candidate comparison</p>
+          <h2 id="evidence-title">Source Evidence</h2>
+        </div>
+        <span class="status-pill status-pill--neutral">Projection only</span>
+      </div>
+      <div id="observation-list" class="readonly-observation-list" role="list" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <section id="review-transport" class="transport" aria-labelledby="transport-title">
+    <div>
+      <p class="eyebrow">Playback boundary</p>
+      <h2 id="transport-title">Review Transport</h2>
+    </div>
+    <div class="transport-controls" aria-label="Disabled playback controls">
+      <button type="button" disabled aria-label="Go to beginning">|◀</button>
+      <button type="button" disabled>Play</button>
+      <button type="button" disabled>Pause</button>
+      <button type="button" disabled>Stop</button>
+      <button type="button" disabled>Loop measure</button>
+      <span class="tempo-placeholder">Tempo —</span>
+    </div>
+  </section>
+
+  <footer id="validation-status" class="statusbar" aria-label="Validation and revision status" aria-live="polite" aria-atomic="true">
+    <span><strong>Projection</strong> <span id="projection-status">verifying</span></span>
+    <span><strong>Snapshot</strong> <span id="snapshot-status">unavailable</span></span>
+    <span><strong>Issues</strong> <span id="issue-count">0</span></span>
+    <span class="statusbar-isolation">Read-only · no API · no writes · no playback</span>
+  </footer>
+
+  <noscript>This read-only prototype needs local JavaScript to navigate an already embedded projection. No network access is used.</noscript>
+</body>
+</html>
