@@ -1,0 +1,152 @@
+button:not(:disabled),
+.edit-control:not(:disabled) {
+  min-height: 44px;
+}
+
+button,
+.edit-control,
+.badge,
+.security-state {
+  touch-action: manipulation;
+}
+
+.detail-list dd,
+.issue-location,
+.document-context,
+.focus-strip,
+.statusbar,
+.intent-preview,
+.source-placeholder,
+.evidence-copy {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.issue-button:focus-visible,
+.edit-control:focus-visible,
+#score-view:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+#score-view:focus-visible {
+  border-color: var(--focus);
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 520px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar button,
+  .transport-controls button {
+    width: 100%;
+  }
+
+  .transport-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tempo {
+    grid-column: 1 / -1;
+  }
+
+  .panel-header,
+  .panel-header--wide,
+  .intent-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .score-canvas {
+    min-height: 300px;
+    padding: 12px;
+  }
+
+  .canvas-message {
+    max-width: calc(100% - 24px);
+  }
+
+  .focus-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .statusbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line: #7a8796;
+    --line-strong: #506072;
+  }
+
+  .panel,
+  button,
+  .edit-control,
+  .intent-preview,
+  .source-placeholder {
+    border-width: 2px;
+  }
+
+  .badge,
+  .security-state,
+  .issue-severity {
+    font-weight: 900;
+  }
+}
+
+@media (forced-colors: active) {
+  .panel,
+  .app-header,
+  .transport,
+  button,
+  .edit-control,
+  .intent-preview,
+  .source-placeholder,
+  .security-note,
+  .badge,
+  .security-state {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+
+  .brand-mark,
+  .state-dot,
+  .paper-sheet,
+  .canvas-message {
+    forced-color-adjust: auto;
+  }
+
+  button[aria-pressed="true"],
+  .issue-button[aria-pressed="true"] {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .security-note,
+  .badge--locked,
+  .badge--safe,
+  .intent-status {
+    color: CanvasText;
+    background: Canvas;
+  }
+}
