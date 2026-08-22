@@ -9,7 +9,15 @@ import re
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from .review_timeline import ReviewTimelineProjection, TIMELINE_VERSION
+from .contracts import ReviewAuthorizationGrant
+from .durable_revision_store import DurableRevisionStore, RevisionScope
+from .musical_state import ReviewMusicalState
+from .review_timeline import (
+    ReviewTimelineProjection,
+    Stage8TimelineError,
+    TIMELINE_VERSION,
+    build_review_timeline_projection,
+)
 
 
 TRANSPORT_PLAN_VERSION = "scoremosaic-review-transport-plan-v1"
@@ -433,7 +441,7 @@ class ReviewTransportState:
         return payload
 
 
-def build_review_transport_plan(timeline: ReviewTimelineProjection) -> ReviewTransportPlan:
+def _build_plan_from_timeline(timeline: ReviewTimelineProjection) -> ReviewTransportPlan:
     identity, points = _validate_timeline_and_points(timeline)
     body = {
         "schemaVersion": TRANSPORT_PLAN_VERSION,
@@ -454,6 +462,39 @@ def build_review_transport_plan(timeline: ReviewTimelineProjection) -> ReviewTra
         _freeze(body),
         _construction_seal=_PLAN_CONSTRUCTION_SEAL,
     )
+
+
+def build_review_transport_plan(
+    *,
+    grant: ReviewAuthorizationGrant,
+    signing_key: bytes,
+    expected_reviewer_id: str,
+    scope: RevisionScope,
+    store: DurableRevisionStore,
+    state: ReviewMusicalState,
+    base_canonical_payload: Mapping[str, Any],
+) -> ReviewTransportPlan:
+    """Build a non-executing transport plan from a freshly authorized Stage 8-I timeline."""
+
+    try:
+        timeline = build_review_timeline_projection(
+            grant=grant,
+            signing_key=signing_key,
+            expected_reviewer_id=expected_reviewer_id,
+            scope=scope,
+            store=store,
+            state=state,
+            base_canonical_payload=base_canonical_payload,
+        )
+    except Stage8TimelineError as exc:
+        if exc.code == "TIMELINE_STALE_SNAPSHOT":
+            code = "TRANSPORT_STALE_SNAPSHOT"
+        elif exc.code == "TIMELINE_AUTHORIZATION_DENIED":
+            code = "TRANSPORT_AUTHORIZATION_DENIED"
+        else:
+            code = "TRANSPORT_TIMELINE_REJECTED"
+        raise Stage8TransportError(code) from exc
+    return _build_plan_from_timeline(timeline)
 
 
 def _validate_plan(plan: ReviewTransportPlan) -> dict[str, Any]:
