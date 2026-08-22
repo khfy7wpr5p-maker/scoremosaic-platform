@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/teacher-review-human-approval-record-v1.schema.json",
+  "title": "ScoreMosaic Human Approval Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "approvalRecordId", "scope", "currentHead", "correctedArtifact", "eligibilityEvidenceSha256", "handoff", "humanDecision", "authorization", "approval", "publication", "capabilities", "approvalRecordSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-human-approval-record-v1"},
+    "approvalRecordId": {"type": "string", "pattern": "^approval_[0-9a-f]{32}$"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"type": "string"}, "jobId": {"type": "string"}, "reviewReportId": {"type": "string"},
+        "reviewReportSha256": {"$ref": "#/$defs/hash"}, "baseCanonicalSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "currentHead": {
+      "type": "object", "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "sequence"],
+      "properties": {"revisionId": {"type": "string"}, "revisionSha256": {"$ref": "#/$defs/hash"}, "sequence": {"type": "integer", "minimum": 1}}
+    },
+    "correctedArtifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifactId", "artifactRecordSha256", "musicXmlSha256", "safetyReportSha256", "expectedSemanticSha256", "regeneratedSemanticSha256"],
+      "properties": {
+        "artifactId": {"type": "string"}, "artifactRecordSha256": {"$ref": "#/$defs/hash"}, "musicXmlSha256": {"$ref": "#/$defs/hash"},
+        "safetyReportSha256": {"$ref": "#/$defs/hash"}, "expectedSemanticSha256": {"$ref": "#/$defs/hash"}, "regeneratedSemanticSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "eligibilityEvidenceSha256": {"$ref": "#/$defs/hash"},
+    "handoff": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requestId", "handoffRequestSha256"],
+      "properties": {"requestId": {"type": "string"}, "handoffRequestSha256": {"$ref": "#/$defs/hash"}}
+    },
+    "humanDecision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decisionId", "approverId", "decision", "decisionSource", "decidedAt", "decisionProvenanceSha256"],
+      "properties": {
+        "decisionId": {"type": "string"}, "approverId": {"type": "string"}, "decision": {"const": "approved"},
+        "decisionSource": {"const": "explicit_human_action"}, "decidedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+        "decisionProvenanceSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decisionGrantSha256", "allowedAction"],
+      "properties": {"decisionGrantSha256": {"$ref": "#/$defs/hash"}, "allowedAction": {"const": "record_explicit_human_approval"}}
+    },
+    "approval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "immutable", "exactHumanDecision", "freshHandoffRevalidated", "productionPersistenceActivated"],
+      "properties": {
+        "status": {"const": "approved"}, "immutable": {"const": true}, "exactHumanDecision": {"const": true},
+        "freshHandoffRevalidated": {"const": true}, "productionPersistenceActivated": {"const": false}
+      }
+    },
+    "publication": {
+      "type": "object", "additionalProperties": false,
+      "required": ["eligible", "granted", "publicationRecordId"],
+      "properties": {"eligible": {"const": false}, "granted": {"const": false}, "publicationRecordId": {"type": "null"}}
+    },
+    "capabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["humanApprovalCaptured", "canPublish", "canMutate", "canWrite", "productionPersistence", "authoritativeMusicalTruth"],
+      "properties": {
+        "humanApprovalCaptured": {"const": true}, "canPublish": {"const": false}, "canMutate": {"const": false},
+        "canWrite": {"const": false}, "productionPersistence": {"const": false}, "authoritativeMusicalTruth": {"const": false}
+      }
+    },
+    "approvalRecordSha256": {"$ref": "#/$defs/hash"}
+  },
+  "$defs": {"hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
