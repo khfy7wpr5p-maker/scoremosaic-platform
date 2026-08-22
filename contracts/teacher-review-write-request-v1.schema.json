@@ -9,7 +9,10 @@
   "properties": {
     "schemaVersion": {"const": "scoremosaic-teacher-review-write-request-v1"},
     "command": {"$ref": "score-edit-command-v1.schema.json"},
-    "requestSha256": {
+    "requestSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     }
