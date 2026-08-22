@@ -1,0 +1,69 @@
+.stage8h-intent-panel {
+  min-width: 0;
+}
+
+.intent-fields,
+.intent-value-fields {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.intent-fields label,
+.intent-value-fields label {
+  font-weight: 700;
+}
+
+.intent-fields input,
+.intent-fields select,
+.intent-fields textarea,
+.intent-value-fields input,
+.intent-value-fields select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+}
+
+.intent-fields textarea {
+  resize: vertical;
+}
+
+.intent-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.intent-actions button {
+  min-height: 2.5rem;
+}
+
+.field-optional {
+  font-weight: 400;
+}
+
+.stage8h-preview-panel {
+  min-width: 0;
+}
+
+.intent-preview {
+  box-sizing: border-box;
+  max-height: 24rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid currentColor;
+  border-radius: 0.45rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .intent-actions {
+    grid-template-columns: 1fr;
+  }
+}

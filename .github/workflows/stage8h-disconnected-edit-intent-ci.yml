@@ -1,0 +1,82 @@
+name: Stage 8-H Disconnected Edit Intent CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage8h-disconnected-edit-intent-v1"
+    paths:
+      - ".github/workflows/stage8h-disconnected-edit-intent-ci.yml"
+      - "contracts/teacher-review-browser-edit-intent-v1.schema.json"
+      - "contracts/score-edit-command-v1.schema.json"
+      - "docs/stage8h-disconnected-edit-intent-composer.md"
+      - "docs/architecture-stage8-current.md"
+      - "prototypes/stage8h-disconnected-edit-intent/**"
+      - "prototypes/stage8e-readonly-review-workspace/**"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+      - "tests/test_stage8e_readonly_browser_workspace.py"
+      - "tests/test_ui_0b_static_shell.py"
+      - "services/teacher-review-service/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage8h-disconnected-edit-intent-ci.yml"
+      - "contracts/teacher-review-browser-edit-intent-v1.schema.json"
+      - "contracts/score-edit-command-v1.schema.json"
+      - "docs/stage8h-disconnected-edit-intent-composer.md"
+      - "docs/architecture-stage8-current.md"
+      - "prototypes/stage8h-disconnected-edit-intent/**"
+      - "prototypes/stage8e-readonly-review-workspace/**"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+      - "tests/test_stage8e_readonly_browser_workspace.py"
+      - "tests/test_ui_0b_static_shell.py"
+      - "services/teacher-review-service/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage8h-disconnected-intent-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage8h-disconnected-intent:
+    name: Verify Stage 8-H disconnected edit intent
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Check browser script syntax
+        run: node --check prototypes/stage8h-disconnected-edit-intent/composer.js
+
+      - name: Run UI-0B isolation regression
+        run: python -m unittest discover -s tests -p 'test_ui_0b_static_shell.py' -v
+
+      - name: Run Stage 8-E read-only browser regression
+        run: python -m unittest discover -s tests -p 'test_stage8e_readonly_browser_workspace.py' -v
+
+      - name: Run Stage 8-G server write boundary regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8g_*.py' -v
+
+      - name: Run Stage 8-H disconnected edit intent suite
+        run: python -m unittest discover -s tests -p 'test_stage8h_disconnected_edit_intent.py' -v
+
+      - name: Validate intent and operation JSON Schemas
+        run: |
+          python -m json.tool contracts/teacher-review-browser-edit-intent-v1.schema.json > /dev/null
+          python -m json.tool contracts/score-edit-command-v1.schema.json > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check

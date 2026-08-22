@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ScoreMosaic — Stage 8-H Disconnected Edit Intent</title>
+  <link rel="stylesheet" href="../ui-0b-static-shell/styles.css">
+  <link rel="stylesheet" href="../ui-0b-static-shell/mobile-disclosure.css">
+  <link rel="stylesheet" href="composer.css">
+  <script id="scoremosaic-projection" type="application/json">
+{
+  "schemaVersion": "scoremosaic-teacher-review-projection-v1",
+  "scope": {
+    "tenantId": "tenant_demo",
+    "jobId": "job_demo",
+    "reviewerId": "reviewer_demo",
+    "reviewReportId": "ensemble_report_demo",
+    "reviewReportSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "baseCanonicalSha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "snapshot": {
+    "kind": "revision",
+    "revisionId": "rev_33333333333333333333333333333333",
+    "revisionSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "stateSha256": "5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "page": {"offset": 0, "limit": 100, "returned": 2, "totalDifferences": 2, "hasMore": false},
+  "capabilities": {"readOnly": true, "canEdit": false, "canApprove": false, "canPublish": false, "authoritativeTruth": false},
+  "baseCandidateIds": ["candidate_aaaaaaaaaaaaaaaaaaaaaaaa"],
+  "differences": [
+    {
+      "differenceId": "difference_bbbbbbbbbbbbbbbbbbbbbbbb",
+      "category": "pitch",
+      "field": "pitch.step",
+      "label": "pitch · pitch.step",
+      "focus": {
+        "partOrdinal": 1,
+        "measureOrdinal": 1,
+        "eventOrdinal": 1,
+        "partId": "part_1",
+        "measureId": "measure_1",
+        "eventId": "event_1",
+        "partPresentInSnapshot": true,
+        "measurePresentInSnapshot": true,
+        "eventPresentInSnapshot": true
+      },
+      "observations": [
+        {"candidateId": "candidate_aaaaaaaaaaaaaaaaaaaaaaaa", "canonicalSha256": "2222222222222222222222222222222222222222222222222222222222222222", "present": true, "value": "C"},
+        {"candidateId": "candidate_cccccccccccccccccccccccc", "canonicalSha256": "6666666666666666666666666666666666666666666666666666666666666666", "present": true, "value": "D"}
+      ]
+    },
+    {
+      "differenceId": "difference_dddddddddddddddddddddddd",
+      "category": "duration",
+      "field": "effectiveDuration",
+      "label": "duration · effectiveDuration",
+      "focus": {
+        "partOrdinal": 1,
+        "measureOrdinal": 2,
+        "eventOrdinal": 3,
+        "partId": "part_1",
+        "measureId": "measure_2",
+        "eventId": "event_7",
+        "partPresentInSnapshot": true,
+        "measurePresentInSnapshot": true,
+        "eventPresentInSnapshot": false
+      },
+      "observations": [
+        {"candidateId": "candidate_aaaaaaaaaaaaaaaaaaaaaaaa", "canonicalSha256": "2222222222222222222222222222222222222222222222222222222222222222", "present": true, "value": {"numerator": 1, "denominator": 4}},
+        {"candidateId": "candidate_cccccccccccccccccccccccc", "canonicalSha256": "6666666666666666666666666666666666666666666666666666666666666666", "present": true, "value": {"numerator": 1, "denominator": 8}}
+      ]
+    }
+  ],
+  "projectionSha256": "4efb4ea8e9ceb938534766ff15e2ae6a411b410087dd8ac3307020ff242c1685"
+}
+  </script>
+  <script src="composer.js" defer></script>
+</head>
+<body data-review-state="initializing">
+  <a class="skip-link" href="#intent-panel">Skip to Edit Intent Composer</a>
+
+  <header class="topbar" aria-label="Application context">
+    <div class="brand" aria-label="ScoreMosaic">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <span class="brand-copy"><strong>SCOREMOSAIC</strong><small>TEACHER REVIEW</small></span>
+    </div>
+    <div class="context-strip" aria-label="Review status">
+      <span class="context-chip">Stage 8-H</span>
+      <span class="context-chip context-chip--safe">Disconnected intent composer</span>
+      <span class="context-chip context-chip--muted">No network · no authority · no writes</span>
+    </div>
+    <div class="account-placeholder" aria-label="Reviewer context">Reviewer <span aria-hidden="true">—</span> <span id="reviewer-label">verifying</span></div>
+  </header>
+
+  <main class="workspace" aria-label="Teacher Review disconnected intent workspace">
+    <aside class="panel issues-panel" aria-labelledby="issues-title">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Read-only evidence</p><h1 id="issues-title">Issues</h1></div>
+        <span id="issues-status" class="status-pill status-pill--neutral">Verifying</span>
+      </div>
+      <div id="issue-list" class="readonly-issue-list" role="listbox" aria-labelledby="issues-title" tabindex="0"></div>
+      <p class="security-note">Issue selection changes local focus only.</p>
+    </aside>
+
+    <section class="panel score-panel" aria-labelledby="focus-title-heading">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Exact projection snapshot</p><h2 id="focus-title-heading">Edit target</h2></div>
+        <span class="status-pill status-pill--neutral">Projection evidence</span>
+      </div>
+      <div class="score-placeholder" role="group" aria-label="Selected edit target">
+        <div class="score-placeholder-copy">
+          <strong id="focus-title">No issue selected</strong>
+          <p id="focus-location">Projection not accepted.</p>
+          <p id="focus-presence"></p>
+        </div>
+      </div>
+      <div id="observation-list" class="readonly-observation-list" role="list" aria-live="polite"></div>
+    </section>
+
+    <aside id="intent-panel" class="panel edit-panel stage8h-intent-panel" aria-labelledby="intent-title">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Non-authoritative local draft</p><h2 id="intent-title">Structured Edit Intent</h2></div>
+        <span id="intent-status" class="status-pill status-pill--locked">Unavailable</span>
+      </div>
+
+      <p class="security-note">This panel can prepare a typed intent only. It cannot create a ScoreEditCommand, authorization, old-value precondition, revision, or network request.</p>
+
+      <div class="intent-fields" aria-describedby="intent-help">
+        <label for="operation-type">Operation</label>
+        <select id="operation-type" disabled>
+          <option value="set_pitch">Set pitch</option>
+          <option value="set_effective_duration">Set effective duration</option>
+          <option value="set_written_type">Set written type</option>
+          <option value="set_dots">Set dots</option>
+          <option value="set_staff_voice">Set staff / voice</option>
+          <option value="set_time_signature">Set time signature</option>
+          <option value="set_tab">Set TAB</option>
+          <option value="remove_event">Remove event</option>
+        </select>
+
+        <div id="value-fields" class="intent-value-fields" aria-live="polite"></div>
+
+        <label for="reason">Reviewer note <span class="field-optional">optional</span></label>
+        <textarea id="reason" maxlength="500" rows="3" disabled></textarea>
+
+        <div class="intent-actions">
+          <button id="prepare-intent" type="button" disabled>Prepare local intent</button>
+          <button id="clear-intent" type="button" disabled>Clear draft</button>
+          <button type="button" disabled>Submit correction</button>
+          <button type="button" disabled>Approve revision</button>
+          <button type="button" disabled>Publish</button>
+        </div>
+      </div>
+      <p id="intent-help" class="security-note">Server-side Stage 8-G must independently resolve current state, authorization, exact location and old-value SHA-256 before any write can occur.</p>
+    </aside>
+
+    <section class="panel evidence-panel stage8h-preview-panel" aria-labelledby="preview-title">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Local deterministic preview</p><h2 id="preview-title">Intent Preview</h2></div>
+        <span class="status-pill status-pill--neutral">Not a command</span>
+      </div>
+      <pre id="intent-preview" class="intent-preview" tabindex="0">No local intent prepared.</pre>
+    </section>
+  </main>
+
+  <footer class="statusbar" aria-label="Intent composer status" aria-live="polite" aria-atomic="true">
+    <span><strong>Projection</strong> <span id="projection-status">verifying</span></span>
+    <span><strong>Snapshot</strong> <span id="snapshot-status">unavailable</span></span>
+    <span><strong>Intent</strong> <span id="footer-intent-status">none</span></span>
+    <span class="statusbar-isolation">Disconnected · no API · no command authority · no writes</span>
+  </footer>
+
+  <noscript>This disconnected prototype needs local JavaScript. It never requires network access.</noscript>
+</body>
+</html>
