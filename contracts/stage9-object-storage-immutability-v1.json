@@ -1,0 +1,93 @@
+{
+  "version": "scoremosaic-stage9-object-storage-immutability-v1",
+  "stage": "9-E",
+  "baselineRef": "scoremosaic-stage9-production-foundation-baseline-v1",
+  "topologyRef": "scoremosaic-stage9-resource-topology-v1",
+  "databasePolicyRef": "scoremosaic-stage9-postgresql-persistence-backup-v1",
+  "status": "REPOSITORY_ONLY_STORAGE_POLICY_WITH_RUNTIME_LOCKS",
+  "provider": {
+    "name": "hetzner-object-storage",
+    "primaryLocation": "nbg1",
+    "secondaryBackupLocation": "fsn1",
+    "s3CompatibleRequired": true,
+    "authenticatedTlsRequired": true,
+    "publicBucketsAllowedByDefault": false,
+    "nativeCrossLocationReplicationAssumed": false
+  },
+  "artifactClasses": {
+    "source": {
+      "createOnceRequired": true,
+      "serverDerivedKeyRequired": true,
+      "sha256BindingRequired": true,
+      "callerControlledPathAllowed": false
+    },
+    "candidate": {
+      "createOnceRequired": true,
+      "serverDerivedKeyRequired": true,
+      "sha256BindingRequired": true,
+      "overwriteDifferentBytesAllowed": false
+    },
+    "corrected": {
+      "versioningRequired": true,
+      "revisionBindingRequired": true,
+      "sha256BindingRequired": true,
+      "silentOverwriteAllowed": false
+    },
+    "published": {
+      "versioningRequired": true,
+      "objectLockRequired": true,
+      "publicationRecordBindingRequired": true,
+      "sha256BindingRequired": true,
+      "mutableInPlace": false,
+      "publicByDefault": false
+    },
+    "model": {
+      "sha256BindingRequired": true,
+      "versionIdentityRequired": true,
+      "mutableLatestAliasAuthoritative": false
+    },
+    "databaseBackup": {
+      "privateRequired": true,
+      "encryptionRequired": true,
+      "restoreEvidenceRequired": true
+    }
+  },
+  "copyPolicy": {
+    "direction": "nbg1-primary-to-fsn1-secondary",
+    "scheduledIndependentCopyRequired": true,
+    "primaryReadCredentialClass": "primary-object-read",
+    "secondaryWriteCredentialClass": "secondary-backup-object-write",
+    "copyMustVerifySourceHash": true,
+    "copyMustVerifyDestinationHash": true,
+    "copyMustVerifySize": true,
+    "exactReplayMustBeIdempotent": true,
+    "differentBytesMayOverwriteExistingBackupIdentity": false,
+    "secondaryMayWriteBackToPrimary": false
+  },
+  "accessPolicy": {
+    "browserMayReceiveS3Credentials": false,
+    "callerMaySelectBucket": false,
+    "callerMaySelectStorageRoot": false,
+    "applicationMayDeletePublishedArtifact": false,
+    "omrComputeMayDeleteSourceArtifact": false,
+    "backupWorkerMayDeletePrimaryObjects": false,
+    "leastPrivilegeCredentialClassesRequired": true
+  },
+  "retentionPolicy": {
+    "explicitPolicyRequiredBeforeActivation": true,
+    "protectedPublicationMayBeDeletedByRoutineCleanup": false,
+    "retentionMayBreakDatabaseArtifactBindings": false,
+    "legalDeletionWorkflowDeferredToSeparateContract": true
+  },
+  "activationLocks": {
+    "primaryBucketCreated": false,
+    "secondaryBucketCreated": false,
+    "s3CredentialsProvisioned": false,
+    "versioningEnabledOnProvider": false,
+    "objectLockEnabledOnProvider": false,
+    "productionObjectWriteActivated": false,
+    "backupCopyScheduleActivated": false,
+    "productionObjectDeletionActivated": false,
+    "publicBucketPolicyActivated": false
+  }
+}
