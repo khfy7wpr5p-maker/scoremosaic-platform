@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A through Stage 8-I merged; Stage 8-D authorization-first hardening merged; Stage 8-J non-executing transport state-machine foundation in review**.
+Status: **Stage 8-A through Stage 8-J merged; Stage 8-D authorization-first hardening merged; Stage 8-K approval-eligibility contract foundation in review**.
 
-Current main before Stage 8-J: `839a17b306f23509a33df36fc2f5705f16e59cf3`.
+Current main before Stage 8-K: `f5c4a568a0b498210bfa52abaa7c1585e207e78f`.
 
 ## Current trust chain
 
@@ -24,17 +24,17 @@ Stage 7 immutable read-only evidence
   -> server-authorized non-network write boundary
   -> disconnected local BrowserEditIntent
   -> exact-current revision:read Stage 8-I timeline
-  -> recomputed validation equality with immutable revision evidence
   -> exact rational beat/event/simultaneity timing
-  -> fresh Stage 8-I timeline inside Stage 8-J public plan builder
-  -> deterministic presentation-only cursor plan
-  -> sealed immutable stopped/navigating/paused transport state
-  -> [LOCKED] loop execution
-  -> [LOCKED] audio/playback execution
+  -> Stage 8-J non-executing presentation transport state
+  -> exact current durable head re-verification
+  -> exact supplied-vs-rebuilt corrected artifact equality
+  -> validation-count equality
+  -> deterministic Stage 8-K approval-candidate evidence
+  -> [LOCKED] approval grant
+  -> [LOCKED] publication
+  -> [LOCKED] loop/audio/playback execution
   -> [LOCKED] live Gate E transport/server resolution
   -> [LOCKED] live/public write API and browser mutation
-  -> [LOCKED] exact revision/artifact approval
-  -> [LOCKED] publication
 ```
 
 Teacher Review never mutates source artifacts, engine candidates, Stage 7 Canonical artifacts, or Ensemble evidence in place. Teacher work forms a separate immutable lineage.
@@ -53,7 +53,7 @@ Teacher Review never mutates source artifacts, engine candidates, Stage 7 Canoni
 
 The read-only server projection binds exact `revision:read` authorization, snapshot identity, Stage 7 report evidence, deterministic pagination/focus, and minimized non-authoritative output.
 
-Security hardening merged after Stage 8-I moves sealed authorization ahead of state/base/revision/report processing and catches only expected `Stage8ContractError`; unexpected runtime/programming faults are not masked as authorization failures.
+Security hardening moves sealed authorization ahead of state/base/revision/report processing and catches only expected `Stage8ContractError`; unexpected runtime/programming faults are not masked as authorization failures.
 
 No HTTP route is activated.
 
@@ -95,34 +95,47 @@ The rational read-only timeline proves:
 - independent recomputation of validation SHA/blocking/unresolved counts and exact equality with immutable revision evidence;
 - exact rational event onset/duration/end/beat positions and deterministic simultaneity groups;
 - recomputed current `eventExtentEnd` instead of stale Stage 8-C `observedDuration` metadata;
-- data minimization: no pitch/TAB/XML provenance/source artifact/credential/edit-command/corrected-XML/playback asset;
-- presentation-only cursor navigation and seek;
-- `canLoop=false`, `canPlay=false`, `canMutate=false`, approval/publication/authoritative truth false;
+- data minimization and presentation-only cursor/seek evidence;
 - no audio/network/runtime framework.
 
-## Stage 8-J — proof target
+## Stage 8-J — merged
 
-The non-executing transport state-machine foundation must prove:
+The non-executing transport state-machine foundation proves:
 
-- its public plan builder does not accept a caller-supplied timeline;
-- it internally builds one fresh Stage 8-I timeline from exact current store/grant/state/base inputs;
-- any Stage 8-I capability expansion such as `canPlay=true` fails closed;
-- the plan binds exact `timelineSha256`, scope, snapshot, and validation evidence;
-- cursor points are deterministic exact `(measureOrdinal, onset)` groups;
-- cursor event refs contain only part/measure/event/staff/voice/kind identities;
-- pitch/TAB/provenance/assets/credentials/commands remain excluded;
-- plan/state public constructors are sealed against forged alternate timing state;
-- state binds exact `planSha256`, `timelineSha256`, and snapshot;
+- public plan construction rebuilds one fresh Stage 8-I timeline rather than accepting caller-supplied timing evidence;
+- Stage 8-I capability expansion fails closed;
+- plans bind exact timeline/scope/snapshot/validation identity;
+- cursor points are deterministic exact `(measureOrdinal, onset)` groups with minimized event references;
+- plan/state constructors are sealed;
 - cross-plan state use fails closed;
-- start/pause/seek/stop/advance transitions are deterministic;
-- repeated already-satisfied transitions converge idempotently;
+- start/pause/seek/stop/advance transitions are deterministic and repeated satisfied transitions converge;
 - natural end converges to stopped;
 - loop execution is explicitly forbidden;
-- no wall-clock, tempo, audio, MIDI, SoundFont, network, subprocess, or renderer execution authority is introduced;
-- plan execution/audio/loop/mutation/approval/publication capabilities remain false;
-- every state fixes execution/audio/loop/mutation/approval/publication false.
+- no wall-clock, tempo, audio, MIDI, SoundFont, network, subprocess, or renderer execution authority exists;
+- execution/audio/loop/mutation/approval/publication capabilities remain false.
 
-Stage 8-J is cursor transport evidence only. `transport-state-machine-foundation-enabled=true` does not mean playback is enabled; `audio-playback-enabled=false` is explicit.
+`transport-state-machine-foundation-enabled=true` does not mean playback is enabled; `audio-playback-enabled=false` remains explicit.
+
+## Stage 8-K — proof target
+
+The approval-eligibility foundation must prove:
+
+- the supplied revision is the exact authenticated current durable head for one exact `RevisionScope`;
+- the full caller-supplied immutable revision equals the independently loaded persisted record;
+- the supplied musical state remains exactly bound to the current revision;
+- the supplied Stage 8-F corrected artifact is independently rebuilt from the same scope/revision/state pair;
+- both MusicXML bytes and the complete artifact record match that rebuild exactly;
+- Stage 8-F structural-safety and semantic-round-trip evidence remains true;
+- revision/artifact scope, state, validation, and identity hashes match exactly;
+- blocking/unresolved counts are re-bound to the persisted revision;
+- `candidateEligible=true` only when both counts are zero;
+- non-zero counts produce bounded ineligibility reasons rather than silent repair or guessed approval;
+- evidence construction is sealed and deterministic;
+- evidence always fixes approval/publication/mutation/write/authoritative-truth authority to false;
+- the Stage 8-F artifact itself remains immutable draft with its original approval/publication flags false;
+- no route, production provider, approval signature, approval persistence, or publication behavior is introduced.
+
+Stage 8-K is an approval **candidate evidence** layer only. `approval-eligibility-foundation-enabled=true` does not activate approval; `approval-enabled=false` remains authoritative.
 
 ## Still locked / not proved
 
@@ -135,14 +148,11 @@ Stage 8-J is cursor transport evidence only. `transport-state-machine-foundation
 - browser writable editor activation;
 - real-time clock/audio/MIDI/SoundFont playback execution;
 - loop execution;
-- exact teacher approval;
+- exact teacher approval authorization/signature/persistence;
 - publication.
 
-## Safe continuation after Stage 8-J
+## Safe continuation after Stage 8-K
 
-If Stage 8-J passes all exact-head gates and merges, the next safe work should remain non-authoritative. Two possible repository-only directions are:
+If Stage 8-K passes all exact-head gates and merges, actual approval must remain a separate stage. The next safe repository-only approval slice may define purpose-separated approval authorization plus immutable approval-record semantics only if it consumes exact current Stage 8-K evidence, prevents replay/stale-revision approval, keeps publication separate, and still exposes no live route or production provider.
 
-1. an exact revision + corrected-artifact **approval eligibility contract** that still does not activate approval, or
-2. a separately isolated audio-executor contract that remains disabled and proves it cannot mutate revisions or accept arbitrary executable/untrusted assets.
-
-Given Gate E is still incomplete, live browser mutation/public API activation remains blocked. Approval, when eventually enabled, must bind one exact immutable revision plus one exact validated corrected-MusicXML artifact hash. Publication remains later still.
+A separate disabled audio-executor contract may also be explored later, but it must not share authority with approval or mutation and must not accept arbitrary executable or untrusted assets.
