@@ -48,3 +48,38 @@ class Stage10CFixtureReadonlyReviewTests(unittest.TestCase):
             "eval": r"\beval\s*\(",
             "Function": r"new\s+Function",
             "location": r"(?:window\.)?location\s*[=.]",
+        }
+        for name, pattern in banned_patterns.items():
+            self.assertIsNone(re.search(pattern, combined), name)
+
+    def test_app_uses_safe_dom_construction_and_in_memory_state(self) -> None:
+        for marker in (
+            "document.createElement",
+            "textContent",
+            "replaceChildren",
+            "addEventListener",
+            "const state =",
+        ):
+            self.assertIn(marker, APP)
+
+    def test_issue_focus_fields_are_bounded_to_fixture_location(self) -> None:
+        for marker in (
+            "focused-page",
+            "focused-measure",
+            "focused-staff",
+            "focused-voice",
+            "focused-event",
+            "source-region",
+            "candidate-id",
+            "canonical-id",
+        ):
+            self.assertIn(marker, HTML)
+
+    def test_server_authority_controls_remain_disabled(self) -> None:
+        self.assertIn('class="primary-button" type="button" disabled', HTML)
+        self.assertIn("No ScoreEditCommand, revision, approval, or publication can be created", HTML)
+        self.assertIn("no API · no persistence · no playback · no publication", HTML)
+
+
+if __name__ == "__main__":
+    unittest.main()
