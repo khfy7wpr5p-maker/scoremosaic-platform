@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-write-request-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review Write Request v1",
+  "description": "Closed transport envelope for one typed ScoreEditCommand. The envelope carries no authority by itself; server-side authorization, current-parent binding, stale-target checks, idempotency reservation, validation, and immutable revision append are mandatory before acceptance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "command", "requestSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-teacher-review-write-request-v1"},
+    "command": {"$ref": "score-edit-command-v1.schema.json"},
+    "requestSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
