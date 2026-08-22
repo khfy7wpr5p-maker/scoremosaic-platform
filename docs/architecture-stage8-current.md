@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A, Stage 8-B, Stage 8-C and Stage 8-D merged; Stage 8-E read-only browser workspace in review**.
+Status: **Stage 8-A through Stage 8-E merged; Stage 8-F corrected MusicXML derivative and Canonical round-trip in review**.
 
-Current Stage 8-D main: `1b5f85f71134cc824c63192a7b83e251e087f488`.
+Current Stage 8-E main: `c93d1789575e9ab62925851d855011eab4a4cdd4`.
 
 ## Current trust chain
 
@@ -26,10 +26,15 @@ Stage 7 immutable read-only evidence
   -> independently revalidated Stage 7 comparison evidence
   -> bounded deterministic read-only projection/focus
   -> local fail-closed read-only browser adapter
-  -> [LOCKED] corrected MusicXML derivative
+  -> exact revision/state revalidation
+  -> deterministic corrected MusicXML bytes
+  -> generated-XML structural safety validation
+  -> provenance-safe Canonical re-normalization
+  -> editable-musical semantic round-trip equality
+  -> immutable draft corrected-artifact evidence
   -> [LOCKED] browser mutation transport/UI
   -> [LOCKED] cursor/playback authority
-  -> [LOCKED] exact revision/hash approval
+  -> [LOCKED] exact revision/artifact approval
   -> [LOCKED] publication
 ```
 
@@ -98,23 +103,39 @@ The read-only workspace boundary proves:
 
 Stage 8-D is a server-side projection contract only. It exposes no HTTP route and no browser mutation authority.
 
-## Stage 8-E — proof target
+## Stage 8-E — merged
 
-The read-only browser gate binds the Stage 8-D projection to the repository-owned application shell without widening server authority:
+The read-only browser gate proves:
 
-- a separate replaceable prototype preserves the original UI-0B no-script/disconnected baseline;
-- only one embedded `scoremosaic-teacher-review-projection-v1` payload is consumed;
+- a separate replaceable prototype preserves the UI-0B no-script/disconnected baseline;
+- only the bounded `scoremosaic-teacher-review-projection-v1` shape is consumed;
 - unknown projection fields or capability expansion fail closed;
 - `connect-src 'none'` keeps all network access disabled;
 - browser storage, cookies, navigation, forms and dynamic code execution remain absent;
 - projection content reaches the DOM only through safe textual sinks;
-- issue order is preserved and the first item is selected deterministically;
+- issue order/initial focus are deterministic;
 - Arrow Up/Down, Home and End provide keyboard issue navigation;
-- focus and candidate observations are presentation-only;
-- absent events remain explicit evidence rather than being silently repaired;
+- absent events remain explicit evidence rather than hidden repair;
 - edit, approval, publication and playback controls remain disabled.
 
-No public/internal Teacher Review route is added by Stage 8-E. The browser cannot create ScoreEditCommand or TeacherScoreRevision objects.
+No public/internal Teacher Review route or browser mutation authority is added by Stage 8-E.
+
+## Stage 8-F — proof target
+
+The corrected MusicXML derivative gate must prove:
+
+- one exact immutable revision and one exact resulting review state are revalidated before export;
+- the stored validation report hash and issue counts are recomputed from that exact state;
+- MusicXML materialization is deterministic and bounded;
+- generated XML passes an independent streaming structural-safety gate before semantic reuse;
+- Canonical re-normalization uses the existing parser semantics but explicit `teacher-review` provenance rather than impersonating an OMR engine;
+- the ordinary OMR normalizer remains closed to the Teacher Review source identity;
+- the regenerated Canonical representation matches the exact review state under a documented editable-musical semantic projection;
+- event IDs/XML provenance and derived `observedDuration`/`writtenDuration` are not confused with editable musical truth;
+- the corrected artifact binds exact revision/state/XML/safety/round-trip hashes;
+- artifact status remains immutable draft with approval/publication false.
+
+The foundation may produce repository/test evidence only. `corrected-musicxml-materialization-enabled=false` remains locked until a later controlled artifact-storage/transport boundary exists.
 
 ## Still locked / not proved
 
@@ -122,13 +143,12 @@ No public/internal Teacher Review route is added by Stage 8-E. The browser canno
 - public or internal Teacher Review HTTP routes;
 - production DB/object-store deployment;
 - multi-host distributed consensus and full-store anti-rollback authority;
-- corrected MusicXML generation;
-- MusicXML safety validation and Canonical round-trip for teacher derivatives;
+- corrected MusicXML production persistence/transport;
 - browser writable editor activation;
 - renderer/cursor/playback authority;
 - exact teacher approval;
 - publication.
 
-## Safe continuation after Stage 8-E
+## Safe continuation after Stage 8-F
 
-After Stage 8-E passes exact-head CI and merges, isolate corrected MusicXML as a deterministic derivative of one exact TeacherScoreRevision. Safety validation must precede Canonical re-normalization, and the re-normalized Canonical state must match the exact teacher revision before any browser write transport, approval or publication authority is considered. Browser mutation remains locked while this derivative gate is incomplete.
+After Stage 8-F passes exact-head CI and merges, the next writable-editor work must remain server-authorized and stale-parent protected. A browser must never create authority locally: any future ScoreEditCommand transport must re-verify exact tenant/reviewer/report/Canonical/revision scope server-side, reject stale/tampered values, and create only a new immutable TeacherScoreRevision. Approval/publication remain separate later gates and must bind the exact corrected-artifact hash.

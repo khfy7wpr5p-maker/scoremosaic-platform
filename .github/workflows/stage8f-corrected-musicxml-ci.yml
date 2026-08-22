@@ -1,0 +1,98 @@
+name: Stage 8-F Corrected MusicXML Derivative CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage8f-corrected-musicxml-derivative-v1"
+    paths:
+      - ".github/workflows/stage8f-corrected-musicxml-ci.yml"
+      - "contracts/corrected-musicxml-artifact-v1.schema.json"
+      - "docs/stage8f-corrected-musicxml-derivative.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+      - "services/ensemble-service/src/scoremosaic_ensemble/canonical.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/musicxml.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/teacher_review_musicxml.py"
+      - "services/ensemble-service/tests/**"
+      - "prototypes/stage8e-readonly-review-workspace/**"
+      - "tests/test_stage8e_readonly_browser_workspace.py"
+      - "tests/test_ui_0b_static_shell.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage8f-corrected-musicxml-ci.yml"
+      - "contracts/corrected-musicxml-artifact-v1.schema.json"
+      - "docs/stage8f-corrected-musicxml-derivative.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+      - "services/ensemble-service/src/scoremosaic_ensemble/canonical.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/musicxml.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/teacher_review_musicxml.py"
+      - "services/ensemble-service/tests/**"
+      - "prototypes/stage8e-readonly-review-workspace/**"
+      - "tests/test_stage8e_readonly_browser_workspace.py"
+      - "tests/test_ui_0b_static_shell.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage8f-corrected-musicxml-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage8f-corrected-musicxml:
+    name: Verify Stage 8-F corrected MusicXML derivative
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Teacher Review and Ensemble libraries
+        run: |
+          python -m compileall -q services/teacher-review-service/src
+          python -m compileall -q services/ensemble-service/src
+
+      - name: Run Stage 8-A regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_contract_foundation.py' -v
+
+      - name: Run Stage 8-B durable-store regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_durable_revision_store.py' -v
+
+      - name: Run Stage 8-C materialization regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8c_revision_materialization.py' -v
+
+      - name: Run Stage 8-D projection regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8d_readonly_review_projection.py' -v
+
+      - name: Run UI-0B isolation regression
+        run: python -m unittest discover -s tests -p 'test_ui_0b_static_shell.py' -v
+
+      - name: Run Stage 8-E browser regression suite
+        run: python -m unittest discover -s tests -p 'test_stage8e_readonly_browser_workspace.py' -v
+
+      - name: Run existing Ensemble Canonical and MusicXML regression suites
+        run: |
+          python -m unittest discover -s services/ensemble-service/tests -p 'test_canonical.py' -v
+          python -m unittest discover -s services/ensemble-service/tests -p 'test_musicxml.py' -v
+
+      - name: Run Stage 8-F corrected MusicXML derivative and error-boundary suites
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8f_*.py' -v
+
+      - name: Validate corrected artifact JSON Schema
+        run: python -m json.tool contracts/corrected-musicxml-artifact-v1.schema.json > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check
