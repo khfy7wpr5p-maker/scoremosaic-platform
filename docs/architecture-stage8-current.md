@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A through Stage 8-K merged; Stage 8-D authorization-first hardening merged; Stage 8-L human approval handoff foundation in review**.
+Status: **Stage 8-A through Stage 8-L merged; Stage 8-D authorization-first hardening merged; autonomous Teacher Review development has reached the human approval authority boundary**.
 
-Current main before Stage 8-L: `a235d0ddba7db50baa83d7be35f9aa1a79aaaf7e`.
+Current main: `1c05e2c1258e8dea9ddb4bdc0e40f77bc93ccd93`.
 
 ## Current trust chain
 
@@ -117,9 +117,9 @@ The approval-eligibility foundation proves:
 
 Stage 8-K is approval-candidate evidence only. `approval-eligibility-foundation-enabled=true` does not activate approval.
 
-## Stage 8-L — proof target
+## Stage 8-L — merged
 
-Stage 8-L is the final autonomous repository-only handoff before a real human approval decision. It must prove:
+Stage 8-L is the final autonomous repository-only handoff before a real human approval decision. The merged foundation proves:
 
 - Stage 8-K eligibility is freshly recomputed inside the public handoff builder;
 - historical revisions and substituted artifacts fail before handoff authority;
@@ -136,7 +136,15 @@ Stage 8-L is the final autonomous repository-only handoff before a real human ap
 - `canRecordApproval=false`, `canPublish=false`, `canMutate=false`, `canWrite=false`, and `authoritativeTruth=false`;
 - no live route, production provider, approval record, publication behavior, audio runtime, or mutation authority is introduced.
 
-`approval-handoff-foundation-enabled=true` must not change `approval-enabled=false`.
+All Stage 8-L PR checks passed, including Foundation and Stage 8-A through Stage 8-L regressions, schema validation, activation locks, and repository diff checks.
+
+`approval-handoff-foundation-enabled=true` does not change `approval-enabled=false`.
+
+## Human authority boundary reached
+
+Autonomous Teacher Review development stops here by design.
+
+The next semantic transition is a real human teacher decision that changes the meaning from "safe to present for approval" to "approved". That decision must not be generated autonomously on behalf of the teacher.
 
 ## Still locked / not proved
 
@@ -153,8 +161,4 @@ Stage 8-L is the final autonomous repository-only handoff before a real human ap
 - real-time clock/audio/MIDI/SoundFont playback execution;
 - loop execution.
 
-## Autonomous stop after Stage 8-L
-
-If Stage 8-L passes all exact-head, security, determinism, regression, schema and activation-lock gates and merges, autonomous Teacher Review development stops at the semantic boundary shown above.
-
-The next transition is a real human teacher decision that changes the meaning from "safe to present for approval" to "approved". That decision must not be generated autonomously on behalf of the teacher. Publication remains later and separately authorized.
+Publication remains a later, separately authorized transition after a real approved record exists.
