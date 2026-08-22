@@ -15,9 +15,12 @@ from .review_timeline import ReviewTimelineProjection, TIMELINE_VERSION
 TRANSPORT_PLAN_VERSION = "scoremosaic-review-transport-plan-v1"
 TRANSPORT_STATE_VERSION = "scoremosaic-review-transport-state-v1"
 _MAX_CURSOR_POINTS = 500_000
+_MAX_EVENTS = 500_000
 _MAX_EVENTS_PER_POINT = 512
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$")
+_PLAN_CONSTRUCTION_SEAL = object()
+_STATE_CONSTRUCTION_SEAL = object()
 
 _EXPECTED_TIMELINE_CAPABILITIES = {
     "readOnly": True,
@@ -230,7 +233,6 @@ def _validate_timeline_and_points(
         _fail("TRANSPORT_TIMELINE_PARTS_INVALID")
 
     grouped: dict[tuple[int, Fraction], list[dict[str, Any]]] = {}
-    point_measure_ids: dict[tuple[int, Fraction], set[str]] = {}
     total_events = 0
     previous_part_ordinal = 0
     seen_parts: set[str] = set()
@@ -298,7 +300,7 @@ def _validate_timeline_and_points(
                 _fail("TRANSPORT_TIMELINE_EVENT_INVALID")
             for event in events:
                 total_events += 1
-                if total_events > _MAX_CURSOR_POINTS * _MAX_EVENTS_PER_POINT:
+                if total_events > _MAX_EVENTS:
                     _fail("TRANSPORT_TIMELINE_EVENT_LIMIT_EXCEEDED")
                 event = _exact(
                     event,
@@ -341,7 +343,6 @@ def _validate_timeline_and_points(
                         "kind": event["kind"],
                     }
                 )
-                point_measure_ids.setdefault(key, set()).add(measure_id)
 
     if len(grouped) > _MAX_CURSOR_POINTS:
         _fail("TRANSPORT_CURSOR_POINT_LIMIT_EXCEEDED")
@@ -384,9 +385,19 @@ def _validate_timeline_and_points(
     return identity, points
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, repr=False, init=False)
 class ReviewTransportPlan:
     _payload: Mapping[str, Any]
+
+    def __init__(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        _construction_seal: object | None = None,
+    ) -> None:
+        if _construction_seal is not _PLAN_CONSTRUCTION_SEAL:
+            _fail("TRANSPORT_PLAN_CONSTRUCTION_FORBIDDEN")
+        object.__setattr__(self, "_payload", payload)
 
     @property
     def plan_sha256(self) -> str:
@@ -398,9 +409,19 @@ class ReviewTransportPlan:
         return payload
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, repr=False, init=False)
 class ReviewTransportState:
     _payload: Mapping[str, Any]
+
+    def __init__(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        _construction_seal: object | None = None,
+    ) -> None:
+        if _construction_seal is not _STATE_CONSTRUCTION_SEAL:
+            _fail("TRANSPORT_STATE_CONSTRUCTION_FORBIDDEN")
+        object.__setattr__(self, "_payload", payload)
 
     @property
     def state_sha256(self) -> str:
@@ -429,7 +450,10 @@ def build_review_transport_plan(timeline: ReviewTimelineProjection) -> ReviewTra
         },
         "cursorPoints": points,
     }
-    return ReviewTransportPlan(_freeze(body))
+    return ReviewTransportPlan(
+        _freeze(body),
+        _construction_seal=_PLAN_CONSTRUCTION_SEAL,
+    )
 
 
 def _validate_plan(plan: ReviewTransportPlan) -> dict[str, Any]:
@@ -511,7 +535,10 @@ def _new_state(
         "approvalAllowed": False,
         "publicationAllowed": False,
     }
-    return ReviewTransportState(_freeze(body))
+    return ReviewTransportState(
+        _freeze(body),
+        _construction_seal=_STATE_CONSTRUCTION_SEAL,
+    )
 
 
 def initialize_review_transport(plan: ReviewTransportPlan) -> ReviewTransportState:
