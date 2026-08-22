@@ -62,6 +62,12 @@ from .review_transport import (
     start_navigation,
     stop_navigation,
 )
+from .approval_eligibility import (
+    APPROVAL_ELIGIBILITY_VERSION,
+    ApprovalEligibilityEvidence,
+    Stage8ApprovalEligibilityError,
+    build_approval_eligibility_evidence,
+)
 
 __all__ = [
     "AUTHZ_VERSION",
@@ -74,6 +80,7 @@ __all__ = [
     "TIMELINE_VERSION",
     "TRANSPORT_PLAN_VERSION",
     "TRANSPORT_STATE_VERSION",
+    "APPROVAL_ELIGIBILITY_VERSION",
     "ReviewAuthorizationGrant",
     "ScoreEditCommand",
     "Stage8ContractError",
@@ -94,8 +101,11 @@ __all__ = [
     "ReviewTransportPlan",
     "ReviewTransportState",
     "Stage8TransportError",
+    "ApprovalEligibilityEvidence",
+    "Stage8ApprovalEligibilityError",
     "advance_cursor",
     "apply_score_edit_command",
+    "build_approval_eligibility_evidence",
     "build_review_projection_page",
     "build_review_timeline_projection",
     "build_review_transport_plan",
