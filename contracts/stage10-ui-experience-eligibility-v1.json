@@ -1,0 +1,91 @@
+{
+  "version": "scoremosaic-stage10-ui-experience-eligibility-v1",
+  "stage": "10-F",
+  "status": "REPOSITORY_UI_EXPERIENCE_COMPLETE_STAGE11_CONTRACT_DESIGN_READY",
+  "scope": "repository-only-ui-application-experience",
+  "parentContract": "scoremosaic-stage10-ui-application-experience-v1",
+  "evidence": [
+    "Stage 10-A UI/application experience contract",
+    "Stage 10-B integrated product shell",
+    "Stage 10-C deterministic fixture-driven read-only review",
+    "Stage 10-D disconnected bounded edit-intent UX",
+    "Stage 10-E accessibility and responsive hardening"
+  ],
+  "readiness": {
+    "stage10RepositoryScopeComplete": true,
+    "integratedProductShellComplete": true,
+    "deterministicFixtureReviewComplete": true,
+    "disconnectedEditIntentUxComplete": true,
+    "accessibilityResponsiveBaselineComplete": true,
+    "readyForStage11UiApplicationContractDesign": true,
+    "apiIntegrationEligible": false,
+    "productionFrontendEligible": false,
+    "realUploadEligible": false,
+    "authRuntimeEligible": false,
+    "sessionRuntimeEligible": false,
+    "rbacRuntimeEligible": false,
+    "teacherReviewServerWriteEligible": false,
+    "scoreEditCommandCreationEligible": false,
+    "teacherScoreRevisionCreationEligible": false,
+    "approvalExecutionEligible": false,
+    "publicationExecutionEligible": false,
+    "playbackEligible": false,
+    "productionInfrastructureEligible": false
+  },
+  "authority": {
+    "fixtureAuthoritative": false,
+    "browserStateAuthoritative": false,
+    "localEditIntentAuthoritative": false,
+    "rendererAuthoritative": false,
+    "validationPresentationImpliesApproval": false,
+    "publishedPresentationImpliesPublic": false
+  },
+  "securityPreservation": {
+    "networkRequestsAllowed": false,
+    "browserPersistenceAllowed": false,
+    "externalAssetsAllowed": false,
+    "dynamicHtmlInjectionAllowed": false,
+    "dynamicCodeEvaluationAllowed": false,
+    "productionArtifactAccessAllowed": false,
+    "productionCredentialAccessAllowed": false,
+    "stage9ExternalProvisioningStillDeferred": true
+  },
+  "accessibilityEvidence": {
+    "keyboardNavigationPresent": true,
+    "visibleFocusPresent": true,
+    "programmaticLabelsPresent": true,
+    "textualSeverityPresent": true,
+    "liveStatusPresent": true,
+    "touchTargetBaselinePresent": true,
+    "reducedMotionPresent": true,
+    "increasedContrastPresent": true,
+    "forcedColorsPresent": true,
+    "responsiveScoreViewPriorityPresent": true,
+    "runtimeCertificationClaimed": false
+  },
+  "stage11Boundary": {
+    "mayDesignTypedUiApplicationContracts": true,
+    "mayDesignLocalAdapters": true,
+    "mayActivateNetworkByDefault": false,
+    "mayActivateProductionInfrastructureByDefault": false,
+    "mayCreateProductionCredentialsByDefault": false,
+    "mayActivateServerWriteByDefault": false,
+    "separateSecurityGateRequiredForAnyLiveIntegration": true
+  },
+  "activationLocks": {
+    "frontendProductionRuntimeCreated": false,
+    "apiConnectionActivated": false,
+    "uploadActivated": false,
+    "authActivated": false,
+    "sessionActivated": false,
+    "rbacActivated": false,
+    "persistentBrowserStateActivated": false,
+    "teacherReviewWriteActivated": false,
+    "scoreEditCommandCreationActivated": false,
+    "teacherScoreRevisionCreationActivated": false,
+    "approvalActivated": false,
+    "publicationActivated": false,
+    "playbackActivated": false,
+    "productionInfrastructureActivated": false
+  }
+}
