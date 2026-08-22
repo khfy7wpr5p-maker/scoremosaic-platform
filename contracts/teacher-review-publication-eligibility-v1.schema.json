@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/teacher-review-publication-eligibility-v1.schema.json",
+  "title": "ScoreMosaic Publication Eligibility Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scope", "currentHead", "correctedArtifact", "humanApproval", "checks", "eligibility", "authority", "publicationEligibilityEvidenceSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-publication-eligibility-v1"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"type": "string"}, "jobId": {"type": "string"}, "reviewReportId": {"type": "string"},
+        "reviewReportSha256": {"$ref": "#/$defs/hash"}, "baseCanonicalSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "currentHead": {
+      "type": "object", "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "sequence"],
+      "properties": {"revisionId": {"type": "string"}, "revisionSha256": {"$ref": "#/$defs/hash"}, "sequence": {"type": "integer", "minimum": 1}}
+    },
+    "correctedArtifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifactId", "artifactRecordSha256", "musicXmlSha256", "safetyReportSha256", "expectedSemanticSha256", "regeneratedSemanticSha256"],
+      "properties": {
+        "artifactId": {"type": "string"}, "artifactRecordSha256": {"$ref": "#/$defs/hash"}, "musicXmlSha256": {"$ref": "#/$defs/hash"},
+        "safetyReportSha256": {"$ref": "#/$defs/hash"}, "expectedSemanticSha256": {"$ref": "#/$defs/hash"}, "regeneratedSemanticSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "humanApproval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approvalRecordId", "approvalRecordSha256", "decisionId", "approverId", "decisionProvenanceSha256"],
+      "properties": {
+        "approvalRecordId": {"type": "string", "pattern": "^approval_[0-9a-f]{32}$"}, "approvalRecordSha256": {"$ref": "#/$defs/hash"},
+        "decisionId": {"type": "string"}, "approverId": {"type": "string"}, "decisionProvenanceSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "checks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exactCurrentApprovalRecord", "exactCurrentHead", "exactApprovedArtifact", "explicitHumanApproval", "freshApprovalRevalidated"],
+      "properties": {
+        "exactCurrentApprovalRecord": {"const": true}, "exactCurrentHead": {"const": true}, "exactApprovedArtifact": {"const": true},
+        "explicitHumanApproval": {"const": true}, "freshApprovalRevalidated": {"const": true}
+      }
+    },
+    "eligibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidateEligibleForPublicationHandoff", "productionPublicationEligible", "productionBlockers"],
+      "properties": {
+        "candidateEligibleForPublicationHandoff": {"const": true},
+        "productionPublicationEligible": {"const": false},
+        "productionBlockers": {
+          "type": "array", "prefixItems": [
+            {"const": "PRODUCTION_PUBLICATION_AUTHORIZATION_REQUIRED"},
+            {"const": "PRODUCTION_PERSISTENCE_REQUIRED"}
+          ], "items": false, "minItems": 2, "maxItems": 2
+        }
+      }
+    },
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["publicationGranted", "publisherAuthority", "writeGranted", "mutationGranted", "productionPersistence", "authoritativeMusicalTruth"],
+      "properties": {
+        "publicationGranted": {"const": false}, "publisherAuthority": {"const": false}, "writeGranted": {"const": false},
+        "mutationGranted": {"const": false}, "productionPersistence": {"const": false}, "authoritativeMusicalTruth": {"const": false}
+      }
+    },
+    "publicationEligibilityEvidenceSha256": {"$ref": "#/$defs/hash"}
+  },
+  "$defs": {"hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
