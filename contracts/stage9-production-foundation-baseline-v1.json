@@ -1,0 +1,85 @@
+{
+  "version": "scoremosaic-stage9-production-foundation-baseline-v1",
+  "stage": "9-A",
+  "status": "APPROVED_REPOSITORY_BASELINE_WITH_RUNTIME_LOCKS",
+  "hosting": {
+    "provider": "hetzner",
+    "country": "DE",
+    "primaryLocation": "nbg1",
+    "deploymentController": "coolify",
+    "computeSkuSelection": "deferred_until_st_omr_inference_benchmark"
+  },
+  "database": {
+    "engine": "postgresql",
+    "majorVersion": 18,
+    "currentSupportedMinorRequired": true,
+    "separatePrivateHostRequired": true,
+    "publicInternetExposure": false,
+    "externalS3CompatibleBackupRequired": true
+  },
+  "objectStorage": {
+    "provider": "hetzner-object-storage",
+    "primaryLocation": "nbg1",
+    "s3Compatible": true,
+    "versioningRequired": true,
+    "objectLockRequiredForPublishedArtifacts": true,
+    "secondaryBackupLocation": "fsn1",
+    "nativeCrossLocationReplicationAssumed": false,
+    "scheduledIndependentCopyRequired": true
+  },
+  "identity": {
+    "provider": "authentik",
+    "deployment": "self-hosted",
+    "oidcRequired": true,
+    "oauth2Supported": true,
+    "mfaSupported": true,
+    "passkeySupported": true,
+    "resourceAuthorizationOwner": "scoremosaic",
+    "identityProviderMayGrantMusicalAuthorityDirectly": false
+  },
+  "secrets": {
+    "targetManager": "infisical",
+    "deployment": "self-hosted-target",
+    "coolifyRole": "bootstrap-secrets-only",
+    "environmentIsolationRequired": true,
+    "paidCapabilitiesAssumed": false,
+    "licensingAndCapabilityGateRequiredBeforeProduction": true,
+    "applicationSecretsMayBeCommittedToRepository": false
+  },
+  "publication": {
+    "destination": "scoremosaic-internal-publication",
+    "recordStore": "postgresql",
+    "artifactStore": "hetzner-object-storage",
+    "defaultVisibility": "private",
+    "immutableArtifactRequired": true,
+    "objectLockRequired": true,
+    "approvalAndPublicationPermissionsSeparated": true,
+    "publishedImpliesPublicVisibility": false
+  },
+  "activationLocks": {
+    "providerResourcesCreatedByThisBaseline": false,
+    "productionCredentialsProvisioned": false,
+    "productionNetworkActivated": false,
+    "productionDatabaseActivated": false,
+    "productionObjectStorageWritesActivated": false,
+    "productionIdentityRuntimeActivated": false,
+    "productionSecretsRuntimeActivated": false,
+    "publicApiActivated": false,
+    "teacherReviewWriteApiActivated": false,
+    "publicationExecutionActivated": false,
+    "externalWriteActivated": false,
+    "productionDeploymentAuthorizedByThisBaselineAlone": false
+  },
+  "requiredBeforeAnyRuntimeActivation": [
+    "fresh provider capability and pricing verification",
+    "concrete resource identities and network plan",
+    "credential bootstrap and rotation design",
+    "least-privilege service identity and RBAC mapping",
+    "database backup and restore evidence",
+    "object-storage immutability and secondary-copy evidence",
+    "Infisical licensing and required-capability verification",
+    "production monitoring and rollback plan",
+    "negative security tests and exact-head CI",
+    "explicit activation scope for the specific runtime slice"
+  ]
+}
