@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A through Stage 8-E merged; Stage 8-F corrected MusicXML derivative and Canonical round-trip in review**.
+Status: **Stage 8-A through Stage 8-F merged; Stage 8-G server-authorized write-boundary foundation in review**.
 
-Current Stage 8-E main: `c93d1789575e9ab62925851d855011eab4a4cdd4`.
+Current Stage 8-F main: `7e1f7dd6522ae563d767e820450b6f0082ef7106`.
 
 ## Current trust chain
 
@@ -32,7 +32,12 @@ Stage 7 immutable read-only evidence
   -> provenance-safe Canonical re-normalization
   -> editable-musical semantic round-trip equality
   -> immutable draft corrected-artifact evidence
-  -> [LOCKED] browser mutation transport/UI
+  -> fresh durable head + revision:propose authorization
+  -> closed hashed write-request envelope
+  -> exact current-state + old-value/location validation
+  -> provider-neutral idempotency reservation
+  -> immutable exact-parent revision append
+  -> [LOCKED] live/public write API and browser mutation
   -> [LOCKED] cursor/playback authority
   -> [LOCKED] exact revision/artifact approval
   -> [LOCKED] publication
@@ -120,26 +125,46 @@ The read-only browser gate proves:
 
 No public/internal Teacher Review route or browser mutation authority is added by Stage 8-E.
 
-## Stage 8-F — proof target
+## Stage 8-F — merged
 
-The corrected MusicXML derivative gate must prove:
+The corrected MusicXML derivative gate proves:
 
 - one exact immutable revision and one exact resulting review state are revalidated before export;
 - the stored validation report hash and issue counts are recomputed from that exact state;
 - MusicXML materialization is deterministic and bounded;
 - generated XML passes an independent streaming structural-safety gate before semantic reuse;
-- Canonical re-normalization uses the existing parser semantics but explicit `teacher-review` provenance rather than impersonating an OMR engine;
+- Canonical re-normalization uses existing parser semantics with explicit `teacher-review` provenance rather than impersonating an OMR engine;
 - the ordinary OMR normalizer remains closed to the Teacher Review source identity;
-- the regenerated Canonical representation matches the exact review state under a documented editable-musical semantic projection;
+- the regenerated Canonical representation matches the exact review state under the documented editable-musical semantic projection;
 - event IDs/XML provenance and derived `observedDuration`/`writtenDuration` are not confused with editable musical truth;
 - the corrected artifact binds exact revision/state/XML/safety/round-trip hashes;
 - artifact status remains immutable draft with approval/publication false.
 
-The foundation may produce repository/test evidence only. `corrected-musicxml-materialization-enabled=false` remains locked until a later controlled artifact-storage/transport boundary exists.
+`corrected-musicxml-materialization-enabled=false` remains locked because production corrected-artifact storage/transport has not been authorized.
+
+## Stage 8-G — proof target
+
+The server-authorized write-boundary foundation must prove:
+
+- a fresh durable head is established from trusted server scope before request-body parsing;
+- the sealed `revision:propose` grant is verified against exact tenant/job/reviewer/report/Canonical/current-parent scope before any request parsing or idempotency callback;
+- the transport envelope is closed, bounded and SHA-256 bound to one existing closed `ScoreEditCommand`;
+- raw XML, arbitrary paths/patches and renderer-native mutation objects remain impossible;
+- the command's authorization-decision/job/reviewer/report/Canonical/parent identities exactly match trusted server scope;
+- the first write uses a freshly materialized base Canonical state; later writes require a state SHA-256 matching the exact durable head revision;
+- old-value/location/value-domain checks remain delegated to the deterministic Stage 8-C materializer;
+- validator failures remain visible evidence and are never silently repaired;
+- a provider-neutral atomic idempotency reservation binds exact scope/parent/command/request hashes;
+- provider conflict/failure cannot append a revision;
+- concurrent exact duplicates use one stable server timestamp and converge through Stage 8-B to one immutable revision;
+- stale historical parents cannot regain write authority through idempotency;
+- safe write results remain draft/non-approvable/non-publishable and expose no live-route capability.
+
+Stage 8-G is an in-process repository foundation only. `server-write-boundary-foundation-enabled=true` does not activate `write-api-enabled` or `public-api-enabled`.
 
 ## Still locked / not proved
 
-- production identity/session provider and RBAC source;
+- production identity/session provider and production RBAC source;
 - public or internal Teacher Review HTTP routes;
 - production DB/object-store deployment;
 - multi-host distributed consensus and full-store anti-rollback authority;
@@ -149,6 +174,8 @@ The foundation may produce repository/test evidence only. `corrected-musicxml-ma
 - exact teacher approval;
 - publication.
 
-## Safe continuation after Stage 8-F
+## Safe continuation after Stage 8-G
 
-After Stage 8-F passes exact-head CI and merges, the next writable-editor work must remain server-authorized and stale-parent protected. A browser must never create authority locally: any future ScoreEditCommand transport must re-verify exact tenant/reviewer/report/Canonical/revision scope server-side, reject stale/tampered values, and create only a new immutable TeacherScoreRevision. Approval/publication remain separate later gates and must bind the exact corrected-artifact hash.
+After Stage 8-G passes exact-head CI and merges, browser-facing mutation must remain locked until the live Gate E authentication/authorization/idempotency/privacy boundary is complete and explicitly bound to this server write contract. Repository-only editor request composition and accessibility work may proceed without network authority, but no browser may generate server authority locally.
+
+Approval remains a separate later gate and must bind one exact immutable revision **and** one exact validated corrected-MusicXML artifact hash. Publication remains later still.
