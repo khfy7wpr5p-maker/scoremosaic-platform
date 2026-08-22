@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/teacher-review-publication-handoff-v1.schema.json",
+  "title": "ScoreMosaic Publication Handoff Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "publisherId", "scope", "currentHead", "correctedArtifact", "humanApproval", "publicationEligibilityEvidenceSha256", "authorization", "state", "requirements", "capabilities", "publicationHandoffRequestSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-publication-handoff-v1"},
+    "requestId": {"type": "string"},
+    "publisherId": {"type": "string"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"type": "string"}, "jobId": {"type": "string"}, "reviewReportId": {"type": "string"},
+        "reviewReportSha256": {"$ref": "#/$defs/hash"}, "baseCanonicalSha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "currentHead": {
+      "type": "object", "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "sequence"],
+      "properties": {"revisionId": {"type": "string"}, "revisionSha256": {"$ref": "#/$defs/hash"}, "sequence": {"type": "integer", "minimum": 1}}
+    },
+    "correctedArtifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifactId", "artifactRecordSha256", "musicXmlSha256"],
+      "properties": {"artifactId": {"type": "string"}, "artifactRecordSha256": {"$ref": "#/$defs/hash"}, "musicXmlSha256": {"$ref": "#/$defs/hash"}}
+    },
+    "humanApproval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approvalRecordId", "approvalRecordSha256", "approverId"],
+      "properties": {
+        "approvalRecordId": {"type": "string", "pattern": "^approval_[0-9a-f]{32}$"},
+        "approvalRecordSha256": {"$ref": "#/$defs/hash"}, "approverId": {"type": "string"}
+      }
+    },
+    "publicationEligibilityEvidenceSha256": {"$ref": "#/$defs/hash"},
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["grantSha256", "allowedAction", "productionPublicationAuthority"],
+      "properties": {
+        "grantSha256": {"$ref": "#/$defs/hash"},
+        "allowedAction": {"const": "present_for_publication_execution"},
+        "productionPublicationAuthority": {"const": false}
+      }
+    },
+    "state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "publicationRecordId", "publishedArtifactId"],
+      "properties": {
+        "status": {"const": "awaiting_external_publication_execution"},
+        "publicationRecordId": {"type": "null"}, "publishedArtifactId": {"type": "null"}
+      }
+    },
+    "requirements": {
+      "type": "object", "additionalProperties": false,
+      "required": ["externalPublicationExecutionRequired", "productionPersistenceRequired"],
+      "properties": {"externalPublicationExecutionRequired": {"const": true}, "productionPersistenceRequired": {"const": true}}
+    },
+    "capabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["canPresentForPublicationExecution", "canExecutePublication", "canWriteExternal", "canPersistProduction", "canMutate", "publicationGranted", "authoritativeMusicalTruth"],
+      "properties": {
+        "canPresentForPublicationExecution": {"const": true},
+        "canExecutePublication": {"const": false}, "canWriteExternal": {"const": false},
+        "canPersistProduction": {"const": false}, "canMutate": {"const": false},
+        "publicationGranted": {"const": false}, "authoritativeMusicalTruth": {"const": false}
+      }
+    },
+    "publicationHandoffRequestSha256": {"$ref": "#/$defs/hash"}
+  },
+  "$defs": {"hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
