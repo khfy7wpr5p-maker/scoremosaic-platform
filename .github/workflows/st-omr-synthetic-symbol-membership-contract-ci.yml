@@ -2,7 +2,7 @@ name: ST-OMR Synthetic Symbol Membership Contract CI
 
 on:
   push:
-    branches: [main, feature/st-omr-synthetic-symbol-membership-contract]
+    branches: [main, feature/st-omr-synthetic-symbol-membership-contract, feature/st-omr-synthetic-reading-order-contract]
     paths:
       - "services/st-omr-service/**"
       - ".github/workflows/st-omr-synthetic-symbol-membership-contract-ci.yml"
@@ -56,7 +56,7 @@ jobs:
           assert first.canonical_sha256 == 'fdc9ad24a5e9997af30b1c6bfe2fcd201f3255e203c37fa8ba5083e1b0f08f1b'
           assert len(first.symbol_ids) == 9
           PY
-      - name: Verify exact Phase 23 identity and closed boundaries
+      - name: Verify Phase 23 invariants remain closed
         shell: bash
         run: |
           set -euo pipefail
@@ -65,8 +65,6 @@ jobs:
           import tomllib
           project = tomllib.loads(Path('services/st-omr-service/pyproject.toml').read_text())
           boundary = project['tool']['scoremosaic']
-          assert project['project']['version'] == '0.9.0'
-          assert boundary['phase'] == 'synthetic-symbol-membership-contract'
           assert boundary['synthetic-symbol-membership-enabled'] is True
           assert boundary['static-repository-membership-sample-only'] is True
           for key in ('model-loading-enabled','inference-enabled','symbol-producing-model-enabled','real-symbol-detection-enabled','musical-interpretation-enabled','pitch-assignment-enabled','duration-assignment-enabled','voice-assignment-enabled','attachment-relations-enabled','beam-membership-enabled','chord-relations-enabled','reading-order-semantics-enabled','notation-graph-enabled','real-omr-inference-enabled','user-input-enabled','upload-enabled','musicxml-generation-enabled','gateway-integration-enabled','ensemble-integration-enabled','network-dispatch-enabled','gpu-enabled','persistent-storage-enabled','public-endpoint-enabled'):
