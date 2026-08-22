@@ -36,7 +36,6 @@ from scoremosaic_teacher_review.approval_handoff import (  # noqa: E402
 from scoremosaic_teacher_review.approval_record import (  # noqa: E402
     HUMAN_APPROVAL_DECISION_AUTHZ_VERSION,
     HUMAN_APPROVAL_RECORD_VERSION,
-    HumanApprovalDecisionGrant,
     ImmutableHumanApprovalRecord,
     Stage8HumanApprovalRecordError,
     build_immutable_human_approval_record,
@@ -227,7 +226,9 @@ class Stage8MHumanApprovalRecordTests(unittest.TestCase):
 
     def test_wrong_approver_wrong_key_and_tampered_grant_fail_closed(self):
         state, revision, artifact, handoff_grant, handoff, decision_grant = self._current_handoff()
-        with self.assertRaisesRegex(Stage8HumanApprovalRecordError, "HUMAN_APPROVAL_DECISION_SCOPE_MISMATCH"):
+        # Wrong expected approver is rejected even earlier by fresh Stage 8-L
+        # revalidation, before the decision grant is considered.
+        with self.assertRaisesRegex(Stage8HumanApprovalRecordError, "HUMAN_APPROVAL_HANDOFF_REVALIDATION_REJECTED"):
             self._build_record(
                 state=state, revision=revision, artifact=artifact, handoff_grant=handoff_grant,
                 handoff=handoff, decision_grant=decision_grant, approver="other_teacher",
