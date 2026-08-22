@@ -11,6 +11,7 @@ on:
       - "docs/stage10*.md"
       - "prototypes/stage10-ui-application-experience/**"
       - "tests/test_stage10*.py"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
       - "contracts/stage9-production-foundation-eligibility-v1.json"
   pull_request:
     branches:
@@ -21,6 +22,7 @@ on:
       - "docs/stage10*.md"
       - "prototypes/stage10-ui-application-experience/**"
       - "tests/test_stage10*.py"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
       - "contracts/stage9-production-foundation-eligibility-v1.json"
   workflow_dispatch:
 
@@ -56,6 +58,6 @@ jobs:
       - name: Run Stage 9-I stop-boundary regression
         run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
       - name: Run Stage 8-H disconnected edit-intent regressions
-        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8h_*.py' -v
+        run: python -m unittest discover -s tests -p 'test_stage8h_disconnected_edit_intent.py' -v
       - name: Check repository diff formatting
         run: git diff --check
