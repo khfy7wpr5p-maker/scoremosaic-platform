@@ -1,0 +1,98 @@
+{
+  "version": "scoremosaic-stage10-ui-application-experience-v1",
+  "stage": "10-A",
+  "status": "REPOSITORY_ONLY_UI_EXPERIENCE_WITH_RUNTIME_LOCKS",
+  "purpose": "Define the safe UI/application-experience scope while production infrastructure remains deferred.",
+  "inputs": {
+    "uiFoundation": "UI-0A",
+    "staticShell": "UI-0B",
+    "readonlyWorkspace": "Stage 8-E",
+    "disconnectedEditIntent": "Stage 8-H",
+    "productionFoundation": "Stage 9-I"
+  },
+  "stageSlices": [
+    "10-A-contract",
+    "10-B-product-shell",
+    "10-C-fixture-readonly-review",
+    "10-D-disconnected-edit-intent-ux",
+    "10-E-accessibility-responsive-hardening",
+    "10-F-exit-eligibility"
+  ],
+  "allowed": {
+    "repositoryOwnedHtmlCssJavascript": true,
+    "checkedInDeterministicFixtures": true,
+    "inMemoryPresentationState": true,
+    "keyboardAccessibleLocalInteractions": true,
+    "readOnlyIssueFocus": true,
+    "readOnlySourceEvidencePresentation": true,
+    "disconnectedEditIntentDraft": true,
+    "validationAndRevisionPresentation": true,
+    "disabledFutureControls": true
+  },
+  "forbidden": {
+    "networkRequests": true,
+    "httpClient": true,
+    "realUpload": true,
+    "productionArtifactRead": true,
+    "authenticationRuntime": true,
+    "sessionRuntime": true,
+    "rbacRuntime": true,
+    "teacherReviewServerWrite": true,
+    "scoreEditCommandCreation": true,
+    "teacherScoreRevisionCreation": true,
+    "approvalExecution": true,
+    "publicationExecution": true,
+    "databaseAccess": true,
+    "objectStorageAccess": true,
+    "secretAccess": true,
+    "audioPlayback": true,
+    "midiPlayback": true,
+    "serviceWorker": true,
+    "browserPersistentStorage": true,
+    "externalAssets": true,
+    "dynamicCodeEvaluation": true,
+    "rawMusicXmlEditor": true
+  },
+  "browserSecurity": {
+    "defaultSrcNoneRequired": true,
+    "connectSrcNoneRequired": true,
+    "formActionNoneRequired": true,
+    "objectSrcNoneRequired": true,
+    "frameSrcNoneRequired": true,
+    "baseUriNoneRequired": true,
+    "scriptsSelfOnly": true,
+    "stylesSelfOnly": true,
+    "noFetchXhrWebsocketEventSource": true,
+    "noLocalStorageSessionStorageIndexedDbCookies": true,
+    "noInnerHtmlInsertAdjacentHtmlEvalFunctionConstructor": true
+  },
+  "authority": {
+    "browserStateAuthoritative": false,
+    "rendererAuthoritative": false,
+    "fixtureDataAuthoritative": false,
+    "editIntentAuthoritative": false,
+    "validationPresentationImpliesApproval": false,
+    "publishedPresentationImpliesPublic": false
+  },
+  "accessibility": {
+    "keyboardReachabilityRequired": true,
+    "visibleFocusRequired": true,
+    "programmaticLabelsRequired": true,
+    "noColorOnlyMeaning": true,
+    "scoreViewPrimaryAtAllWidths": true,
+    "criticalStatusAlwaysTextual": true,
+    "reducedMotionSafe": true
+  },
+  "activationLocks": {
+    "frontendProductionRuntimeCreated": false,
+    "apiConnectionActivated": false,
+    "uploadActivated": false,
+    "authActivated": false,
+    "persistentBrowserStateActivated": false,
+    "teacherReviewWriteActivated": false,
+    "approvalActivated": false,
+    "publicationActivated": false,
+    "playbackActivated": false,
+    "productionInfrastructureActivated": false
+  }
+}
