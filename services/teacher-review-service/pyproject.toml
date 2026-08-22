@@ -1,12 +1,12 @@
 [project]
 name = "scoremosaic-teacher-review-service"
-version = "0.6.0"
-description = "Stage 8 Teacher Review authorization, immutable revisions, deterministic validation, read-only review, corrected MusicXML derivative, and server write-boundary foundation"
+version = "0.7.0"
+description = "Stage 8 Teacher Review authorization, immutable revisions, deterministic validation, read-only review, corrected MusicXML derivative, server write-boundary, and rational timeline foundations"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [tool.scoremosaic]
-teacher-review-contract-version = "0.6"
+teacher-review-contract-version = "0.7"
 authorization-foundation-enabled = true
 revision-contract-enabled = true
 durable-revision-store-foundation-enabled = true
@@ -16,6 +16,7 @@ read-only-projection-foundation-enabled = true
 read-only-browser-workspace-foundation-enabled = true
 corrected-musicxml-derivative-foundation-enabled = true
 server-write-boundary-foundation-enabled = true
+read-only-rational-timeline-foundation-enabled = true
 write-api-enabled = false
 public-api-enabled = false
 approval-enabled = false
