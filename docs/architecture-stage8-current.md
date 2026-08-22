@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A through Stage 8-F merged; Stage 8-G server-authorized write-boundary foundation in review**.
+Status: **Stage 8-A through Stage 8-G merged; Stage 8-H disconnected structured edit-intent composer in review**.
 
-Current Stage 8-F main: `7e1f7dd6522ae563d767e820450b6f0082ef7106`.
+Current Stage 8-G main: `027ea2c3a0d823c880a346cdb486c9149b346dc0`.
 
 ## Current trust chain
 
@@ -37,6 +37,8 @@ Stage 7 immutable read-only evidence
   -> exact current-state + old-value/location validation
   -> provider-neutral idempotency reservation
   -> immutable exact-parent revision append
+  -> disconnected local typed BrowserEditIntent
+  -> [LOCKED] live Gate E transport/server resolution
   -> [LOCKED] live/public write API and browser mutation
   -> [LOCKED] cursor/playback authority
   -> [LOCKED] exact revision/artifact approval
@@ -47,124 +49,72 @@ Teacher Review never mutates source artifacts, engine candidates, Stage 7 Canoni
 
 ## Stage 8-A — merged
 
-Repository evidence proves:
-
-- purpose-separated HMAC-sealed reviewer authorization;
-- exact tenant/job/reviewer/report/Canonical/parent scope;
-- raw sealed-grant re-verification at the revision boundary;
-- closed edit-command schema and bounded operation allowlist;
-- no arbitrary XML, JSON Patch, object paths or renderer-native mutation objects;
-- deterministic command and draft revision identities;
-- immutable `TeacherScoreRevision` records;
-- stale-parent preconditions;
-- append-only audit predecessor identity;
-- approval/publication authority remains false.
+Repository evidence proves purpose-separated HMAC reviewer authorization, exact tenant/job/reviewer/report/Canonical/parent scope, raw sealed-grant re-verification, a closed edit-command schema and operation allowlist, deterministic immutable draft revisions, stale-parent protection, append-only audit identity, and no approval/publication authority.
 
 ## Stage 8-B — merged
 
-Controlled durable-provider evidence proves:
+The controlled durable-provider layer proves append-only exact-resource revision records, purpose-separated HMAC integrity, `BEGIN IMMEDIATE` exact-parent optimistic concurrency, exact replay convergence, synchronous transactional record/head commits, crash rollback/restart re-verification, symlink/inode substitution defenses, and fail-closed cross-tenant/stale-parent/wrong-key/tamper behavior.
 
-- fixed private SQLite persistence boundary;
-- append-only revision records and exact resource scope;
-- purpose-separated HMAC scope/record/head integrity;
-- `BEGIN IMMEDIATE` exact-parent optimistic concurrency;
-- exactly one winner for competing different revisions based on one parent;
-- exact-current-revision idempotent replay without historical rewind;
-- record + head commit in one `synchronous=FULL` transaction;
-- crash rollback before commit;
-- restart re-verification of HMAC, revision/audit hash, sequence, parent/audit chain and head convergence;
-- repeated root/database symlink and inode substitution checks;
-- cross-tenant, stale-parent, wrong-key and tamper failures are fail-closed.
-
-This is still a controlled repository provider. `production-durable-store-enabled=false`. Restoring an older complete otherwise-valid database snapshot is not claimed detectable without a separately durable anti-rollback authority.
+`production-durable-store-enabled=false` remains locked. Full-store rollback detection still requires a separately durable anti-rollback authority.
 
 ## Stage 8-C — merged
 
-The deterministic review-state layer proves:
-
-- exact upstream Canonical SHA-256 scope before materialization;
-- bounded closed Canonical structures at the consumed boundary;
-- only the frozen Stage 8 operation allowlist is applied;
-- exact part/measure/event/staff/voice/onset target binding;
-- operation-specific `oldValueSha256` stale-field protection;
-- deterministic immutable state and validation-report hashes;
-- visible overflow/underfill/voice-overlap/chord-alignment evidence without silent repair;
-- two sequential materialized revisions converge with the Stage 8-B exact-parent durable store.
-
-The review state remains narrower than corrected MusicXML and never grants approval/publication authority.
+The deterministic review-state layer proves exact upstream Canonical scope, bounded closed structures, the frozen Stage 8 operation allowlist, exact musical target binding, operation-specific old-value SHA-256 protection, deterministic state/validation hashes, visible validator evidence without silent repair, and sequential integration with the Stage 8-B exact-parent store.
 
 ## Stage 8-D — merged
 
-The read-only workspace boundary proves:
-
-- exact `revision:read` HMAC authorization for tenant/job/reviewer/report/Canonical/snapshot;
-- base snapshots must equal a fresh deterministic Canonical materialization;
-- revision snapshots must pass Stage 8-B revision validation and bind their exact resulting state SHA-256;
-- independent re-validation of the consumed Stage 7 comparison report, nested comparison hash, candidate identities, difference IDs and neutrality boundaries;
-- deterministic bounded pagination with explicit total count and `hasMore`;
-- stable issue focus metadata against the exact snapshot;
-- no raw MusicXML, XML path, artifact reference, source artifact hash, credential, signature or action list in the projection;
-- capabilities frozen to read-only/non-authoritative/non-approvable/non-publishable.
-
-Stage 8-D is a server-side projection contract only. It exposes no HTTP route and no browser mutation authority.
+The read-only projection layer proves exact `revision:read` authorization, exact base/revision snapshot binding, independent Stage 7 report re-validation, bounded deterministic pagination/focus, source/credential data minimization, and capabilities frozen to read-only/non-authoritative/non-approvable/non-publishable. No HTTP route is exposed.
 
 ## Stage 8-E — merged
 
-The read-only browser gate proves:
-
-- a separate replaceable prototype preserves the UI-0B no-script/disconnected baseline;
-- only the bounded `scoremosaic-teacher-review-projection-v1` shape is consumed;
-- unknown projection fields or capability expansion fail closed;
-- `connect-src 'none'` keeps all network access disabled;
-- browser storage, cookies, navigation, forms and dynamic code execution remain absent;
-- projection content reaches the DOM only through safe textual sinks;
-- issue order/initial focus are deterministic;
-- Arrow Up/Down, Home and End provide keyboard issue navigation;
-- absent events remain explicit evidence rather than hidden repair;
-- edit, approval, publication and playback controls remain disabled.
-
-No public/internal Teacher Review route or browser mutation authority is added by Stage 8-E.
+The read-only browser layer proves a repository-owned local adapter with `connect-src 'none'`, no browser storage/navigation/forms/dynamic HTML sink, deterministic keyboard issue navigation, explicit absent-event evidence, and disabled edit/approval/publication/playback controls. It preserves the original UI-0B disconnected baseline.
 
 ## Stage 8-F — merged
 
-The corrected MusicXML derivative gate proves:
+The corrected MusicXML derivative layer proves exact revision/state revalidation, deterministic bounded MusicXML generation, independent structural safety validation, explicit `teacher-review` Canonical provenance, semantic round-trip equality for editable musical fields, and immutable draft artifact evidence. Production corrected-artifact persistence/transport remains locked.
 
-- one exact immutable revision and one exact resulting review state are revalidated before export;
-- the stored validation report hash and issue counts are recomputed from that exact state;
-- MusicXML materialization is deterministic and bounded;
-- generated XML passes an independent streaming structural-safety gate before semantic reuse;
-- Canonical re-normalization uses existing parser semantics with explicit `teacher-review` provenance rather than impersonating an OMR engine;
-- the ordinary OMR normalizer remains closed to the Teacher Review source identity;
-- the regenerated Canonical representation matches the exact review state under the documented editable-musical semantic projection;
-- event IDs/XML provenance and derived `observedDuration`/`writtenDuration` are not confused with editable musical truth;
-- the corrected artifact binds exact revision/state/XML/safety/round-trip hashes;
-- artifact status remains immutable draft with approval/publication false.
+## Stage 8-G — merged
 
-`corrected-musicxml-materialization-enabled=false` remains locked because production corrected-artifact storage/transport has not been authorized.
+The server-authorized write-boundary foundation proves:
 
-## Stage 8-G — proof target
-
-The server-authorized write-boundary foundation must prove:
-
-- a fresh durable head is established from trusted server scope before request-body parsing;
-- the sealed `revision:propose` grant is verified against exact tenant/job/reviewer/report/Canonical/current-parent scope before any request parsing or idempotency callback;
-- the transport envelope is closed, bounded and SHA-256 bound to one existing closed `ScoreEditCommand`;
+- a fresh durable head is established before caller request parsing;
+- sealed `revision:propose` authorization is verified against exact trusted tenant/job/reviewer/report/Canonical/current-parent scope before request parsing or idempotency access;
+- the request envelope is closed, bounded and SHA-256 bound to one existing closed `ScoreEditCommand`;
 - raw XML, arbitrary paths/patches and renderer-native mutation objects remain impossible;
-- the command's authorization-decision/job/reviewer/report/Canonical/parent identities exactly match trusted server scope;
-- the first write uses a freshly materialized base Canonical state; later writes require a state SHA-256 matching the exact durable head revision;
-- old-value/location/value-domain checks remain delegated to the deterministic Stage 8-C materializer;
-- validator failures remain visible evidence and are never silently repaired;
-- a provider-neutral atomic idempotency reservation binds exact scope/parent/command/request hashes;
-- provider conflict/failure cannot append a revision;
-- concurrent exact duplicates use one stable server timestamp and converge through Stage 8-B to one immutable revision;
-- stale historical parents cannot regain write authority through idempotency;
-- safe write results remain draft/non-approvable/non-publishable and expose no live-route capability.
+- first-write and later-write current state are independently bound to fresh base Canonical or the exact durable head revision;
+- Stage 8-C remains the only edit/location/old-value musical validator;
+- provider-neutral atomic idempotency binds exact scope/parent/command/request evidence;
+- provider conflict/failure cannot append;
+- concurrent exact duplicates deterministically converge to one immutable revision;
+- stale historical parents cannot regain authority through idempotency;
+- safe results remain draft/non-authoritative/non-approvable/non-publishable;
+- `write-api-enabled=false` and `public-api-enabled=false` remain locked.
 
-Stage 8-G is an in-process repository foundation only. `server-write-boundary-foundation-enabled=true` does not activate `write-api-enabled` or `public-api-enabled`.
+Stage 8-G is an in-process repository foundation only and is not a live endpoint.
+
+## Stage 8-H — proof target
+
+The disconnected structured edit-intent composer must prove:
+
+- it consumes only an exact Stage 8-D read-only projection whose `canEdit`, `canApprove`, `canPublish`, and `authoritativeTruth` values remain false;
+- a selected event must be present in the exact snapshot before any local intent can be prepared;
+- it exposes only the existing typed Stage 8 operation vocabulary;
+- operation values are bounded and no raw XML, arbitrary path, patch, executable expression or renderer-native mutation object exists;
+- the BrowserEditIntent binds exact projection/snapshot/difference/focus evidence but is explicitly not a `ScoreEditCommand`;
+- the intent omits authorization, Stage 8 issue authority, old-value SHA-256, exact current staff/voice/onset proof, command ID/SHA, idempotency, revision and corrected-artifact identity;
+- every authority marker is fixed to false;
+- local JSON preview uses text-only sinks;
+- CSP keeps network and form submission disabled;
+- cookies, browser storage, navigation, dynamic code evaluation and HTML injection remain absent;
+- keyboard issue navigation and labelled form controls remain accessible;
+- submit/approve/publish remain disabled.
+
+Stage 8-H has no activation effect. It evaluates structured correction UX only.
 
 ## Still locked / not proved
 
 - production identity/session provider and production RBAC source;
+- live Gate E Teacher Review transport binding;
 - public or internal Teacher Review HTTP routes;
 - production DB/object-store deployment;
 - multi-host distributed consensus and full-store anti-rollback authority;
@@ -174,8 +124,10 @@ Stage 8-G is an in-process repository foundation only. `server-write-boundary-fo
 - exact teacher approval;
 - publication.
 
-## Safe continuation after Stage 8-G
+## Safe continuation after Stage 8-H
 
-After Stage 8-G passes exact-head CI and merges, browser-facing mutation must remain locked until the live Gate E authentication/authorization/idempotency/privacy boundary is complete and explicitly bound to this server write contract. Repository-only editor request composition and accessibility work may proceed without network authority, but no browser may generate server authority locally.
+After Stage 8-H passes exact-head CI and merges, live browser mutation must remain locked until Gate E is production-ready and explicitly binds authenticated/authorized principal identity, abuse/idempotency controls and privacy-safe transport to Stage 8-G.
 
-Approval remains a separate later gate and must bind one exact immutable revision **and** one exact validated corrected-MusicXML artifact hash. Publication remains later still.
+The next repository-only safe area may evaluate read-only rational cursor/timeline mapping against one exact revision snapshot, provided it remains presentation-only, has no playback/audio authority, and cannot alter musical state. Any cursor/playback slice must be independently gated.
+
+Approval remains a later separate gate and must bind one exact immutable revision and one exact validated corrected-MusicXML artifact hash. Publication remains later still.
