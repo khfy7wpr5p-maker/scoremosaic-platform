@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from pathlib import Path
 from types import MappingProxyType
 import sys
@@ -9,7 +8,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 SRC = ROOT / "services" / "teacher-review-service" / "src"
+ENSEMBLE_SRC = ROOT / "services" / "ensemble-service" / "src"
 TESTS = ROOT / "services" / "teacher-review-service" / "tests"
+sys.path.insert(0, str(ENSEMBLE_SRC))
 sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(TESTS))
 
