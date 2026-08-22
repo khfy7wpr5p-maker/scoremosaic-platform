@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A through Stage 8-L merged; Stage 8-D authorization-first hardening merged; autonomous Teacher Review development has reached the human approval authority boundary**.
+Status: **Stage 8-A through Stage 8-O merged. The repository-only Teacher Review and publication-preparation path has reached the external production publication side-effect boundary.**
 
-Current main: `1c05e2c1258e8dea9ddb4bdc0e40f77bc93ccd93`.
+Current implementation merge: `43de764fee788d3ae20b59b87d52a08e25c5be3d`.
 
 ## Current trust chain
 
@@ -21,29 +21,24 @@ Stage 7 immutable read-only evidence
   -> disconnected read-only browser review
   -> exact revision/state corrected-MusicXML derivative
   -> generated-XML safety + Canonical semantic round-trip
-  -> server-authorized non-network write boundary
+  -> server-authorized non-network write boundary foundation
   -> disconnected local BrowserEditIntent
-  -> exact-current revision:read Stage 8-I timeline
-  -> exact rational beat/event/simultaneity timing
-  -> Stage 8-J non-executing presentation transport state
-  -> exact current durable head re-verification
-  -> exact supplied-vs-rebuilt corrected artifact equality
-  -> validation-count equality
-  -> deterministic Stage 8-K approval-candidate evidence
-  -> purpose-separated Stage 8-L handoff authorization
-  -> exact approver + revision + artifact + eligibility binding
-  -> immutable deterministic HumanApprovalHandoffRequest
-  -> state=awaiting_human_decision
-  -> [HUMAN AUTHORITY BOUNDARY]
-  -> [LOCKED] actual teacher approval decision
-  -> [LOCKED] immutable approval record
-  -> [LOCKED] publication
-  -> [LOCKED] loop/audio/playback execution
-  -> [LOCKED] live Gate E transport/server resolution
-  -> [LOCKED] live/public write API and browser mutation
+  -> exact-current rational review timeline
+  -> non-executing presentation transport state
+  -> exact-current approval-candidate evidence
+  -> exact human-approval handoff
+  -> [HUMAN DECISION]
+  -> explicit-human immutable approval record foundation
+  -> fresh publication-handoff eligibility evidence
+  -> exact publisher-bound non-executing PublicationHandoffRequest
+  -> state=awaiting_external_publication_execution
+  -> [EXTERNAL PRODUCTION SIDE-EFFECT BOUNDARY]
+  -> [LOCKED] production persistence/write
+  -> [LOCKED] actual publication execution
+  -> [LOCKED] published-artifact record
 ```
 
-Teacher Review never mutates source artifacts, engine candidates, Stage 7 Canonical artifacts, or Ensemble evidence in place. Teacher work forms a separate immutable lineage.
+Engine/AI evidence never becomes authoritative musical truth. Teacher work remains an immutable lineage separate from source artifacts, engine candidates, Stage 7 Canonical artifacts, and Ensemble evidence.
 
 ## Stage 8-A through Stage 8-C — merged
 
@@ -57,108 +52,123 @@ Teacher Review never mutates source artifacts, engine candidates, Stage 7 Canoni
 
 ## Stage 8-D — merged and hardened
 
-The read-only server projection binds exact `revision:read` authorization, snapshot identity, Stage 7 report evidence, deterministic pagination/focus, and minimized non-authoritative output.
-
-Security hardening moves sealed authorization ahead of state/base/revision/report processing and catches only expected `Stage8ContractError`; unexpected runtime/programming faults are not masked as authorization failures.
-
-No HTTP route is activated.
+Authorization-first read-only review projection. Sealed `revision:read` authority is checked before state/base/report processing. No HTTP route is activated.
 
 ## Stage 8-E — merged
 
-Disconnected read-only browser workspace with CSP `connect-src 'none'`, no storage/forms/navigation/dynamic HTML injection, deterministic keyboard issue navigation, and disabled mutation/approval/publication/playback controls.
+Disconnected fail-closed browser review workspace with restrictive CSP, deterministic navigation, and no mutation/approval/publication/playback authority.
 
 ## Stage 8-F — merged
 
-Exact revision/state corrected-MusicXML derivative with bounded deterministic generation, independent structural-safety validation, explicit Teacher Review provenance, semantic Canonical round-trip equality, and immutable draft corrected-artifact evidence.
-
-Production corrected-artifact persistence/transport remains locked.
+Exact revision/state corrected-MusicXML derivative with structural safety validation, explicit Teacher Review provenance, and semantic Canonical round-trip equality. Production artifact persistence remains locked.
 
 ## Stage 8-G — merged
 
-Server-authorized in-process write foundation:
-
-- fresh durable head before caller request parsing;
-- sealed `revision:propose` authorization against exact current scope/parent;
-- closed hashed request envelope;
-- exact current-state and Stage 8-C old-value/location validation;
-- provider-neutral idempotency;
-- exact-parent CAS append and duplicate convergence;
-- no raw XML/arbitrary patches;
-- no live route activation.
-
-`write-api-enabled=false` and `public-api-enabled=false` remain locked.
+Server-authorized in-process write-boundary foundation with exact current parent, sealed `revision:propose` authorization, bounded request envelope, old-value/location validation, idempotency, and exact-parent append. `write-api-enabled=false` and `public-api-enabled=false` remain locked.
 
 ## Stage 8-H — merged
 
-Disconnected typed BrowserEditIntent composer. It can prepare local structured musical intent for a present event but carries no authorization, old-value hash, command/revision identity, idempotency, or server authority. Network submission, approval, and publication remain disabled.
+Disconnected typed BrowserEditIntent composer. It prepares structured local intent only; it carries no server authority.
 
 ## Stage 8-I — merged
 
-The rational read-only timeline proves exact current durable-head authorization, independent validation equality, exact rational event/beat/simultaneity mapping, minimized cursor data, and no audio/network/runtime authority.
+Exact-current rational timeline with independent validation equality, exact event/beat/simultaneity mapping, minimized cursor data, and no audio/network/runtime authority.
 
 ## Stage 8-J — merged
 
-The non-executing transport state-machine foundation proves deterministic current-snapshot cursor plans and start/pause/seek/stop/advance convergence while loop/audio/MIDI/SoundFont/network/process/mutation/approval/publication authority remains false.
-
-`transport-state-machine-foundation-enabled=true` does not mean playback is enabled; `audio-playback-enabled=false` remains explicit.
+Non-executing deterministic transport state for start/pause/seek/stop/advance presentation behavior. Audio, loop execution, mutation, approval, and publication remain false.
 
 ## Stage 8-K — merged
 
-The approval-eligibility foundation proves:
-
-- exact current durable revision/head identity;
-- independently rebuilt corrected MusicXML bytes and artifact-record equality;
-- structural safety and semantic round-trip equality;
-- exact revision/artifact/state/validation binding;
-- candidate eligibility only when blocking and unresolved issue counts are zero;
-- bounded ineligibility reasons without silent repair;
-- deterministic sealed evidence;
-- approval/publication/mutation/write/authoritative-truth authority fixed false.
-
-Stage 8-K is approval-candidate evidence only. `approval-eligibility-foundation-enabled=true` does not activate approval.
+Approval-eligibility evidence proves exact current durable head, independently rebuilt corrected MusicXML, structural safety, semantic round-trip equality, and zero blocking/unresolved issues before `candidateEligible=true`. It grants no approval or publication authority.
 
 ## Stage 8-L — merged
 
-Stage 8-L is the final autonomous repository-only handoff before a real human approval decision. The merged foundation proves:
+Human approval handoff foundation:
 
-- Stage 8-K eligibility is freshly recomputed inside the public handoff builder;
-- historical revisions and substituted artifacts fail before handoff authority;
-- an ineligible candidate cannot receive handoff authorization;
-- handoff authorization uses a purpose-separated HMAC domain;
-- one exact grant binds request ID, approver ID, tenant/job/report/base Canonical, revision ID/SHA, corrected artifact ID/record SHA, MusicXML SHA, and eligibility-evidence SHA;
-- wrong approver, wrong key, tampered grant, stale head, and substituted artifact fail closed;
-- exact repeated construction converges deterministically;
-- the resulting request is sealed and immutable;
-- the request state is exactly `awaiting_human_decision`;
-- `humanDecisionRequired=true`;
-- `approvalDecision=null`, `approvalRecordId=null`, and `publicationRecordId=null`;
-- `canPresentForHumanApproval=true` is the only positive capability;
-- `canRecordApproval=false`, `canPublish=false`, `canMutate=false`, `canWrite=false`, and `authoritativeTruth=false`;
-- no live route, production provider, approval record, publication behavior, audio runtime, or mutation authority is introduced.
+- fresh Stage 8-K recomputation;
+- purpose-separated HMAC handoff authorization;
+- exact approver + revision + artifact + eligibility binding;
+- immutable `HumanApprovalHandoffRequest`;
+- `state=awaiting_human_decision`;
+- only `canPresentForHumanApproval=true` is positive;
+- no approval decision, approval record, publication, route, or production provider.
 
-All Stage 8-L PR checks passed, including Foundation and Stage 8-A through Stage 8-L regressions, schema validation, activation locks, and repository diff checks.
+Stage 8-L established the human authority boundary.
 
-`approval-handoff-foundation-enabled=true` does not change `approval-enabled=false`.
+## Stage 8-M — merged
 
-## Human authority boundary reached
+Explicit-human approval-record foundation:
 
-Autonomous Teacher Review development stops here by design.
+- no inferred/default approval exists;
+- the caller must explicitly supply `decision="approved"` through the human-action seam;
+- explicit human-action provenance SHA-256 and decision time are required;
+- the complete Stage 8-L chain is freshly rebuilt before the decision is accepted;
+- stale head, wrong approver/key, tampered grant, and artifact substitution fail closed;
+- exact replay converges to one immutable approval record;
+- the record may state `approval.status=approved` and `humanApprovalCaptured=true` because an explicit human decision was supplied;
+- `authoritativeMusicalTruth=false` remains explicit;
+- production approval persistence and publication remain disabled.
 
-The next semantic transition is a real human teacher decision that changes the meaning from "safe to present for approval" to "approved". That decision must not be generated autonomously on behalf of the teacher.
+`human-approval-record-foundation-enabled=true` does not activate a live approval endpoint or production persistence.
+
+## Stage 8-N — merged
+
+Publication-eligibility evidence foundation:
+
+- the complete Stage 8-M approval record is freshly rebuilt from exact current durable inputs;
+- supplied-vs-rebuilt approval record equality is mandatory;
+- stale revisions, substituted artifacts/decision evidence, and substituted approval records fail closed;
+- `candidateEligibleForPublicationHandoff=true` means only that the exact approved artifact may proceed to a later publisher-bound handoff;
+- `productionPublicationEligible=false` remains fixed;
+- blockers remain `PRODUCTION_PUBLICATION_AUTHORIZATION_REQUIRED` and `PRODUCTION_PERSISTENCE_REQUIRED`;
+- publication/write/mutation/publisher/production authority remains false.
+
+## Stage 8-O — merged: final non-executing publication handoff
+
+Stage 8-O is the final repository-only preparation layer before an external production publication effect.
+
+It proves:
+
+- Stage 8-N is freshly recomputed from the exact current revision/state/artifact and approval chain;
+- a purpose-separated HMAC grant binds one exact publisher identity, request, scope, revision, artifact/MusicXML, approval record, and publication-eligibility evidence;
+- wrong publisher/key, grant tampering, and artifact substitution fail closed;
+- exact replay is deterministic;
+- the immutable request state is `awaiting_external_publication_execution`;
+- `canPresentForPublicationExecution=true` is the only publication-facing positive capability;
+- `canExecutePublication=false`;
+- `canWriteExternal=false`;
+- `canPersistProduction=false`;
+- `publicationGranted=false`;
+- `authoritativeMusicalTruth=false`.
+
+`publication-handoff-foundation-enabled=true` does not activate publication. `publication-enabled=false` remains authoritative.
+
+## External production side-effect boundary reached
+
+Autonomous repository-only development stops here by design.
+
+The next transition would actually write/persist/publish the exact approved MusicXML to a concrete production destination. That action requires concrete operational facts and authority that the repository contracts intentionally do not invent:
+
+- production identity/session provider and production RBAC source;
+- exact production publisher identity and destination;
+- production durable/object-store provider;
+- live authenticated transport and provider credentials;
+- explicit external execution authority;
+- published-artifact/audit persistence semantics verified against the real provider.
+
+Without those concrete production inputs, no repository contract may reinterpret the Stage 8-O handoff as permission to publish.
 
 ## Still locked / not proved
 
-- actual teacher approval decision;
-- immutable approval record/signature/persistence;
-- publication eligibility and publication;
-- production identity/session provider and production RBAC source;
-- live Gate E Teacher Review transport binding;
-- public/internal Teacher Review HTTP routes;
+- actual production publication execution;
+- production publication persistence and published-artifact record;
+- production identity/session provider and RBAC wiring;
+- live Gate E Teacher Review transport/public HTTP routes;
 - production DB/object-store deployment;
 - multi-host distributed consensus/full-store anti-rollback authority;
 - corrected MusicXML production persistence/transport;
 - browser writable editor activation;
-- real-time clock/audio/MIDI/SoundFont playback execution;
-- loop execution.
+- real-time audio/MIDI/SoundFont playback and loop execution.
 
-Publication remains a later, separately authorized transition after a real approved record exists.
+The ScoreMosaic repository now safely prepares an exact human-approved MusicXML lineage up to a publisher-bound, non-executing handoff. The external production effect remains intentionally separate.
