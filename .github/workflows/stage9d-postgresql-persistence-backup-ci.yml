@@ -1,0 +1,59 @@
+name: Stage 9-D PostgreSQL Persistence and Recovery CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage9d-postgresql-persistence-backup-contract-v1"
+    paths:
+      - ".github/workflows/stage9d-postgresql-persistence-backup-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/stage9-service-identity-secrets-v1.json"
+      - "contracts/stage9-postgresql-persistence-backup-v1.json"
+      - "docs/stage9d-postgresql-persistence-backup-contract.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+      - "tests/test_stage9c_service_identity_secrets_contract.py"
+      - "tests/test_stage9d_postgresql_persistence_backup_contract.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage9d-postgresql-persistence-backup-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/stage9-service-identity-secrets-v1.json"
+      - "contracts/stage9-postgresql-persistence-backup-v1.json"
+      - "docs/stage9d-postgresql-persistence-backup-contract.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+      - "tests/test_stage9c_service_identity_secrets_contract.py"
+      - "tests/test_stage9d_postgresql_persistence_backup_contract.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage9d-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate Stage 9 contracts
+        run: |
+          python -m json.tool contracts/stage9-production-foundation-baseline-v1.json > /dev/null
+          python -m json.tool contracts/stage9-service-identity-secrets-v1.json > /dev/null
+          python -m json.tool contracts/stage9-postgresql-persistence-backup-v1.json > /dev/null
+      - name: Run Stage 9-A regression
+        run: python -m unittest discover -s tests -p 'test_stage9a_production_foundation_baseline.py' -v
+      - name: Run Stage 9-C regression
+        run: python -m unittest discover -s tests -p 'test_stage9c_service_identity_secrets_contract.py' -v
+      - name: Run Stage 9-D database regression
+        run: python -m unittest discover -s tests -p 'test_stage9d_postgresql_persistence_backup_contract.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
