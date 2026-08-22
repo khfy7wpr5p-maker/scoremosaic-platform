@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from types import MappingProxyType
+import inspect
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[3]
 SRC = ROOT / "services" / "teacher-review-service" / "src"
@@ -12,11 +15,16 @@ TESTS = ROOT / "services" / "teacher-review-service" / "tests"
 sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(TESTS))
 
-from scoremosaic_teacher_review import DurableRevisionStore, materialize_canonical_state  # noqa: E402
+from scoremosaic_teacher_review import (  # noqa: E402
+    DurableRevisionStore,
+    canonical_payload_sha256,
+    materialize_canonical_state,
+)
 from scoremosaic_teacher_review.review_timeline import (  # noqa: E402
     ReviewTimelineProjection,
     build_review_timeline_projection,
 )
+import scoremosaic_teacher_review.review_transport as transport_module  # noqa: E402
 from scoremosaic_teacher_review.review_transport import (  # noqa: E402
     ReviewTransportPlan,
     ReviewTransportState,
@@ -45,23 +53,52 @@ class Stage8JTransportStateMachineTests(unittest.TestCase):
         self.scope = scope_for(self.base)
         self.state = materialize_canonical_state(self.scope, self.base)
 
-    def _timeline(self):
+    def _timeline(self, *, base=None, scope=None, state=None):
+        base = base or self.base
+        scope = scope or self.scope
+        state = state or self.state
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         store = DurableRevisionStore(Path(temp.name) / "store", signing_key=STORE_KEY)
         return build_review_timeline_projection(
-            grant=grant(self.base["canonicalSha256"]),
+            grant=grant(base["canonicalSha256"]),
             signing_key=AUTHZ_KEY,
             expected_reviewer_id="teacher_stage8i",
-            scope=self.scope,
+            scope=scope,
             store=store,
-            state=self.state,
-            base_canonical_payload=self.base,
+            state=state,
+            base_canonical_payload=base,
         )
+
+    def _plan(self, *, base=None, scope=None, state=None):
+        base = base or self.base
+        scope = scope or self.scope
+        state = state or self.state
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        store = DurableRevisionStore(Path(temp.name) / "store", signing_key=STORE_KEY)
+        return build_review_transport_plan(
+            grant=grant(base["canonicalSha256"]),
+            signing_key=AUTHZ_KEY,
+            expected_reviewer_id="teacher_stage8i",
+            scope=scope,
+            store=store,
+            state=state,
+            base_canonical_payload=base,
+        )
+
+    def test_public_plan_builder_accepts_current_snapshot_inputs_not_external_timeline(self):
+        parameters = inspect.signature(build_review_transport_plan).parameters
+        self.assertNotIn("timeline", parameters)
+        for required in (
+            "grant", "signing_key", "expected_reviewer_id", "scope",
+            "store", "state", "base_canonical_payload",
+        ):
+            self.assertIn(required, parameters)
 
     def test_plan_is_deterministic_and_bound_to_exact_timeline_snapshot(self):
         timeline = self._timeline()
-        plans = [build_review_transport_plan(timeline).to_dict() for _ in range(10)]
+        plans = [self._plan().to_dict() for _ in range(5)]
         self.assertEqual(1, len({item["planSha256"] for item in plans}))
         self.assertEqual(timeline.timeline_sha256, plans[0]["timelineSha256"])
         self.assertEqual(timeline.to_dict()["snapshot"], plans[0]["snapshot"])
@@ -76,7 +113,7 @@ class Stage8JTransportStateMachineTests(unittest.TestCase):
             self.assertFalse(plans[0]["capabilities"][name], name)
 
     def test_plan_projects_only_cursor_timing_and_minimal_event_refs(self):
-        plan = build_review_transport_plan(self._timeline()).to_dict()
+        plan = self._plan().to_dict()
         self.assertTrue(plan["cursorPoints"])
         first = plan["cursorPoints"][0]
         self.assertEqual(
@@ -110,7 +147,7 @@ class Stage8JTransportStateMachineTests(unittest.TestCase):
             ReviewTransportState(MappingProxyType({}))
 
     def test_start_pause_seek_stop_are_deterministic_and_non_executing(self):
-        plan = build_review_transport_plan(self._timeline())
+        plan = self._plan()
         initial = initialize_review_transport(plan)
         self.assertEqual("stopped", initial.to_dict()["mode"])
 
@@ -149,7 +186,7 @@ class Stage8JTransportStateMachineTests(unittest.TestCase):
                 self.assertFalse(data[name], name)
 
     def test_advance_requires_navigation_and_naturally_converges_to_stopped(self):
-        plan = build_review_transport_plan(self._timeline())
+        plan = self._plan()
         state = initialize_review_transport(plan)
         with self.assertRaisesRegex(Stage8TransportError, "TRANSPORT_ADVANCE_INVALID_STATE"):
             advance_cursor(plan, state)
@@ -165,32 +202,41 @@ class Stage8JTransportStateMachineTests(unittest.TestCase):
         self.assertEqual(0, reset.to_dict()["cursorIndex"])
 
     def test_loop_execution_is_explicitly_forbidden(self):
-        plan = build_review_transport_plan(self._timeline())
+        plan = self._plan()
         state = initialize_review_transport(plan)
         with self.assertRaisesRegex(Stage8TransportError, "TRANSPORT_LOOP_EXECUTION_FORBIDDEN"):
             request_loop_execution(plan, state)
 
-    def test_timeline_capability_expansion_fails_closed(self):
+    def test_stage8i_capability_expansion_from_dependency_fails_closed(self):
         timeline = self._timeline()
         forged = timeline.to_dict()
         forged.pop("timelineSha256")
         forged["capabilities"]["canPlay"] = True
         forged_timeline = ReviewTimelineProjection(MappingProxyType(forged))
-        with self.assertRaisesRegex(Stage8TransportError, "TRANSPORT_TIMELINE_CAPABILITY_INVALID"):
-            build_review_transport_plan(forged_timeline)
+        with patch.object(
+            transport_module,
+            "build_review_timeline_projection",
+            return_value=forged_timeline,
+        ):
+            with self.assertRaisesRegex(
+                Stage8TransportError,
+                "TRANSPORT_TIMELINE_CAPABILITY_INVALID",
+            ):
+                self._plan()
 
-    def test_state_from_different_plan_is_rejected_as_stale(self):
-        plan = build_review_transport_plan(self._timeline())
+    def test_state_from_different_exact_plan_is_rejected_as_stale(self):
+        plan = self._plan()
         state = initialize_review_transport(plan)
 
-        forged_payload = self._timeline().to_dict()
-        forged_payload.pop("timelineSha256")
-        forged_payload["snapshot"] = dict(forged_payload["snapshot"])
-        forged_payload["snapshot"]["stateSha256"] = "f" * 64
-        different_timeline = ReviewTimelineProjection(MappingProxyType(forged_payload))
-        different_plan = build_review_transport_plan(different_timeline)
+        other_base = deepcopy(self.base)
+        other_base["parts"][0]["measures"][0]["events"][0]["voice"] = "2"
+        other_base["canonicalSha256"] = canonical_payload_sha256(other_base)
+        other_scope = scope_for(other_base)
+        other_state = materialize_canonical_state(other_scope, other_base)
+        other_plan = self._plan(base=other_base, scope=other_scope, state=other_state)
+        self.assertNotEqual(plan.plan_sha256, other_plan.plan_sha256)
         with self.assertRaisesRegex(Stage8TransportError, "TRANSPORT_STALE_PLAN"):
-            start_navigation(different_plan, state)
+            start_navigation(other_plan, state)
 
     def test_transport_module_contains_no_audio_network_clock_or_process_runtime(self):
         source = (
