@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-approval-eligibility-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review Approval Eligibility v1",
+  "description": "Non-authoritative evidence that one exact current immutable revision and one independently rebuilt corrected MusicXML artifact satisfy bounded approval-candidate prerequisites. It grants no approval, mutation, publication, or write authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scope",
+    "currentHead",
+    "revision",
+    "correctedArtifact",
+    "checks",
+    "eligibility",
+    "authority",
+    "eligibilityEvidenceSha256"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-approval-eligibility-v1"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "currentHead": {"$ref": "#/$defs/currentHead"},
+    "revision": {"$ref": "#/$defs/revision"},
+    "correctedArtifact": {"$ref": "#/$defs/correctedArtifact"},
+    "checks": {"$ref": "#/$defs/checks"},
+    "eligibility": {"$ref": "#/$defs/eligibility"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "eligibilityEvidenceSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"$ref": "#/$defs/id"},
+        "jobId": {"$ref": "#/$defs/id"},
+        "reviewReportId": {"$ref": "#/$defs/id"},
+        "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+        "baseCanonicalSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "currentHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "sequence"],
+      "properties": {
+        "revisionId": {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+        "revisionSha256": {"$ref": "#/$defs/sha256"},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "stateSha256", "validationReportSha256", "blockingIssueCount", "unresolvedIssueCount"],
+      "properties": {
+        "reviewerId": {"$ref": "#/$defs/id"},
+        "stateSha256": {"$ref": "#/$defs/sha256"},
+        "validationReportSha256": {"$ref": "#/$defs/sha256"},
+        "blockingIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "unresolvedIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      }
+    },
+    "correctedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "artifactRecordSha256",
+        "musicXmlSha256",
+        "byteSize",
+        "mediaType",
+        "safetyReportSha256",
+        "regeneratedCanonicalSha256",
+        "expectedSemanticSha256",
+        "regeneratedSemanticSha256"
+      ],
+      "properties": {
+        "artifactId": {"type": "string", "pattern": "^corrected_[0-9a-f]{32}$"},
+        "artifactRecordSha256": {"$ref": "#/$defs/sha256"},
+        "musicXmlSha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "mediaType": {"const": "application/vnd.recordare.musicxml+xml"},
+        "safetyReportSha256": {"$ref": "#/$defs/sha256"},
+        "regeneratedCanonicalSha256": {"$ref": "#/$defs/sha256"},
+        "expectedSemanticSha256": {"$ref": "#/$defs/sha256"},
+        "regeneratedSemanticSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exactCurrentHead", "exactPersistedRevision", "exactRebuiltArtifact", "generatedMusicXmlSafe", "semanticRoundTripMatch"],
+      "properties": {
+        "exactCurrentHead": {"const": true},
+        "exactPersistedRevision": {"const": true},
+        "exactRebuiltArtifact": {"const": true},
+        "generatedMusicXmlSafe": {"const": true},
+        "semanticRoundTripMatch": {"const": true}
+      }
+    },
+    "eligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateEligible", "reasons"],
+      "properties": {
+        "candidateEligible": {"type": "boolean"},
+        "reasons": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["BLOCKING_ISSUES_PRESENT", "UNRESOLVED_ISSUES_PRESENT"]}
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approvalGranted", "publicationGranted", "mutationGranted", "writeGranted", "authoritativeTruth"],
+      "properties": {
+        "approvalGranted": {"const": false},
+        "publicationGranted": {"const": false},
+        "mutationGranted": {"const": false},
+        "writeGranted": {"const": false},
+        "authoritativeTruth": {"const": false}
+      }
+    }
+  }
+}
