@@ -1,0 +1,65 @@
+name: Stage 9-A Production Foundation Baseline CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage9a-production-foundation-baseline-v1"
+    paths:
+      - ".github/workflows/stage9a-production-foundation-baseline-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/teacher-review-publication-handoff-v1.schema.json"
+      - "docs/stage9a-production-foundation-baseline.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage9a-production-foundation-baseline-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/teacher-review-publication-handoff-v1.schema.json"
+      - "docs/stage9a-production-foundation-baseline.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage9a-production-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-stage9a-baseline:
+    name: Validate Stage 9-A baseline and Stage 8-O locks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate Stage 9-A machine-readable baseline
+        run: python -m json.tool contracts/stage9-production-foundation-baseline-v1.json > /dev/null
+
+      - name: Validate Stage 8-O publication handoff schema
+        run: python -m json.tool contracts/teacher-review-publication-handoff-v1.schema.json > /dev/null
+
+      - name: Run Stage 9-A security regression
+        run: python -m unittest discover -s tests -p 'test_stage9a_production_foundation_baseline.py' -v
+
+      - name: Run Stage 8-O publication handoff regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8o_*.py' -v
+
+      - name: Check repository diff formatting
+        run: git diff --check
