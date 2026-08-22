@@ -85,8 +85,8 @@ jobs:
 
       - name: Run existing Ensemble Canonical and MusicXML regression suites
         run: |
-          python -m unittest discover -s services/ensemble-service/tests -p 'test_canonical_model.py' -v
-          python -m unittest discover -s services/ensemble-service/tests -p 'test_musicxml_normalizer.py' -v
+          python -m unittest discover -s services/ensemble-service/tests -p 'test_canonical.py' -v
+          python -m unittest discover -s services/ensemble-service/tests -p 'test_musicxml.py' -v
 
       - name: Run Stage 8-F corrected MusicXML derivative suite
         run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8f_corrected_musicxml.py' -v
