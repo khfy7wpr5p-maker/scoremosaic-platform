@@ -1,0 +1,64 @@
+.readonly-issue-list {
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
+.readonly-issue-option {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid currentColor;
+  border-radius: 0.65rem;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.readonly-issue-option strong,
+.readonly-issue-option span {
+  display: block;
+}
+
+.readonly-issue-option[aria-selected="true"] {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+.readonly-issue-option:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+.readonly-observation-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.readonly-observation {
+  padding: 0.8rem;
+  border: 1px solid currentColor;
+  border-radius: 0.65rem;
+}
+
+.readonly-observation p {
+  margin: 0.35rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.readonly-focus-presence {
+  font-weight: 600;
+}
+
+body[data-review-state="rejected"] #issues-panel,
+body[data-review-state="rejected"] #score-view,
+body[data-review-state="rejected"] #source-evidence {
+  border-style: dashed;
+}
+
+noscript {
+  display: block;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+}
