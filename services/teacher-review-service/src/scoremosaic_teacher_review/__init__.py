@@ -34,6 +34,13 @@ from .musical_state import (
     materialize_canonical_state,
     validate_musical_state,
 )
+from .review_projection import (
+    PROJECTION_VERSION,
+    ReviewProjectionPage,
+    Stage8ProjectionError,
+    build_review_projection_page,
+    validate_review_report_for_projection,
+)
 
 __all__ = [
     "AUTHZ_VERSION",
@@ -42,6 +49,7 @@ __all__ = [
     "STORE_SCHEMA_VERSION",
     "STATE_VERSION",
     "VALIDATION_VERSION",
+    "PROJECTION_VERSION",
     "ReviewAuthorizationGrant",
     "ScoreEditCommand",
     "Stage8ContractError",
@@ -55,7 +63,10 @@ __all__ = [
     "ReviewMusicalState",
     "RevisionValidationReport",
     "Stage8MaterializationError",
+    "ReviewProjectionPage",
+    "Stage8ProjectionError",
     "apply_score_edit_command",
+    "build_review_projection_page",
     "build_score_edit_command",
     "build_teacher_score_revision",
     "canonical_payload_sha256",
@@ -64,6 +75,7 @@ __all__ = [
     "issue_authorization_grant",
     "materialize_canonical_state",
     "validate_musical_state",
+    "validate_review_report_for_projection",
     "validate_score_edit_command",
     "verify_authorization_grant",
 ]
