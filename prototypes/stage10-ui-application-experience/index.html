@@ -7,8 +7,10 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; script-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <title>ScoreMosaic — Stage 10 Product Experience</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="edit-intent.css">
   <script src="fixture.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="edit-intent.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#score-view">Skip to Score View</a>
@@ -81,7 +83,7 @@
     <aside class="panel edit-panel" aria-labelledby="edit-title">
       <div class="panel-header">
         <div><p class="eyebrow">Bounded correction</p><h2 id="edit-title">Structured Edit</h2></div>
-        <span class="badge badge--locked">Read-only</span>
+        <span class="badge badge--locked">Local draft only</span>
       </div>
       <section class="edit-section" aria-labelledby="selection-title">
         <h3 id="selection-title">Selected event</h3>
@@ -93,12 +95,28 @@
         </dl>
       </section>
       <section class="edit-section" aria-labelledby="intent-title">
-        <h3 id="intent-title">Edit intent</h3>
-        <div class="locked-field"><span>Operation</span><strong>Stage 10-D</strong></div>
-        <div class="locked-field"><span>New value</span><strong>Unavailable</strong></div>
-        <button class="primary-button" type="button" disabled>Prepare local intent</button>
+        <div class="intent-heading">
+          <h3 id="intent-title">Edit intent</h3>
+          <span id="intent-status" class="intent-status" data-kind="neutral">Local draft only</span>
+        </div>
+        <label class="field-label" for="edit-operation">Operation</label>
+        <select id="edit-operation" class="edit-control">
+          <option value="set_pitch">Set pitch</option>
+          <option value="set_effective_duration">Set effective duration</option>
+          <option value="set_dots">Set dots</option>
+          <option value="remove_event">Remove event</option>
+        </select>
+        <label class="field-label" for="edit-value">Proposed value</label>
+        <input id="edit-value" class="edit-control" type="text" maxlength="16" autocomplete="off" spellcheck="false">
+        <label class="field-label" for="edit-reason">Reviewer note <span>(optional)</span></label>
+        <textarea id="edit-reason" class="edit-control edit-reason" maxlength="300" rows="3"></textarea>
+        <div class="intent-actions">
+          <button id="prepare-intent" class="primary-button" data-local-action="prepare-intent" type="button" disabled>Prepare local intent</button>
+          <button id="clear-intent" type="button" disabled>Clear</button>
+        </div>
+        <pre id="intent-preview" class="intent-preview" aria-live="polite">No local intent prepared.</pre>
       </section>
-      <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created from this local review surface.</p>
+      <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created. Local intent is non-authoritative and contains no server authorization, old-value precondition, or command identity.</p>
     </aside>
 
     <section class="panel evidence-panel" aria-labelledby="evidence-title">
