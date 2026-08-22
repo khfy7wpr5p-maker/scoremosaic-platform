@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
+import json
 import os
 import sqlite3
 import sys
@@ -310,6 +310,47 @@ class Stage8BDurableRevisionStoreTests(unittest.TestCase):
         with self.assertRaisesRegex(DurableRevisionStoreError, "revision_store_record_tampered"):
             store.load_revision(self.scope, revision.record["revisionSha256"])
 
+    def test_valid_record_hmac_cannot_hide_invalid_revision_hash_on_restart(self):
+        store = self.store()
+        revision = make_revision(ordinal=1)
+        store.append_revision(
+            self.scope,
+            revision,
+            expected_parent_revision_id=None,
+            expected_parent_revision_sha256=None,
+        )
+        connection = sqlite3.connect(self.root / "teacher-review-revisions.sqlite3")
+        row = connection.execute(
+            "SELECT sequence, revision_id, revision_sha256, record_json "
+            "FROM revision_records"
+        ).fetchone()
+        decoded = json.loads(bytes(row[3]).decode("utf-8"))
+        decoded["unresolvedIssueCount"] += 1
+        tampered_json = json.dumps(
+            decoded,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        valid_hmac_for_tampered_bytes = store._record_hmac(
+            self.scope,
+            sequence=row[0],
+            revision_id=row[1],
+            revision_sha256=row[2],
+            record_json=tampered_json,
+        )
+        connection.execute(
+            "UPDATE revision_records SET record_json=?, record_hmac=?",
+            (tampered_json, valid_hmac_for_tampered_bytes),
+        )
+        connection.commit()
+        connection.close()
+        with self.assertRaisesRegex(
+            DurableRevisionStoreError, "revision_store_revision_hash_mismatch"
+        ):
+            store.load_history(self.scope)
+
     def test_cross_tenant_revision_is_rejected_and_rolled_back(self):
         store = self.store()
         revision = make_revision(ordinal=1, tenant="school_001")
@@ -343,6 +384,22 @@ class Stage8BDurableRevisionStoreTests(unittest.TestCase):
         os.symlink(target, self.root / "teacher-review-revisions.sqlite3")
         with self.assertRaisesRegex(DurableRevisionStoreError, "revision_store_database_invalid"):
             self.store()
+
+    def test_database_path_substitution_after_open_is_rejected(self):
+        store = self.store()
+        revision = make_revision(ordinal=1)
+        store.append_revision(
+            self.scope,
+            revision,
+            expected_parent_revision_id=None,
+            expected_parent_revision_sha256=None,
+        )
+        database = self.root / "teacher-review-revisions.sqlite3"
+        moved = self.root / "moved.sqlite3"
+        os.replace(database, moved)
+        os.symlink(moved, database)
+        with self.assertRaisesRegex(DurableRevisionStoreError, "revision_store_database_invalid"):
+            store.load_head(self.scope)
 
     def test_caller_constructed_revision_cannot_bypass_integrity(self):
         store = self.store()
