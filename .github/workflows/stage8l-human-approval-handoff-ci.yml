@@ -1,0 +1,105 @@
+name: Stage 8-L Human Approval Handoff CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage8l-human-approval-handoff-v1"
+    paths:
+      - ".github/workflows/stage8l-human-approval-handoff-ci.yml"
+      - "contracts/teacher-review-human-approval-handoff-v1.schema.json"
+      - "docs/stage8l-human-approval-handoff.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+      - "prototypes/stage8h-disconnected-edit-intent/**"
+      - "prototypes/stage8e-readonly-review-workspace/**"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+      - "tests/test_stage8e_readonly_browser_workspace.py"
+      - "tests/test_ui_0b_static_shell.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage8l-human-approval-handoff-ci.yml"
+      - "contracts/teacher-review-human-approval-handoff-v1.schema.json"
+      - "docs/stage8l-human-approval-handoff.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+      - "prototypes/stage8h-disconnected-edit-intent/**"
+      - "prototypes/stage8e-readonly-review-workspace/**"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+      - "tests/test_stage8e_readonly_browser_workspace.py"
+      - "tests/test_ui_0b_static_shell.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage8l-human-approval-handoff-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage8l-human-approval-handoff:
+    name: Verify Stage 8-L human approval handoff
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Teacher Review library
+        run: python -m compileall -q services/teacher-review-service/src
+
+      - name: Run Stage 8-A contract regression
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_contract_foundation.py' -v
+
+      - name: Run Stage 8-B durable store regression
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_durable_revision_store.py' -v
+
+      - name: Run Stage 8-C materialization regression
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8c_revision_materialization.py' -v
+
+      - name: Run Stage 8-D read-only projection regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8d_*.py' -v
+
+      - name: Run UI-0B isolation regression
+        run: python -m unittest discover -s tests -p 'test_ui_0b_static_shell.py' -v
+
+      - name: Run Stage 8-E read-only browser regression
+        run: python -m unittest discover -s tests -p 'test_stage8e_readonly_browser_workspace.py' -v
+
+      - name: Run Stage 8-F corrected MusicXML regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8f_*.py' -v
+
+      - name: Run Stage 8-G server write boundary regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8g_*.py' -v
+
+      - name: Run Stage 8-H disconnected intent regression
+        run: python -m unittest discover -s tests -p 'test_stage8h_disconnected_edit_intent.py' -v
+
+      - name: Run Stage 8-I rational timeline regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8i_*.py' -v
+
+      - name: Run Stage 8-J transport regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8j_*.py' -v
+
+      - name: Run Stage 8-K approval eligibility regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8k_*.py' -v
+
+      - name: Run Stage 8-L human approval handoff regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8l_*.py' -v
+
+      - name: Validate human approval handoff JSON Schema
+        run: python -m json.tool contracts/teacher-review-human-approval-handoff-v1.schema.json > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check

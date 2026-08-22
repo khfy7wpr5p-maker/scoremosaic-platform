@@ -1,7 +1,7 @@
 [project]
 name = "scoremosaic-teacher-review-service"
 version = "0.8.0"
-description = "Stage 8 Teacher Review authorization, immutable revisions, deterministic validation, read-only review, corrected MusicXML derivative, server write-boundary, rational timeline, non-executing transport, and approval-eligibility foundations"
+description = "Stage 8 Teacher Review authorization, immutable revisions, deterministic validation, read-only review, corrected MusicXML derivative, server write-boundary, rational timeline, non-executing transport, approval-eligibility, and human-approval-handoff foundations"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
@@ -19,6 +19,7 @@ server-write-boundary-foundation-enabled = true
 read-only-rational-timeline-foundation-enabled = true
 transport-state-machine-foundation-enabled = true
 approval-eligibility-foundation-enabled = true
+approval-handoff-foundation-enabled = true
 audio-playback-enabled = false
 write-api-enabled = false
 public-api-enabled = false
