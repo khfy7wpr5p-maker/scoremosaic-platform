@@ -106,15 +106,18 @@ class Stage8KApprovalEligibilityTests(unittest.TestCase):
         self.assertFalse(artifact.to_dict()["publicationEligible"])
 
     def test_validation_issues_produce_ineligible_evidence_without_granting_authority(self):
+        # Reuse the Stage 8-C proven overflow case rather than assuming event
+        # removal is invalid. Extending E1 to five quarter-note units in a 4/4
+        # measure deterministically emits blocking validator evidence without
+        # silently repairing the musical state.
         state, revision = revision_for(
             self.base,
             self.base_state,
-            {"type": "remove_event", "value": None},
-            target=loc("P1:M1:E2", 1),
-            command_id="cmd_stage8k_underfill",
+            {"type": "set_effective_duration", "value": q(5)},
+            command_id="cmd_stage8k_overflow",
         )
         record = revision.to_dict()
-        self.assertGreater(record["blockingIssueCount"] + record["unresolvedIssueCount"], 0)
+        self.assertGreater(record["blockingIssueCount"], 0)
         self._persist(revision)
         artifact = build_corrected_musicxml_artifact(scope=self.scope, revision=revision, state=state)
         data = build_approval_eligibility_evidence(
