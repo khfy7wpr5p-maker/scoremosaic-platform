@@ -80,7 +80,8 @@ class Stage10CFixtureReadonlyReviewTests(unittest.TestCase):
             self.assertIn(marker, HTML)
 
     def test_server_authority_controls_remain_disabled(self) -> None:
-        self.assertIn('class="primary-button" type="button" disabled', HTML)
+        prepare_button = re.search(r'<button\b(?=[^>]*\bid="prepare-intent")(?=[^>]*\bdisabled\b)[^>]*>', HTML)
+        self.assertIsNotNone(prepare_button)
         self.assertIn("No ScoreEditCommand, revision, approval, or publication can be created", HTML)
         self.assertIn("no API · no persistence · no playback · no publication", HTML)
 
