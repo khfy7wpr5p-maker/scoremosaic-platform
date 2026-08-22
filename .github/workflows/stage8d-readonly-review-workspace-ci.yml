@@ -1,0 +1,80 @@
+name: Stage 8-D Read-Only Review Workspace CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage8d-readonly-review-workspace-v1"
+    paths:
+      - ".github/workflows/stage8d-readonly-review-workspace-ci.yml"
+      - "contracts/teacher-review-projection-v1.schema.json"
+      - "docs/stage8d-readonly-review-workspace.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+      - "services/ensemble-service/src/scoremosaic_ensemble/comparator.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/report.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/canonical.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/musicxml.py"
+      - "services/ensemble-service/tests/fixtures/canonical-smoke.musicxml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage8d-readonly-review-workspace-ci.yml"
+      - "contracts/teacher-review-projection-v1.schema.json"
+      - "docs/stage8d-readonly-review-workspace.md"
+      - "docs/architecture-stage8-current.md"
+      - "services/teacher-review-service/**"
+      - "services/ensemble-service/src/scoremosaic_ensemble/comparator.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/report.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/canonical.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/musicxml.py"
+      - "services/ensemble-service/tests/fixtures/canonical-smoke.musicxml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage8d-readonly-review-workspace-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage8d-readonly-workspace:
+    name: Verify Stage 8-D authorized read-only projection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Teacher Review and Ensemble libraries
+        run: |
+          python -m compileall -q services/teacher-review-service/src
+          python -m compileall -q services/ensemble-service/src
+
+      - name: Run Stage 8-A regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_contract_foundation.py' -v
+
+      - name: Run Stage 8-B durable-store regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_durable_revision_store.py' -v
+
+      - name: Run Stage 8-C materialization regression suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8c_revision_materialization.py' -v
+
+      - name: Run Stage 8-D projection security and integration suite
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8d_readonly_review_projection.py' -v
+
+      - name: Validate Stage 8-D JSON contract
+        run: python -m json.tool contracts/teacher-review-projection-v1.schema.json > /dev/null
+
+      - name: Check repository diff formatting
+        run: git diff --check
