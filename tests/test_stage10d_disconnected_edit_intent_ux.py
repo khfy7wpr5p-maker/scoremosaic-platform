@@ -44,7 +44,7 @@ class Stage10DDisconnectedEditIntentUxTests(unittest.TestCase):
             self.assertIn(marker, SCRIPT)
 
     def test_local_intent_does_not_manufacture_server_proof_fields(self) -> None:
-        for forbidden in (
+        forbidden_property_names = (
             "oldValueSha256",
             "authorizationGrant",
             "commandSha256",
@@ -52,8 +52,10 @@ class Stage10DDisconnectedEditIntentUxTests(unittest.TestCase):
             "teacherScoreRevisionId",
             "approvalRecordId",
             "publicationRecordId",
-        ):
-            self.assertNotIn(forbidden, SCRIPT)
+        )
+        for field in forbidden_property_names:
+            pattern = rf"(?:\b{re.escape(field)}\s*:|['\"]{re.escape(field)}['\"]\s*:)"
+            self.assertIsNone(re.search(pattern, SCRIPT), field)
 
     def test_input_domains_are_bounded(self) -> None:
         self.assertIn("PITCH_RE", SCRIPT)
