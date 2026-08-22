@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-validation-report-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review Validation Report v1",
+  "description": "Deterministic post-edit validation evidence. It never grants approval or publication authority and never silently repairs music.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "baseCanonicalSha256", "stateSha256", "blockingIssueCount", "unresolvedIssueCount", "issues", "authoritativeCorrection", "approvalEligible", "publicationEligible", "validationReportSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-review-validation-report-v1"},
+    "baseCanonicalSha256": {"$ref": "#/$defs/sha256"},
+    "stateSha256": {"$ref": "#/$defs/sha256"},
+    "blockingIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "unresolvedIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "issues": {"type": "array", "maxItems": 1000000, "items": {"$ref": "#/$defs/issue"}},
+    "authoritativeCorrection": {"const": false},
+    "approvalEligible": {"const": false},
+    "publicationEligible": {"const": false},
+    "validationReportSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "partId", "measureId", "eventId", "detail"],
+      "properties": {
+        "code": {"enum": ["MEASURE_OVERFLOW", "MEASURE_UNDERFILL", "VOICE_OVERLAP", "CHORD_ALIGNMENT_INVALID"]},
+        "severity": {"enum": ["warning", "blocking"]},
+        "partId": {"$ref": "#/$defs/id"},
+        "measureId": {"$ref": "#/$defs/id"},
+        "eventId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    }
+  }
+}
