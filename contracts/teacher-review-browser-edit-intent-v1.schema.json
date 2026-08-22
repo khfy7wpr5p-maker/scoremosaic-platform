@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-browser-edit-intent-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review Browser Edit Intent v1",
+  "description": "Non-authoritative disconnected browser draft describing one proposed typed musical edit against one exact read-only projection snapshot. This is not a ScoreEditCommand, carries no authorization, old-value precondition, command identity, or write capability, and must be re-resolved and revalidated server-side before any Stage 8-G write request can exist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "projectionSha256",
+    "snapshot",
+    "differenceId",
+    "target",
+    "operation",
+    "reason",
+    "authority"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-teacher-review-browser-edit-intent-v1"},
+    "projectionSha256": {"$ref": "#/$defs/sha256"},
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "differenceId": {
+      "type": "string",
+      "pattern": "^difference_[0-9a-f]{24}$"
+    },
+    "target": {"$ref": "#/$defs/target"},
+    "operation": {"$ref": "score-edit-command-v1.schema.json#/$defs/operation"},
+    "reason": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "authority": {"$ref": "#/$defs/authority"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nullableRevisionId": {
+      "oneOf": [
+        {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+        {"type": "null"}
+      ]
+    },
+    "nullableSha256": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "kind": {"enum": ["base", "revision"]},
+        "revisionId": {"$ref": "#/$defs/nullableRevisionId"},
+        "revisionSha256": {"$ref": "#/$defs/nullableSha256"},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "nullableId": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+        {"type": "null"}
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "measureId", "eventId"],
+      "properties": {
+        "partId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+        "measureId": {"$ref": "#/$defs/nullableId"},
+        "eventId": {"$ref": "#/$defs/nullableId"}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoritativeCapability",
+        "serverAuthorizationIncluded",
+        "oldValuePreconditionIncluded",
+        "commandIdentityIncluded",
+        "networkSubmissionAllowed"
+      ],
+      "properties": {
+        "authoritativeCapability": {"const": false},
+        "serverAuthorizationIncluded": {"const": false},
+        "oldValuePreconditionIncluded": {"const": false},
+        "commandIdentityIncluded": {"const": false},
+        "networkSubmissionAllowed": {"const": false}
+      }
+    }
+  }
+}
