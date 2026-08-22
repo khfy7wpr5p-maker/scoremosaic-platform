@@ -1,0 +1,78 @@
+{
+  "version": "scoremosaic-stage9-production-foundation-eligibility-v1",
+  "stage": "9-I",
+  "status": "REPOSITORY_PREPARATION_COMPLETE_EXTERNAL_PROVISIONING_REQUIRED",
+  "contractRefs": [
+    "scoremosaic-stage9-production-foundation-baseline-v1",
+    "scoremosaic-stage9-resource-topology-v1",
+    "scoremosaic-stage9-service-identity-secrets-v1",
+    "scoremosaic-stage9-postgresql-persistence-backup-v1",
+    "scoremosaic-stage9-object-storage-immutability-v1",
+    "scoremosaic-stage9-authentik-rbac-binding-v1",
+    "scoremosaic-stage9-infisical-capability-eligibility-v1",
+    "scoremosaic-stage9-publication-persistence-protocol-v1"
+  ],
+  "readiness": {
+    "repositoryProductionArchitectureBaselineComplete": true,
+    "repositorySecurityContractsCompleteForStage9": true,
+    "readyForExternalInfrastructureProvisioningHandoff": true,
+    "productionRuntimeEligible": false,
+    "publicTrafficEligible": false,
+    "publicationExecutionEligible": false,
+    "autonomousRepositoryOnlyStage9MayCrossProvisioningBoundary": false
+  },
+  "externalBlockers": [
+    "concrete-hetzner-account-project-and-billing-authority",
+    "fresh-provider-capability-region-and-current-pricing-verification",
+    "st-omr-inference-benchmark-and-compute-sku-selection",
+    "concrete-server-network-firewall-resource-identities",
+    "production-domain-dns-and-tls-plan-before-public-traffic",
+    "postgresql-current-18x-minor-and-production-host-selection",
+    "postgresql-rpo-rto-retention-and-isolated-restore-proof",
+    "nbg1-primary-and-fsn1-secondary-object-storage-resources",
+    "provider-versioning-object-lock-and-independent-copy-proof",
+    "authentik-production-deployment-issuer-client-and-admin-protection",
+    "scoremosaic-production-rbac-resource-grants",
+    "infisical-current-deployment-license-capability-proof",
+    "production-machine-identities-secret-bootstrap-rotation-and-revocation",
+    "monitoring-incident-response-and-rollback-plan",
+    "production-provider-adapter-integration-tests",
+    "explicit-narrow-runtime-activation-scope"
+  ],
+  "laterProductionTrafficGates": [
+    "repository-owned-vulnerability-dependency-and-secret-scanning",
+    "container-base-image-digest-pinning",
+    "release-sbom-and-provenance-policy",
+    "privacy-safe-production-logging-and-error-behavior",
+    "load-capacity-and-failure-recovery-validation"
+  ],
+  "humanOrExternalInputsRequired": {
+    "hetznerAccountOrProjectAuthority": true,
+    "budgetOrResourcePurchaseAuthority": true,
+    "productionDomainDecisionBeforePublicTraffic": true,
+    "secretManagerLicenseCapabilityDecision": true,
+    "realCredentialBootstrap": true
+  },
+  "preservedLocks": {
+    "providerResourcesCreated": false,
+    "productionCredentialsProvisioned": false,
+    "productionNetworkActivated": false,
+    "productionDatabaseActivated": false,
+    "productionObjectStorageActivated": false,
+    "productionIdentityActivated": false,
+    "productionSecretsActivated": false,
+    "publicApiActivated": false,
+    "teacherReviewWriteApiActivated": false,
+    "publicationExecutionActivated": false,
+    "publicVisibilityActivated": false,
+    "realProductionTrafficAccepted": false
+  },
+  "stopBoundary": {
+    "name": "external-production-provisioning-boundary",
+    "repositoryMayDescribeAndValidate": true,
+    "repositoryMayInventProviderFacts": false,
+    "repositoryMayProvisionPaidResourcesWithoutExternalAuthority": false,
+    "repositoryMayGenerateOrExposeRealCredentialsWithoutExternalAuthority": false,
+    "repositoryMayExecutePublicationWithoutRuntimeEligibility": false
+  }
+}
