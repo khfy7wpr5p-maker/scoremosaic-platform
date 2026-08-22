@@ -140,7 +140,12 @@ def _beat_position(
     }
 
 
-def _simultaneity_groups(events: list[Mapping[str, Any]], *, part_id: str, measure_id: str) -> dict[Fraction, tuple[str, tuple[str, ...]]]:
+def _simultaneity_groups(
+    events: list[Mapping[str, Any]],
+    *,
+    part_id: str,
+    measure_id: str,
+) -> dict[Fraction, tuple[str, tuple[str, ...]]]:
     grouped: dict[Fraction, list[tuple[int, str]]] = {}
     for event in events:
         onset = _fraction(event["onset"], code="TIMELINE_EVENT_INVALID")
@@ -194,8 +199,7 @@ def _project_measure(measure: Mapping[str, Any], *, part_id: str) -> dict[str, A
     signature, total_beats, beat_unit = _time_signature(measure.get("timeSignatureAtStart"))
     expected_raw = measure.get("expectedDuration")
     expected = None if expected_raw is None else _fraction(expected_raw, code="TIMELINE_MEASURE_INVALID")
-    observed = _fraction(measure.get("observedDuration"), code="TIMELINE_MEASURE_INVALID")
-    if expected is not None and expected < 0 or observed < 0:
+    if expected is not None and expected < 0:
         _fail("TIMELINE_MEASURE_INVALID")
 
     seen: set[str] = set()
@@ -234,9 +238,13 @@ def _project_measure(measure: Mapping[str, Any], *, part_id: str) -> dict[str, A
             _fail("TIMELINE_EVENT_INVALID")
         if not isinstance(grace, bool):
             _fail("TIMELINE_EVENT_INVALID")
-        if chord_group is not None and (not isinstance(chord_group, str) or not chord_group or len(chord_group) > 200):
+        if chord_group is not None and (
+            not isinstance(chord_group, str) or not chord_group or len(chord_group) > 200
+        ):
             _fail("TIMELINE_EVENT_INVALID")
-        if chord_index is not None and (isinstance(chord_index, bool) or not isinstance(chord_index, int) or chord_index < 0):
+        if chord_index is not None and (
+            isinstance(chord_index, bool) or not isinstance(chord_index, int) or chord_index < 0
+        ):
             _fail("TIMELINE_EVENT_INVALID")
         projected_events.append(
             {
@@ -264,7 +272,6 @@ def _project_measure(measure: Mapping[str, Any], *, part_id: str) -> dict[str, A
         "ordinal": ordinal,
         "timeSignatureAtStart": signature,
         "expectedDuration": None if expected is None else _q(expected),
-        "observedDuration": _q(observed),
         "eventExtentEnd": _q(event_extent),
         "loopBounds": {
             "start": _q(0),
@@ -315,7 +322,11 @@ def _project_state(state: ReviewMusicalState) -> list[dict[str, Any]]:
             if not isinstance(measure_id, str) or measure_id in measure_ids:
                 _fail("TIMELINE_MEASURE_INVALID")
             measure_ids.add(measure_id)
-            if isinstance(measure_ordinal, bool) or not isinstance(measure_ordinal, int) or measure_ordinal <= last_measure_ordinal:
+            if (
+                isinstance(measure_ordinal, bool)
+                or not isinstance(measure_ordinal, int)
+                or measure_ordinal <= last_measure_ordinal
+            ):
                 _fail("TIMELINE_MEASURE_ORDER_INVALID")
             last_measure_ordinal = measure_ordinal
             events = measure.get("events")
@@ -338,7 +349,7 @@ def _load_current_snapshot(
     store: DurableRevisionStore,
     state: ReviewMusicalState,
     base_canonical_payload: Mapping[str, Any],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
     try:
         head = store.load_head(scope)
     except DurableRevisionStoreError as exc:
@@ -361,7 +372,11 @@ def _load_current_snapshot(
             expected_parent_revision_sha256=revision_sha,
         )
     except Stage8ContractError as exc:
-        code = "TIMELINE_STALE_SNAPSHOT" if exc.code == "AUTHZ_STALE_PARENT" else "TIMELINE_AUTHORIZATION_DENIED"
+        code = (
+            "TIMELINE_STALE_SNAPSHOT"
+            if exc.code == "AUTHZ_STALE_PARENT"
+            else "TIMELINE_AUTHORIZATION_DENIED"
+        )
         raise Stage8TimelineError(code) from exc
 
     if not isinstance(state, ReviewMusicalState):
@@ -374,12 +389,15 @@ def _load_current_snapshot(
             raise Stage8TimelineError("TIMELINE_BASE_CANONICAL_INVALID") from exc
         if not hmac.compare_digest(base_state.state_sha256, state.state_sha256):
             _fail("TIMELINE_STATE_MISMATCH")
-        return {
-            "kind": "base",
-            "revisionId": None,
-            "revisionSha256": None,
-            "stateSha256": state.state_sha256,
-        }
+        return (
+            {
+                "kind": "base",
+                "revisionId": None,
+                "revisionSha256": None,
+                "stateSha256": state.state_sha256,
+            },
+            None,
+        )
 
     try:
         record = store.load_revision(scope, head.revision_sha256)
@@ -391,12 +409,20 @@ def _load_current_snapshot(
         or record.get("resultingMusicalStateSha256") != state.state_sha256
     ):
         _fail("TIMELINE_STATE_MISMATCH")
-    return {
-        "kind": "revision",
-        "revisionId": head.revision_id,
-        "revisionSha256": head.revision_sha256,
-        "stateSha256": state.state_sha256,
+    expected_validation = {
+        "validationReportSha256": record.get("validationReportSha256"),
+        "blockingIssueCount": record.get("blockingIssueCount"),
+        "unresolvedIssueCount": record.get("unresolvedIssueCount"),
     }
+    return (
+        {
+            "kind": "revision",
+            "revisionId": head.revision_id,
+            "revisionSha256": head.revision_sha256,
+            "stateSha256": state.state_sha256,
+        },
+        expected_validation,
+    )
 
 
 @dataclass(frozen=True)
@@ -427,7 +453,7 @@ def build_review_timeline_projection(
 
     if not isinstance(scope, RevisionScope) or not isinstance(store, DurableRevisionStore):
         _fail("TIMELINE_SERVER_CONFIGURATION_INVALID")
-    snapshot = _load_current_snapshot(
+    snapshot, expected_validation = _load_current_snapshot(
         grant=grant,
         signing_key=signing_key,
         expected_reviewer_id=expected_reviewer_id,
@@ -437,6 +463,23 @@ def build_review_timeline_projection(
         base_canonical_payload=base_canonical_payload,
     )
     validation = validate_musical_state(state)
+    validation_evidence = {
+        "validationReportSha256": validation.report_sha256,
+        "blockingIssueCount": validation.blocking_issue_count,
+        "unresolvedIssueCount": validation.unresolved_issue_count,
+    }
+    if expected_validation is not None:
+        if (
+            not isinstance(expected_validation["validationReportSha256"], str)
+            or not hmac.compare_digest(
+                expected_validation["validationReportSha256"],
+                validation_evidence["validationReportSha256"],
+            )
+            or expected_validation["blockingIssueCount"] != validation_evidence["blockingIssueCount"]
+            or expected_validation["unresolvedIssueCount"] != validation_evidence["unresolvedIssueCount"]
+        ):
+            _fail("TIMELINE_REVISION_VALIDATION_MISMATCH")
+
     parts = _project_state(state)
     body = {
         "schemaVersion": TIMELINE_VERSION,
@@ -449,11 +492,7 @@ def build_review_timeline_projection(
             "baseCanonicalSha256": scope.base_canonical_sha256,
         },
         "snapshot": snapshot,
-        "validation": {
-            "validationReportSha256": validation.report_sha256,
-            "blockingIssueCount": validation.blocking_issue_count,
-            "unresolvedIssueCount": validation.unresolved_issue_count,
-        },
+        "validation": validation_evidence,
         "capabilities": {
             "readOnly": True,
             "cursorNavigation": True,
