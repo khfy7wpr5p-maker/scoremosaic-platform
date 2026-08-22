@@ -11,7 +11,7 @@ Current capabilities are deliberately local:
 - synthetic source-evidence presentation;
 - a bounded disconnected edit-intent draft.
 
-There is still no network, upload, authentication/session runtime, durable browser state, Teacher Review server write, approval/publication execution, audio/MIDI playback, database/object-storage access, or production infrastructure.
+There is still no network, upload, authentication/session runtime, durable browser state, no Teacher Review write, approval/publication execution, audio/MIDI playback, database/object-storage access, or production infrastructure.
 
 ## Regions
 
