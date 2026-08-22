@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/teacher-review-human-approval-handoff-v1.schema.json",
+  "title": "ScoreMosaic Human Approval Handoff v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "requestId",
+    "approverId",
+    "scope",
+    "currentHead",
+    "correctedArtifact",
+    "eligibilityEvidenceSha256",
+    "authorization",
+    "requirements",
+    "capabilities",
+    "state",
+    "handoffRequestSha256"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-human-approval-handoff-v1"},
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 200},
+    "approverId": {"type": "string", "minLength": 1, "maxLength": 200},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"type": "string", "minLength": 1, "maxLength": 200},
+        "jobId": {"type": "string", "minLength": 1, "maxLength": 200},
+        "reviewReportId": {"type": "string", "minLength": 1, "maxLength": 200},
+        "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+        "baseCanonicalSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "currentHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "sequence"],
+      "properties": {
+        "revisionId": {"type": "string", "minLength": 1, "maxLength": 200},
+        "revisionSha256": {"$ref": "#/$defs/sha256"},
+        "sequence": {"type": "integer", "minimum": 1}
+      }
+    },
+    "correctedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "artifactRecordSha256",
+        "musicXmlSha256",
+        "safetyReportSha256",
+        "expectedSemanticSha256",
+        "regeneratedSemanticSha256"
+      ],
+      "properties": {
+        "artifactId": {"type": "string", "minLength": 1, "maxLength": 200},
+        "artifactRecordSha256": {"$ref": "#/$defs/sha256"},
+        "musicXmlSha256": {"$ref": "#/$defs/sha256"},
+        "safetyReportSha256": {"$ref": "#/$defs/sha256"},
+        "expectedSemanticSha256": {"$ref": "#/$defs/sha256"},
+        "regeneratedSemanticSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "eligibilityEvidenceSha256": {"$ref": "#/$defs/sha256"},
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grantSha256", "allowedAction"],
+      "properties": {
+        "grantSha256": {"$ref": "#/$defs/sha256"},
+        "allowedAction": {"const": "present_for_human_approval"}
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exactCurrentHead", "exactEligibleArtifact", "humanDecisionRequired", "freshEligibilityRecomputed"],
+      "properties": {
+        "exactCurrentHead": {"const": true},
+        "exactEligibleArtifact": {"const": true},
+        "humanDecisionRequired": {"const": true},
+        "freshEligibilityRecomputed": {"const": true}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canPresentForHumanApproval", "canRecordApproval", "canPublish", "canMutate", "canWrite", "authoritativeTruth"],
+      "properties": {
+        "canPresentForHumanApproval": {"const": true},
+        "canRecordApproval": {"const": false},
+        "canPublish": {"const": false},
+        "canMutate": {"const": false},
+        "canWrite": {"const": false},
+        "authoritativeTruth": {"const": false}
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "approvalDecision", "approvalRecordId", "publicationRecordId"],
+      "properties": {
+        "status": {"const": "awaiting_human_decision"},
+        "approvalDecision": {"type": "null"},
+        "approvalRecordId": {"type": "null"},
+        "publicationRecordId": {"type": "null"}
+      }
+    },
+    "handoffRequestSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
