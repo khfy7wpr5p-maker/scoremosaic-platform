@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - main
-      - "feature/stage8-teacher-review-contract-foundation-v1"
+      - "feature/stage8-*"
     paths:
       - ".github/workflows/stage8-teacher-review-contract-ci.yml"
       - "contracts/teacher-review-authorization-v1.schema.json"
       - "contracts/score-edit-command-v1.schema.json"
       - "contracts/teacher-score-revision-v1.schema.json"
       - "docs/stage8-teacher-review-contract-foundation.md"
+      - "docs/stage8-revision-materialization-store.md"
       - "docs/architecture-stage8-current.md"
       - "services/teacher-review-service/**"
   pull_request:
@@ -22,6 +23,7 @@ on:
       - "contracts/score-edit-command-v1.schema.json"
       - "contracts/teacher-score-revision-v1.schema.json"
       - "docs/stage8-teacher-review-contract-foundation.md"
+      - "docs/stage8-revision-materialization-store.md"
       - "docs/architecture-stage8-current.md"
       - "services/teacher-review-service/**"
   workflow_dispatch:
@@ -35,7 +37,7 @@ concurrency:
 
 jobs:
   stage8-contract:
-    name: Verify Stage 8 Teacher Review contracts
+    name: Verify Stage 8 Teacher Review contracts and revision runtime
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -50,11 +52,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Compile Teacher Review contract library
-        run: python -m compileall -q services/teacher-review-service/src
+      - name: Compile Teacher Review and Canonical libraries
+        run: |
+          python -m compileall -q services/teacher-review-service/src
+          python -m compileall -q services/ensemble-service/src
 
-      - name: Run Stage 8 security and determinism tests
-        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_contract_foundation.py' -v
+      - name: Run Stage 8 security determinism restart and race tests
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8_*.py' -v
 
       - name: Validate Stage 8 JSON contracts
         run: |
