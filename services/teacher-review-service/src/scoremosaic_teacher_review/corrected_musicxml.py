@@ -13,9 +13,10 @@ from xml.parsers import expat
 
 from .contracts import TeacherScoreRevision
 from .musical_state import ReviewMusicalState, validate_musical_state
-from ._revision_store_common import RevisionScope
+from ._revision_store_common import DurableRevisionStoreError, RevisionScope
 from ._revision_store_validation import validate_revision_for_store
 
+from scoremosaic_ensemble.canonical import CanonicalModelError, CanonicalScore
 from scoremosaic_ensemble.teacher_review_musicxml import normalize_teacher_review_musicxml
 
 
@@ -80,11 +81,6 @@ def _deep_thaw(value: Any) -> Any:
 
 def _fraction(value: Mapping[str, int]) -> Fraction:
     return Fraction(value["numerator"], value["denominator"])
-
-
-def _q(value: Fraction) -> dict[str, int]:
-    value = Fraction(value)
-    return {"numerator": value.numerator, "denominator": value.denominator}
 
 
 def _lcm(left: int, right: int) -> int:
@@ -248,6 +244,8 @@ def _emit_measure(part_node: ET.Element, measure: Mapping[str, Any]) -> None:
         onset = _fraction(event["onset"])
         chord_group = event["chordGroup"]
         chord_index = event["chordIndex"]
+        if chord_group is not None and event["kind"] != "note":
+            _fail("CORRECTED_XML_CHORD_STRUCTURE_UNREPRESENTABLE")
         chord_follower = chord_group is not None and chord_index is not None and chord_index > 0
 
         if chord_follower:
@@ -355,6 +353,7 @@ def validate_generated_musicxml(document: bytes) -> GeneratedMusicXmlSafetyRepor
         _fail("CORRECTED_XML_SAFETY_DECLARATION_FORBIDDEN")
 
     parser = expat.ParserCreate(namespace_separator="}")
+    parser.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
     depth = 0
     elements = 0
     attributes = 0
@@ -383,8 +382,12 @@ def validate_generated_musicxml(document: bytes) -> GeneratedMusicXmlSafetyRepor
         nonlocal depth
         depth -= 1
 
+    def external_entity(*_args: Any) -> int:
+        _fail("CORRECTED_XML_SAFETY_EXTERNAL_ENTITY_FORBIDDEN")
+
     parser.StartElementHandler = start_element
     parser.EndElementHandler = end_element
+    parser.ExternalEntityRefHandler = external_entity
     try:
         parser.Parse(document, True)
     except CorrectedMusicXmlError:
@@ -465,7 +468,9 @@ def semantic_projection_from_state(state: ReviewMusicalState) -> dict[str, Any]:
     }
 
 
-def semantic_projection_from_canonical(score: Any) -> dict[str, Any]:
+def semantic_projection_from_canonical(score: CanonicalScore) -> dict[str, Any]:
+    if not isinstance(score, CanonicalScore):
+        _fail("CORRECTED_XML_CANONICAL_TYPE_INVALID")
     result_parts = []
     for part in score.parts:
         measures = []
@@ -531,14 +536,13 @@ def build_corrected_musicxml_artifact(
             expected_parent_revision_sha256=record.get("parentRevisionSha256"),
             expected_previous_audit_event_sha256=record.get("previousAuditEventSha256"),
         )
-    except Exception as exc:
+    except DurableRevisionStoreError as exc:
         raise CorrectedMusicXmlError("CORRECTED_XML_REVISION_VALIDATION_FAILED") from exc
 
     if not hmac.compare_digest(validated["resultingMusicalStateSha256"], state.state_sha256):
         _fail("CORRECTED_XML_REVISION_STATE_MISMATCH")
 
     validation = validate_musical_state(state)
-    validation_dict = validation.to_dict()
     if not hmac.compare_digest(validated["validationReportSha256"], validation.report_sha256):
         _fail("CORRECTED_XML_VALIDATION_REPORT_MISMATCH")
     if validated["blockingIssueCount"] != validation.blocking_issue_count:
@@ -559,7 +563,7 @@ def build_corrected_musicxml_artifact(
             artifact_ref=derivative_ref,
             derivative_version="stage8f-v1",
         )
-    except Exception as exc:
+    except CanonicalModelError as exc:
         raise CorrectedMusicXmlError("CORRECTED_XML_CANONICAL_RENORMALIZATION_FAILED") from exc
 
     expected_semantic = semantic_projection_from_state(state)
