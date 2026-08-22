@@ -69,8 +69,12 @@ class Stage8GActivationLockTests(unittest.TestCase):
             schema["properties"]["command"]["$ref"],
         )
         self.assertEqual(
+            "#/$defs/sha256",
+            schema["properties"]["requestSha256"]["$ref"],
+        )
+        self.assertEqual(
             "^[0-9a-f]{64}$",
-            schema["properties"]["requestSha256"]["pattern"],
+            schema["$defs"]["sha256"]["pattern"],
         )
 
 
