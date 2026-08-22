@@ -8,7 +8,11 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from .contracts import TeacherScoreRevision
-from .corrected_musicxml import CorrectedMusicXmlArtifact, build_corrected_musicxml_artifact
+from .corrected_musicxml import (
+    CorrectedMusicXmlArtifact,
+    CorrectedMusicXmlError,
+    build_corrected_musicxml_artifact,
+)
 from .durable_revision_store import DurableRevisionStore, DurableRevisionStoreError, RevisionScope
 from .musical_state import ReviewMusicalState
 
@@ -141,7 +145,7 @@ def _require_exact_rebuilt_artifact(
             revision=revision,
             state=state,
         )
-    except ValueError as exc:
+    except CorrectedMusicXmlError as exc:
         raise Stage8ApprovalEligibilityError("APPROVAL_ELIGIBILITY_ARTIFACT_REBUILD_FAILED") from exc
 
     supplied_record = artifact.to_dict()
@@ -162,7 +166,7 @@ def _require_exact_rebuilt_artifact(
         "publicationEligible": False,
     }
     for key, expected in required_locked.items():
-        if rebuilt_record.get(key) is not expected and rebuilt_record.get(key) != expected:
+        if rebuilt_record.get(key) != expected:
             _fail("APPROVAL_ELIGIBILITY_ARTIFACT_CAPABILITY_INVALID")
 
     return rebuilt_record
