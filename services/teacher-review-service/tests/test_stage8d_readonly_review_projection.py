@@ -32,6 +32,7 @@ from scoremosaic_teacher_review.review_projection import (  # noqa: E402
 
 FIXTURE = ROOT / "services" / "ensemble-service" / "tests" / "fixtures" / "canonical-smoke.musicxml"
 AUTHZ_KEY = b"stage8d-authz-purpose-separated-key-32bytes!!"
+REVIEW_ISSUE_ID = "issue_stage8d_review_0001"
 
 
 def evidence():
@@ -197,7 +198,7 @@ class Stage8DReadOnlyProjectionTests(unittest.TestCase):
                 "baseCanonicalSha256": self.scope.base_canonical_sha256,
                 "baseRevisionId": None,
                 "baseRevisionSha256": None,
-                "issueId": self.report["comparison"]["differences"][0]["differenceId"],
+                "issueId": REVIEW_ISSUE_ID,
                 "location": location,
                 "operation": {"type": "set_dots", "value": 1},
                 "oldValueSha256": expected_old_value_sha256(
@@ -225,7 +226,7 @@ class Stage8DReadOnlyProjectionTests(unittest.TestCase):
                 "baseCanonicalSha256": self.scope.base_canonical_sha256,
                 "baseRevisionId": None,
                 "baseRevisionSha256": None,
-                "issueId": self.report["comparison"]["differences"][0]["differenceId"],
+                "issueId": REVIEW_ISSUE_ID,
                 "location": location,
                 "operation": {"type": "remove_event", "value": None},
                 "oldValueSha256": expected_old_value_sha256(
