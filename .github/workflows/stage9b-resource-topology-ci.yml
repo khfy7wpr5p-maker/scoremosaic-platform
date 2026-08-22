@@ -1,0 +1,69 @@
+name: Stage 9-B Resource Topology CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage9b-resource-topology-contract-v1"
+    paths:
+      - ".github/workflows/stage9b-resource-topology-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/stage9-resource-topology-v1.json"
+      - "docs/stage9a-production-foundation-baseline.md"
+      - "docs/stage9b-resource-topology-contract.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+      - "tests/test_stage9b_resource_topology_contract.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage9b-resource-topology-ci.yml"
+      - "contracts/stage9-production-foundation-baseline-v1.json"
+      - "contracts/stage9-resource-topology-v1.json"
+      - "docs/stage9a-production-foundation-baseline.md"
+      - "docs/stage9b-resource-topology-contract.md"
+      - "tests/test_stage9a_production_foundation_baseline.py"
+      - "tests/test_stage9b_resource_topology_contract.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage9b-resource-topology-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-stage9b-topology:
+    name: Validate Stage 9-B topology and activation locks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate Stage 9-A baseline JSON
+        run: python -m json.tool contracts/stage9-production-foundation-baseline-v1.json > /dev/null
+
+      - name: Validate Stage 9-B topology JSON
+        run: python -m json.tool contracts/stage9-resource-topology-v1.json > /dev/null
+
+      - name: Run Stage 9-A regression
+        run: python -m unittest discover -s tests -p 'test_stage9a_production_foundation_baseline.py' -v
+
+      - name: Run Stage 9-B topology security regression
+        run: python -m unittest discover -s tests -p 'test_stage9b_resource_topology_contract.py' -v
+
+      - name: Check repository diff formatting
+        run: git diff --check

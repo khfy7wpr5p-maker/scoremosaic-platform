@@ -1,0 +1,136 @@
+{
+  "version": "scoremosaic-stage9-resource-topology-v1",
+  "stage": "9-B",
+  "baselineRef": "scoremosaic-stage9-production-foundation-baseline-v1",
+  "status": "REPOSITORY_ONLY_TOPOLOGY_WITH_RUNTIME_LOCKS",
+  "providerMapping": {
+    "provider": "hetzner",
+    "primaryLocation": "nbg1",
+    "deploymentController": "coolify",
+    "secondaryObjectBackupLocation": "fsn1",
+    "realResourceIdsAssigned": false,
+    "realAddressesAssigned": false,
+    "realDnsNamesAssigned": false
+  },
+  "trustZones": [
+    "public-edge",
+    "application-private",
+    "identity-controlled",
+    "data-private",
+    "security-private",
+    "compute-private",
+    "provider-object-storage"
+  ],
+  "resourceRoles": [
+    {
+      "role": "coolify-control-plane",
+      "zone": "security-private",
+      "userFacingApplicationEndpoint": false,
+      "publicDataPlane": false,
+      "adminAccessMustBeRestricted": true
+    },
+    {
+      "role": "scoremosaic-edge",
+      "zone": "public-edge",
+      "userFacingApplicationEndpoint": true,
+      "allowedPublicIngress": ["https-443"],
+      "mayHoldProviderCredentials": false
+    },
+    {
+      "role": "scoremosaic-application",
+      "zone": "application-private",
+      "directPublicIngress": false,
+      "mayAuthorizeMusicalResources": true
+    },
+    {
+      "role": "authentik-identity",
+      "zone": "identity-controlled",
+      "userLoginMayBePublishedThroughEdge": true,
+      "adminInterfacePublicByDefault": false,
+      "mayGrantScoremosaicMusicalAuthorityDirectly": false
+    },
+    {
+      "role": "postgresql-primary",
+      "zone": "data-private",
+      "directPublicIngress": false,
+      "separateHostFromOmrComputeRequired": true
+    },
+    {
+      "role": "infisical-secrets",
+      "zone": "security-private",
+      "directPublicApplicationIngress": false,
+      "applicationSecretsSource": true,
+      "browserCredentialExposureAllowed": false
+    },
+    {
+      "role": "omr-compute",
+      "zone": "compute-private",
+      "directPublicIngress": false,
+      "privateNetworkAloneCountsAsAuthentication": false,
+      "computeSku": "deferred_until_st_omr_inference_benchmark"
+    },
+    {
+      "role": "publication-service",
+      "zone": "application-private",
+      "directPublicIngress": false,
+      "approvalAndPublicationAuthorizationSeparated": true
+    },
+    {
+      "role": "object-storage-primary",
+      "zone": "provider-object-storage",
+      "location": "nbg1",
+      "bucketPublicByDefault": false,
+      "authenticatedTlsAccessRequired": true
+    },
+    {
+      "role": "object-storage-secondary-backup",
+      "zone": "provider-object-storage",
+      "location": "fsn1",
+      "bucketPublicByDefault": false,
+      "nativeReplicationAssumed": false
+    }
+  ],
+  "networkPolicy": {
+    "defaultDenyBetweenTrustZones": true,
+    "privateNetworkAloneCountsAsAuthentication": false,
+    "browserMayReachDatabaseDirectly": false,
+    "browserMayReachSecretsManagerDirectly": false,
+    "browserMayReachOmrComputeDirectly": false,
+    "browserMayReceiveProviderCredentials": false,
+    "databaseMayExposePublicListener": false,
+    "omrComputeMayExposePublicListener": false,
+    "secretManagerMayExposePublicApplicationListener": false,
+    "objectStorageBucketsPublicByDefault": false,
+    "serviceToServiceAuthenticationRequired": true,
+    "tlsRequiredForProviderApiTraffic": true
+  },
+  "plannedEdges": [
+    "internet -> scoremosaic-edge:https-443",
+    "scoremosaic-edge -> scoremosaic-application:private-http",
+    "scoremosaic-edge -> authentik-identity:user-login-only",
+    "scoremosaic-application -> postgresql-primary:postgresql",
+    "scoremosaic-application -> authentik-identity:oidc",
+    "scoremosaic-application -> infisical-secrets:authenticated-secret-read",
+    "scoremosaic-application -> object-storage-primary:authenticated-s3-tls",
+    "scoremosaic-application -> publication-service:private-authenticated",
+    "gateway-orchestrator -> omr-compute:purpose-separated-authenticated-dispatch",
+    "omr-compute -> gateway-orchestrator:authenticated-result-return",
+    "backup-worker -> object-storage-primary:authenticated-s3-read",
+    "backup-worker -> object-storage-secondary-backup:authenticated-s3-write"
+  ],
+  "activationLocks": {
+    "networkCreated": false,
+    "firewallRulesApplied": false,
+    "dnsCreated": false,
+    "tlsCertificatesProvisioned": false,
+    "providerResourcesCreated": false,
+    "credentialsProvisioned": false,
+    "databaseListenerActivated": false,
+    "objectStorageWriteActivated": false,
+    "authentikRuntimeActivated": false,
+    "infisicalRuntimeActivated": false,
+    "omrProductionRuntimeActivated": false,
+    "publicApiActivated": false,
+    "publicationExecutionActivated": false
+  }
+}
