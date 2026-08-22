@@ -1,0 +1,78 @@
+{
+  "version": "scoremosaic-stage9-postgresql-persistence-backup-v1",
+  "stage": "9-D",
+  "baselineRef": "scoremosaic-stage9-production-foundation-baseline-v1",
+  "identityPolicyRef": "scoremosaic-stage9-service-identity-secrets-v1",
+  "status": "REPOSITORY_ONLY_DATABASE_POLICY_WITH_RUNTIME_LOCKS",
+  "database": {
+    "engine": "postgresql",
+    "majorVersion": 18,
+    "currentSupportedMinorRequiredAtDeployment": true,
+    "privateHostRequired": true,
+    "separateFromOmrComputeRequired": true,
+    "publicListenerAllowed": false,
+    "fsyncMayBeDisabled": false,
+    "fullPageWritesMayBeDisabled": false,
+    "authoritativeTransactionsMayUseAsyncDurability": false
+  },
+  "dataPlacement": {
+    "relationalMetadataInDatabase": true,
+    "sourceDocumentBytesInDatabase": false,
+    "candidateArtifactBytesInDatabase": false,
+    "publishedMusicXmlBytesInDatabase": false,
+    "artifactContentAddressedByHashAndStorageRef": true
+  },
+  "roles": {
+    "applicationRole": "application-database-role",
+    "publicationRole": "publication-database-role",
+    "backupRole": "database-backup-role",
+    "authentikRole": "authentik-database-role",
+    "ordinaryServicesMayUseDatabaseAdmin": false,
+    "rolesMustBeDistinct": true
+  },
+  "integrity": {
+    "immutableApprovalAndPublicationLineageRequired": true,
+    "artifactSha256BindingRequired": true,
+    "revisionParentBindingRequired": true,
+    "auditPredecessorBindingRequired": true,
+    "silentRepairAllowed": false,
+    "staleWriteMayOverwriteCurrentHead": false
+  },
+  "backupPolicy": {
+    "backupMustLeavePrimaryHost": true,
+    "s3CompatibleTargetRequired": true,
+    "backupTargetMustNotBePublic": true,
+    "logicalBackupRequired": true,
+    "pointInTimeRecoveryOrEquivalentRequiredBeforeGa": true,
+    "backupEncryptionRequired": true,
+    "retentionPolicyMustBeExplicitBeforeActivation": true,
+    "rpoRtoMustBeExplicitBeforeActivation": true,
+    "backupSuccessAloneCountsAsRecoveryProof": false
+  },
+  "restorePolicy": {
+    "isolatedRestoreDrillRequiredBeforeProduction": true,
+    "restoreMustUseFreshTarget": true,
+    "restoredSchemaValidationRequired": true,
+    "restoredLineageValidationRequired": true,
+    "restoredArtifactReferenceValidationRequired": true,
+    "restoreMustNotOverwriteProductionDuringTest": true,
+    "documentedRecoveryEvidenceRequired": true
+  },
+  "migrationPolicy": {
+    "schemaMigrationsMustBeVersioned": true,
+    "destructiveMigrationRequiresSeparateApproval": true,
+    "destructiveMigrationRequiresFreshBackupAndRestoreEvidence": true,
+    "automaticProductionMigrationFromUnreviewedBranch": false
+  },
+  "activationLocks": {
+    "postgresqlServerCreated": false,
+    "productionDatabaseCreated": false,
+    "productionRolesCreated": false,
+    "productionListenerActivated": false,
+    "productionConnectionStringProvisioned": false,
+    "backupScheduleActivated": false,
+    "walArchiveActivated": false,
+    "restoreExecutedAgainstProduction": false,
+    "schemaMigrationExecutedInProduction": false
+  }
+}
