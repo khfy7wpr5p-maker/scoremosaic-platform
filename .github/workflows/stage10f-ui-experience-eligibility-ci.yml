@@ -1,0 +1,63 @@
+name: Stage 10-F UI Experience Eligibility CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage10f-ui-experience-eligibility-v1"
+    paths:
+      - ".github/workflows/stage10f-ui-experience-eligibility-ci.yml"
+      - "contracts/stage10-*.json"
+      - "docs/stage10*.md"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage10*.py"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+      - "contracts/stage9-production-foundation-eligibility-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage10f-ui-experience-eligibility-ci.yml"
+      - "contracts/stage10-*.json"
+      - "docs/stage10*.md"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage10*.py"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+      - "contracts/stage9-production-foundation-eligibility-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage10f-exit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate Stage 10 and Stage 9-I JSON contracts
+        run: |
+          for file in contracts/stage10-*.json; do
+            python -m json.tool "$file" > /dev/null
+          done
+          python -m json.tool contracts/stage9-production-foundation-eligibility-v1.json > /dev/null
+      - name: Check local JavaScript syntax
+        run: |
+          node --check prototypes/stage10-ui-application-experience/fixture.js
+          node --check prototypes/stage10-ui-application-experience/app.js
+          node --check prototypes/stage10-ui-application-experience/edit-intent.js
+      - name: Run complete Stage 10 regression suite
+        run: python -m unittest discover -s tests -p 'test_stage10*.py' -v
+      - name: Run Stage 9-I stop-boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
+      - name: Run Stage 8-H disconnected edit-intent regressions
+        run: python -m unittest discover -s tests -p 'test_stage8h_disconnected_edit_intent.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
