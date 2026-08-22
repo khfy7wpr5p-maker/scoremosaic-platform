@@ -1,55 +1,77 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8 contract foundation**.
+Status: **Stage 8-A contract foundation merged; Stage 8-B controlled durable revision-store foundation in review**.
 
-Base Stage 7 main before this work: `ce3164f615e05e04181ddfbdcc6bcbdd345f709a`.
+Stage 8-A merge base on `main`: `2e63bf9ba064adb7ee86dcf95bf8e0cc5958ee61`.
 
 ## Position
 
 ```text
 Stage 7 read-only evidence
   -> Review Report + Canonical identity
-  -> exact reviewer authorization decision
-  -> closed ScoreEditCommand
-  -> stale-parent precondition
-  -> immutable draft TeacherScoreRevision identity
+  -> exact reviewer/tenant/resource authorization decision
+  -> closed bounded ScoreEditCommand
+  -> immutable draft TeacherScoreRevision
   -> validation evidence binding
-  -> append-only audit-chain identity
-  -> [LOCKED] durable revision persistence
+  -> append-only audit identity
+  -> controlled durable revision scope
+  -> atomic exact-parent append
+  -> HMAC-sealed revision record + head
+  -> restart/recovery re-verification
+  -> [LOCKED] deterministic musical-state materialization/validation
   -> [LOCKED] corrected MusicXML materialization
-  -> [LOCKED] approval
+  -> [LOCKED] writable review transport/UI
+  -> [LOCKED] exact revision/hash approval
   -> [LOCKED] publication
 ```
 
-Stage 8 does not mutate Stage 5-7 engine, candidate, Canonical, or Ensemble artifacts. It creates a new teacher-owned evidence lineage only after exact authorization/resource binding.
+Stage 8 never mutates Stage 5-7 source, engine candidate, Canonical or Ensemble evidence in place. Teacher work forms a new immutable lineage.
 
-## Current proof level
+## Stage 8-A proof
 
-Proved at repository contract/hermetic level:
+Merged repository evidence proves:
 
-- closed authorization evidence contract;
-- purpose-separated HMAC integrity for authorization grants;
-- exact job/reviewer/report/Canonical/parent bindings;
-- closed bounded operation allowlist;
-- stable event location requirements;
-- closed old-value hash precondition field and command binding;
-- deterministic command and revision identities;
-- semantic old-value comparison and musical-state mutation remain deferred to the next validation/materialization slice;
-- stale-parent fail-closed behavior;
-- immutable draft revision record;
-- append-only audit predecessor binding;
-- approval/publication lock state.
+- purpose-separated HMAC-sealed reviewer authorization;
+- exact tenant/job/reviewer/report/Canonical/parent scope;
+- raw sealed-grant re-verification at the revision boundary;
+- closed edit-command schema and bounded operation allowlist;
+- no arbitrary XML, JSON Patch, object paths or renderer-native mutation objects;
+- deterministic command and draft revision identities;
+- immutable `TeacherScoreRevision` records;
+- stale-parent preconditions;
+- append-only audit predecessor identity;
+- approval/publication authority remains false.
 
-Not proved or activated:
+## Stage 8-B proof target
 
-- external identity provider or session authentication;
-- production RBAC policy store;
-- cross-process durable atomic revision-head compare-and-swap;
-- production DB/object storage;
-- public or internal mutation transport;
-- MusicXML regeneration and round-trip validation;
-- teacher approval/publication.
+The controlled SQLite provider adds repository-level evidence for:
+
+- append-only durable revision records;
+- exact resource-scope sealing;
+- purpose-separated HMAC record/head integrity;
+- one transaction for record insert plus current-head advancement;
+- exact-parent optimistic concurrency with one winner for competing revisions;
+- exact-current-revision idempotent replay;
+- restart recovery after pre-commit crash windows;
+- read-path record/head/parent/audit-chain re-verification;
+- cross-tenant, stale-parent, tamper, wrong-key and symlink rejection.
+
+This remains a controlled provider, not production storage. `production-durable-store-enabled` remains false.
+
+## Still locked / not proved
+
+- production identity/session provider and RBAC policy source;
+- public or internal Teacher Review mutation HTTP route;
+- production database/object storage deployment;
+- distributed multi-host consensus;
+- anti-rollback protection against restoration of an older complete valid database snapshot;
+- semantic old-value comparison against a materialized musical state;
+- deterministic application of edit operations to Canonical-derived state;
+- musical/structural post-edit validation;
+- corrected MusicXML generation and Canonical round-trip verification;
+- renderer/cursor/playback activation;
+- teacher approval and publication.
 
 ## Next safe Stage 8 slice
 
-The next implementation slice should add deterministic revision materialization/validation against the Canonical model plus a durable append-only revision store with atomic expected-parent semantics. No writable UI or public route should precede those gates.
+After Stage 8-B passes CI and merges, the next slice is deterministic revision-state materialization and validation. It must implement only fields represented safely in the existing Canonical contract, verify old-value preconditions, preserve exact rational timing, and keep MusicXML export/approval/publication separately locked.
