@@ -41,6 +41,12 @@ from .review_projection import (
     build_review_projection_page,
     validate_review_report_for_projection,
 )
+from .review_timeline import (
+    TIMELINE_VERSION,
+    ReviewTimelineProjection,
+    Stage8TimelineError,
+    build_review_timeline_projection,
+)
 
 __all__ = [
     "AUTHZ_VERSION",
@@ -50,6 +56,7 @@ __all__ = [
     "STATE_VERSION",
     "VALIDATION_VERSION",
     "PROJECTION_VERSION",
+    "TIMELINE_VERSION",
     "ReviewAuthorizationGrant",
     "ScoreEditCommand",
     "Stage8ContractError",
@@ -65,8 +72,11 @@ __all__ = [
     "Stage8MaterializationError",
     "ReviewProjectionPage",
     "Stage8ProjectionError",
+    "ReviewTimelineProjection",
+    "Stage8TimelineError",
     "apply_score_edit_command",
     "build_review_projection_page",
+    "build_review_timeline_projection",
     "build_score_edit_command",
     "build_teacher_score_revision",
     "canonical_payload_sha256",
