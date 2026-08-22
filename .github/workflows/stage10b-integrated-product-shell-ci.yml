@@ -1,0 +1,44 @@
+name: Stage 10-B Integrated Product Shell CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage10b-integrated-product-shell-v1"
+    paths:
+      - ".github/workflows/stage10b-integrated-product-shell-ci.yml"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage10b_integrated_product_shell.py"
+      - "contracts/stage10-ui-application-experience-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage10b-integrated-product-shell-ci.yml"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage10b_integrated_product_shell.py"
+      - "contracts/stage10-ui-application-experience-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage10b-shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Run Stage 10-A contract regression
+        run: python -m unittest discover -s tests -p 'test_stage10a_ui_application_experience_contract.py' -v
+      - name: Run Stage 10-B shell security regression
+        run: python -m unittest discover -s tests -p 'test_stage10b_integrated_product_shell.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
