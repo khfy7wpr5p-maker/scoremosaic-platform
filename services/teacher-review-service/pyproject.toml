@@ -1,17 +1,18 @@
 [project]
 name = "scoremosaic-teacher-review-service"
-version = "0.3.0"
-description = "Stage 8 Teacher Review authorization, durable immutable revisions, and deterministic review-state validation foundation"
+version = "0.4.0"
+description = "Stage 8 Teacher Review authorization, durable immutable revisions, deterministic validation, and authorized read-only projection foundation"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [tool.scoremosaic]
-teacher-review-contract-version = "0.3"
+teacher-review-contract-version = "0.4"
 authorization-foundation-enabled = true
 revision-contract-enabled = true
 durable-revision-store-foundation-enabled = true
 revision-materialization-foundation-enabled = true
 revision-validation-foundation-enabled = true
+read-only-projection-foundation-enabled = true
 write-api-enabled = false
 public-api-enabled = false
 approval-enabled = false

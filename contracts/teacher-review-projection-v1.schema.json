@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-projection-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review Projection v1",
+  "description": "Authorized deterministic read-only projection of Stage 7 comparison evidence onto one exact Teacher Review snapshot. It contains no mutation, approval, publication, raw XML, filesystem, or credential authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scope", "snapshot", "page", "capabilities", "baseCandidateIds", "differences", "projectionSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-teacher-review-projection-v1"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "page": {"$ref": "#/$defs/page"},
+    "capabilities": {"$ref": "#/$defs/capabilities"},
+    "baseCandidateIds": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/candidateId"}},
+    "differences": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/difference"}},
+    "projectionSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "candidateId": {"type": "string", "pattern": "^candidate_[0-9a-f]{24}$"},
+    "differenceId": {"type": "string", "pattern": "^difference_[0-9a-f]{24}$"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tenantId", "jobId", "reviewerId", "reviewReportId", "reviewReportSha256", "baseCanonicalSha256"],
+      "properties": {
+        "tenantId": {"$ref": "#/$defs/id"}, "jobId": {"$ref": "#/$defs/id"}, "reviewerId": {"$ref": "#/$defs/id"},
+        "reviewReportId": {"$ref": "#/$defs/id"}, "reviewReportSha256": {"$ref": "#/$defs/sha256"}, "baseCanonicalSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "snapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "kind": {"enum": ["base", "revision"]},
+        "revisionId": {"oneOf": [{"type": "string", "pattern": "^rev_[0-9a-f]{32}$"}, {"type": "null"}]},
+        "revisionSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "page": {
+      "type": "object", "additionalProperties": false,
+      "required": ["offset", "limit", "returned", "totalDifferences", "hasMore"],
+      "properties": {
+        "offset": {"type": "integer", "minimum": 0}, "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+        "returned": {"type": "integer", "minimum": 0, "maximum": 200}, "totalDifferences": {"type": "integer", "minimum": 0, "maximum": 200000},
+        "hasMore": {"type": "boolean"}
+      }
+    },
+    "capabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["readOnly", "canEdit", "canApprove", "canPublish", "authoritativeTruth"],
+      "properties": {
+        "readOnly": {"const": true}, "canEdit": {"const": false}, "canApprove": {"const": false}, "canPublish": {"const": false}, "authoritativeTruth": {"const": false}
+      }
+    },
+    "focus": {
+      "type": "object", "additionalProperties": false,
+      "required": ["partOrdinal", "measureOrdinal", "eventOrdinal", "partId", "measureId", "eventId", "partPresentInSnapshot", "measurePresentInSnapshot", "eventPresentInSnapshot"],
+      "properties": {
+        "partOrdinal": {"type": "integer", "minimum": 1}, "measureOrdinal": {"type": ["integer", "null"], "minimum": 1}, "eventOrdinal": {"type": ["integer", "null"], "minimum": 1},
+        "partId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}, "measureId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}, "eventId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "partPresentInSnapshot": {"type": "boolean"}, "measurePresentInSnapshot": {"type": "boolean"}, "eventPresentInSnapshot": {"type": "boolean"}
+      }
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidateId", "canonicalSha256", "present", "value"],
+      "properties": {"candidateId": {"$ref": "#/$defs/candidateId"}, "canonicalSha256": {"$ref": "#/$defs/sha256"}, "present": {"type": "boolean"}, "value": {}}
+    },
+    "difference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["differenceId", "category", "field", "label", "focus", "observations"],
+      "properties": {
+        "differenceId": {"$ref": "#/$defs/differenceId"},
+        "category": {"enum": ["measure", "event_time", "pitch", "duration", "rest", "chord", "voice", "staff", "tie", "dot", "tuplet", "tab"]},
+        "field": {"type": "string", "pattern": "^[a-z][A-Za-z0-9.]{0,99}$"}, "label": {"type": "string", "minLength": 3, "maxLength": 220},
+        "focus": {"$ref": "#/$defs/focus"}, "observations": {"type": "array", "minItems": 2, "maxItems": 8, "items": {"$ref": "#/$defs/observation"}}
+      }
+    }
+  }
+}

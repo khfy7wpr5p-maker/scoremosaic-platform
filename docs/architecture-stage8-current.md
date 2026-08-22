@@ -1,8 +1,8 @@
 # ScoreMosaic Stage 8 Current Architecture
 
-Status: **Stage 8-A and Stage 8-B merged; Stage 8-C deterministic review-state materialization in review**.
+Status: **Stage 8-A, Stage 8-B and Stage 8-C merged; Stage 8-D authorized read-only review workspace in review**.
 
-Current Stage 8-B main: `d15c9f3e738e00284715d5565ecc89b7777b4754`.
+Current Stage 8-C main: `8dde189042844e79a63b5d76024889e30a5e2e4b`.
 
 ## Current trust chain
 
@@ -22,9 +22,13 @@ Stage 7 immutable read-only evidence
   -> atomic exact-parent append
   -> HMAC-sealed revision record + head
   -> restart/recovery re-verification
+  -> revision:read authorization + exact base/revision snapshot
+  -> independently revalidated Stage 7 comparison evidence
+  -> bounded deterministic read-only projection/focus
+  -> [LOCKED] browser read-only rendering adapter
   -> [LOCKED] corrected MusicXML derivative
-  -> [LOCKED] read/write browser integration
-  -> [LOCKED] cursor/playback
+  -> [LOCKED] browser mutation transport/UI
+  -> [LOCKED] cursor/playback authority
   -> [LOCKED] exact revision/hash approval
   -> [LOCKED] publication
 ```
@@ -64,31 +68,43 @@ Controlled durable-provider evidence proves:
 
 This is still a controlled repository provider. `production-durable-store-enabled=false`. Restoring an older complete otherwise-valid database snapshot is not claimed detectable without a separately durable anti-rollback authority.
 
-## Stage 8-C — proof target
+## Stage 8-C — merged
 
-The review-state layer is intentionally narrower than corrected MusicXML. It verifies the exact upstream Canonical hash and independently validates only the musical structures it consumes.
+The deterministic review-state layer proves:
 
-It applies only the existing Stage 8-A allowlist:
+- exact upstream Canonical SHA-256 scope before materialization;
+- bounded closed Canonical structures at the consumed boundary;
+- only the frozen Stage 8 operation allowlist is applied;
+- exact part/measure/event/staff/voice/onset target binding;
+- operation-specific `oldValueSha256` stale-field protection;
+- deterministic immutable state and validation-report hashes;
+- visible overflow/underfill/voice-overlap/chord-alignment evidence without silent repair;
+- two sequential materialized revisions converge with the Stage 8-B exact-parent durable store.
 
-- pitch;
-- effective duration;
-- written type;
-- dots;
-- staff/voice;
-- measure-start time signature;
-- TAB string/fret;
-- event removal.
+The review state remains narrower than corrected MusicXML and never grants approval/publication authority.
 
-Before mutation, the current operation-specific value is deterministically hashed and must match `oldValueSha256`. Exact part/measure/event/staff/voice/onset must also match. The output is a new immutable review musical state plus deterministic validation evidence; failures are surfaced and never silently repaired.
+## Stage 8-D — proof target
 
-Initial validation covers measure overflow/underfill, same-voice overlap and chord alignment. The validation report explicitly remains non-authoritative and ineligible for approval/publication.
+The read-only workspace boundary adds:
+
+- exact `revision:read` HMAC authorization for tenant/job/reviewer/report/Canonical/snapshot;
+- base snapshots must equal a fresh deterministic Canonical materialization;
+- revision snapshots must pass Stage 8-B revision validation and bind their exact resulting state SHA-256;
+- independent re-validation of the consumed Stage 7 comparison report, nested comparison hash, candidate identities, difference IDs and neutrality boundaries;
+- deterministic bounded pagination with explicit total count and `hasMore`;
+- stable issue focus metadata against the exact snapshot;
+- no raw MusicXML, XML path, artifact reference, source artifact hash, credential, signature or action list in the projection;
+- capabilities frozen to read-only/non-authoritative/non-approvable/non-publishable.
+
+This is a server-side projection contract only. It does not expose an HTTP route and it does not yet bind the static browser shell.
 
 ## Still locked / not proved
 
 - production identity/session provider and RBAC source;
-- public or internal Teacher Review mutation HTTP routes;
+- public or internal Teacher Review HTTP routes;
 - production DB/object-store deployment;
 - multi-host distributed consensus and full-store anti-rollback authority;
+- browser read-only adapter/accessibility behavior;
 - corrected MusicXML generation;
 - MusicXML safety validation and Canonical round-trip for teacher derivatives;
 - browser writable editor activation;
@@ -96,6 +112,6 @@ Initial validation covers measure overflow/underfill, same-voice overlap and cho
 - exact teacher approval;
 - publication.
 
-## Safe continuation after Stage 8-C
+## Safe continuation after Stage 8-D
 
-After Stage 8-C passes exact-head CI and merges, proceed to a read-only Teacher Review projection/focus contract before any browser mutation surface. Corrected MusicXML remains a later isolated derivative gate, and approval/publication remain separate from saving a draft revision.
+After Stage 8-D passes exact-head CI and merges, bind the projection to the existing static UI shell as a read-only review workspace with deterministic issue selection/focus, keyboard navigation and accessible status semantics. Do not introduce mutation controls or a write endpoint. Corrected MusicXML remains a later isolated derivative gate; approval/publication remain separate from draft saving.
