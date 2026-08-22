@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-transport-state-v1.schema.json",
+  "title": "ScoreMosaic Review Transport State v1",
+  "description": "Immutable presentation-only cursor transport state bound to one exact Stage 8-J plan. Execution, audio, loop, mutation, approval, and publication authority are always false.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "planSha256", "timelineSha256", "snapshot", "mode", "cursorIndex", "cursor", "transitionSequence", "executionAllowed", "audioEmissionAllowed", "loopExecutionAllowed", "mutationAllowed", "approvalAllowed", "publicationAllowed", "transportStateSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-review-transport-state-v1"},
+    "planSha256": {"$ref": "#/$defs/sha256"},
+    "timelineSha256": {"$ref": "#/$defs/sha256"},
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "mode": {"enum": ["stopped", "navigating", "paused"]},
+    "cursorIndex": {"type": ["integer", "null"], "minimum": 0, "maximum": 499999},
+    "cursor": {"oneOf": [{"$ref": "#/$defs/cursor"}, {"type": "null"}]},
+    "transitionSequence": {"type": "integer", "minimum": 0},
+    "executionAllowed": {"const": false},
+    "audioEmissionAllowed": {"const": false},
+    "loopExecutionAllowed": {"const": false},
+    "mutationAllowed": {"const": false},
+    "approvalAllowed": {"const": false},
+    "publicationAllowed": {"const": false},
+    "transportStateSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "kind": {"enum": ["base", "revision"]},
+        "revisionId": {"type": ["string", "null"], "maxLength": 200},
+        "revisionSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "eventRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partId", "measureId", "eventId", "staff", "voice", "kind"],
+      "properties": {
+        "partId": {"$ref": "#/$defs/id"},
+        "measureId": {"$ref": "#/$defs/id"},
+        "eventId": {"$ref": "#/$defs/id"},
+        "staff": {"type": "integer", "minimum": 1, "maximum": 128},
+        "voice": {"type": "string", "minLength": 1, "maxLength": 40},
+        "kind": {"enum": ["note", "rest", "unpitched"]}
+      }
+    },
+    "cursor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cursorPointId", "measureOrdinal", "onset", "eventRefs"],
+      "properties": {
+        "cursorPointId": {"type": "string", "pattern": "^cursor_[0-9a-f]{24}$"},
+        "measureOrdinal": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "onset": {"$ref": "#/$defs/rational"},
+        "eventRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "items": {"$ref": "#/$defs/eventRef"}
+        }
+      }
+    }
+  }
+}
