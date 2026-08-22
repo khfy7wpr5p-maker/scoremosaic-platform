@@ -1,0 +1,55 @@
+name: Stage 10-D Disconnected Edit Intent UX CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage10d-disconnected-edit-intent-ux-v1"
+    paths:
+      - ".github/workflows/stage10d-disconnected-edit-intent-ux-ci.yml"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage10*.py"
+      - "contracts/stage10-ui-application-experience-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage10d-disconnected-edit-intent-ux-ci.yml"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage10*.py"
+      - "contracts/stage10-ui-application-experience-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage10d-edit-intent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Check local JavaScript syntax
+        run: |
+          node --check prototypes/stage10-ui-application-experience/fixture.js
+          node --check prototypes/stage10-ui-application-experience/app.js
+          node --check prototypes/stage10-ui-application-experience/edit-intent.js
+      - name: Run Stage 10-A regression
+        run: python -m unittest discover -s tests -p 'test_stage10a_*.py' -v
+      - name: Run Stage 10-B regression
+        run: python -m unittest discover -s tests -p 'test_stage10b_*.py' -v
+      - name: Run Stage 10-C regression
+        run: python -m unittest discover -s tests -p 'test_stage10c_*.py' -v
+      - name: Run Stage 10-D regression
+        run: python -m unittest discover -s tests -p 'test_stage10d_*.py' -v
+      - name: Run Stage 9-I stop-boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
