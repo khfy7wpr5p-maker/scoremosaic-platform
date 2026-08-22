@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import sqlite3
 from pathlib import Path
+import stat
 from typing import Any, Callable
 
 from .contracts import TeacherScoreRevision
@@ -51,6 +52,63 @@ class DurableRevisionStore(SqliteRevisionBackend):
 
         return STORE_SCHEMA_VERSION
 
+    def _connect(self) -> sqlite3.Connection:
+        """Open SQLite only while the private root/database identities remain safe."""
+
+        try:
+            root_stat = self._root.lstat()
+        except OSError:
+            fail("revision_store_root_invalid")
+        if not stat.S_ISDIR(root_stat.st_mode) or stat.S_ISLNK(root_stat.st_mode):
+            fail("revision_store_root_invalid")
+        root_identity = (root_stat.st_dev, root_stat.st_ino)
+        retained_root_identity = getattr(self, "_root_identity", None)
+        if retained_root_identity is not None and root_identity != retained_root_identity:
+            fail("revision_store_root_substituted")
+
+        try:
+            pre_db_stat = self._db_path.lstat()
+        except FileNotFoundError:
+            pre_db_stat = None
+        except OSError:
+            fail("revision_store_database_invalid")
+        if pre_db_stat is not None and (
+            stat.S_ISLNK(pre_db_stat.st_mode) or not stat.S_ISREG(pre_db_stat.st_mode)
+        ):
+            fail("revision_store_database_invalid")
+        pre_db_identity = (
+            None
+            if pre_db_stat is None
+            else (pre_db_stat.st_dev, pre_db_stat.st_ino)
+        )
+
+        connection = super()._connect()
+        try:
+            post_root_stat = self._root.lstat()
+            post_db_stat = self._db_path.lstat()
+        except OSError:
+            connection.close()
+            fail("revision_store_database_invalid")
+        if (
+            not stat.S_ISDIR(post_root_stat.st_mode)
+            or stat.S_ISLNK(post_root_stat.st_mode)
+            or not stat.S_ISREG(post_db_stat.st_mode)
+            or stat.S_ISLNK(post_db_stat.st_mode)
+        ):
+            connection.close()
+            fail("revision_store_database_invalid")
+        post_root_identity = (post_root_stat.st_dev, post_root_stat.st_ino)
+        post_db_identity = (post_db_stat.st_dev, post_db_stat.st_ino)
+        if post_root_identity != root_identity:
+            connection.close()
+            fail("revision_store_root_substituted")
+        if pre_db_identity is not None and post_db_identity != pre_db_identity:
+            connection.close()
+            fail("revision_store_database_substituted")
+        if retained_root_identity is None:
+            self._root_identity = root_identity
+        return connection
+
     def _fault(self, point: str) -> None:
         if self._fault_injector is not None:
             self._fault_injector(point)
@@ -70,6 +128,24 @@ class DurableRevisionStore(SqliteRevisionBackend):
         if not isinstance(revision_id, str) or not isinstance(revision_sha256, str):
             fail("revision_store_revision_identity_invalid")
         return revision_id, revision_sha256, previous_audit
+
+    def _validate_loaded_record(
+        self,
+        scope: RevisionScope,
+        record: dict[str, Any],
+        *,
+        expected_parent_revision_id: str | None,
+        expected_parent_revision_sha256: str | None,
+        expected_previous_audit_event_sha256: str | None,
+    ) -> dict[str, Any]:
+        validated, _ = validate_revision_for_store(
+            scope,
+            TeacherScoreRevision(record),
+            expected_parent_revision_id=expected_parent_revision_id,
+            expected_parent_revision_sha256=expected_parent_revision_sha256,
+            expected_previous_audit_event_sha256=expected_previous_audit_event_sha256,
+        )
+        return validated
 
     def append_revision(
         self,
@@ -243,15 +319,16 @@ class DurableRevisionStore(SqliteRevisionBackend):
             connection.close()
 
     def load_head(self, scope: RevisionScope) -> DurableRevisionHead | None:
-        if not isinstance(scope, RevisionScope):
-            fail("revision_store_scope_type_invalid")
-        connection = self._connect()
-        try:
-            if not self._existing_scope(connection, scope):
-                return None
-            return self._read_head(connection, scope)
-        finally:
-            connection.close()
+        history = self.load_history(scope)
+        if not history:
+            return None
+        last = history[-1]
+        return DurableRevisionHead(
+            last["revisionId"],
+            last["revisionSha256"],
+            last["auditEventSha256"],
+            len(history),
+        )
 
     def load_revision(
         self, scope: RevisionScope, revision_sha256: str
@@ -262,7 +339,16 @@ class DurableRevisionStore(SqliteRevisionBackend):
         try:
             if not self._existing_scope(connection, scope):
                 fail("revision_store_record_missing")
-            return self._load_record(connection, scope, revision_sha256)
+            record = self._load_record(connection, scope, revision_sha256)
+            return self._validate_loaded_record(
+                scope,
+                record,
+                expected_parent_revision_id=record.get("parentRevisionId"),
+                expected_parent_revision_sha256=record.get("parentRevisionSha256"),
+                expected_previous_audit_event_sha256=record.get("previousAuditEventSha256"),
+            )
+        except sqlite3.Error:
+            fail("revision_store_database_invalid")
         finally:
             connection.close()
 
@@ -278,25 +364,30 @@ class DurableRevisionStore(SqliteRevisionBackend):
                 "FROM revision_records WHERE scope_id=? ORDER BY sequence ASC",
                 (scope.scope_id,),
             ).fetchall()
-            records = tuple(self._verify_record_row(scope, row) for row in rows)
             head = self._read_head(connection, scope)
-            if not records:
+            if not rows:
                 if head is not None:
                     fail("revision_store_history_head_mismatch")
                 return ()
             if head is None:
                 fail("revision_store_history_head_mismatch")
 
+            records: list[dict[str, Any]] = []
             previous_id: str | None = None
             previous_sha: str | None = None
             previous_audit: str | None = None
-            for sequence, record in enumerate(records, start=1):
-                if record["parentRevisionId"] != previous_id:
-                    fail("revision_store_history_parent_mismatch")
-                if record["parentRevisionSha256"] != previous_sha:
-                    fail("revision_store_history_parent_mismatch")
-                if record["previousAuditEventSha256"] != previous_audit:
-                    fail("revision_store_history_audit_mismatch")
+            for expected_sequence, row in enumerate(rows, start=1):
+                if row[0] != expected_sequence:
+                    fail("revision_store_history_sequence_mismatch")
+                record = self._verify_record_row(scope, row)
+                record = self._validate_loaded_record(
+                    scope,
+                    record,
+                    expected_parent_revision_id=previous_id,
+                    expected_parent_revision_sha256=previous_sha,
+                    expected_previous_audit_event_sha256=previous_audit,
+                )
+                records.append(record)
                 previous_id = record["revisionId"]
                 previous_sha = record["revisionSha256"]
                 previous_audit = record["auditEventSha256"]
@@ -308,7 +399,9 @@ class DurableRevisionStore(SqliteRevisionBackend):
                 or head.audit_event_sha256 != previous_audit
             ):
                 fail("revision_store_history_head_mismatch")
-            return records
+            return tuple(records)
+        except sqlite3.Error:
+            fail("revision_store_database_invalid")
         finally:
             connection.close()
 
