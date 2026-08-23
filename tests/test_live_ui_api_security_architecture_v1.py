@@ -31,10 +31,46 @@ class LiveUiApiSecurityArchitectureV1Tests(unittest.TestCase):
         self.assertIs(authz["idpRoleClaimAloneSufficientForResourceAccess"], False)
         self.assertIs(authz["hiddenOrDisabledUiActionCountsAsAuthorization"], False)
 
-    def test_provider_tokens_remain_out_of_browser_application_storage(self) -> None:
+    def test_oidc_authorization_callback_and_id_token_validation_are_explicit(self) -> None:
         identity = CONTRACT["identityAndSession"]
         self.assertEqual("Authentik", identity["targetIdentityProvider"])
         self.assertEqual("authorization_code_with_pkce", identity["flow"])
+        request = identity["authorizationRequestValidation"]
+        for key in (
+            "stateRequired",
+            "nonceRequired",
+            "pkceRequired",
+            "exactRedirectUriAllowlistRequired",
+            "authorizationResponseStateMustMatch",
+            "authorizationResponseNonceMustMatch",
+        ):
+            self.assertIs(request[key], True, key)
+        self.assertEqual("S256", request["pkceMethod"])
+        self.assertIs(request["openRedirectAllowed"], False)
+
+        token = identity["idTokenValidation"]
+        for key in (
+            "signatureValidationRequired",
+            "trustedIssuerMatchRequired",
+            "audienceMatchRequired",
+            "expirationValidationRequired",
+            "issuedAtValidationRequired",
+            "nonceMatchRequired",
+            "algorithmAllowlistRequired",
+            "trustedJwksOrEquivalentKeyValidationRequired",
+            "boundedClockSkewOnly",
+        ):
+            self.assertIs(token[key], True, key)
+
+    def test_provider_tokens_remain_server_side_and_browser_session_is_hardened(self) -> None:
+        identity = CONTRACT["identityAndSession"]
+        provider = identity["providerTokenHandling"]
+        self.assertIs(provider["serverSideOnly"], True)
+        self.assertIs(provider["applicationJavascriptAccessAllowed"], False)
+        self.assertIs(provider["loggingAllowed"], False)
+        self.assertIs(provider["persistentStorageRequiresEncryptionAtRest"], True)
+        self.assertIs(provider["refreshTokenRotationOrEquivalentReplayProtectionRequired"], True)
+        self.assertIs(provider["revocationOnSessionTerminationRequiredWhereSupported"], True)
         self.assertIs(identity["browserReceivesProviderAccessToken"], False)
         self.assertIs(identity["browserReceivesProviderRefreshToken"], False)
         self.assertIs(identity["browserStoresSessionInLocalStorage"], False)
@@ -50,6 +86,9 @@ class LiveUiApiSecurityArchitectureV1Tests(unittest.TestCase):
     def test_stage11_read_vocabulary_maps_to_exact_versioned_get_endpoints(self) -> None:
         transport = CONTRACT["apiTransport"]
         self.assertEqual("/api/v1", transport["basePath"])
+        self.assertIs(transport["httpsRequiredForRuntime"], True)
+        self.assertIs(transport["strictTransportSecurityRequiredForProduction"], True)
+        self.assertIs(transport["authenticatedResponsesNoStoreByDefault"], True)
         endpoints = {entry["operation"]: entry for entry in transport["initialReadEndpoints"]}
         self.assertEqual({"review.read", "issues.read", "sourceEvidence.read", "validation.read"}, set(endpoints))
         expected = {
@@ -112,6 +151,7 @@ class LiveUiApiSecurityArchitectureV1Tests(unittest.TestCase):
         audit = CONTRACT["audit"]
         self.assertIs(audit["appendOnlyEvidenceRequired"], True)
         self.assertIs(audit["rawSessionTokenLogged"], False)
+        self.assertIs(audit["rawProviderTokenLogged"], False)
         self.assertIs(audit["rawCsrfTokenLogged"], False)
         self.assertIs(audit["rawIdempotencyKeyLogged"], False)
         rate = CONTRACT["rateLimitAndAbuse"]
@@ -121,6 +161,14 @@ class LiveUiApiSecurityArchitectureV1Tests(unittest.TestCase):
 
     def test_required_negative_security_catalogue_covers_material_boundaries(self) -> None:
         required = {
+            "oidc_state_mismatch",
+            "oidc_nonce_mismatch",
+            "oidc_redirect_uri_substitution",
+            "oidc_pkce_downgrade",
+            "oidc_wrong_issuer",
+            "oidc_wrong_audience",
+            "oidc_expired_token",
+            "oidc_invalid_signature",
             "missing_session",
             "forged_session",
             "cross_tenant_document_access",
