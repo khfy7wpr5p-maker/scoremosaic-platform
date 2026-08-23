@@ -2,6 +2,7 @@
 
 Status: **approved repository API-contract baseline; no HTTP route or runtime activation**  
 Machine-readable contract: `contracts/teacher-review-api-v1.json`  
+Read-result schema: `contracts/teacher-review-api-read-result-v1.schema.json`  
 Edit-intent request schema: `contracts/teacher-review-api-edit-intent-v1.schema.json`  
 Revision-result schema: `contracts/teacher-review-api-revision-result-v1.schema.json`  
 Current architecture state: `contracts/architecture-current-state-v1.json`
@@ -18,7 +19,9 @@ The browser must never submit the Stage 8-G internal write envelope directly.
 Browser UI
   -> non-authoritative API edit intent
   -> session / CSRF / exact-origin gate
-  -> server resource authorization
+  -> coarse revision-proposal + document authorization
+  -> bounded request parsing
+  -> requested musical-operation authorization
   -> fresh exact-current snapshot resolution
   -> server-side target + old-value resolution
   -> server-side authorization grant
@@ -26,6 +29,7 @@ Browser UI
   -> internal teacher-review-write-request-v1
   -> Stage 8-G authorized write boundary
   -> immutable TeacherScoreRevision
+  -> security audit evidence
   -> safe public API result
 ```
 
@@ -33,7 +37,7 @@ The existing `teacher-review-write-request-v1.schema.json` remains an internal s
 
 ## 2. Read endpoints
 
-The four reads already reserved by Live UI ↔ API Security v1 remain exact:
+The v1 read surface is deliberately limited to the four operations already reserved by Live UI ↔ API Security v1 and Stage 11:
 
 ```text
 GET /api/v1/documents/{document_id}/revisions/{revision_id}/review
@@ -42,14 +46,11 @@ GET /api/v1/documents/{document_id}/revisions/{revision_id}/source-evidence
 GET /api/v1/documents/{document_id}/revisions/{revision_id}/validation
 ```
 
-This contract additionally reserves:
+Every endpoint uses the closed `scoremosaic-teacher-review-api-read-result-v1` response schema. That schema adds the mandatory server correlation ID needed by the live-security contract while reusing the bounded Stage 11 read-data shapes.
 
-```text
-GET /api/v1/documents/{document_id}/revisions
-GET /api/v1/documents/{document_id}/revisions/{revision_id}
-```
+All protected reads require server-side principal, tenant and resource authorization. Route visibility in the browser never counts as authorization. Rejected/unavailable read results expose no server-resolved document or revision identity and no data payload.
 
-All protected reads require server-side principal, tenant and resource authorization. Route visibility in the browser never counts as authorization.
+Adding revision-history/list/detail endpoints is intentionally deferred to a later versioned contract rather than silently expanding v1.
 
 ## 3. Revision-proposal endpoint
 
@@ -136,35 +137,45 @@ stateSha256 = exact current musical-state SHA-256
 
 The server re-reads the durable head. Any projection, revision or state mismatch fails as stale before Stage 8-G is reached.
 
-## 7. Server resolution order
+## 7. Security-sensitive resolution order
 
-The required order is security-sensitive:
+The required order separates information that is available before body parsing from musical-operation information that exists only after the bounded intent is parsed:
 
 ```text
 1. authenticate session
 2. validate CSRF + exact Origin
-3. authorize operation + document scope
+3. authorize revision.propose + document scope
 4. parse bounded API intent
-5. resolve fresh durable head
-6. verify projection/snapshot binding
-7. resolve stable target against current state
-8. resolve current staff/voice/onset + oldValueSha256
-9. issue/resolve revision:propose grant
-10. generate server command identity
-11. construct + validate ScoreEditCommand
-12. construct internal teacher-review-write-request-v1
-13. invoke Stage 8-G
-14. map only safe result fields
+5. authorize the requested musical operation
+6. resolve fresh durable head
+7. verify projection/snapshot binding
+8. resolve stable target against current state
+9. resolve current staff/voice/onset + oldValueSha256
+10. issue/resolve revision:propose grant
+11. generate server command identity
+12. construct + validate ScoreEditCommand
+13. construct internal teacher-review-write-request-v1
+14. invoke Stage 8-G
 15. append security audit evidence
+16. map only safe public result fields
 ```
 
-Authorization precedes use of request content as authority. The public request itself never grants permission.
+This prevents an unauthorized caller from using malformed body details as an oracle while avoiding the impossible assumption that the server can authorize a musical operation before reading the bounded operation field.
+
+Request bodies must be bounded by server configuration and use `application/json`. Raw body bytes never grant authorization.
 
 ## 8. Idempotency
 
 `Idempotency-Key` is required for revision proposals.
 
-It is an opaque retry token, not a command/revision identity. Server scope binds it to principal, tenant, document, operation, exact parent revision and request digest.
+V1 accepts only a bounded opaque token:
+
+```text
+length: 16..128
+pattern: ^[A-Za-z0-9._~-]{16,128}$
+```
+
+The raw key is never logged. It is not a command/revision identity. Server scope binds it to principal, tenant, document, operation, exact parent revision and request digest.
 
 - exact key + exact digest may replay the same committed revision;
 - same key + different digest fails as conflict;
@@ -174,10 +185,11 @@ It is an opaque retry token, not a command/revision identity. Server scope binds
 
 Stage 8-G remains the final provider-neutral reservation/append boundary.
 
-## 9. Safe public result
+## 9. Safe public results and identity non-disclosure
 
-A successful/replayed public response may expose only bounded revision evidence:
+A successful/replayed public revision response may expose only bounded authorized revision evidence:
 
+- exact request/document/parent identity already proven for the successful request;
 - revision ID/SHA;
 - resulting musical-state SHA;
 - validation-report SHA;
@@ -191,6 +203,17 @@ status = draft
 approvalEligible = false
 publicationEligible = false
 ```
+
+For `rejected`, `stale`, `conflict`, or `unavailable`, the public revision-result schema requires these fields to be null:
+
+```text
+requestId
+documentId
+parent
+revision
+```
+
+The server canonical `correlationId` remains available for support/audit correlation. A stale/conflict error never returns the fresh current-head identity. The client must reconcile through a separately authorized read.
 
 Internal authorization grants/signatures, provider exception detail, raw MusicXML and filesystem paths are never public response fields.
 
@@ -212,7 +235,7 @@ Reserved semantics:
 | Rate limited | 429 |
 | Temporarily unavailable | 503 |
 
-Error payloads use stable public codes and correlation IDs. Cross-tenant existence must not be disclosed through differentiated error detail.
+Error payloads use stable public codes and the server canonical correlation ID. Cross-tenant existence must not be disclosed through differentiated body detail, resolved parent identity or a fresh-head hint.
 
 ## 11. Approval/publication remain outside v1
 
@@ -229,7 +252,7 @@ Approval requires its own exact-human-authority contract. Publication remains a 
 
 ## 12. Negative security coverage
 
-Required cases include browser-supplied reviewer/auth/command/old-value fields, unsupported operations, raw XML/JSON Patch, stale projection/revision/state hashes, missing/unknown targets, tenant/resource crossing, missing idempotency, conflicting replay, historical-parent replay, missing CSRF, wrong Origin, unauthorized-body oracle attempts, internal-error leakage and attempts to smuggle approval/publication decisions through a revision proposal.
+Required cases include browser-supplied reviewer/auth/command/old-value fields, unsupported operations, raw XML/JSON Patch, oversized bodies, malformed idempotency keys, stale projection/revision/state hashes, missing/unknown targets, tenant/resource crossing, missing/conflicting idempotency, historical-parent replay, missing CSRF, wrong Origin, unauthorized-body oracle attempts, parent/current-head identity leakage, internal-error leakage and attempts to smuggle approval/publication decisions through a revision proposal.
 
 ## 13. Activation locks
 
