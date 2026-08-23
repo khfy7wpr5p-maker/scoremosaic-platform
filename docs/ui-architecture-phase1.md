@@ -2,7 +2,8 @@
 
 Status: **approved unnumbered UI/product-design workstream; repository baseline green; low-fidelity Figma started**  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`  
-UI architecture contract: `contracts/ui-architecture-phase1-v1.json`
+UI architecture contract: `contracts/ui-architecture-phase1-v1.json`  
+Web brand rules: `contracts/web-brand-rules-v1.json` and `docs/web-brand-rules-v1.md`
 
 UI Architecture Phase 1 is deliberately **not Stage 12**. Stage 5-11 numbering remains unchanged. This workstream sits after the completed Stage 10/11 local UI/application foundations and before any live UI↔API activation.
 
@@ -75,6 +76,8 @@ Normal product pages use a global shell:
 ```
 
 Teacher Review enters a focused workspace while keeping document/revision context visible.
+
+The regular application shell uses the **Compact Logo** from `docs/web-brand-rules-v1.md`. The large Primary Logo is reserved for brand moments such as landing/product-overview surfaces rather than repeated inside dense professional workspaces.
 
 ## 5. Dashboard architecture
 
@@ -262,8 +265,13 @@ These states must not be collapsed by visual shorthand. Phase 1 does not execute
 
 ## 14. Design System architecture
 
+Brand identity and logo usage are governed by `contracts/web-brand-rules-v1.json` / `docs/web-brand-rules-v1.md`. `ScoreMosaic` is the master brand; `OMR Gateway`, `Teacher Review` and future named workspaces are module lockups rather than replacements for the master brand.
+
+Brand color is decorative/identity-level input to the Design System and must not replace semantic status tokens. In particular, the ScoreMosaic brand gradient cannot by itself encode validation, approval, publication or issue severity.
+
 ### Foundations
 
+- brand identity / logo usage;
 - color tokens;
 - typography scale;
 - spacing scale;
@@ -335,6 +343,7 @@ Change ownership:
 
 | Change | Correct starting layer |
 |---|---|
+| logo/brand usage | Web Brand Rules / Design System |
 | color, typography, spacing | Design System |
 | layout, panel structure, navigation | UI / Figma |
 | new data field | Typed Application Contract |
@@ -426,8 +435,9 @@ Low-fidelity architecture is ready to advance only when:
 6. validation/revision semantics are explicit;
 7. approval/publication separation is explicit;
 8. Design System component taxonomy is explicit;
-9. accessibility/responsive requirements are explicit;
-10. future modernization/change-governance rules are explicit;
-11. all eleven logical Figma areas remain represented despite physical page limits;
-12. Stage 10/11 and production locks remain unchanged;
-13. architecture and UI contract CI are green.
+9. Web Brand Rules are explicit and bound to the Design System;
+10. accessibility/responsive requirements are explicit;
+11. future modernization/change-governance rules are explicit;
+12. all eleven logical Figma areas remain represented despite physical page limits;
+13. Stage 10/11 and production locks remain unchanged;
+14. architecture and UI contract CI are green.
