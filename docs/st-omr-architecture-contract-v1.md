@@ -48,10 +48,13 @@ The project may later make ST-OMR the primary or sole production OMR, but that i
 The safe migration sequence is:
 
 ```text
-ST-OMR SHADOW
+ST-OMR health-only service foundation
+  -> ST-OMR SHADOW
   -> ST-OMR PRIMARY
   -> ST-OMR ONLY (optional, evidence-gated)
 ```
+
+The **ST-OMR health-only service foundation** remains the next narrow runtime gate inherited from the original architecture contract. It may prove isolated health/readiness and service safety properties only. It must not load an AI model, process user files, join Gateway orchestration, enter Ensemble comparison, train from teacher corrections, expose a public endpoint, or grant production authority.
 
 ### Shadow gate
 
