@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import shutil
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,18 +103,23 @@ def _validate_generated_tree(output: Path) -> None:
         if not path.is_file() or path.suffix not in {".html", ".js", ".css"}:
             continue
         text = path.read_text(encoding="utf-8")
+        if "https://" in text or "http://" in text:
+            raise ValueError(f"external HTTP reference in {path.relative_to(output)}")
         for token in FORBIDDEN_BROWSER_CAPABILITIES:
             if token in text:
                 raise ValueError(f"forbidden browser capability {token!r} in {path.relative_to(output)}")
 
 
-def build(output: Path) -> None:
-    source_html = _read(UI_SOURCE / "index.html")
-    _validate_source_html(source_html)
+def _validate_output_target(output: Path) -> None:
+    if output.exists() or output.is_symlink():
+        raise ValueError("preview output path must not already exist; builder never deletes or overwrites")
+    if output == ROOT or ROOT in output.parents:
+        raise ValueError("preview output must be outside the repository tree")
+    if not output.parent.is_dir():
+        raise ValueError("preview output parent directory must already exist")
 
-    if output.exists():
-        shutil.rmtree(output)
-    output.mkdir(parents=True)
+
+def _populate(output: Path) -> None:
     application = output / "application"
     application.mkdir()
 
@@ -125,6 +131,7 @@ def build(output: Path) -> None:
     for name in APP_FILES:
         shutil.copyfile(APP_SOURCE / name, application / name)
 
+    source_html = _read(UI_SOURCE / "index.html")
     html = source_html.replace(
         "../stage11-ui-application-contracts/",
         "application/",
@@ -145,14 +152,28 @@ def build(output: Path) -> None:
         encoding="utf-8",
     )
 
-    _validate_generated_tree(output)
+
+def build(output: Path) -> None:
+    output = output.resolve()
+    _validate_output_target(output)
+    source_html = _read(UI_SOURCE / "index.html")
+    _validate_source_html(source_html)
+
+    temp = Path(tempfile.mkdtemp(prefix=f".{output.name}.build-", dir=output.parent))
+    try:
+        _populate(temp)
+        _validate_generated_tree(temp)
+        temp.rename(output)
+    finally:
+        if temp.exists():
+            shutil.rmtree(temp)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the disconnected ScoreMosaic Web Preview v1 artifact")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    build(args.output.resolve())
+    build(args.output)
     return 0
 
 
