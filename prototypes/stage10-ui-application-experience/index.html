@@ -53,19 +53,25 @@
         <span class="badge badge--neutral">Fixture overview</span>
       </div>
       <div class="overview-grid">
-        <article class="panel overview-card">
+        <article class="panel overview-card" data-dashboard-region="new-document-action">
           <p class="eyebrow">Start</p>
           <h2>New score</h2>
           <p>Preview the PDF/JPG/PNG intake flow without sending a real file.</p>
           <button type="button" class="primary-button" data-open-product-view="upload">Open Upload</button>
         </article>
-        <article class="panel overview-card">
+        <article class="panel overview-card" data-dashboard-region="needs-review-summary">
           <p class="eyebrow">Needs review</p>
-          <h2>1 fixture document</h2>
+          <h2><span id="dashboard-needs-review-count">—</span> fixture document</h2>
           <p>The repository fixture is ready for the disconnected Teacher Review workspace.</p>
           <button type="button" data-open-product-view="teacher-review">Continue Review</button>
         </article>
-        <article class="panel overview-card">
+        <article class="panel overview-card" data-dashboard-region="processing-summary">
+          <p class="eyebrow">Processing</p>
+          <h2><span id="dashboard-processing-count">—</span> fixture documents</h2>
+          <p>Count is derived from the local fixture only. No timer or server completion state is fabricated.</p>
+          <span class="badge badge--neutral">Read-only summary</span>
+        </article>
+        <article class="panel overview-card" data-dashboard-region="guitar-tab-entry">
           <p class="eyebrow">Derived workspace</p>
           <h2>Guitar TAB</h2>
           <p>Separate guitar arrangement/fingering workspace. Engine runtime remains disconnected.</p>
@@ -79,14 +85,32 @@
         <div><p class="eyebrow">Library</p><h1 id="documents-title">Documents</h1></div>
         <span class="badge badge--neutral">Fixture only</span>
       </div>
+      <div class="document-tools" aria-label="Local document search and status filter">
+        <label class="document-tool" for="document-search">
+          <span>Search</span>
+          <input id="document-search" type="search" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Search fixture documents">
+        </label>
+        <label class="document-tool" for="document-status-filter">
+          <span>Status</span>
+          <select id="document-status-filter">
+            <option value="all">All</option>
+            <option value="processing">Processing</option>
+            <option value="needs-review">Needs Review</option>
+            <option value="approved">Approved</option>
+            <option value="published">Published</option>
+          </select>
+        </label>
+        <span id="document-result-count" class="badge badge--neutral" role="status" aria-live="polite" aria-atomic="true">1 shown</span>
+      </div>
       <div class="panel document-list-preview">
         <div class="document-row document-row--header" aria-hidden="true"><span>Document</span><span>Status</span><span>Revision</span><span>Action</span></div>
-        <div class="document-row">
+        <div class="document-row" data-document-row data-document-status="needs-review" data-document-search="teacher review fixture synthetic repository data bach study local fixture">
           <span><strong>Teacher Review Fixture</strong><small>Synthetic repository data</small></span>
           <span class="badge badge--safe">Needs Review</span>
           <span>Local revision</span>
           <button type="button" data-open-product-view="teacher-review">Open review</button>
         </div>
+        <p id="document-empty-filter" class="document-filter-empty" hidden>No fixture documents match this local filter.</p>
       </div>
     </section>
 
