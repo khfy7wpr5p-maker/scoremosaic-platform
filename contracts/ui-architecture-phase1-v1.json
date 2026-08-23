@@ -127,6 +127,7 @@
     "staleRevisionMustFailClosed": true
   },
   "designSystem": {
+    "brandRulesContract": "contracts/web-brand-rules-v1.json",
     "foundations": ["color_tokens", "typography", "spacing", "grid", "radius", "elevation", "iconography"],
     "coreComponents": [
       "button",

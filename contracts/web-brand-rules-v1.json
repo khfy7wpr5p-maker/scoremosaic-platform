@@ -1,0 +1,147 @@
+{
+  "version": "scoremosaic-web-brand-rules-v1",
+  "scope": "web_brand_identity_and_ui_brand_usage",
+  "parentWorkstream": "scoremosaic-ui-architecture-phase1-v1",
+  "stageNumberAssigned": false,
+  "brandRoot": {
+    "name": "ScoreMosaic",
+    "primaryWordmark": "SCOREMOSAIC",
+    "primaryLogoHasSubtitle": false,
+    "omrGatewayIsBrandRoot": false
+  },
+  "symbol": {
+    "concept": "mosaic_square_M",
+    "preserveCoreMosaicM": true,
+    "smallSizeSimplificationRequired": true,
+    "smallSizeSimplificationMayChangeBrandMeaning": false,
+    "symbolMayBeUsedWithoutWordmark": true,
+    "symbolOnlyUsage": [
+      "favicon",
+      "pwa_icon",
+      "app_tile",
+      "compact_loading_brand_marker"
+    ]
+  },
+  "logoSystem": {
+    "primary": {
+      "composition": "symbol_above_wordmark",
+      "subtitle": null,
+      "preferredUses": [
+        "landing_hero",
+        "product_overview",
+        "about_brand",
+        "large_brand_moment"
+      ]
+    },
+    "compact": {
+      "composition": "symbol_left_wordmark_right",
+      "preferredUses": [
+        "web_navigation",
+        "application_header",
+        "sidebar_header",
+        "footer"
+      ]
+    },
+    "appIcon": {
+      "composition": "simplified_symbol_in_rounded_square",
+      "preferredUses": [
+        "favicon",
+        "pwa_icon",
+        "web_app_icon"
+      ],
+      "mustRemainLegibleAt16Px": true
+    },
+    "productLockup": {
+      "composition": "brand_plus_module_label",
+      "brandNameRemainsScoreMosaic": true,
+      "allowedModuleExamples": [
+        "OMR Gateway",
+        "Teacher Review",
+        "Guitar Workspace"
+      ],
+      "moduleLabelMayReplaceBrandName": false
+    },
+    "monochrome": {
+      "required": true,
+      "preferredInk": "#0B1D3A",
+      "whiteReverseRequired": true
+    }
+  },
+  "palette": {
+    "brandNavy": "#0B1D3A",
+    "brandBlue": "#1D4ED8",
+    "brandTeal": "#0EA5A6",
+    "brandViolet": "#7C3AED",
+    "brandGreen": "#22C55E"
+  },
+  "colorPolicy": {
+    "gradientAllowedForBrandSymbol": true,
+    "wordmarkPreferredColor": "#0B1D3A",
+    "brandColorsMayBeUsedAsDecoration": true,
+    "brandGradientMayEncodeValidationState": false,
+    "brandGradientMayEncodeApprovalState": false,
+    "brandGradientMayEncodePublicationState": false,
+    "statusMeaningMayRelyOnColorAlone": false
+  },
+  "typography": {
+    "uiFamily": "Inter",
+    "wordmarkMustUseApprovedArtwork": true,
+    "wordmarkShouldNotBeRetypedFromUiFont": true,
+    "moduleLabels": {
+      "case": "uppercase_or_title_case_by_lockup_spec",
+      "tracking": "restrained_wide_tracking"
+    }
+  },
+  "clearSpace": {
+    "unit": "x",
+    "definition": "x equals one outer mosaic tile width in the active logo master",
+    "primaryMinimum": "2x on all sides",
+    "compactMinimum": "1.5x on all sides",
+    "appIconMinimum": "icon safe area defined by rounded-square master"
+  },
+  "minimumDigitalSize": {
+    "primaryLogoWidthCssPx": 160,
+    "compactLogoWidthCssPx": 120,
+    "fullMosaicSymbolWidthCssPx": 32,
+    "simplifiedAppSymbolRequiredBelowCssPx": 32,
+    "faviconTargetSizesCssPx": [16, 24, 32]
+  },
+  "backgroundPolicy": {
+    "light": "primary_or_compact_color_logo",
+    "dark": "white_wordmark_with_color_or_white_symbol_after_contrast_check",
+    "busyImage": "do_not_place_without_dedicated_clear_surface_or_contrast_treatment",
+    "monochrome": "navy_on_light_or_white_on_dark"
+  },
+  "webPlacement": {
+    "navigation": "compact",
+    "landingHero": "primary",
+    "favicon": "appIcon",
+    "pwa": "appIcon",
+    "moduleHeader": "productLockup",
+    "technicalPrintOrSingleColor": "monochrome"
+  },
+  "prohibitedUses": [
+    "stretch_or_distort",
+    "rotate_the_logo",
+    "recolor_individual_tiles_outside_approved_palette_or_monochrome",
+    "use_OMR_Gateway_as_the_master_brand_name",
+    "place_wordmark_in_low_contrast_conditions",
+    "use_full_detail_symbol_when_center_tiles_are_not_legible",
+    "add_unapproved_glow_bevel_or_3d_effects",
+    "collapse_edit_approval_or_publication_semantics_into_brand_color"
+  ],
+  "assetGovernance": {
+    "vectorMasterRequiredBeforeProductionExport": true,
+    "approvedArtworkMustBeVersioned": true,
+    "faviconExportsMustComeFromSimplifiedAppIconMaster": true,
+    "rasterReferenceAloneIsNotProductionMaster": true,
+    "futureLogoRefinementMayChangeGeometryWithoutChangingBrandArchitecture": true
+  },
+  "activationLocks": {
+    "changesProductAuthority": false,
+    "changesOmrAuthority": false,
+    "activatesLiveApi": false,
+    "activatesProductionInfrastructure": false,
+    "activatesPublication": false
+  }
+}

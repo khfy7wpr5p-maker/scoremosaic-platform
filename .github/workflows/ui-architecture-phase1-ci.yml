@@ -8,15 +8,18 @@ on:
     paths:
       - ".github/workflows/ui-architecture-phase1-ci.yml"
       - "contracts/ui-architecture-phase1-v1.json"
+      - "contracts/web-brand-rules-v1.json"
       - "contracts/downstream-music-application-integration-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/ui-architecture-phase1.md"
+      - "docs/web-brand-rules-v1.md"
       - "docs/downstream-music-application-integration-boundary.md"
       - "docs/architecture.md"
       - "docs/architecture-stage9-11-current.md"
       - "docs/roadmap.md"
       - "README.md"
       - "tests/test_ui_architecture_phase1.py"
+      - "tests/test_web_brand_rules_v1.py"
       - "tests/test_architecture_consistency.py"
   pull_request:
     branches:
@@ -24,15 +27,18 @@ on:
     paths:
       - ".github/workflows/ui-architecture-phase1-ci.yml"
       - "contracts/ui-architecture-phase1-v1.json"
+      - "contracts/web-brand-rules-v1.json"
       - "contracts/downstream-music-application-integration-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/ui-architecture-phase1.md"
+      - "docs/web-brand-rules-v1.md"
       - "docs/downstream-music-application-integration-boundary.md"
       - "docs/architecture.md"
       - "docs/architecture-stage9-11-current.md"
       - "docs/roadmap.md"
       - "README.md"
       - "tests/test_ui_architecture_phase1.py"
+      - "tests/test_web_brand_rules_v1.py"
       - "tests/test_architecture_consistency.py"
   workflow_dispatch:
 
@@ -55,10 +61,13 @@ jobs:
       - name: Validate JSON contracts
         run: |
           python -m json.tool contracts/ui-architecture-phase1-v1.json > /dev/null
+          python -m json.tool contracts/web-brand-rules-v1.json > /dev/null
           python -m json.tool contracts/downstream-music-application-integration-v1.json > /dev/null
           python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
       - name: Run UI Architecture Phase 1 tests
         run: python -m unittest discover -s tests -p 'test_ui_architecture_phase1.py' -v
+      - name: Run Web Brand Rules v1 tests
+        run: python -m unittest discover -s tests -p 'test_web_brand_rules_v1.py' -v
       - name: Run architecture consistency regression
         run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
       - name: Run Stage 10-F UI boundary regression
