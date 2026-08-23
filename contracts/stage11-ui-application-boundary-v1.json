@@ -1,0 +1,66 @@
+{
+  "version": "scoremosaic-stage11-ui-application-boundary-v1",
+  "stage": "11-A",
+  "status": "CONTRACT_DESIGN_ONLY",
+  "parentContract": "scoremosaic-stage10-ui-experience-eligibility-v1",
+  "purpose": "Define the typed UI-to-application vocabulary without activating live integration.",
+  "transport": {
+    "networkAllowed": false,
+    "productionApiAllowed": false,
+    "localAdapterAllowed": true,
+    "browserPersistenceAllowed": false
+  },
+  "authority": {
+    "browserAuthoritative": false,
+    "uiValidationAuthoritative": false,
+    "localAdapterAuthoritative": false,
+    "serverAuthorizationRequiredForMutation": true,
+    "uiMayCreateScoreEditCommand": false,
+    "uiMayCreateTeacherScoreRevision": false,
+    "uiMayApprove": false,
+    "uiMayPublish": false
+  },
+  "requestKinds": [
+    "review.read",
+    "issues.read",
+    "sourceEvidence.read",
+    "validation.read",
+    "editIntent.prepare"
+  ],
+  "responseEnvelope": {
+    "requiredFields": ["schemaVersion", "requestId", "kind", "state", "data", "error"],
+    "states": ["success", "empty", "rejected", "unavailable"],
+    "successRequiresErrorNull": true,
+    "nonSuccessMayNotImplyAuthority": true
+  },
+  "identityFields": {
+    "documentIdRequired": true,
+    "revisionRequired": true,
+    "requestIdRequired": true,
+    "tenantIdProductionMeaningDeferred": true,
+    "principalProductionMeaningDeferred": true
+  },
+  "security": {
+    "unknownRequestKindRejected": true,
+    "unknownResponseStateRejected": true,
+    "additionalAuthorityFieldsRejected": true,
+    "credentialsForbidden": true,
+    "tokensForbidden": true,
+    "cookiesForbidden": true,
+    "productionArtifactReadsForbidden": true
+  },
+  "activationLocks": {
+    "apiConnectionActivated": false,
+    "authActivated": false,
+    "sessionActivated": false,
+    "rbacActivated": false,
+    "uploadActivated": false,
+    "serverWriteActivated": false,
+    "scoreEditCommandCreationActivated": false,
+    "teacherScoreRevisionCreationActivated": false,
+    "approvalActivated": false,
+    "publicationActivated": false,
+    "playbackActivated": false,
+    "productionInfrastructureActivated": false
+  }
+}
