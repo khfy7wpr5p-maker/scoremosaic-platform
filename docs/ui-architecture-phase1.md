@@ -1,6 +1,6 @@
 # ScoreMosaic UI Architecture Phase 1
 
-Status: **approved unnumbered UI/product-design workstream; repository architecture baseline, Figma next**  
+Status: **approved unnumbered UI/product-design workstream; repository baseline green; low-fidelity Figma started**  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`  
 UI architecture contract: `contracts/ui-architecture-phase1-v1.json`
 
@@ -344,9 +344,11 @@ Change ownership:
 
 Breaking contract changes require versioning and backward-compatibility evidence.
 
-## 17. Figma sequence
+## 17. Figma sequence and Starter-plan physical layout
 
-After this repository baseline is green, Figma should proceed in this order:
+The repository baseline is green and **low-fidelity Figma work has started**. High-fidelity work remains intentionally not started.
+
+The design sequence remains:
 
 ```text
 Low-fidelity wireframes
@@ -357,7 +359,7 @@ Low-fidelity wireframes
   -> Design Freeze v1
 ```
 
-Recommended Figma pages:
+The UI architecture still contains eleven logical design areas:
 
 ```text
 00 — Foundations
@@ -372,6 +374,29 @@ Recommended Figma pages:
 09 — Prototype
 10 — Archive
 ```
+
+The active Figma Starter plan permits only three physical pages. This does **not** remove or merge architectural responsibilities. The eleven logical areas are grouped as editable frames/sections under three physical pages:
+
+```text
+00 — Foundations & Components
+  ├── 00 Foundations
+  ├── 01 Components
+  └── 02 Patterns
+
+01 — Product Flows
+  ├── 03 Dashboard
+  ├── 04 Documents
+  └── 05 Upload & Processing
+
+02 — Teacher Review & Approval
+  ├── 06 Teacher Review
+  ├── 07 Revision
+  ├── 08 Approval & Publication
+  ├── 09 Prototype
+  └── 10 Archive
+```
+
+If the Figma plan later allows more pages, these logical areas may be split into separate physical pages without changing the product or authority architecture.
 
 ## 18. Fixed non-activation boundary
 
@@ -391,7 +416,7 @@ UI Architecture Phase 1 does not activate:
 
 ## 19. Exit criteria before high-fidelity Figma
 
-Repository Phase 1 baseline is ready for Figma only when:
+Low-fidelity architecture is ready to advance only when:
 
 1. product navigation is explicit;
 2. end-to-end user flow is explicit;
@@ -403,5 +428,6 @@ Repository Phase 1 baseline is ready for Figma only when:
 8. Design System component taxonomy is explicit;
 9. accessibility/responsive requirements are explicit;
 10. future modernization/change-governance rules are explicit;
-11. Stage 10/11 and production locks remain unchanged;
-12. architecture and UI contract CI are green.
+11. all eleven logical Figma areas remain represented despite physical page limits;
+12. Stage 10/11 and production locks remain unchanged;
+13. architecture and UI contract CI are green.
