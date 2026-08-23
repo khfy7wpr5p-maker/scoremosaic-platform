@@ -1,7 +1,8 @@
 # ScoreMosaic Web Preview v1
 
 Status: **repository build ready; not published**  
-Contract: `contracts/web-preview-v1.json`
+Contract: `contracts/web-preview-v1.json`  
+Current architecture state: `contracts/architecture-current-state-v1.json`
 
 Web Preview v1 packages the existing Stage 10 product experience and Stage 11 typed local application scripts into one deterministic static artifact that can be opened in a browser or later supplied to an explicitly authorized preview host.
 
