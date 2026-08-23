@@ -14,6 +14,8 @@ CURRENT_DOCS = {
     "stage5-7": ROOT / "docs" / "architecture-stage5-7-current.md",
     "stage8": ROOT / "docs" / "architecture-stage8-current.md",
     "stage9-11": ROOT / "docs" / "architecture-stage9-11-current.md",
+    "ui-phase1": ROOT / "docs" / "ui-architecture-phase1.md",
+    "downstream-music-apps": ROOT / "docs" / "downstream-music-application-integration-boundary.md",
     "st-omr": ROOT / "docs" / "st-omr-architecture-contract-v1.md",
     "teacher-review": ROOT / "docs" / "teacher-review-score-editor-architecture-contract.md",
     "roadmap": ROOT / "docs" / "roadmap.md",
@@ -42,6 +44,17 @@ class ArchitectureConsistencyTests(unittest.TestCase):
             },
             CONTRACT["stageStatus"],
         )
+
+    def test_approved_post_stage11_workstreams_are_unnumbered_and_non_live(self) -> None:
+        ui = CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]
+        self.assertIs(ui["stageNumberAssigned"], False)
+        self.assertEqual("APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_FIGMA_NEXT", ui["status"])
+        self.assertIs(ui["figmaHighFidelityStarted"], False)
+        self.assertIs(ui["liveActivationGranted"], False)
+        downstream = CONTRACT["approvedWorkstreams"]["downstreamMusicApplicationIntegration"]
+        self.assertIs(downstream["stageNumberAssigned"], False)
+        self.assertEqual("ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION", downstream["status"])
+        self.assertIs(downstream["guitarTabLiveIntegrationActivated"], False)
 
     def test_current_stage7_engine_set_and_quorum_are_not_silently_changed(self) -> None:
         omr = CONTRACT["currentOmr"]
@@ -105,6 +118,17 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         ):
             self.assertIs(browser[key], False, key)
 
+    def test_downstream_music_applications_cannot_become_upstream_authority(self) -> None:
+        downstream = CONTRACT["downstreamMusicApplications"]
+        self.assertEqual("POST_CANONICAL_TEACHER_REVIEW_VALIDATION", downstream["integrationPosition"])
+        self.assertIs(downstream["rawOmrCandidateInputAllowed"], False)
+        self.assertIs(downstream["directBrowserEngineCallsAllowed"], False)
+        self.assertIs(downstream["downstreamMayMutateCanonicalOrTeacherRevision"], False)
+        self.assertIs(downstream["productionDerivedOutputRequiresApprovedTeacherRevision"], True)
+        guitar = downstream["musicXmlToGuitarTabEngine"]
+        self.assertIs(guitar["architecturalSeamReserved"], True)
+        self.assertIs(guitar["liveIntegrationActivated"], False)
+
     def test_all_current_architecture_documents_bind_to_current_state_contract(self) -> None:
         marker = "contracts/architecture-current-state-v1.json"
         for name, text in TEXT.items():
@@ -117,8 +141,15 @@ class ArchitectureConsistencyTests(unittest.TestCase):
             "architecture-stage5-7-current.md",
             "architecture-stage8-current.md",
             "architecture-stage9-11-current.md",
+            "ui-architecture-phase1.md",
+            "downstream-music-application-integration-boundary.md",
         ):
             self.assertIn(marker, text)
+
+    def test_ui_phase1_is_not_silently_reassigned_to_stage12(self) -> None:
+        self.assertIn("not Stage 12", TEXT["ui-phase1"])
+        self.assertIn("does not consume or reserve Stage 12 numbering", TEXT["roadmap"])
+        self.assertIs(CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]["stageNumberAssigned"], False)
 
     def test_stale_current_state_phrases_do_not_return(self) -> None:
         forbidden = {
