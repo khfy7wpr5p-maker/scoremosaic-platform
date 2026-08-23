@@ -128,6 +128,7 @@
   },
   "designSystem": {
     "brandRulesContract": "contracts/web-brand-rules-v1.json",
+    "foundationsContract": "contracts/design-system-foundations-v1.json",
     "foundations": ["color_tokens", "typography", "spacing", "grid", "radius", "elevation", "iconography"],
     "coreComponents": [
       "button",
@@ -181,6 +182,8 @@
     "eligibleAfterThisBaseline": true,
     "lowFidelityStarted": true,
     "highFidelityStarted": false,
+    "designSystemFoundationsRepositoryReady": true,
+    "designSystemFoundationsAppliedInFigma": false,
     "logicalAreas": [
       "00_foundations",
       "01_components",
