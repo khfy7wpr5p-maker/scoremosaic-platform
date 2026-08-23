@@ -15,6 +15,7 @@ CURRENT_DOCS = {
     "stage8": ROOT / "docs" / "architecture-stage8-current.md",
     "stage9-11": ROOT / "docs" / "architecture-stage9-11-current.md",
     "ui-phase1": ROOT / "docs" / "ui-architecture-phase1.md",
+    "live-ui-api-security": ROOT / "docs" / "live-ui-api-security-architecture-v1.md",
     "downstream-music-apps": ROOT / "docs" / "downstream-music-application-integration-boundary.md",
     "st-omr": ROOT / "docs" / "st-omr-architecture-contract-v1.md",
     "teacher-review": ROOT / "docs" / "teacher-review-score-editor-architecture-contract.md",
@@ -55,6 +56,17 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIs(ui["figmaLowFidelityStarted"], True)
         self.assertIs(ui["figmaHighFidelityStarted"], False)
         self.assertIs(ui["liveActivationGranted"], False)
+
+        security = CONTRACT["approvedWorkstreams"]["liveUiApiSecurityDesign"]
+        self.assertIs(security["stageNumberAssigned"], False)
+        self.assertEqual(
+            "APPROVED_REPOSITORY_LIVE_UI_API_SECURITY_ARCHITECTURE_BASELINE",
+            security["status"],
+        )
+        self.assertIs(security["repositorySecurityArchitectureReady"], True)
+        for key in ("runtimeActivated", "liveNetworkActivated", "authRuntimeActivated", "serverWriteActivated"):
+            self.assertIs(security[key], False, key)
+
         downstream = CONTRACT["approvedWorkstreams"]["downstreamMusicApplicationIntegration"]
         self.assertIs(downstream["stageNumberAssigned"], False)
         self.assertEqual("ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION", downstream["status"])
@@ -146,6 +158,7 @@ class ArchitectureConsistencyTests(unittest.TestCase):
             "architecture-stage8-current.md",
             "architecture-stage9-11-current.md",
             "ui-architecture-phase1.md",
+            "live-ui-api-security-architecture-v1.md",
             "downstream-music-application-integration-boundary.md",
         ):
             self.assertIn(marker, text)
@@ -154,6 +167,10 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIn("not Stage 12", TEXT["ui-phase1"])
         self.assertIn("does not consume or reserve Stage 12 numbering", TEXT["roadmap"])
         self.assertIs(CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]["stageNumberAssigned"], False)
+
+    def test_live_ui_api_security_is_not_silently_reassigned_to_stage12(self) -> None:
+        self.assertIn("does not consume Stage 12", TEXT["live-ui-api-security"])
+        self.assertIs(CONTRACT["approvedWorkstreams"]["liveUiApiSecurityDesign"]["stageNumberAssigned"], False)
 
     def test_stale_current_state_phrases_do_not_return(self) -> None:
         forbidden = {
