@@ -42,7 +42,9 @@ class LiveUiApiSecurityArchitectureV1Tests(unittest.TestCase):
             "pkceRequired",
             "exactRedirectUriAllowlistRequired",
             "authorizationResponseStateMustMatch",
-            "authorizationResponseNonceMustMatch",
+            "stateOneTimeUseRequired",
+            "nonceOneTimeUseRequired",
+            "idTokenNonceMustMatchAuthorizationRequest",
         ):
             self.assertIs(request[key], True, key)
         self.assertEqual("S256", request["pkceMethod"])
