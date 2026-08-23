@@ -23,8 +23,9 @@
     "primaryNavigation": [
       "dashboard",
       "documents",
-      "new_document",
-      "review"
+      "upload",
+      "teacher_review",
+      "guitar_tab"
     ],
     "secondaryNavigation": [
       "account"
@@ -57,11 +58,21 @@
       "requiredStates": ["all", "processing", "needs_review", "approved", "published"],
       "requiredCapabilities": ["search", "status_filter", "open_document"]
     },
+    "upload": {
+      "navigationLabel": "Upload",
+      "presentationOnlyUntilLiveGate": true,
+      "realFileSubmissionActivated": false,
+      "acceptedPresentationTypes": ["pdf", "jpeg", "png"],
+      "requiredStates": ["select_input", "validating", "preparing", "processing", "review_ready", "rejected", "unavailable"],
+      "liveDependencies": ["authenticated_api", "safe_intake", "object_storage", "job_creation", "omr_gateway"]
+    },
     "newDocument": {
+      "compatibilityRole": "workflow_name_for_upload_and_processing_flow",
       "presentationOnlyUntilLiveGate": true,
       "requiredStates": ["select_input", "validating", "processing", "review_ready", "rejected", "unavailable"]
     },
     "teacherReview": {
+      "navigationLabel": "Teacher Review",
       "requiredRegions": [
         "document_revision_context",
         "issues",
@@ -71,6 +82,20 @@
         "validation_revision_status"
       ],
       "optionalDeferredRegions": ["review_transport"]
+    },
+    "guitarTab": {
+      "navigationLabel": "Guitar TAB",
+      "separateWorkspace": true,
+      "presentationOnlyUntilLiveGate": true,
+      "engineRuntimeActivated": false,
+      "sourceBoundary": "validated_or_approved_teacher_review_artifact_only_for_live_integration",
+      "requiredRegions": ["standard_notation", "guitar_tab", "fingering_options", "position_playability_evidence"],
+      "authority": {
+        "mayMutateCanonicalScore": false,
+        "mayCreateTeacherRevision": false,
+        "mayApprove": false,
+        "mayPublish": false
+      }
     },
     "revisionHistory": {
       "requiredCapabilities": ["current_revision_identity", "ordered_revision_list", "change_summary", "validation_state"],
@@ -156,7 +181,10 @@
       "issue_marker",
       "evidence_viewer",
       "revision_indicator",
-      "structured_edit_field"
+      "structured_edit_field",
+      "guitar_tab_viewer",
+      "fingering_option_card",
+      "playability_evidence"
     ],
     "tokenNamingRequired": true
   },
@@ -205,7 +233,8 @@
       "07_revision",
       "08_approval_publication",
       "09_prototype",
-      "10_archive"
+      "10_archive",
+      "11_guitar_tab_workspace"
     ],
     "physicalPagePolicy": "starter_plan_three_page_grouping",
     "physicalPages": [
@@ -219,7 +248,7 @@
       },
       {
         "name": "02_teacher_review_approval",
-        "logicalAreas": ["06_teacher_review", "07_revision", "08_approval_publication", "09_prototype", "10_archive"]
+        "logicalAreas": ["06_teacher_review", "07_revision", "08_approval_publication", "09_prototype", "10_archive", "11_guitar_tab_workspace"]
       }
     ],
     "logicalAreasMustNotBeDroppedBecauseOfPlanLimits": true,
