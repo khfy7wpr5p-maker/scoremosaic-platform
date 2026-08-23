@@ -1,6 +1,6 @@
 # ScoreMosaic Stage 5-7 Current Architecture
 
-Status: **authoritative Stage 5-7 activation addendum, synchronized through Stage 11-F**  
+Status: **authoritative current-activation addendum for Stage 5-7**, synchronized through Stage 11-F  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`
 
 This document remains authoritative for Stage 5-7 behavior. Later-stage status is summarized only to prevent stale boundary statements; detailed Stage 8 and Stage 9-11 truth lives in their current addenda.
@@ -76,7 +76,9 @@ Stage 7 convergence is complete at repository contract/hermetic-integration leve
 - Comparator/report are neutral and read-only.
 - Evidence is decomposed; no opaque confidence score grants authority.
 
-The hermetic vertical slice uses controlled transports/fixtures and does not prove live production model execution.
+The hermetic vertical slice uses controlled transports/fixtures and does **not** prove live HOMR/Clarity/Audiveris production model execution.
+
+Historical Stage 7 readiness remains **UI_READY_WITH_LOCKED_FEATURES**. That result permitted contract-first/read-only UI work while keeping live backend integration locked; Stage 10 and Stage 11 later implemented only repository-local disconnected UI/application layers under that constraint.
 
 ## Current OMR set and ST-OMR migration boundary
 
@@ -125,7 +127,7 @@ Those capabilities remain locked behind later production gates.
 
 The former “future Stage 8” boundary is no longer current. Repository-only work has since completed:
 
-- **Stage 8:** immutable Teacher Review, approval and non-executing publication-handoff preparation;
+- **Stage 8:** immutable Teacher Review, including `TeacherScoreRevision`, approval and non-executing publication-handoff preparation;
 - **Stage 9:** production-foundation contracts, with external provisioning still deferred;
 - **Stage 10:** disconnected product UI experience;
 - **Stage 11:** typed local UI/application contracts and integration, with live API still locked.
