@@ -1,7 +1,8 @@
 # ScoreMosaic Live UI ↔ API Security Architecture v1
 
 Status: **approved repository security-architecture baseline; runtime activation remains locked**  
-Machine-readable contract: `contracts/live-ui-api-security-architecture-v1.json`
+Machine-readable contract: `contracts/live-ui-api-security-architecture-v1.json`  
+Current architecture state contract: `contracts/architecture-current-state-v1.json`
 
 This workstream defines how the completed Stage 10/11 browser/application model may later connect to authenticated server data without turning browser state into authority. It is **unnumbered** and does not consume Stage 12.
 
