@@ -82,7 +82,7 @@ class Stage11AUiApplicationBoundaryTests(unittest.TestCase):
             "Contract design only",
             "Unknown request kinds fail closed",
             "edit intent == ScoreEditCommand",
-            "no production API",
+            "no network or production API",
             "Stage 11-B",
         ):
             self.assertIn(marker, DOC)
