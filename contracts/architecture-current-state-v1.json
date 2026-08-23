@@ -16,6 +16,9 @@
       "stageNumberAssigned": false,
       "status": "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_LOW_FIDELITY_STARTED",
       "contract": "contracts/ui-architecture-phase1-v1.json",
+      "designSystemFoundationsContract": "contracts/design-system-foundations-v1.json",
+      "designSystemFoundationsRepositoryReady": true,
+      "designSystemFoundationsAppliedInFigma": false,
       "figmaLowFidelityStarted": true,
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false
