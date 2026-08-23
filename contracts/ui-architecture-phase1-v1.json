@@ -20,85 +20,22 @@
     "futureModernizationMustPreserveLayerBoundaries": true
   },
   "informationArchitecture": {
-    "primaryNavigation": [
-      "dashboard",
-      "documents",
-      "new_document",
-      "review"
-    ],
-    "secondaryNavigation": [
-      "account"
-    ],
-    "deferredNavigation": [
-      "settings",
-      "admin",
-      "billing"
-    ]
+    "primaryNavigation": ["dashboard", "documents", "new_document", "review"],
+    "secondaryNavigation": ["account"],
+    "deferredNavigation": ["settings", "admin", "billing"]
   },
-  "primaryUserFlow": [
-    "dashboard",
-    "new_document",
-    "input_validation",
-    "omr_processing",
-    "review_ready",
-    "teacher_review",
-    "structured_correction",
-    "validation",
-    "revision",
-    "human_approval",
-    "publication_eligibility"
-  ],
+  "primaryUserFlow": ["dashboard", "new_document", "input_validation", "omr_processing", "review_ready", "teacher_review", "structured_correction", "validation", "revision", "human_approval", "publication_eligibility"],
   "screenArchitecture": {
-    "dashboard": {
-      "purpose": "Action-oriented continuation surface, not an analytics-heavy dashboard.",
-      "requiredRegions": ["new_document_action", "needs_review_summary", "processing_summary", "continue_review"]
-    },
-    "documents": {
-      "requiredStates": ["all", "processing", "needs_review", "approved", "published"],
-      "requiredCapabilities": ["search", "status_filter", "open_document"]
-    },
-    "newDocument": {
-      "presentationOnlyUntilLiveGate": true,
-      "requiredStates": ["select_input", "validating", "processing", "review_ready", "rejected", "unavailable"]
-    },
-    "teacherReview": {
-      "requiredRegions": [
-        "document_revision_context",
-        "issues",
-        "score_view",
-        "source_evidence",
-        "structured_edit",
-        "validation_revision_status"
-      ],
-      "optionalDeferredRegions": ["review_transport"]
-    },
-    "revisionHistory": {
-      "requiredCapabilities": ["current_revision_identity", "ordered_revision_list", "change_summary", "validation_state"],
-      "futureCapability": "revision_compare"
-    },
-    "approval": {
-      "separateFromEditWorkspace": true,
-      "requiredEvidence": ["exact_revision", "blocking_issue_count", "validation_state", "corrected_musicxml_identity"]
-    },
-    "publicationPreparation": {
-      "separateFromApproval": true,
-      "publishedDoesNotImplyPublic": true,
-      "executionActivated": false
-    }
+    "dashboard": {"purpose": "Action-oriented continuation surface, not an analytics-heavy dashboard.", "requiredRegions": ["new_document_action", "needs_review_summary", "processing_summary", "continue_review"]},
+    "documents": {"requiredStates": ["all", "processing", "needs_review", "approved", "published"], "requiredCapabilities": ["search", "status_filter", "open_document"]},
+    "newDocument": {"presentationOnlyUntilLiveGate": true, "requiredStates": ["select_input", "validating", "processing", "review_ready", "rejected", "unavailable"]},
+    "teacherReview": {"requiredRegions": ["document_revision_context", "issues", "score_view", "source_evidence", "structured_edit", "validation_revision_status"], "optionalDeferredRegions": ["review_transport"]},
+    "revisionHistory": {"requiredCapabilities": ["current_revision_identity", "ordered_revision_list", "change_summary", "validation_state"], "futureCapability": "revision_compare"},
+    "approval": {"separateFromEditWorkspace": true, "requiredEvidence": ["exact_revision", "blocking_issue_count", "validation_state", "corrected_musicxml_identity"]},
+    "publicationPreparation": {"separateFromApproval": true, "publishedDoesNotImplyPublic": true, "executionActivated": false}
   },
   "scoreViewer": {
-    "requiredInteractions": [
-      "page_navigation",
-      "zoom",
-      "fit_width",
-      "fit_page",
-      "measure_focus",
-      "event_focus",
-      "issue_overlay",
-      "score_source_synchronization",
-      "keyboard_issue_navigation",
-      "staff_voice_context"
-    ],
+    "requiredInteractions": ["page_navigation", "zoom", "fit_width", "fit_page", "measure_focus", "event_focus", "issue_overlay", "score_source_synchronization", "keyboard_issue_navigation", "staff_voice_context"],
     "rendererAuthoritative": false,
     "selectionAuthoritative": false
   },
@@ -107,22 +44,11 @@
     "rawMusicXmlEditingAllowed": false,
     "directServerMutationAllowed": false,
     "localIntentOnly": true,
-    "initialOperationFamilies": [
-      "pitch",
-      "effective_duration",
-      "dots",
-      "remove_event"
-    ],
+    "initialOperationFamilies": ["pitch", "effective_duration", "dots", "remove_event"],
     "futureOperationFamiliesRequireContractChange": true
   },
   "validationRevision": {
-    "requiredPresentation": [
-      "validation_summary",
-      "blocking_issue_count",
-      "unresolved_issue_count",
-      "revision_identity",
-      "stale_state"
-    ],
+    "requiredPresentation": ["validation_summary", "blocking_issue_count", "unresolved_issue_count", "revision_identity", "stale_state"],
     "validationPassImpliesApproval": false,
     "staleRevisionMustFailClosed": true
   },
@@ -130,46 +56,14 @@
     "brandRulesContract": "contracts/web-brand-rules-v1.json",
     "foundationsContract": "contracts/design-system-foundations-v1.json",
     "coreComponentsContract": "contracts/design-system-core-components-v1.json",
+    "musicDomainComponentsContract": "contracts/design-system-music-domain-components-v1.json",
     "foundations": ["color_tokens", "typography", "spacing", "grid", "radius", "elevation", "iconography"],
-    "coreComponents": [
-      "button",
-      "input",
-      "select",
-      "tabs",
-      "badge",
-      "status",
-      "panel",
-      "toolbar",
-      "dialog",
-      "drawer",
-      "toast",
-      "empty_state",
-      "loading_state",
-      "validation_message"
-    ],
-    "musicComponents": [
-      "issue_card",
-      "score_viewer",
-      "measure_marker",
-      "issue_marker",
-      "evidence_viewer",
-      "revision_indicator",
-      "structured_edit_field"
-    ],
+    "coreComponents": ["button", "input", "select", "tabs", "badge", "status", "panel", "toolbar", "dialog", "drawer", "toast", "empty_state", "loading_state", "validation_message"],
+    "musicComponents": ["issue_card", "score_viewer", "measure_marker", "issue_marker", "evidence_viewer", "revision_indicator", "structured_edit_field"],
     "tokenNamingRequired": true
   },
   "responsiveAccessibility": {
-    "minimumRequirements": [
-      "keyboard_reachability",
-      "visible_focus",
-      "programmatic_labels",
-      "screen_reader_status_text",
-      "no_color_only_semantics",
-      "reduced_motion",
-      "high_contrast_support",
-      "forced_colors_support",
-      "score_view_priority_on_narrow_layouts"
-    ]
+    "minimumRequirements": ["keyboard_reachability", "visible_focus", "programmatic_labels", "screen_reader_status_text", "no_color_only_semantics", "reduced_motion", "high_contrast_support", "forced_colors_support", "score_view_priority_on_narrow_layouts"]
   },
   "changeGovernance": {
     "visualChangesStartAt": "figma_or_design_system",
@@ -187,33 +81,14 @@
     "designSystemFoundationsAppliedInFigma": false,
     "coreComponentArchitectureRepositoryReady": true,
     "coreComponentsAppliedInFigma": false,
-    "logicalAreas": [
-      "00_foundations",
-      "01_components",
-      "02_patterns",
-      "03_dashboard",
-      "04_documents",
-      "05_upload_processing",
-      "06_teacher_review",
-      "07_revision",
-      "08_approval_publication",
-      "09_prototype",
-      "10_archive"
-    ],
+    "musicDomainComponentArchitectureRepositoryReady": true,
+    "musicDomainComponentsAppliedInFigma": false,
+    "logicalAreas": ["00_foundations", "01_components", "02_patterns", "03_dashboard", "04_documents", "05_upload_processing", "06_teacher_review", "07_revision", "08_approval_publication", "09_prototype", "10_archive"],
     "physicalPagePolicy": "starter_plan_three_page_grouping",
     "physicalPages": [
-      {
-        "name": "00_foundations_components",
-        "logicalAreas": ["00_foundations", "01_components", "02_patterns"]
-      },
-      {
-        "name": "01_product_flows",
-        "logicalAreas": ["03_dashboard", "04_documents", "05_upload_processing"]
-      },
-      {
-        "name": "02_teacher_review_approval",
-        "logicalAreas": ["06_teacher_review", "07_revision", "08_approval_publication", "09_prototype", "10_archive"]
-      }
+      {"name": "00_foundations_components", "logicalAreas": ["00_foundations", "01_components", "02_patterns"]},
+      {"name": "01_product_flows", "logicalAreas": ["03_dashboard", "04_documents", "05_upload_processing"]},
+      {"name": "02_teacher_review_approval", "logicalAreas": ["06_teacher_review", "07_revision", "08_approval_publication", "09_prototype", "10_archive"]}
     ],
     "logicalAreasMustNotBeDroppedBecauseOfPlanLimits": true,
     "sequence": ["low_fidelity_wireframes", "component_system", "high_fidelity_screens", "clickable_prototype", "design_freeze_v1"]
