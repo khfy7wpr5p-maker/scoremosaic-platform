@@ -10,6 +10,7 @@ on:
       - "contracts/design-system-foundations-v1.json"
       - "contracts/ui-architecture-phase1-v1.json"
       - "contracts/web-brand-rules-v1.json"
+      - "contracts/architecture-current-state-v1.json"
       - "docs/design-system-foundations-v1.md"
       - "tests/test_design_system_foundations_v1.py"
       - "tests/test_ui_architecture_phase1.py"
@@ -23,6 +24,7 @@ on:
       - "contracts/design-system-foundations-v1.json"
       - "contracts/ui-architecture-phase1-v1.json"
       - "contracts/web-brand-rules-v1.json"
+      - "contracts/architecture-current-state-v1.json"
       - "docs/design-system-foundations-v1.md"
       - "tests/test_design_system_foundations_v1.py"
       - "tests/test_ui_architecture_phase1.py"
@@ -51,6 +53,7 @@ jobs:
           python -m json.tool contracts/design-system-foundations-v1.json > /dev/null
           python -m json.tool contracts/ui-architecture-phase1-v1.json > /dev/null
           python -m json.tool contracts/web-brand-rules-v1.json > /dev/null
+          python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
       - name: Run Design System Foundations v1 tests
         run: python -m unittest discover -s tests -p 'test_design_system_foundations_v1.py' -v
       - name: Run UI Architecture Phase 1 regression
