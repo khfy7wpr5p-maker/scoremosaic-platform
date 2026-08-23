@@ -11,6 +11,7 @@ FOUNDATIONS = json.loads(
 )
 UI = json.loads((ROOT / "contracts" / "ui-architecture-phase1-v1.json").read_text(encoding="utf-8"))
 BRAND = json.loads((ROOT / "contracts" / "web-brand-rules-v1.json").read_text(encoding="utf-8"))
+CURRENT = json.loads((ROOT / "contracts" / "architecture-current-state-v1.json").read_text(encoding="utf-8"))
 DOC = (ROOT / "docs" / "design-system-foundations-v1.md").read_text(encoding="utf-8")
 
 
@@ -27,6 +28,17 @@ class DesignSystemFoundationsV1Tests(unittest.TestCase):
             "contracts/design-system-foundations-v1.json",
             UI["designSystem"]["foundationsContract"],
         )
+
+    def test_current_architecture_registers_repository_ready_but_not_figma_applied(self) -> None:
+        self.assertEqual("11-F", CURRENT["asOfStage"])
+        workstream = CURRENT["approvedWorkstreams"]["uiArchitecturePhase1"]
+        self.assertEqual(
+            "contracts/design-system-foundations-v1.json",
+            workstream["designSystemFoundationsContract"],
+        )
+        self.assertIs(workstream["designSystemFoundationsRepositoryReady"], True)
+        self.assertIs(workstream["designSystemFoundationsAppliedInFigma"], False)
+        self.assertIs(workstream["figmaHighFidelityStarted"], False)
 
     def test_approved_brand_palette_is_preserved(self) -> None:
         expected = {
