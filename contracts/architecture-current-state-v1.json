@@ -33,6 +33,16 @@
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false
     },
+    "liveUiApiSecurityDesign": {
+      "stageNumberAssigned": false,
+      "status": "APPROVED_REPOSITORY_LIVE_UI_API_SECURITY_ARCHITECTURE_BASELINE",
+      "contract": "contracts/live-ui-api-security-architecture-v1.json",
+      "repositorySecurityArchitectureReady": true,
+      "runtimeActivated": false,
+      "liveNetworkActivated": false,
+      "authRuntimeActivated": false,
+      "serverWriteActivated": false
+    },
     "downstreamMusicApplicationIntegration": {
       "stageNumberAssigned": false,
       "status": "ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION",
