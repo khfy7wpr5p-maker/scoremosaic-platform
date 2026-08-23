@@ -1,0 +1,201 @@
+{
+  "version": "scoremosaic-design-system-product-patterns-v2",
+  "supersedes": "scoremosaic-design-system-product-patterns-v1",
+  "scope": "repository_product_interaction_patterns_only",
+  "parentMusicDomainComponents": "scoremosaic-design-system-music-domain-components-v1",
+  "parentWorkstream": "scoremosaic-ui-architecture-phase1-v1",
+  "stageNumberAssigned": false,
+  "status": "APPROVED_REPOSITORY_PRODUCT_PATTERN_ARCHITECTURE_BASELINE_V2",
+  "implementationState": {
+    "repositorySpecificationReady": true,
+    "figmaPatternsCreated": false,
+    "productionPatternsImplemented": false,
+    "highFidelityScreensStarted": false
+  },
+  "globalAsyncStates": ["idle", "loading", "success", "empty", "error", "unavailable", "stale"],
+  "globalRules": {
+    "serverDerivedStateMustNotBeFabricatedLocally": true,
+    "staleStateMustBeExplicit": true,
+    "retryMustNotImplyDuplicateMutationSafety": true,
+    "loadingMustPreserveContextAndAccessibleName": true,
+    "errorMustProvideReadableRecoveryPathWhenAvailable": true,
+    "emptyIsNotError": true,
+    "unavailableIsNotEmpty": true,
+    "browserStatusIsNotDomainAuthority": true,
+    "colorOnlyMeaningForbidden": true,
+    "keyboardReachabilityRequired": true
+  },
+  "applicationShell": {
+    "requiredRegions": ["compact_brand", "primary_navigation", "page_context", "account_context", "content_region"],
+    "primaryNavigation": ["dashboard", "documents", "upload", "teacher_review", "guitar_tab"],
+    "secondaryNavigation": ["account"],
+    "rules": {
+      "compactLogoRequired": true,
+      "navigationStateIsPresentationOnly": true,
+      "accountDisplayDoesNotGrantAuthorization": true,
+      "reviewWorkspaceMayUseFocusedShell": true,
+      "guitarTabWorkspaceIsDownstreamOnly": true
+    }
+  },
+  "dashboard": {
+    "primaryQuestion": "what_needs_attention_now",
+    "requiredPatterns": ["new_document_action", "needs_review_summary", "processing_summary", "continue_review"],
+    "optionalPatterns": ["guitar_tab_entry_when_source_eligible"],
+    "rules": {
+      "analyticsHeavyLayoutForbiddenByDefault": true,
+      "countsReflectReadModelOnly": true,
+      "countDisplayMayNotCreateDocumentState": true,
+      "continueReviewRequiresExactDocumentRevisionContext": true
+    }
+  },
+  "documents": {
+    "rowRequiredContent": ["document_identity", "title", "status_text", "modified_context"],
+    "optionalContent": ["issue_count", "current_revision", "owner_or_reviewer_context"],
+    "requiredCapabilities": ["search", "status_filter", "open_document"],
+    "filters": ["all", "processing", "needs_review", "approved", "published"],
+    "rules": {
+      "statusRequiresText": true,
+      "filteringIsPresentationOnly": true,
+      "searchIsPresentationOnly": true,
+      "rowOpenMustResolveStableDocumentIdentity": true,
+      "publishedMustNotImplyPublicVisibility": true
+    }
+  },
+  "upload": {
+    "compatibilityAlias": "new_document",
+    "acceptedPresentationTypes": ["pdf", "jpg", "jpeg", "png"],
+    "states": ["select_input", "selected_local", "validating", "rejected", "processing", "review_ready", "failed", "unavailable"],
+    "rules": {
+      "currentPhasePresentationOnly": true,
+      "localFileSelectionIsNotUpload": true,
+      "localValidationIsNotServerSafetyAdmission": true,
+      "realUploadActivated": false,
+      "unsafeOrUnsupportedInputMustHaveExplicitRejectionState": true,
+      "coolifyPresenceDoesNotActivateUpload": true
+    }
+  },
+  "newDocument": {
+    "compatibilityAliasFor": "upload",
+    "states": ["select_input", "selected_local", "validating", "rejected", "processing", "review_ready", "failed", "unavailable"],
+    "rules": {
+      "currentPhasePresentationOnly": true,
+      "localFileSelectionIsNotUpload": true,
+      "localValidationIsNotServerSafetyAdmission": true,
+      "realUploadActivated": false,
+      "unsafeOrUnsupportedInputMustHaveExplicitRejectionState": true
+    }
+  },
+  "processing": {
+    "steps": ["validating", "preparing", "omr_processing", "building_review", "review_ready"],
+    "rules": {
+      "completionMayNotBeFabricatedByTimer": true,
+      "stepStateRequiresBoundedEvidence": true,
+      "unknownOrStaleStateMustRemainRepresentable": true,
+      "failureMustNotAutoAdvanceToReady": true,
+      "reviewReadyDoesNotMeanApproved": true
+    }
+  },
+  "teacherReviewWorkspace": {
+    "regions": ["issues", "score_view", "source_evidence", "structured_edit", "validation_revision_status"],
+    "synchronization": ["issue_selection", "score_focus", "evidence_focus", "edit_target_focus"],
+    "rules": {
+      "scoreViewRemainsLargest": true,
+      "synchronizationIsPresentationOnly": true,
+      "staleWorkspaceMustBecomeReadOnly": true,
+      "missingEvidenceMustNotBeInvented": true,
+      "rendererSelectionMayNotBecomeMutationIdentity": true
+    }
+  },
+  "guitarTabWorkspace": {
+    "role": "downstream_guitar_arrangement_and_fingering_workspace",
+    "regions": ["standard_notation", "guitar_tab", "fingering_options", "position_playability_evidence"],
+    "rules": {
+      "presentationOnlyUntilLiveGate": true,
+      "browserMayCallEngineDirectly": false,
+      "mayMutateCanonicalScore": false,
+      "mayCreateTeacherRevision": false,
+      "mayApprove": false,
+      "mayPublish": false,
+      "productionDerivedOutputRequiresApprovedTeacherRevision": true,
+      "missingEngineEvidenceMustNotBeInvented": true
+    }
+  },
+  "revisionHistory": {
+    "requiredPatterns": ["ordered_revision_list", "current_revision_marker", "change_summary", "validation_summary"],
+    "rules": {
+      "immutableOrderMustBePreserved": true,
+      "historicalRevisionMustNotAppearCurrent": true,
+      "compareIsReadOnly": true,
+      "staleCurrentContextMustFailClosed": true
+    }
+  },
+  "approval": {
+    "requiredEvidence": ["exact_revision_identity", "blocking_issue_count", "validation_state", "corrected_musicxml_identity"],
+    "rules": {
+      "approvalSeparatedFromStructuredEdit": true,
+      "explicitHumanActionRequired": true,
+      "validationPassDoesNotAutoApprove": true,
+      "approvalPresentationDoesNotExecuteApproval": true
+    }
+  },
+  "publicationPreparation": {
+    "states": ["not_eligible", "eligible", "prepared", "published", "publicly_visible"],
+    "rules": {
+      "approvalAndPublicationSeparated": true,
+      "publishedAndPublicVisibilitySeparated": true,
+      "publicationExecutionActivated": false,
+      "externalEffectRequiresSeparateGate": true
+    }
+  },
+  "recoveryPatterns": {
+    "readFailure": ["error_summary", "retry_if_safe", "preserve_context"],
+    "staleRevision": ["explicit_stale_banner", "disable_mutating_intent", "reload_or_return_to_current"],
+    "processingFailure": ["failed_step", "readable_reason_if_safe", "retry_or_return"],
+    "networkUnavailableFuture": ["unavailable_state", "do_not_fake_success", "preserve_unsent_local_intent_only_if_contract_allows"]
+  },
+  "responsive": {
+    "desktopPrimary": true,
+    "narrowPriorityOrder": ["score_view", "issues", "source_evidence", "structured_edit"],
+    "additionalWorkspaceRules": {
+      "uploadMayStack": true,
+      "guitarTabMayStack": true
+    },
+    "rules": {
+      "issuesMayCollapseToDrawerOrTab": true,
+      "structuredEditMayCollapseToDrawerOrTab": true,
+      "sourceEvidenceMayStack": true,
+      "collapsedPanelsMustRemainKeyboardReachable": true
+    }
+  },
+  "figmaBuildPolicy": {
+    "foundationsCoreAndMusicComponentsMustExistFirst": true,
+    "patternsMustUseLibraryComponents": true,
+    "screenSpecificComponentDuplicationForbidden": true,
+    "metadataValidationRequired": true,
+    "visualScreenshotValidationRequired": true,
+    "stateCoverageReviewRequired": true,
+    "currentFigmaBuildBlockedByStarterToolCallLimit": true,
+    "patternCreationAuthorizedWhenToolAccessReturns": true
+  },
+  "preFigmaRepositoryExit": {
+    "brandRulesReady": true,
+    "foundationsReady": true,
+    "coreComponentArchitectureReady": true,
+    "musicDomainComponentArchitectureReady": true,
+    "productPatternArchitectureReady": true,
+    "figmaApplicationStillRequired": true,
+    "highFidelityStillLocked": true
+  },
+  "activationLocks": {
+    "figmaPatternsApplied": false,
+    "productionPatternsImplemented": false,
+    "highFidelityStarted": false,
+    "realUploadActivated": false,
+    "liveApiActivated": false,
+    "serverWriteActivated": false,
+    "approvalExecutionActivated": false,
+    "publicationExecutionActivated": false,
+    "guitarTabLiveIntegrationActivated": false,
+    "productionInfrastructureActivated": false
+  }
+}
