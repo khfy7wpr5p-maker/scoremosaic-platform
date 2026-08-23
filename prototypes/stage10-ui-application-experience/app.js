@@ -1,6 +1,41 @@
 (() => {
   'use strict';
 
+  const byId = (id) => document.getElementById(id);
+  const text = (id, value) => {
+    const node = byId(id);
+    if (node) node.textContent = String(value);
+  };
+
+  const productNavButtons = Array.from(document.querySelectorAll('[data-product-nav]'));
+  const productViews = Array.from(document.querySelectorAll('[data-product-view]'));
+
+  const activateProductView = (viewName, focusView = true) => {
+    const target = productViews.find((view) => view.dataset.productView === viewName);
+    if (!target) return;
+
+    productViews.forEach((view) => {
+      view.hidden = view !== target;
+    });
+    productNavButtons.forEach((button) => {
+      if (button.dataset.productNav === viewName) {
+        button.setAttribute('aria-current', 'page');
+      } else {
+        button.removeAttribute('aria-current');
+      }
+    });
+
+    if (focusView) target.focus();
+  };
+
+  productNavButtons.forEach((button) => {
+    button.addEventListener('click', () => activateProductView(button.dataset.productNav || 'teacher-review'));
+  });
+  document.querySelectorAll('[data-open-product-view]').forEach((button) => {
+    button.addEventListener('click', () => activateProductView(button.dataset.openProductView || 'teacher-review'));
+  });
+  activateProductView('teacher-review', false);
+
   const fixture = window.ScoreMosaicFixture;
   const application = window.ScoreMosaicLocalApplication;
   if (
@@ -31,12 +66,6 @@
   const state = {
     filter: 'all',
     selectedIssueId: issuesModel.items[0]?.id ?? null,
-  };
-
-  const byId = (id) => document.getElementById(id);
-  const text = (id, value) => {
-    const node = byId(id);
-    if (node) node.textContent = String(value);
   };
 
   const countSeverity = (severity) => issuesModel.items.filter((issue) => issue.severity === severity).length;
