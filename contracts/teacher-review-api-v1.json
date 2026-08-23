@@ -36,39 +36,38 @@
       "operation": "review.read",
       "method": "GET",
       "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/review",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
       "mutation": false
     },
     {
       "operation": "issues.read",
       "method": "GET",
       "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/issues",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
       "mutation": false
     },
     {
       "operation": "sourceEvidence.read",
       "method": "GET",
       "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/source-evidence",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
       "mutation": false
     },
     {
       "operation": "validation.read",
       "method": "GET",
       "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/validation",
-      "mutation": false
-    },
-    {
-      "operation": "revisions.list",
-      "method": "GET",
-      "pathTemplate": "/api/v1/documents/{document_id}/revisions",
-      "mutation": false
-    },
-    {
-      "operation": "revision.read",
-      "method": "GET",
-      "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
       "mutation": false
     }
   ],
+  "readRules": {
+    "onlyStage11ReadVocabularyExposedInV1": true,
+    "readEndpointExpansionRequiresVersionedContractChange": true,
+    "responseSchemaRequiredForEveryReadEndpoint": true,
+    "serverCorrelationIdRequired": true,
+    "errorResponsesExposeResolvedDocumentOrRevisionIdentity": false
+  },
   "mutationEndpoints": [
     {
       "operation": "revision.propose",
@@ -82,6 +81,14 @@
       "runtimeActivated": false
     }
   ],
+  "transportRules": {
+    "contentType": "application/json",
+    "requestBodyBytesMustBeBoundedByServerConfiguration": true,
+    "rawBodyMayGrantAuthorization": false,
+    "boundedBodyParsingOccursOnlyAfterSessionCsrfOriginAndCoarseResourceAuthorization": true,
+    "clientRequestIdOptionalForReadCorrelation": true,
+    "serverCanonicalCorrelationIdRequired": true
+  },
   "initialBrowserOperationSurface": [
     "set_pitch",
     "set_effective_duration",
@@ -135,8 +142,9 @@
   "serverResolutionOrder": [
     "authenticate_session",
     "validate_csrf_and_origin",
-    "authorize_operation_and_document_scope",
+    "authorize_revision_propose_and_document_scope",
     "parse_and_validate_bounded_api_intent",
+    "authorize_requested_musical_operation",
     "resolve_exact_current_document_revision_head",
     "verify_projection_and_snapshot_binding",
     "resolve_stable_target_against_current_state",
@@ -146,8 +154,8 @@
     "construct_and_validate_score_edit_command",
     "construct_internal_teacher_review_write_request",
     "invoke_stage8g_authorized_write_boundary",
-    "map_safe_result_to_public_api_response",
-    "append_security_audit_evidence"
+    "append_security_audit_evidence",
+    "map_safe_result_to_public_api_response"
   ],
   "snapshotRules": {
     "baseRevisionKindAllowed": true,
@@ -162,6 +170,10 @@
   "idempotency": {
     "header": "Idempotency-Key",
     "requiredForRevisionProposal": true,
+    "keyMinLength": 16,
+    "keyMaxLength": 128,
+    "keyPattern": "^[A-Za-z0-9._~-]{16,128}$",
+    "rawKeyMayBeLogged": false,
     "clientKeyIsDomainIdentity": false,
     "serverScopeMustInclude": [
       "principal",
@@ -178,8 +190,12 @@
     "ambiguousOutcomeRequiresReconciliation": true
   },
   "publicResponse": {
-    "mayExposeRevisionIdentityAndHashes": true,
-    "mayExposeValidationCounts": true,
+    "mayExposeRevisionIdentityAndHashesOnAuthorizedSuccess": true,
+    "mayExposeValidationCountsOnAuthorizedSuccess": true,
+    "errorResponsesMayEchoParsedClientRequestId": false,
+    "errorResponsesExposeDocumentIdentity": false,
+    "errorResponsesExposeParentIdentity": false,
+    "staleOrConflictResponsesExposeFreshCurrentHead": false,
     "mayExposeInternalAuthorizationGrant": false,
     "mayExposeAuthorizationSignature": false,
     "mayExposeRawProviderError": false,
@@ -222,6 +238,8 @@
     "unsupported_operation",
     "raw_xml_payload",
     "json_patch_payload",
+    "oversized_request_body",
+    "invalid_idempotency_key",
     "stale_projection_sha256",
     "stale_revision_id",
     "stale_revision_sha256",
@@ -235,6 +253,8 @@
     "missing_csrf",
     "wrong_origin",
     "unauthorized_request_body_oracle",
+    "unauthorized_parent_identity_leak",
+    "stale_response_fresh_head_leak",
     "internal_error_detail_leak",
     "revision_proposal_attempt_to_approve",
     "revision_proposal_attempt_to_publish"
