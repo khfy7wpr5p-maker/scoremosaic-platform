@@ -2,7 +2,7 @@
 
 Current architecture state contract: `contracts/architecture-current-state-v1.json`
 
-Every capability is gated. Code presence, model accuracy, a successful UI demo, or a green local test never grants broader production authority by implication.
+Every capability is gated. Code presence, model accuracy, a successful UI demo, a completed Figma prototype or a green local test never grants broader production authority by implication.
 
 ## Current secure-development status
 
@@ -16,6 +16,8 @@ Every capability is gated. Code presence, model accuracy, a successful UI demo, 
 | Production foundation — Stage 9 | ✅ Complete repository scope | Hetzner/Coolify/PostgreSQL/Object Storage/Auth/RBAC/Secrets architecture documented; real provisioning deferred. |
 | Product UI experience — Stage 10 | ✅ Complete repository scope | Disconnected fixture-backed product UI; no production backend authority. |
 | Typed UI/application integration — Stage 11 | ✅ Complete repository scope | Closed typed reads/edit-intent/state model/local integration; live API locked. |
+| UI Architecture Phase 1 | ✅ Approved repository baseline in progress | Unnumbered product-design workstream; no live activation; Figma follows green baseline. |
+| Downstream Music Application Integration | 🟡 Architecture-only seam | Validated/approved MusicXML may later feed bounded derivative services; GuitarTab live integration off. |
 | ST-OMR architecture/development track | 🟡 Isolated | Not in Gateway/Stage 7 quorum; no production authority. |
 | Production infrastructure | 🔒 Not activated | No paid/provider resources, production DB/object store, credentials, DNS/TLS or public traffic activated by repo stages. |
 | Live Teacher Review API | 🔒 Not activated | Stage 8 server foundations exist, but public/live UI↔server transport and production persistence remain gated. |
@@ -33,8 +35,64 @@ Safe Intake
   -> Stage 9 production architecture contracts
   -> Stage 10 disconnected product UI
   -> Stage 11 typed local UI/application integration
+  -> UI Architecture Phase 1  [unnumbered]
+  -> High-fidelity Figma / prototype
   -> [LIVE/EXTERNAL GATES]
 ```
+
+UI Architecture Phase 1 does not consume or reserve Stage 12 numbering.
+
+## Immediate approved workstream — UI Architecture Phase 1
+
+Goal: finish the complete product/UI architecture before high-fidelity Figma.
+
+Required sequence:
+
+```text
+1. Product navigation
+2. Dashboard / Documents
+3. New Document + Upload/OMR processing presentation
+4. Teacher Review Workspace v1
+5. Score Viewer interaction architecture
+6. Structured Edit architecture
+7. Validation / Revision architecture
+8. Approval / Publication UX
+9. Design System architecture
+10. High-fidelity Figma
+11. Clickable prototype
+12. Design Freeze v1
+```
+
+Repository architecture work covers items 1-9 first. Figma begins only after the Phase 1 architecture contract and compatibility tests are green.
+
+Fixed UI boundaries:
+
+- browser is not authority;
+- renderer is not musical truth;
+- local edit intent is not ScoreEditCommand;
+- validation pass is not approval;
+- save/edit is not approval;
+- approval is not publication;
+- real upload/auth/server write/playback/publication remain locked;
+- future visual modernization starts in Figma/Design System/UI before changing lower authority layers.
+
+## Approved architecture-only extension — downstream music applications
+
+Goal: preserve a safe seam for future sibling music applications without coupling them into OMR or Teacher Review authority.
+
+Safe sequence:
+
+```text
+approved / validated Teacher Review artifact
+  -> exact corrected MusicXML hash + revision identity
+  -> typed downstream application contract
+  -> dedicated adapter
+  -> downstream application
+```
+
+First reserved target: `MusicXML-to-GuitarTab-Engine`.
+
+Its future role is guitar arrangement/fingering derivation. It must not consume raw OMR candidates for production output, mutate Canonical Score, create TeacherScoreRevision, approve, publish or be called directly by the browser.
 
 ## Next safe workstreams
 
@@ -47,6 +105,7 @@ Required:
 - architecture-current-state contract;
 - cross-document consistency tests;
 - stale/current document classification;
+- UI Phase 1 and downstream integration drift guards;
 - no current document may overclaim production activation.
 
 Activation effect: none.
@@ -85,7 +144,7 @@ Current Audiveris/HOMR/Clarity production-candidate contracts remain unchanged u
 
 ### C. Live UI↔API security design
 
-Goal: connect the completed Stage 10/11 UI contract model to real server data without giving the browser authority.
+Goal: connect the completed Stage 10/11 UI contract model and approved Phase 1 product architecture to real server data without giving the browser authority.
 
 Required before activation:
 
@@ -147,6 +206,23 @@ Requires:
 
 Publication remains a separate side effect from approval.
 
+### G. Live downstream music-application integration
+
+Goal: connect one exact approved/validated ScoreMosaic artifact to a separately authorized downstream service.
+
+Requires:
+
+- versioned typed request/response contract;
+- exact source revision + corrected MusicXML hash binding;
+- service authentication/authorization;
+- timeout/retry/idempotency/failure isolation;
+- deterministic or version-bound result provenance;
+- stale-source invalidation;
+- audit evidence;
+- rollback/disable boundary.
+
+For MusicXML-to-GuitarTab-Engine, tuning/fret/capo/instrument context and guitar playability/alternative/abstention evidence must also be explicit.
+
 ## Fixed architectural principles
 
 1. AI and OMR output are evidence, not authoritative musical truth.
@@ -158,6 +234,8 @@ Publication remains a separate side effect from approval.
 7. Publication is separate from approval.
 8. Production activation requires concrete provider/runtime evidence and a dedicated gate.
 9. ST-OMR training success alone never authorizes removal of the current OMR engines.
+10. UI modernization must preserve typed-contract/adapter/server authority layering.
+11. Downstream music applications never become upstream ScoreMosaic musical authority.
 
 ## Current stop boundaries
 
@@ -169,4 +247,5 @@ Repository-only work may continue while all live/production activation locks rem
 - public traffic;
 - production data writes;
 - production publication execution;
+- live downstream music-service activation;
 - destructive provider operations.
