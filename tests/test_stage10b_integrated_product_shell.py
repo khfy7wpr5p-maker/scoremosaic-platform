@@ -93,10 +93,24 @@ class Stage10BIntegratedProductShellTests(unittest.TestCase):
         }
         self.assertEqual({script.get("src") for script in self.parser.scripts}, allowed_local_scripts)
 
-    def test_future_authority_controls_remain_disabled(self) -> None:
+    def test_local_navigation_may_be_enabled_but_future_authority_controls_remain_disabled(self) -> None:
         self.assertGreater(len(self.parser.buttons), 0)
+        local_navigation = [
+            button
+            for button in self.parser.buttons
+            if button.get("data-product-nav") is not None or button.get("data-open-product-view") is not None
+        ]
+        self.assertGreater(len(local_navigation), 0)
+        for button in local_navigation:
+            self.assertNotIn("disabled", button)
+
         for button in self.parser.buttons:
-            if button.get("data-filter") is None:
+            is_safe_local_control = (
+                button.get("data-filter") is not None
+                or button.get("data-product-nav") is not None
+                or button.get("data-open-product-view") is not None
+            )
+            if not is_safe_local_control:
                 self.assertIn("disabled", button)
 
     def test_authority_and_runtime_locks_are_visible(self) -> None:
