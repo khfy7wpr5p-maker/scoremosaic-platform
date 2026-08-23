@@ -60,7 +60,7 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertEqual("Upload", upload["navigationLabel"])
         self.assertIs(upload["presentationOnlyUntilLiveGate"], True)
         self.assertIs(upload["realFileSubmissionActivated"], False)
-        self.assertEqual(["pdf", "jpeg", "png"], upload["acceptedPresentationTypes"])
+        self.assertEqual(["pdf", "jpg", "jpeg", "png"], upload["acceptedPresentationTypes"])
         self.assertIn("safe_intake", upload["liveDependencies"])
         self.assertIn("object_storage", upload["liveDependencies"])
         self.assertIs(UI["activationLocks"]["realUploadActivated"], False)
@@ -132,12 +132,13 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertIs(UI["principles"]["saveIsNotApproval"], True)
         self.assertIs(UI["principles"]["approvalIsNotPublication"], True)
 
-    def test_design_system_and_figma_sequence_are_defined(self) -> None:
+    def test_design_system_and_figma_sequence_are_defined_without_overclaiming_guitar_components(self) -> None:
         self.assertEqual("contracts/web-brand-rules-v1.json", UI["designSystem"]["brandRulesContract"])
         self.assertIn("color_tokens", UI["designSystem"]["foundations"])
         self.assertIn("button", UI["designSystem"]["coreComponents"])
         self.assertIn("score_viewer", UI["designSystem"]["musicComponents"])
-        self.assertIn("guitar_tab_viewer", UI["designSystem"]["musicComponents"])
+        self.assertNotIn("guitar_tab_viewer", UI["designSystem"]["musicComponents"])
+        self.assertIs(UI["designSystem"]["guitarTabComponentArchitectureRequiresSeparateContractEvolution"], True)
         self.assertIs(UI["designSystem"]["tokenNamingRequired"], True)
         figma = UI["figma"]
         self.assertIs(figma["eligibleAfterThisBaseline"], True)
