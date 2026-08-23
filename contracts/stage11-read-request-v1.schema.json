@@ -7,9 +7,13 @@
   "required": ["schemaVersion", "requestId", "kind", "documentId", "revision"],
   "properties": {
     "schemaVersion": {"const": "scoremosaic-stage11-read-request-v1"},
-    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "requestId": {"$ref": "#/$defs/requestId"},
     "kind": {"enum": ["review.read", "issues.read", "sourceEvidence.read", "validation.read"]},
-    "documentId": {"type": "string", "minLength": 1, "maxLength": 160},
-    "revision": {"type": "string", "minLength": 1, "maxLength": 160}
+    "documentId": {"$ref": "#/$defs/resourceId"},
+    "revision": {"$ref": "#/$defs/resourceId"}
+  },
+  "$defs": {
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "resourceId": {"type": "string", "minLength": 1, "maxLength": 160}
   }
 }
