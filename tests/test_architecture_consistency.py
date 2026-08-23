@@ -61,9 +61,15 @@ class ArchitectureConsistencyTests(unittest.TestCase):
 
         preview = CONTRACT["approvedWorkstreams"]["webPreviewV1"]
         self.assertIs(preview["stageNumberAssigned"], False)
-        self.assertEqual("APPROVED_REPOSITORY_WEB_PREVIEW_BUILD_READY_NOT_PUBLISHED", preview["status"])
+        self.assertEqual(
+            "APPROVED_PUBLIC_GITHUB_PAGES_PREVIEW_DEPLOYMENT_AUTHORIZED_NOT_YET_VERIFIED",
+            preview["status"],
+        )
         self.assertIs(preview["repositoryPreviewBuildReady"], True)
         self.assertIs(preview["previewArtifactCiReady"], True)
+        self.assertIs(preview["publicPreviewDeploymentAuthorized"], True)
+        self.assertIs(preview["githubPagesDeploymentWorkflowReady"], True)
+        self.assertIs(preview["githubPagesSiteConfigurationVerified"], False)
         for key in ("githubPagesEnabled", "publicPreviewDeployed", "publicUrlAssigned", "publicTrafficActivated"):
             self.assertIs(preview[key], False, key)
 
@@ -188,10 +194,11 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIn("does not consume or reserve Stage 12 numbering", TEXT["roadmap"])
         self.assertIs(CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]["stageNumberAssigned"], False)
 
-    def test_web_preview_is_not_silently_reassigned_or_published(self) -> None:
+    def test_web_preview_is_not_silently_reassigned_or_overclaiming_deployment(self) -> None:
         self.assertIn("does not create Stage 12", TEXT["web-preview"])
         preview = CONTRACT["approvedWorkstreams"]["webPreviewV1"]
         self.assertIs(preview["stageNumberAssigned"], False)
+        self.assertIs(preview["publicPreviewDeploymentAuthorized"], True)
         self.assertIs(preview["publicPreviewDeployed"], False)
         self.assertIs(preview["publicTrafficActivated"], False)
 

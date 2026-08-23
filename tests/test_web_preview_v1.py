@@ -24,13 +24,23 @@ def tree_digest(root: Path) -> dict[str, str]:
 
 
 class WebPreviewV1Tests(unittest.TestCase):
-    def test_contract_is_repository_only_and_not_published(self) -> None:
+    def test_contract_is_fixture_only_with_public_preview_authorized_but_not_yet_live(self) -> None:
         self.assertEqual("scoremosaic-web-preview-v1", CONTRACT["version"])
         self.assertIs(CONTRACT["stageNumberAssigned"], False)
-        self.assertEqual("repository_only_static_preview_build_no_public_deployment", CONTRACT["scope"])
+        self.assertEqual(
+            "fixture_only_static_preview_with_explicit_public_github_pages_authority",
+            CONTRACT["scope"],
+        )
         self.assertIs(CONTRACT["previewContent"]["fixtureOnly"], True)
         self.assertIs(CONTRACT["previewContent"]["productionArtifact"], False)
         self.assertIs(CONTRACT["previewContent"]["authoritativeTruth"], False)
+        deployment = CONTRACT["publicPreviewDeployment"]
+        self.assertIs(deployment["authorized"], True)
+        self.assertEqual("github_pages", deployment["provider"])
+        self.assertEqual("main", deployment["sourceBranch"])
+        self.assertIs(deployment["productionDeployment"], False)
+        self.assertIs(deployment["productionAuthorityGranted"], False)
+        self.assertIs(deployment["apiAuthorityGranted"], False)
         for value in CONTRACT["activationLocks"].values():
             self.assertIs(value, False)
 
@@ -55,6 +65,8 @@ class WebPreviewV1Tests(unittest.TestCase):
             "serverWriteAllowed",
             "approvalExecutionAllowed",
             "publicationExecutionAllowed",
+            "productionCredentialsAllowed",
+            "realUserDataAllowed",
         ):
             self.assertIs(security[key], False, key)
 
@@ -148,7 +160,7 @@ class WebPreviewV1Tests(unittest.TestCase):
                     for token in forbidden:
                         self.assertNotIn(token, text, f"{token} in {path.relative_to(output)}")
 
-    def test_ci_builds_artifact_but_cannot_deploy_pages(self) -> None:
+    def test_artifact_ci_remains_non_deploying(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("actions/upload-artifact@", text)
         self.assertIn("scoremosaic-web-preview-v1", text)
