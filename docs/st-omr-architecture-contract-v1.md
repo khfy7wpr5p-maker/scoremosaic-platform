@@ -1,234 +1,163 @@
 # ST-OMR Architecture and Contract v1
 
-## Status
+Status: **isolated architecture/development track; not integrated into current Gateway/Stage 7 quorum**  
+Current architecture state contract: `contracts/architecture-current-state-v1.json`
 
-This document defines phase 14 of ScoreMosaic: the architecture and closed contracts for a future isolated ST-OMR candidate engine.
-
-This phase is architecture-only. It does not create an ST-OMR service, model, container, endpoint, runtime, Gateway integration, Ensemble integration, training pipeline, or production deployment.
+This phase is architecture-only. This document defines the ScoreMosaic-native ST-OMR architecture boundary. It does not activate an ST-OMR production service, Gateway key, Ensemble membership, public endpoint, training runtime, or production deployment.
 
 ## Purpose
 
-ST-OMR is the planned ScoreMosaic-native optical music recognition engine. It is designed as a general-purpose, modular, AI-assisted OMR candidate engine rather than a guitar-only recognizer.
+ST-OMR is the planned ScoreMosaic-native OMR system. The intended design is modular: small specialist models produce bounded observations/evidence and deterministic musical composers/validators resolve musical structure wherever possible.
 
-The long-term capability map includes:
-
-- single-staff notation
-- piano and multi-staff notation
-- chamber music
-- orchestra scores
-- separate orchestra parts
-- guitar and TAB
-- choir notation and lyric alignment
-- percussion notation
-
-A listed capability is not a claim that a working or accurate model exists. Every profile begins as planned and must later earn experimental and validated status through named frozen evaluation sets.
-
-## Unchanged system boundaries
-
-The existing responsibility split remains authoritative:
-
-- **OMR Gateway** owns job lifecycle, safe input preparation, bounded engine invocation, timeout policy, cancellation, and artifact lifecycle.
-- **Audiveris, HOMR, Clarity, and future ST-OMR** are independent candidate engines.
-- **Canonical Score Model** is the deterministic, provenance-preserving common musical representation.
-- **Ensemble Comparator/Engine** compares Canonical candidates and reports differences.
-- **Teacher review** owns correction and final approval.
-- **Music Intelligence Engine** may later analyse only approved scores.
-- **SesliTab and other clients** consume approved data through accessible user experiences.
-
-ST-OMR is not embedded in Gateway or Ensemble. It has its own dependencies, container, model files, checksums, resource limits, tests, and versioning.
-
-## Internal service position
-
-The future service name is `st-omr-service` and its fixed role is `candidate_omr_engine`.
+The architectural direction is:
 
 ```text
 prepared immutable page set
-          |
-          | private engine adapter
-          v
-    st-omr-service
-          |
-          +-- immutable raw engine output
-          +-- immutable MusicXML candidate
-          +-- immutable diagnostics
-          +-- optional confidence evidence
+  -> bounded visual specialists
+       page/measure structure
+       notehead/rest/accidental
+       stem/beam/flag/dot/tuplet
+       meter and other bounded specialists
+  -> deterministic Duration/Meter/Pitch/Voice composition
+  -> musical validation + abstention/uncertainty evidence
+  -> immutable ST-OMR candidate artifacts
+  -> Candidate Safety
+  -> Canonical admission
 ```
 
-The service never decides that its own output is correct, preferred, approved, or publishable.
+ST-OMR must not become a monolithic model that directly emits authoritative musical truth.
 
-The symbolic future Gateway endpoint key is `st-omr`. Phase 14 does not add that key to the current Gateway engine enum and does not change an orchestration plan.
+## Current relationship to ScoreMosaic
+
+The authoritative current Stage 7 v1 engine set remains:
+
+```text
+Audiveris
+HOMR
+Clarity
+```
+
+ST-OMR is not currently present in the Gateway engine enum, Stage 6 candidate runtime, or Stage 7 comparison quorum. The current Stage 7 rule requiring at least two Canonical candidates remains unchanged.
+
+ST-OMR does not write Canonical Score directly, does not approve corrections, and does not publish.
+
+## Long-term migration option
+
+The project may later make ST-OMR the primary or sole production OMR, but that is a **migration target**, not current truth.
+
+The safe migration sequence is:
+
+```text
+ST-OMR health-only service foundation
+  -> ST-OMR SHADOW
+  -> ST-OMR PRIMARY
+  -> ST-OMR ONLY (optional, evidence-gated)
+```
+
+The **ST-OMR health-only service foundation** remains the next narrow runtime gate inherited from the original architecture contract. It may prove isolated health/readiness and service safety properties only. It must not load an AI model, process user files, join Gateway orchestration, enter Ensemble comparison, train from teacher corrections, expose a public endpoint, or grant production authority.
+
+### Shadow gate
+
+ST-OMR may first run without production decision authority. Required evidence includes exact model/data provenance, deterministic source/job/model binding, category-stratified evaluation and comparison against teacher-gold plus the current engine baseline.
+
+### Primary gate
+
+ST-OMR may become primary only after fixed benchmark and real-world shadow evidence proves no material regression across notation categories, scan quality, publisher/font variation, page complexity and document-level semantic correctness.
+
+### Sole-OMR gate
+
+Removing Audiveris/HOMR/Clarity from the production path requires a versioned Stage 7 migration contract. The old `>=2 independent Canonical candidates` rule must not be silently bypassed. The replacement safety model must explicitly define:
+
+- specialist evidence boundaries;
+- deterministic musical constraints;
+- calibrated abstention/uncertainty;
+- teacher-review correction rate thresholds;
+- end-to-end MusicXML semantic correctness;
+- measure/rhythm/meter/pitch/voice exactness;
+- structural validity;
+- adversarial/corrupt-input behavior;
+- rollback to the previous validated ST-OMR release;
+- model/dataset/release governance.
+
+Multiple heads from one shared model must not be misrepresented as independent OMR engines. Correlated specialist evidence is different from independent engine quorum.
+
+After a proved migration, Audiveris/HOMR/Clarity may remain offline benchmark/reference engines even if removed from production runtime.
 
 ## Input contract
 
-ST-OMR receives only a server-controlled prepared page-set descriptor.
+ST-OMR receives only server-controlled prepared immutable page artifacts/references. It rejects raw external uploads, arbitrary URLs, caller credentials, caller-selected commands and direct caller-controlled storage paths.
 
-The future Gateway remains responsible for:
-
-- validating the external source
-- decoding PDF pages
-- normalising page order and orientation
-- applying bounded image preparation
-- creating immutable page artifacts
-- recording SHA-256 and media type
-- passing only server-controlled artifact references
-
-The engine contract accepts prepared JPEG and PNG page artifacts. It rejects raw external uploads, arbitrary URLs, caller credentials, caller-selected commands, and direct storage paths.
-
-No phase-14 code opens, decodes, copies, stores, uploads, or dispatches a source file.
+The Gateway remains responsible for source validation, immutable source identity, bounded preparation, page ordering/orientation policy, artifact SHA-256/media type and job/run identity.
 
 ## Output and provenance contract
 
-Every future ST-OMR run must preserve separate immutable artifacts:
+Every future ST-OMR run must preserve distinct immutable artifacts/evidence for:
 
-1. raw engine output
-2. MusicXML candidate
-3. diagnostics
-4. optional confidence evidence
+1. raw specialist/model output;
+2. deterministic composition/validation evidence;
+3. MusicXML candidate;
+4. bounded diagnostics;
+5. uncertainty/abstention evidence when applicable.
 
-Every artifact requires an identity, engine version, model version, SHA-256, media type, and source relationship when runtime implementation begins.
+Every release/run must bind exact engine version, model version, model checksum, training/evaluation provenance and source/job/run identity.
 
-ST-OMR does not write a Canonical Score directly. Safe MusicXML normalisation remains owned by `ensemble-service`. Raw artifacts are never overwritten, cross-engine writes are forbidden, and corrections create later teacher-controlled revisions rather than changing the candidate.
-
-Confidence evidence is advisory provenance. It is not a winner score, engine ranking, automatic correction instruction, or final-truth signal.
+Confidence is advisory evidence, not winner authority.
 
 ## Model manifest
 
-`contracts/st-omr-model-manifest-v1.schema.json` defines the required provenance envelope for every future model release.
+`contracts/st-omr-model-manifest-v1.schema.json` remains the release-provenance contract. A model manifest is evidence, not deployment authority.
 
-A model manifest records:
+Required release gates include:
 
-- independent model identity and semantic version
-- immutable model artifact reference, SHA-256, size, and media type
-- compatible engine-contract and minimum engine versions
-- framework, framework version, device policy, and dependency-lock checksum
-- training code revision and training-environment digest
-- base-model provenance when applicable
-- training, validation, test, and regression dataset manifests
-- dataset consent and licence verification status
-- model licence record
-- named frozen evaluation evidence
-- explicit promotion gates
-- a self-hash field for the canonical manifest
+1. model checksum verified;
+2. training provenance verified;
+3. dataset consent/licence verified;
+4. fixed evaluation completed;
+5. regression tests passed;
+6. manual release approval recorded.
 
-A manifest is evidence, not deployment authority. `deployableFromThisManifestAlone` is always false. Deployment requires a separate reviewed release decision and a later runtime phase.
-
-## Model release gates
-
-A future model version cannot be promoted merely because training completed.
-
-Required gates are:
-
-1. model checksum verified
-2. training provenance verified
-3. dataset consent and licence verified
-4. fixed evaluation completed
-5. regression tests passed
-6. manual release approval recorded
-
-Automatic promotion is forbidden. Evaluation evidence can only describe the named dataset and profile. `generalAccuracyClaim` remains false unless a later separately reviewed benchmark policy defines otherwise.
+Automatic promotion is forbidden.
 
 ## Teacher-correction and training boundary
 
 The live ScoreMosaic system does not train itself.
 
-Teacher corrections may enter a future training corpus only when all of these conditions are satisfied:
-
-- explicit permission exists
-- personal and sensitive data handling is reviewed
-- quality control is completed
-- training occurs in a separate environment
-- datasets are versioned and immutable
-- a frozen evaluation set is preserved
-- regression tests pass
-- a new model version and checksum are created
-- manual release approval is recorded
+Teacher corrections may enter a future training corpus only through explicit permission, reviewed privacy handling, quality control, versioned immutable datasets, preserved frozen evaluation sets, regression testing and a new immutable model release.
 
 A live correction never modifies a deployed model in place.
 
 ## Runtime security requirements
 
-A future health-only and later experimental service must use:
+A future ST-OMR runtime must use:
 
-- a separate container
-- a separate dependency lock
-- a pinned engine version
-- a pinned model version and checksum
-- non-root execution
-- read-only root filesystem
-- temporary bounded workspaces
-- outbound-network default deny
-- CPU, memory, disk, page-count, and timeout limits
-- no public route
-- no caller-controlled command options
-- no secrets or credentials in model or engine contracts
+- isolated service/container boundary;
+- pinned dependencies and model checksum;
+- non-root execution;
+- read-only root filesystem where applicable;
+- bounded temporary workspaces;
+- outbound-network default deny;
+- CPU/memory/disk/page/time limits;
+- no public route;
+- no caller-controlled executable options;
+- no credential material inside model contracts.
 
-These are future implementation gates, not enabled runtime behavior in phase 14.
-
-## Contract files
+## Current fixed locks
 
 ```text
-contracts/st-omr-engine-contract-v1.schema.json
-contracts/st-omr-model-manifest-v1.schema.json
-docs/st-omr-architecture-contract-v1.md
-tests/test_st_omr_contract_v1.py
+stOmrIntegratedIntoGateway=false
+stOmrInStage7Quorum=false
+productionDeploymentEnabled=false
+publicEndpointEnabled=false
+liveTrainingEnabled=false
+selfTrainingEnabled=false
+automaticModelPromotionEnabled=false
+automaticCorrectionEnabled=false
+winnerSelectionAuthority=false
+teacherApprovalEnabled=false
+publicationEnabled=false
+mayRemoveExistingProductionEnginesNow=false
 ```
 
-## Versioning
+## Acceptance principle
 
-Engine contract, engine runtime, and model versions are independent.
-
-- Contract breaking change: new major contract version.
-- Runtime change: new engine semantic version and immutable build provenance.
-- Model change: new model semantic version, artifact checksum, manifest, and evaluation evidence.
-- Dataset change: new frozen dataset version; an existing frozen manifest is never silently edited.
-
-## Fixed phase-14 boundaries
-
-Every valid phase-14 engine contract keeps these values fixed:
-
-```json
-{
-  "architectureOnly": true,
-  "serviceImplementationEnabled": false,
-  "gatewayIntegrationEnabled": false,
-  "ensembleIntegrationEnabled": false,
-  "publicEndpointEnabled": false,
-  "uploadEnabled": false,
-  "networkDispatchEnabled": false,
-  "persistentStorageEnabled": false,
-  "automaticMergeEnabled": false,
-  "automaticCorrectionEnabled": false,
-  "engineRankingEnabled": false,
-  "winnerSelectionEnabled": false,
-  "teacherApprovalEnabled": false,
-  "publicationEnabled": false,
-  "liveTrainingEnabled": false,
-  "selfTrainingEnabled": false,
-  "productionDeploymentEnabled": false
-}
-```
-
-The current Audiveris, HOMR, and Clarity contracts, Gateway plan, candidate lifecycle, Canonical Score Model, Ensemble Comparator, comparison report, and fixed evaluation dataset remain unchanged.
-
-## Acceptance gates
-
-Phase 14 is accepted only when:
-
-- both JSON Schema files parse and remain closed
-- contract type and version are fixed
-- all eight long-term notation profiles are named once
-- ST-OMR is candidate-only and has no final-truth authority
-- prepared input and Gateway PDF-decoding ownership are explicit
-- raw output, MusicXML, diagnostics, and confidence evidence remain distinct
-- Canonical normalisation remains outside ST-OMR
-- model checksum and provenance are mandatory
-- live training, self-training, and automatic model promotion are forbidden
-- all execution, integration, ranking, correction, approval, publication, and deployment flags remain disabled
-- no `services/st-omr-service` directory is created
-- the current Gateway engine selection remains Audiveris, HOMR, and Clarity only
-
-## Next gated phase
-
-The next approved sequence item is **ST-OMR health-only service foundation**.
-
-That later phase may create an isolated service skeleton with health/readiness behavior, non-root container controls, and no model execution. It must not load an AI model, process user files, join Gateway orchestration, enter Ensemble comparison, train from teacher corrections, or expose a public endpoint without separate approval.
+Training success alone is insufficient. ST-OMR promotion is based on end-to-end musical correctness, safety, provenance, abstention behavior and regression evidence, not only symbol-level F1.
