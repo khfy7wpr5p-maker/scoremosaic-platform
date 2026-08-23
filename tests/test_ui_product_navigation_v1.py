@@ -21,6 +21,29 @@ class UiProductNavigationV1Tests(unittest.TestCase):
         )
         self.assertEqual(["account"], UI_CONTRACT["informationArchitecture"]["secondaryNavigation"])
 
+    def test_dashboard_required_regions_are_present_and_fixture_derived(self) -> None:
+        for region in (
+            "new-document-action",
+            "needs-review-summary",
+            "processing-summary",
+        ):
+            self.assertIn(f'data-dashboard-region="{region}"', HTML)
+        self.assertIn('id="dashboard-needs-review-count"', HTML)
+        self.assertIn('id="dashboard-processing-count"', HTML)
+        self.assertIn("renderDashboardSummary", JS)
+        self.assertIn("fixture.document?.reviewState", JS)
+
+    def test_documents_search_and_status_filter_are_local_and_functional(self) -> None:
+        self.assertIn('id="document-search"', HTML)
+        self.assertIn('id="document-status-filter"', HTML)
+        self.assertIn('data-document-row', HTML)
+        self.assertIn('data-document-status="needs-review"', HTML)
+        self.assertIn("renderDocumentList", JS)
+        self.assertIn("document-search')?.addEventListener('input'", JS)
+        self.assertIn("document-status-filter')?.addEventListener('change'", JS)
+        self.assertIn("row.hidden = !visible", JS)
+        self.assertIn("document-result-count", JS)
+
     def test_upload_remains_preview_only(self) -> None:
         upload = UI_CONTRACT["screenArchitecture"]["upload"]
         self.assertIs(upload["presentationOnlyUntilLiveGate"], True)
