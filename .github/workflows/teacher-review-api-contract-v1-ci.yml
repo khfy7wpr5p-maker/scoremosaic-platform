@@ -9,7 +9,9 @@ on:
       - ".github/workflows/teacher-review-api-contract-v1-ci.yml"
       - "contracts/teacher-review-api-v1.json"
       - "contracts/teacher-review-api-edit-intent-v1.schema.json"
+      - "contracts/teacher-review-api-read-result-v1.schema.json"
       - "contracts/teacher-review-api-revision-result-v1.schema.json"
+      - "contracts/stage11-read-response-v1.schema.json"
       - "contracts/teacher-review-write-request-v1.schema.json"
       - "contracts/score-edit-command-v1.schema.json"
       - "contracts/teacher-score-revision-v1.schema.json"
@@ -28,7 +30,9 @@ on:
       - ".github/workflows/teacher-review-api-contract-v1-ci.yml"
       - "contracts/teacher-review-api-v1.json"
       - "contracts/teacher-review-api-edit-intent-v1.schema.json"
+      - "contracts/teacher-review-api-read-result-v1.schema.json"
       - "contracts/teacher-review-api-revision-result-v1.schema.json"
+      - "contracts/stage11-read-response-v1.schema.json"
       - "contracts/teacher-review-write-request-v1.schema.json"
       - "contracts/score-edit-command-v1.schema.json"
       - "contracts/teacher-score-revision-v1.schema.json"
@@ -69,7 +73,9 @@ jobs:
         run: |
           python -m json.tool contracts/teacher-review-api-v1.json > /dev/null
           python -m json.tool contracts/teacher-review-api-edit-intent-v1.schema.json > /dev/null
+          python -m json.tool contracts/teacher-review-api-read-result-v1.schema.json > /dev/null
           python -m json.tool contracts/teacher-review-api-revision-result-v1.schema.json > /dev/null
+          python -m json.tool contracts/stage11-read-response-v1.schema.json > /dev/null
           python -m json.tool contracts/teacher-review-write-request-v1.schema.json > /dev/null
           python -m json.tool contracts/score-edit-command-v1.schema.json > /dev/null
           python -m json.tool contracts/teacher-score-revision-v1.schema.json > /dev/null
@@ -93,6 +99,9 @@ jobs:
 
       - name: Run Stage 8-G write boundary regression
         run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8g_*.py' -v
+
+      - name: Run Stage 11-B read contract regression
+        run: python -m unittest discover -s tests -p 'test_stage11b_read_contracts_local_adapter.py' -v
 
       - name: Run Stage 11-F UI application boundary regression
         run: python -m unittest discover -s tests -p 'test_stage11f_ui_application_eligibility.py' -v
