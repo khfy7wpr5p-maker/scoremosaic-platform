@@ -19,6 +19,9 @@
       "designSystemFoundationsContract": "contracts/design-system-foundations-v1.json",
       "designSystemFoundationsRepositoryReady": true,
       "designSystemFoundationsAppliedInFigma": false,
+      "coreComponentsContract": "contracts/design-system-core-components-v1.json",
+      "coreComponentArchitectureRepositoryReady": true,
+      "coreComponentsAppliedInFigma": false,
       "figmaLowFidelityStarted": true,
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false
