@@ -9,6 +9,7 @@ Historical Gate B-E details remain documented in their dedicated gate documents.
 - `docs/architecture-stage8-current.md`
 - `docs/architecture-stage9-11-current.md`
 - `docs/ui-architecture-phase1.md`
+- `docs/web-preview-v1.md`
 - `docs/live-ui-api-security-architecture-v1.md`
 - `docs/teacher-review-api-contract-v1.md`
 - `docs/downstream-music-application-integration-boundary.md`
@@ -130,6 +131,32 @@ Figma / UX
 
 Visual changes should remain above the contract boundary when possible. Data-shape changes belong in typed contracts; transport changes in adapters; authority/business-rule changes in server/domain contracts.
 
+### 5.1.1 Web Preview v1 — approved unnumbered repository build
+
+The repository preview baseline is defined by `contracts/web-preview-v1.json` and `docs/web-preview-v1.md`.
+
+It packages the existing Stage 10 UI plus Stage 11 local typed application scripts into a deterministic standalone static artifact without creating a second UI implementation:
+
+```text
+Stage 10 UI + fixture
+        +
+Stage 11 local adapters/state
+        ↓
+deterministic preview builder
+        ↓
+CSP-locked static artifact
+        ↓
+CI security validation
+        ↓
+Actions artifact
+        ↓
+[PUBLIC PREVIEW DEPLOYMENT LOCKED]
+```
+
+The artifact is visibly marked non-production and fixture-only. It retains `connect-src 'none'`, contains no browser network/persistence capability, and cannot upload, authenticate, create ScoreEditCommand/TeacherScoreRevision, approve, publish, or persist production state.
+
+The CI artifact is not a public deployment. GitHub Pages, Netlify, Coolify Preview, a public URL, and public traffic remain false until a separate operational gate.
+
 ### 5.2 Live UI ↔ API Security Architecture — approved unnumbered workstream
 
 The repository security baseline is defined by `contracts/live-ui-api-security-architecture-v1.json` and `docs/live-ui-api-security-architecture-v1.md`.
@@ -241,6 +268,7 @@ Approved unnumbered workstreams:
 | Workstream | Status | Meaning |
 |---|---|---|
 | UI Architecture Phase 1 | Approved repository baseline; Figma application pending | Product navigation, screen architecture, interaction model and Design System defined without live activation. |
+| Web Preview v1 | Repository build ready; not published | Deterministic fixture-only static preview artifact can be built in CI; no Pages/public URL/public traffic. |
 | Live UI ↔ API Security Architecture | Approved repository baseline; runtime locked | Identity/session, authorization, API transport, CSRF/origin/CSP, idempotency, audit and rollback rules defined without network activation. |
 | Teacher Review API Contract v1 | Approved repository API baseline; routes locked | Exact read/revision-proposal contracts bridge non-authoritative browser intent to Stage 8 server authority without registering HTTP routes. |
 | Downstream Music Application Integration | Architecture-only | Safe post-validation seam reserved; MusicXML-to-GuitarTab-Engine live integration remains off. |
@@ -270,12 +298,14 @@ Approved unnumbered workstreams:
 - Stage 10 disconnected product experience;
 - Stage 11 typed local UI/application integration;
 - approved UI Architecture Phase 1 product-design baseline;
+- deterministic non-production Web Preview artifact build and CI boundary;
 - approved Live UI ↔ API repository security architecture baseline;
 - approved Teacher Review API repository contract baseline;
 - architecture-only downstream music-application seam.
 
 ### Repository evidence does not prove
 
+- a deployed/public Web Preview URL;
 - public production upload/API traffic;
 - real production provider provisioning;
 - production PostgreSQL/object-storage operation;
