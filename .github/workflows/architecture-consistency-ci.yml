@@ -1,0 +1,70 @@
+name: Architecture Consistency CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/architecture-consistency-stage11-sync-v1"
+    paths:
+      - ".github/workflows/architecture-consistency-ci.yml"
+      - "contracts/architecture-current-state-v1.json"
+      - "README.md"
+      - "docs/architecture*.md"
+      - "docs/st-omr-architecture-contract-v1.md"
+      - "docs/teacher-review-score-editor-architecture-contract.md"
+      - "docs/roadmap.md"
+      - "docs/security-boundaries.md"
+      - "tests/test_architecture_consistency.py"
+      - "contracts/stage9-production-foundation-eligibility-v1.json"
+      - "contracts/stage10-ui-experience-eligibility-v1.json"
+      - "contracts/stage11-ui-application-eligibility-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/architecture-consistency-ci.yml"
+      - "contracts/architecture-current-state-v1.json"
+      - "README.md"
+      - "docs/architecture*.md"
+      - "docs/st-omr-architecture-contract-v1.md"
+      - "docs/teacher-review-score-editor-architecture-contract.md"
+      - "docs/roadmap.md"
+      - "docs/security-boundaries.md"
+      - "tests/test_architecture_consistency.py"
+      - "contracts/stage9-production-foundation-eligibility-v1.json"
+      - "contracts/stage10-ui-experience-eligibility-v1.json"
+      - "contracts/stage11-ui-application-eligibility-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate current architecture state JSON
+        run: python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
+      - name: Run architecture incompatibility and drift tests
+        run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+      - name: Run Stage 7 acceptance drift guard
+        run: python -m unittest discover -s services/omr-gateway/tests -p 'test_stage7_acceptance_contract.py' -v
+      - name: Run Stage 9-I production boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
+      - name: Run Stage 10-F UI boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
+      - name: Run Stage 11-F UI application boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage11f_ui_application_eligibility.py' -v
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+      - name: Check repository diff formatting
+        run: git diff --check
