@@ -1,0 +1,64 @@
+{
+  "version": "scoremosaic-downstream-music-application-integration-v1",
+  "status": "ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION",
+  "purpose": "Define how validated ScoreMosaic musical artifacts may later feed external or sibling music applications without granting those applications authority over Canonical Score, Teacher Review, approval or publication.",
+  "integrationPoint": "after_canonical_and_teacher_review_validation",
+  "sourcePolicy": {
+    "rawOmrCandidateAllowed": false,
+    "rawEngineOutputAllowed": false,
+    "canonicalPreviewAllowed": true,
+    "validatedTeacherRevisionPreviewAllowed": true,
+    "productionDerivedOutputRequiresApprovedTeacherRevision": true,
+    "correctedMusicXmlSha256Required": true,
+    "revisionIdentityRequired": true
+  },
+  "lineage": {
+    "requiredBindings": [
+      "document_id",
+      "canonical_score_id",
+      "teacher_revision_id",
+      "corrected_musicxml_sha256",
+      "integration_request_id",
+      "target_engine_version",
+      "result_sha256"
+    ],
+    "staleRevisionResultMayRemainCurrent": false,
+    "sourceMutationAllowed": false
+  },
+  "authority": {
+    "downstreamEngineMayMutateCanonicalScore": false,
+    "downstreamEngineMayCreateTeacherRevision": false,
+    "downstreamEngineMayApprove": false,
+    "downstreamEngineMayPublish": false,
+    "downstreamOutputIsAuthoritativeMusicalTruth": false,
+    "browserMayCallDownstreamEngineDirectly": false
+  },
+  "applicationBoundary": {
+    "uiCallsTypedApplicationContract": true,
+    "applicationUsesDedicatedAdapter": true,
+    "adapterOwnsTransport": true,
+    "directUiHttpCallsForbidden": true,
+    "failureMustNotMutateScoreMosaicState": true
+  },
+  "guitarTabEngine": {
+    "integrationName": "MusicXML-to-GuitarTab-Engine",
+    "role": "downstream_guitar_arrangement_and_fingering_service",
+    "input": "validated_or_approved_musicxml_with_exact_revision_lineage",
+    "output": "non_authoritative_guitar_tab_and_fingering_candidates",
+    "requiredContext": ["tuning", "fret_domain", "capo_policy", "instrument_profile"],
+    "requiredEvidence": ["playability", "string_fret_assignment", "alternatives", "abstention_or_no_score_when_required"],
+    "mayRewriteSourceMusic": false,
+    "mayBeAddedToUiAsSeparateWorkspace": true
+  },
+  "futureUiExtension": {
+    "recommendedWorkspace": "guitar_tab_workspace",
+    "mayAddNavigationWithoutChangingCoreTeacherReviewAuthority": true,
+    "suggestedRegions": ["standard_notation", "guitar_tab", "fingering_options", "position_playability_evidence"]
+  },
+  "activationLocks": {
+    "guitarTabLiveIntegrationActivated": false,
+    "networkTransportActivated": false,
+    "productionCredentialsActivated": false,
+    "productionDerivedTabPublicationActivated": false
+  }
+}
