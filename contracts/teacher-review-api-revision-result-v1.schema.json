@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://scoremosaic.invalid/contracts/teacher-review-api-revision-result-v1.schema.json",
   "title": "ScoreMosaic Teacher Review API Revision Result v1",
-  "description": "Bounded public result for one revision proposal. Successful authorized results may expose safe immutable parent/revision/validation identity. Error results never expose server-resolved parent/current-head identity, internal authorization grants, signatures, raw provider errors, raw MusicXML, approval authority or publication authority.",
+  "description": "Bounded public result for one revision proposal. Successful authorized results may expose safe immutable parent/revision/validation identity. Error results never require or expose parsed client request identity, document/current-head identity, internal authorization grants, signatures, raw provider errors, raw MusicXML, approval authority or publication authority.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,8 +19,10 @@
   "properties": {
     "schemaVersion": {"const": "scoremosaic-teacher-review-api-revision-result-v1"},
     "requestId": {
-      "type": "string",
-      "pattern": "^req_[A-Za-z0-9_-]{8,120}$"
+      "oneOf": [
+        {"type": "string", "pattern": "^req_[A-Za-z0-9_-]{8,120}$"},
+        {"type": "null"}
+      ]
     },
     "correlationId": {
       "type": "string",
@@ -29,7 +31,12 @@
     "state": {
       "enum": ["created", "replayed", "rejected", "stale", "conflict", "unavailable"]
     },
-    "documentId": {"$ref": "#/$defs/id"},
+    "documentId": {
+      "oneOf": [
+        {"$ref": "#/$defs/id"},
+        {"type": "null"}
+      ]
+    },
     "parent": {
       "oneOf": [
         {"$ref": "#/$defs/parent"},
@@ -152,6 +159,8 @@
       },
       "then": {
         "properties": {
+          "requestId": {"type": "string", "pattern": "^req_[A-Za-z0-9_-]{8,120}$"},
+          "documentId": {"$ref": "#/$defs/id"},
           "parent": {"$ref": "#/$defs/parent"},
           "revision": {"$ref": "#/$defs/revision"},
           "error": {"type": "null"}
@@ -165,6 +174,8 @@
       },
       "then": {
         "properties": {
+          "requestId": {"type": "null"},
+          "documentId": {"type": "null"},
           "parent": {"type": "null"},
           "revision": {"type": "null"},
           "error": {"$ref": "#/$defs/error"}
