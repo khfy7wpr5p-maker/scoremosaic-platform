@@ -1,0 +1,55 @@
+name: Stage 11-A UI Application Boundary CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage11a-ui-application-contract-v1"
+    paths:
+      - ".github/workflows/stage11a-ui-application-boundary-ci.yml"
+      - "contracts/stage11-ui-application-boundary-v1.json"
+      - "docs/stage11a-ui-application-boundary.md"
+      - "tests/test_stage11a_ui_application_boundary.py"
+      - "contracts/stage10-ui-experience-eligibility-v1.json"
+      - "contracts/stage9-production-foundation-eligibility-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage11a-ui-application-boundary-ci.yml"
+      - "contracts/stage11-ui-application-boundary-v1.json"
+      - "docs/stage11a-ui-application-boundary.md"
+      - "tests/test_stage11a_ui_application_boundary.py"
+      - "contracts/stage10-ui-experience-eligibility-v1.json"
+      - "contracts/stage9-production-foundation-eligibility-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage11a-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate JSON contracts
+        run: |
+          python -m json.tool contracts/stage11-ui-application-boundary-v1.json > /dev/null
+          python -m json.tool contracts/stage10-ui-experience-eligibility-v1.json > /dev/null
+          python -m json.tool contracts/stage9-production-foundation-eligibility-v1.json > /dev/null
+      - name: Run Stage 11-A tests
+        run: python -m unittest discover -s tests -p 'test_stage11a_ui_application_boundary.py' -v
+      - name: Run Stage 10-F boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
+      - name: Run Stage 9-I stop-boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
