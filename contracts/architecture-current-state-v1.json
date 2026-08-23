@@ -1,0 +1,76 @@
+{
+  "version": "scoremosaic-architecture-current-state-v1",
+  "asOfStage": "11-F",
+  "sourceOfTruth": true,
+  "stageStatus": {
+    "5": "CONTROLLED_STAGING_EXECUTION_COMPLETE",
+    "6": "AUTHENTICATED_CANDIDATE_INGESTION_PERSISTENCE_COMPLETE",
+    "7": "CANONICAL_ENSEMBLE_CONVERGENCE_COMPLETE",
+    "8": "TEACHER_REVIEW_PUBLICATION_PREPARATION_COMPLETE_EXTERNAL_EFFECT_LOCKED",
+    "9": "REPOSITORY_PRODUCTION_FOUNDATION_COMPLETE_EXTERNAL_PROVISIONING_DEFERRED",
+    "10": "REPOSITORY_UI_EXPERIENCE_COMPLETE",
+    "11": "REPOSITORY_TYPED_UI_APPLICATION_INTEGRATION_COMPLETE_LIVE_INTEGRATION_LOCKED"
+  },
+  "currentOmr": {
+    "productionCandidateEngines": ["audiveris", "homr", "clarity"],
+    "stOmrIntegratedIntoGateway": false,
+    "stage7MinimumCanonicalCandidates": 2,
+    "engineOutputAuthoritativeMusicalTruth": false,
+    "automaticWinnerAuthority": false
+  },
+  "teacherReview": {
+    "repositoryRevisionApprovalPublicationPreparationComplete": true,
+    "disconnectedProductUiComplete": true,
+    "typedLocalUiApplicationIntegrationComplete": true,
+    "liveTeacherReviewApiActivated": false,
+    "productionWriteActivated": false,
+    "productionApprovalPersistenceActivated": false,
+    "publicationExecutionActivated": false
+  },
+  "production": {
+    "providerPlanDocumented": true,
+    "hetznerCoolifyBaselineDocumented": true,
+    "postgresql18PlanDocumented": true,
+    "objectStoragePlanDocumented": true,
+    "authentikPlanDocumented": true,
+    "infisicalEligibilityPlanDocumented": true,
+    "providerResourcesCreated": false,
+    "productionCredentialsProvisioned": false,
+    "productionNetworkActivated": false,
+    "productionDatabaseActivated": false,
+    "productionObjectStorageActivated": false,
+    "productionIdentityActivated": false,
+    "productionSecretsActivated": false,
+    "publicApiActivated": false,
+    "publicTrafficActivated": false
+  },
+  "browser": {
+    "localFixtureUiAvailable": true,
+    "typedLocalApplicationAvailable": true,
+    "networkAllowed": false,
+    "browserPersistenceAllowed": false,
+    "productionArtifactReadsAllowed": false,
+    "serverWriteAllowed": false,
+    "playbackAllowed": false
+  },
+  "stOmrMigration": {
+    "currentState": "ARCHITECTURE_ONLY_ISOLATED_TRACK",
+    "longTermTargetMayBecomePrimaryOrSoleOmr": true,
+    "requiresVersionedStage7Migration": true,
+    "requiresShadowBenchmarkEvidence": true,
+    "requiresTeacherGoldEvaluation": true,
+    "requiresCategoryStratifiedNoRegressionEvidence": true,
+    "requiresCalibratedAbstentionAndDeterministicValidation": true,
+    "mayRemoveExistingProductionEnginesNow": false,
+    "existingEnginesMayRemainOfflineBenchmarksAfterMigration": true
+  },
+  "authorityInvariants": {
+    "aiEvidenceOnly": true,
+    "canonicalAdmissionDeterministic": true,
+    "teacherApprovalExplicit": true,
+    "publicationSeparateFromApproval": true,
+    "localEditIntentIsNotScoreEditCommand": true,
+    "browserIsNotAuthority": true,
+    "productionActivationRequiresSeparateGate": true
+  }
+}
