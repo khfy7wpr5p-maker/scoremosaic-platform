@@ -13,6 +13,7 @@ Historical Gate B-E details remain documented in their dedicated gate documents.
 - `docs/live-ui-api-security-architecture-v1.md`
 - `docs/teacher-review-api-contract-v1.md`
 - `docs/downstream-music-application-integration-boundary.md`
+- `docs/licensing-governance.md`
 
 ## 1. Purpose
 
@@ -256,6 +257,25 @@ Real provisioning remains behind the Stage 9 external-production boundary.
 ### 6.1 Current maturity and evidence boundary
 
 Repository behavior is strongly regression-tested, but that is not evidence of broad OMR accuracy or production readiness. The fixed current-engine dataset contains one deliberately small score case, and the ST-OMR fixed evaluation contains three repository-owned synthetic fixtures. Teacher-gold evaluation, real-world shadow benchmarking, category-stratified no-regression evidence, production provisioning and live operational validation remain incomplete. Therefore `realOmrAccuracyMeasured=false`, `generalAccuracyClaim=false`, and `productionReady=false` remain explicit in the current-state contract.
+
+### 6.2 Licensing and asset-governance boundary
+
+Repository visibility and runtime authority are separate from licensing. The
+canonical policy is defined by `LICENSE`, `LICENSE-SCOPE.md`, `NOTICE`,
+`COMMERCIAL-LICENSE.md`, `TRADEMARKS.md`,
+`CONTRIBUTOR-LICENSE-AGREEMENT.md`, and `docs/licensing-governance.md`.
+
+First-party code is noncommercial source-available; commercial use requires a
+signed agreement. Third-party OMR engines, packages and model assets remain
+under their own terms. An agreement for ScoreMosaic-owned code cannot override
+AGPL/GPL or third-party model/data obligations.
+
+The current dependency inventory is fail-closed. Audiveris, HOMR,
+Clarity-OMR, PyMuPDF and Ultralytics require deployment-specific copyleft or
+commercial-license resolution. The HOMR and Clarity model-asset licenses, plus
+the complete operating-system/bundled-artifact SBOM, are not yet approved for
+production redistribution. These are licensing activation locks in addition to
+the existing security, accuracy and infrastructure locks.
 
 ## 7. Stage status map
 
