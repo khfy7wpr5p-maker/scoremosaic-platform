@@ -40,7 +40,7 @@
     "rules": {
       "analyticsHeavyLayoutForbiddenByDefault": true,
       "countsReflectReadModelOnly": true,
-      "countDisplayMayNotCreateDocumentState": false,
+      "countDisplayMayNotCreateDocumentState": true,
       "continueReviewRequiresExactDocumentRevisionContext": true
     }
   },
