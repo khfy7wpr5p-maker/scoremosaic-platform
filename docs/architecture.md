@@ -131,7 +131,7 @@ Figma / UX
 
 Visual changes should remain above the contract boundary when possible. Data-shape changes belong in typed contracts; transport changes in adapters; authority/business-rule changes in server/domain contracts.
 
-### 5.1.1 Web Preview v1 — approved unnumbered repository build
+### 5.1.1 Web Preview v1 — verified unnumbered public fixture preview
 
 The repository preview baseline is defined by `contracts/web-preview-v1.json` and `docs/web-preview-v1.md`.
 
@@ -150,12 +150,14 @@ CI security validation
         ↓
 Actions artifact
         ↓
-[PUBLIC PREVIEW DEPLOYMENT LOCKED]
+GitHub Pages deployment
+        ↓
+[PUBLIC FIXTURE-ONLY PREVIEW]
 ```
 
 The artifact is visibly marked non-production and fixture-only. It retains `connect-src 'none'`, contains no browser network/persistence capability, and cannot upload, authenticate, create ScoreEditCommand/TeacherScoreRevision, approve, publish, or persist production state.
 
-The CI artifact is not a public deployment. GitHub Pages, Netlify, Coolify Preview, a public URL, and public traffic remain false until a separate operational gate.
+The downloadable CI artifact is not itself a deployment. The separate GitHub Pages workflow has successfully deployed the fixture-only preview at [khfy7wpr5p-maker.github.io/scoremosaic-platform](https://khfy7wpr5p-maker.github.io/scoremosaic-platform/); deployment evidence is pinned in `contracts/web-preview-v1.json`. Netlify, Coolify Preview, browser API traffic, production public traffic, and every production authority remain inactive.
 
 ### 5.2 Live UI ↔ API Security Architecture — approved unnumbered workstream
 
@@ -176,7 +178,7 @@ The target identity provider remains Authentik through OIDC/OAuth2 Authorization
 
 Initial live-read path templates are versioned for `review.read`, `issues.read`, `sourceEvidence.read`, and `validation.read`.
 
-Current `connect-src 'none'` remains active. `connect-src 'self'` is only the maximum future same-origin baseline and cannot activate before a separate runtime gate. Auth/session/RBAC runtime, production artifact reads, server writes, command/revision creation, approval, publication, upload, production infrastructure and public traffic remain false.
+Current `connect-src 'none'` remains active. `connect-src 'self'` is only the maximum future same-origin baseline and cannot activate before a separate runtime gate. Auth/session/RBAC runtime, production artifact reads, server writes, command/revision creation, approval, publication, upload, production infrastructure and public API traffic remain false.
 
 ### 5.3 Teacher Review API Contract v1 — approved unnumbered workstream
 
@@ -200,7 +202,7 @@ The browser may not submit the existing Stage 8-G `teacher-review-write-request-
 
 The initial browser operation surface remains the four Stage 11 families: `set_pitch`, `set_effective_duration`, `set_dots`, and `remove_event`. The broader Stage 8 internal command vocabulary is not implicitly exposed over the API.
 
-No HTTP route is registered by this contract. Live read/write API, browser networking, ScoreEditCommand/TeacherScoreRevision creation, production persistence, approval, publication and public traffic remain false.
+No HTTP route is registered by this contract. Live read/write API, browser networking, ScoreEditCommand/TeacherScoreRevision creation, production persistence, approval, publication and public API traffic remain false.
 
 ### 5.4 Downstream music-application integration boundary
 
@@ -251,6 +253,10 @@ publicationExecutionActivated=false
 
 Real provisioning remains behind the Stage 9 external-production boundary.
 
+### 6.1 Current maturity and evidence boundary
+
+Repository behavior is strongly regression-tested, but that is not evidence of broad OMR accuracy or production readiness. The fixed current-engine dataset contains one deliberately small score case, and the ST-OMR fixed evaluation contains three repository-owned synthetic fixtures. Teacher-gold evaluation, real-world shadow benchmarking, category-stratified no-regression evidence, production provisioning and live operational validation remain incomplete. Therefore `realOmrAccuracyMeasured=false`, `generalAccuracyClaim=false`, and `productionReady=false` remain explicit in the current-state contract.
+
 ## 7. Stage status map
 
 | Stage | Current status | Authority meaning |
@@ -268,7 +274,7 @@ Approved unnumbered workstreams:
 | Workstream | Status | Meaning |
 |---|---|---|
 | UI Architecture Phase 1 | Approved repository baseline; Figma application pending | Product navigation, screen architecture, interaction model and Design System defined without live activation. |
-| Web Preview v1 | Repository build ready; not published | Deterministic fixture-only static preview artifact can be built in CI; no Pages/public URL/public traffic. |
+| Web Preview v1 | Public fixture-only Pages preview deployed and verified | Deterministic CSP-locked preview is public; browser API, persistence, real data and production traffic remain off. |
 | Live UI ↔ API Security Architecture | Approved repository baseline; runtime locked | Identity/session, authorization, API transport, CSRF/origin/CSP, idempotency, audit and rollback rules defined without network activation. |
 | Teacher Review API Contract v1 | Approved repository API baseline; routes locked | Exact read/revision-proposal contracts bridge non-authoritative browser intent to Stage 8 server authority without registering HTTP routes. |
 | Downstream Music Application Integration | Architecture-only | Safe post-validation seam reserved; MusicXML-to-GuitarTab-Engine live integration remains off. |
@@ -321,4 +327,4 @@ Approved unnumbered workstreams:
 
 ## 10. Current development boundary
 
-Safe autonomous repository work may continue only where it does not cross external production effects. Any step that creates paid provider resources, real credentials, DNS/TLS changes, public traffic, production persistence, actual publication, or live downstream provider effects requires a separate explicit operational gate.
+Safe autonomous repository work may continue only where it does not cross external production effects. Any step that creates paid provider resources, real credentials, DNS/TLS changes, new public traffic beyond the authorized fixture-only Pages preview, production persistence, actual publication, or live downstream provider effects requires a separate explicit operational gate.

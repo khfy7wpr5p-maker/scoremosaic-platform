@@ -1,7 +1,9 @@
 # ScoreMosaic Web Preview v1
 
-Status: **public GitHub Pages preview deployment authorized; runtime deployment not yet verified**  
-Contract: `contracts/web-preview-v1.json`  
+Status: **public fixture-only GitHub Pages preview deployed and verified**
+
+Contract: `contracts/web-preview-v1.json`
+
 Current architecture state: `contracts/architecture-current-state-v1.json`
 
 Web Preview v1 packages the existing Stage 10 product experience and Stage 11 typed local application scripts into one deterministic static artifact. The user has explicitly authorized publishing this fixture-only artifact through GitHub Pages. That authority is narrow: it does not activate browser API networking, authentication, persistence, real upload, production data, server writes, approval, publication, or production traffic.
@@ -82,21 +84,22 @@ Uploading that CI artifact is not itself a public deployment.
 - the same hardened fixture-only builder and preview security regressions run before upload;
 - deployment targets the `github-pages` environment only.
 
-The repository-level GitHub Pages setting cannot be assumed from repository code. A successful deployment run is required before `githubPagesEnabled`, `publicPreviewDeployed`, `publicUrlAssigned`, or preview `publicTrafficActivated` may become true in the architecture state.
+The repository-level GitHub Pages setting is not inferred from repository code. Initial operational evidence is successful deployment run [32652403651](https://github.com/khfy7wpr5p-maker/scoremosaic-platform/actions/runs/32652403651) at commit `33555ed152d1f8f3bdec0072bec7693c29b2aa1c`, together with the reachable public site at [khfy7wpr5p-maker.github.io/scoremosaic-platform](https://khfy7wpr5p-maker.github.io/scoremosaic-platform/). Later `main` deployments may supersede that revision without invalidating the recorded enablement/reachability evidence.
 
-## Current pre-deployment truth
+## Current deployment truth
 
 ```text
 publicPreviewDeploymentAuthorized=true
 githubPagesDeploymentWorkflowReady=true
-githubPagesSiteConfigurationVerified=false
-githubPagesEnabled=false
-publicPreviewDeployed=false
-publicUrlAssigned=false
+githubPagesSiteConfigurationVerified=true
+githubPagesEnabled=true
+publicPreviewDeployed=true
+publicUrlAssigned=true
 browserNetworkActivated=false
 liveApiActivated=false
 productionPersistenceActivated=false
-publicTrafficActivated=false
+previewPublicTrafficActivated=true
+productionPublicTrafficActivated=false
 ```
 
-A successful Pages deployment may change only the preview-specific deployment/public-traffic facts. Production `publicApiActivated`, production `publicTrafficActivated`, authentication, storage, writes, approval, and publication remain independently locked.
+The successful Pages deployment changed only the preview-specific deployment/public-traffic facts. Production `publicApiActivated`, production `publicTrafficActivated`, authentication, storage, writes, approval, and publication remain independently locked.

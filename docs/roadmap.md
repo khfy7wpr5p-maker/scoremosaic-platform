@@ -17,13 +17,13 @@ Every capability is gated. Code presence, model accuracy, a successful UI demo, 
 | Product UI experience — Stage 10 | ✅ Complete repository scope | Disconnected fixture-backed product UI; no production backend authority. |
 | Typed UI/application integration — Stage 11 | ✅ Complete repository scope | Closed typed reads/edit-intent/state model/local integration; live API locked. |
 | UI Architecture Phase 1 | ✅ Repository pre-Figma baseline complete | Unnumbered product-design workstream; Figma application/high-fidelity still pending. |
-| Web Preview v1 | ✅ Repository build ready | Deterministic fixture-only static preview artifact can be built/downloaded from CI; public deployment remains locked. |
+| Web Preview v1 | ✅ Public fixture preview verified | Deterministic CSP-locked GitHub Pages preview is deployed; browser API, persistence, real data and production authority remain off. |
 | Live UI↔API Security Architecture | ✅ Complete repository baseline | OIDC/session, server authorization, CSRF/origin/CSP, idempotency, audit and rollback contracts complete; runtime off. |
 | Teacher Review API Contract v1 | ✅ Complete repository baseline | Exact read + bounded revision-proposal API contracts bridge browser intent to Stage 8 authority; no routes registered. |
 | Downstream Music Application Integration | 🟡 Architecture-only seam | Validated/approved MusicXML may later feed bounded derivative services; GuitarTab live integration off. |
 | ST-OMR architecture/development track | 🟡 Isolated | Not in Gateway/Stage 7 quorum; no production authority. |
 | Production infrastructure | 🔒 Not activated | No paid/provider resources, production DB/object store, credentials, DNS/TLS or public traffic activated by repo stages. |
-| Public Web Preview | 🔒 Not activated | No GitHub Pages/Netlify/Coolify Preview URL or public traffic is created by the repository preview build. |
+| Public Web Preview | ✅ Fixture-only GitHub Pages active | Public URL and preview traffic are verified; this grants no live API, persistence, real-data or production authority. |
 | Live Teacher Review API | 🔒 Not activated | Security/API contracts exist, but HTTP routes, live auth, browser network and production persistence remain gated. |
 | Publication execution | 🔒 Not activated | Stage 8-O stops at non-executing publisher-bound handoff. |
 | Playback | 🔒 Not activated | Review timeline/presentation state exists; no real audio/MIDI/SoundFont runtime. |
@@ -40,7 +40,7 @@ Safe Intake
   -> Stage 10 disconnected product UI
   -> Stage 11 typed local UI/application integration
   -> UI Architecture Phase 1  [unnumbered]
-  -> Web Preview v1 build  [unnumbered, repository only]
+  -> Web Preview v1  [unnumbered, public fixture-only Pages preview]
   -> Live UI↔API Security Architecture  [unnumbered, repository only]
   -> Teacher Review API Contract v1  [unnumbered, repository only]
   -> High-fidelity Figma / prototype
@@ -66,9 +66,9 @@ Fixed UI boundaries:
 - real upload/auth/server write/playback/publication remain locked;
 - future visual modernization starts in Figma/Design System/UI before changing lower authority layers.
 
-## Completed repository preview build — Web Preview v1
+## Completed public fixture preview — Web Preview v1
 
-Goal: make the current Stage 10/11 disconnected product UI inspectable as one deterministic browser-ready static artifact without activating public hosting or backend behavior.
+Goal: make the current Stage 10/11 disconnected product UI inspectable as one deterministic browser-ready static artifact without activating backend or production behavior.
 
 Safe build path:
 
@@ -80,12 +80,24 @@ Stage 10 UI + fixture
   -> CSP-locked standalone static files
   -> CI security regressions
   -> downloadable Actions artifact
-  -> [PUBLIC PREVIEW DEPLOYMENT LOCKED]
+  -> GitHub Pages deployment
+  -> [PUBLIC FIXTURE-ONLY PREVIEW]
 ```
 
 The preview retains `connect-src 'none'`, contains no browser persistence/network API, and cannot upload, authenticate, create ScoreEditCommand/TeacherScoreRevision, approve, publish, or persist production state.
 
-GitHub Pages, Netlify, Coolify Preview, public URL assignment and public traffic require a separate operational gate.
+GitHub Pages deployment and the public preview URL are verified. Netlify, Coolify Preview, live browser/API traffic and production public traffic remain behind separate operational gates.
+
+## Current evidence gaps
+
+The repository regression baseline is not a broad OMR accuracy benchmark. The current-engine fixed dataset contains one deliberately small score case; the ST-OMR fixed evaluation contains three repository-owned synthetic fixtures and explicitly sets `realOmrAccuracyMeasured=false` and `generalAccuracyClaim=false`.
+
+Before an OMR accuracy or production-readiness claim, the project still requires:
+
+- representative teacher-gold data across notation categories and scan quality;
+- real-world shadow evaluation and category-stratified no-regression evidence;
+- calibrated abstention and document-level musical correctness criteria;
+- real provider provisioning, backup/restore, observability, rollback and live security validation.
 
 ## Completed repository security baseline — Live UI↔API Security
 
@@ -312,7 +324,7 @@ Repository-only work may continue while all live/production activation locks rem
 - paid resource creation;
 - real credential generation/bootstrap;
 - DNS/TLS changes;
-- public preview/site traffic;
+- new public preview/site traffic beyond the verified fixture-only Pages deployment;
 - production data writes;
 - production publication execution;
 - live downstream music-service activation;

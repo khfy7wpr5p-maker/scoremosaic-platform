@@ -22,6 +22,7 @@ Approved unnumbered workstreams now sit after Stage 11 without consuming Stage 1
 
 ```text
 UI Architecture Phase 1                 ✅ repository baseline; Figma next
+Web Preview v1                          ✅ public fixture-only GitHub Pages preview
 Downstream Music Application Integration 🟡 architecture-only seam
 ```
 
@@ -33,13 +34,17 @@ The following remain locked:
 - production Hetzner resources and private network;
 - production PostgreSQL and object storage;
 - production Authentik/Infisical runtime;
-- production credentials, DNS/TLS and public visibility;
+- production credentials, DNS/TLS and production public visibility;
 - live Teacher Review write API;
 - production approval persistence;
 - actual publication execution;
 - production playback;
 - ST-OMR Gateway/Stage 7 integration;
 - live MusicXML-to-GuitarTab-Engine integration.
+
+The public Web Preview is a separate, CSP-locked fixture deployment. It does not activate upload, browser API networking, persistence, real user data or any production authority.
+
+Repository tests establish deterministic behavior and security boundaries, not broad OMR accuracy. The fixed current-engine dataset is one deliberately small score case and the ST-OMR evaluation uses three synthetic fixtures; teacher-gold and real-world shadow evidence are still required. The project is therefore not production-ready.
 
 ## Current secure flow
 

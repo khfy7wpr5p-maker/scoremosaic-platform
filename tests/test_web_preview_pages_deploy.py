@@ -30,17 +30,27 @@ class WebPreviewPagesDeployTests(unittest.TestCase):
         self.assertIs(security["browserPersistenceAllowed"], False)
         self.assertIs(security["serverWriteAllowed"], False)
 
-    def test_pre_deployment_state_does_not_claim_runtime_success(self) -> None:
+    def test_verified_preview_state_does_not_unlock_production_capabilities(self) -> None:
         for key in (
             "githubPagesEnabled",
             "publicPreviewDeployed",
             "publicUrlAssigned",
+            "publicTrafficActivated",
+        ):
+            self.assertIs(CONTRACT["activationLocks"][key], True, key)
+        for key in (
             "browserNetworkActivated",
             "liveApiActivated",
             "productionPersistenceActivated",
-            "publicTrafficActivated",
         ):
             self.assertIs(CONTRACT["activationLocks"][key], False, key)
+
+        evidence = CONTRACT["publicPreviewDeployment"]["deploymentEvidence"]
+        self.assertEqual(
+            "https://github.com/khfy7wpr5p-maker/scoremosaic-platform/actions/runs/32652403651",
+            evidence["workflowRunUrl"],
+        )
+        self.assertEqual("2026-08-23", evidence["verifiedOn"])
 
     def test_deployment_workflow_is_main_only_and_never_runs_on_pull_request(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")

@@ -48,7 +48,7 @@ class ArchitectureConsistencyTests(unittest.TestCase):
             CONTRACT["stageStatus"],
         )
 
-    def test_approved_post_stage11_workstreams_are_unnumbered_and_non_live(self) -> None:
+    def test_approved_post_stage11_workstreams_keep_exact_runtime_boundaries(self) -> None:
         ui = CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]
         self.assertIs(ui["stageNumberAssigned"], False)
         self.assertEqual(
@@ -62,16 +62,25 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         preview = CONTRACT["approvedWorkstreams"]["webPreviewV1"]
         self.assertIs(preview["stageNumberAssigned"], False)
         self.assertEqual(
-            "APPROVED_PUBLIC_GITHUB_PAGES_PREVIEW_DEPLOYMENT_AUTHORIZED_NOT_YET_VERIFIED",
+            "PUBLIC_GITHUB_PAGES_FIXTURE_PREVIEW_DEPLOYED_VERIFIED",
             preview["status"],
         )
         self.assertIs(preview["repositoryPreviewBuildReady"], True)
         self.assertIs(preview["previewArtifactCiReady"], True)
         self.assertIs(preview["publicPreviewDeploymentAuthorized"], True)
         self.assertIs(preview["githubPagesDeploymentWorkflowReady"], True)
-        self.assertIs(preview["githubPagesSiteConfigurationVerified"], False)
+        self.assertIs(preview["githubPagesSiteConfigurationVerified"], True)
         for key in ("githubPagesEnabled", "publicPreviewDeployed", "publicUrlAssigned", "publicTrafficActivated"):
-            self.assertIs(preview[key], False, key)
+            self.assertIs(preview[key], True, key)
+        self.assertEqual(
+            "https://khfy7wpr5p-maker.github.io/scoremosaic-platform/",
+            preview["publicUrl"],
+        )
+        self.assertEqual(32652403651, preview["verificationEvidenceWorkflowRunId"])
+        self.assertEqual(
+            "33555ed152d1f8f3bdec0072bec7693c29b2aa1c",
+            preview["verificationEvidenceCommitSha"],
+        )
 
         security = CONTRACT["approvedWorkstreams"]["liveUiApiSecurityDesign"]
         self.assertIs(security["stageNumberAssigned"], False)
@@ -102,6 +111,15 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIs(omr["stOmrIntegratedIntoGateway"], False)
         self.assertIs(omr["engineOutputAuthoritativeMusicalTruth"], False)
         self.assertIs(omr["automaticWinnerAuthority"], False)
+        self.assertEqual(1, omr["fixedRegressionDatasetCaseCount"])
+        self.assertEqual(3, omr["stOmrSyntheticEvaluationFixtureCount"])
+        for key in (
+            "teacherGoldEvaluationComplete",
+            "realWorldShadowBenchmarkComplete",
+            "realOmrAccuracyMeasured",
+            "generalAccuracyClaim",
+        ):
+            self.assertIs(omr[key], False, key)
 
     def test_st_omr_only_migration_cannot_happen_by_implication(self) -> None:
         migration = CONTRACT["stOmrMigration"]
@@ -118,6 +136,7 @@ class ArchitectureConsistencyTests(unittest.TestCase):
 
     def test_production_activation_locks_remain_false(self) -> None:
         production = CONTRACT["production"]
+        self.assertIs(production["productionReady"], False)
         for key in (
             "providerResourcesCreated",
             "productionCredentialsProvisioned",
@@ -194,13 +213,15 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIn("does not consume or reserve Stage 12 numbering", TEXT["roadmap"])
         self.assertIs(CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]["stageNumberAssigned"], False)
 
-    def test_web_preview_is_not_silently_reassigned_or_overclaiming_deployment(self) -> None:
+    def test_web_preview_is_not_silently_reassigned_or_overclaiming_production(self) -> None:
         self.assertIn("does not create Stage 12", TEXT["web-preview"])
         preview = CONTRACT["approvedWorkstreams"]["webPreviewV1"]
         self.assertIs(preview["stageNumberAssigned"], False)
         self.assertIs(preview["publicPreviewDeploymentAuthorized"], True)
-        self.assertIs(preview["publicPreviewDeployed"], False)
-        self.assertIs(preview["publicTrafficActivated"], False)
+        self.assertIs(preview["publicPreviewDeployed"], True)
+        self.assertIs(preview["publicTrafficActivated"], True)
+        self.assertIs(CONTRACT["production"]["publicApiActivated"], False)
+        self.assertIs(CONTRACT["production"]["publicTrafficActivated"], False)
 
     def test_live_ui_api_security_is_not_silently_reassigned_to_stage12(self) -> None:
         self.assertIn("does not consume Stage 12", TEXT["live-ui-api-security"])
