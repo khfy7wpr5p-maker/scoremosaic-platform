@@ -25,6 +25,10 @@
       "musicDomainComponentsContract": "contracts/design-system-music-domain-components-v1.json",
       "musicDomainComponentArchitectureRepositoryReady": true,
       "musicDomainComponentsAppliedInFigma": false,
+      "productPatternsContract": "contracts/design-system-product-patterns-v1.json",
+      "productPatternArchitectureRepositoryReady": true,
+      "productPatternsAppliedInFigma": false,
+      "preFigmaRepositoryArchitectureReady": true,
       "figmaLowFidelityStarted": true,
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false

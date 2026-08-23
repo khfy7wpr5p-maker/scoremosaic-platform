@@ -131,6 +131,7 @@
     "foundationsContract": "contracts/design-system-foundations-v1.json",
     "coreComponentsContract": "contracts/design-system-core-components-v1.json",
     "musicDomainComponentsContract": "contracts/design-system-music-domain-components-v1.json",
+    "productPatternsContract": "contracts/design-system-product-patterns-v1.json",
     "foundations": ["color_tokens", "typography", "spacing", "grid", "radius", "elevation", "iconography"],
     "coreComponents": [
       "button",
@@ -190,6 +191,9 @@
     "coreComponentsAppliedInFigma": false,
     "musicDomainComponentArchitectureRepositoryReady": true,
     "musicDomainComponentsAppliedInFigma": false,
+    "productPatternArchitectureRepositoryReady": true,
+    "productPatternsAppliedInFigma": false,
+    "preFigmaRepositoryArchitectureReady": true,
     "logicalAreas": [
       "00_foundations",
       "01_components",
