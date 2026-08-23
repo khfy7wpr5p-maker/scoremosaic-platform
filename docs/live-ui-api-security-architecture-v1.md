@@ -23,14 +23,30 @@ The browser cannot manufacture principal identity, tenant/resource authorization
 
 ## 2. Identity and session
 
-Target identity provider remains Authentik using OIDC/OAuth2 Authorization Code + PKCE. The intended web security shape is a server-side BFF or equivalent confidential boundary:
+Target identity provider remains Authentik using OIDC/OAuth2 Authorization Code + PKCE. The intended web security shape is a server-side BFF or equivalent confidential boundary.
 
-- provider access/refresh tokens are not exposed to application JavaScript;
-- tokens are not placed in localStorage or sessionStorage;
-- browser state uses a bounded server-side session referenced by `__Host-scoremosaic_session`;
-- the cookie is HttpOnly, Secure, SameSite=Lax, Path=/ and has no Domain attribute;
-- session idle/absolute expiration must be bounded by runtime configuration;
-- authentication rotates the session; logout invalidates it server-side.
+Authorization requests require:
+
+- unpredictable `state` and exact callback-state matching;
+- OIDC `nonce` and exact nonce matching;
+- PKCE with `S256` only;
+- exact redirect-URI allowlisting;
+- no open redirects.
+
+ID-token acceptance requires signature/key validation, trusted issuer match, audience match, expiration and issued-at checks, nonce match, an algorithm allowlist, trusted JWKS/equivalent key validation and only bounded clock skew.
+
+Provider token handling is server-side only. Access/refresh tokens are not exposed to application JavaScript, localStorage or sessionStorage, are never logged, require encryption at rest if persisted, require refresh-token rotation or equivalent replay protection, and should be revoked on session termination where supported.
+
+Browser state uses a bounded server-side session referenced by `__Host-scoremosaic_session`:
+
+- HttpOnly;
+- Secure;
+- SameSite=Lax;
+- Path=/;
+- no Domain attribute;
+- bounded idle and absolute expiration;
+- session rotation after authentication;
+- server-side invalidation on logout.
 
 No session field or IdP role claim grants document/revision authority by itself.
 
@@ -52,7 +68,7 @@ Authorization is deny-by-default. Browser-supplied role claims, disabled/hidden 
 
 ## 4. Versioned API transport
 
-The baseline API namespace is `/api/v1`.
+The baseline API namespace is `/api/v1`. Production runtime requires HTTPS and HSTS. Authenticated responses are `no-store` by default unless a later reviewed contract proves a safe cache policy.
 
 Initial read mapping preserves Stage 11 vocabulary:
 
@@ -149,7 +165,7 @@ Never expose:
 
 Protected operations require append-only audit evidence with server timestamp, principal, tenant where applicable, operation, resource/revision identity, outcome and correlation ID.
 
-Session, CSRF and raw idempotency tokens must not be logged.
+Session, provider, CSRF and raw idempotency tokens must not be logged.
 
 ## 11. Rate limit and abuse protection
 
@@ -169,7 +185,7 @@ CSP can fail back to `connect-src 'none'`. Auth failure fails closed. Rollback c
 
 ## 13. Required negative coverage
 
-The contract requires tests for missing/expired/forged sessions, tenant/resource isolation, browser role escalation, CSRF/origin attacks, wildcard credentialed CORS, stale revision writes, old-value mismatch, unknown target identity, idempotency replay misuse, ambiguous write retries, correlation-ID authority escalation, privacy leaks and direct browser calls to OMR/downstream engines.
+The contract requires tests for OIDC state/nonce mismatch, redirect substitution, PKCE downgrade, wrong issuer/audience, expired or invalidly signed tokens, missing/expired/forged sessions, tenant/resource isolation, browser role escalation, CSRF/origin attacks, wildcard credentialed CORS, stale revision writes, old-value mismatch, unknown target identity, idempotency replay misuse, ambiguous write retries, correlation-ID authority escalation, privacy leaks and direct browser calls to OMR/downstream engines.
 
 ## 14. Runtime prerequisites
 
