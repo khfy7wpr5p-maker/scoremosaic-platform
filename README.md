@@ -18,6 +18,13 @@ Stage 10  ✅ disconnected product UI experience
 Stage 11  ✅ typed local UI/application integration
 ```
 
+Approved unnumbered workstreams now sit after Stage 11 without consuming Stage 12 numbering:
+
+```text
+UI Architecture Phase 1                 ✅ repository baseline; Figma next
+Downstream Music Application Integration 🟡 architecture-only seam
+```
+
 These completions do **not** mean production activation.
 
 The following remain locked:
@@ -31,7 +38,8 @@ The following remain locked:
 - production approval persistence;
 - actual publication execution;
 - production playback;
-- ST-OMR Gateway/Stage 7 integration.
+- ST-OMR Gateway/Stage 7 integration;
+- live MusicXML-to-GuitarTab-Engine integration.
 
 ## Current secure flow
 
@@ -65,7 +73,7 @@ At least two Canonical candidates are required for Stage 7 comparison.
 
 ST-OMR is an isolated architecture/development track and is not currently in the Gateway or Stage 7 quorum. A future ST-OMR-primary or ST-OMR-only migration must be versioned and evidence-gated; model training success alone does not authorize removing the current engines.
 
-## Teacher Review
+## Teacher Review and UI
 
 Stage 8-A through 8-O provide repository foundations for exact reviewer authorization, typed ScoreEditCommand, immutable TeacherScoreRevision, deterministic validation, corrected MusicXML, explicit human approval and non-executing publication handoff.
 
@@ -80,6 +88,36 @@ Stage 10 UI
 ```
 
 The browser is non-authoritative. A local edit intent is not a ScoreEditCommand.
+
+`UI Architecture Phase 1` now defines the complete pre-Figma product architecture:
+
+```text
+Product navigation
+  -> Dashboard / Documents
+  -> New Document / OMR processing presentation
+  -> Teacher Review Workspace
+  -> Score Viewer interactions
+  -> Structured Edit UX
+  -> Validation / Revision UX
+  -> Approval / Publication UX
+  -> Design System
+  -> High-fidelity Figma
+```
+
+It is an approved unnumbered workstream, not Stage 12.
+
+## Downstream music applications
+
+ScoreMosaic reserves a safe downstream seam for future music applications after validated Teacher Review artifacts.
+
+```text
+validated / approved MusicXML
+  -> typed downstream application contract
+  -> dedicated adapter
+  -> downstream music service
+```
+
+The first reserved target is `MusicXML-to-GuitarTab-Engine`. It is a derivative guitar arrangement/fingering service, not an OMR or score-authority service. Raw OMR candidates are not valid production inputs; the browser cannot call the engine directly; live integration is not activated.
 
 ## Production foundation
 
@@ -97,7 +135,9 @@ No real provider resource or production credential is activated by those contrac
 6. Teacher approval is explicit and exact-identity bound.
 7. Publication is a separate side effect from approval.
 8. Browser/local application state is not server authority.
-9. Production activation requires a separate security gate and concrete operational facts.
+9. UI modernization preserves Design System → UI → Contract → Adapter → Server layering.
+10. Downstream music applications do not mutate upstream ScoreMosaic musical authority.
+11. Production activation requires a separate security gate and concrete operational facts.
 
 ## Architecture documents
 
@@ -107,6 +147,8 @@ Current architecture:
 - `docs/architecture-stage5-7-current.md`
 - `docs/architecture-stage8-current.md`
 - `docs/architecture-stage9-11-current.md`
+- `docs/ui-architecture-phase1.md`
+- `docs/downstream-music-application-integration-boundary.md`
 - `docs/st-omr-architecture-contract-v1.md`
 - `docs/teacher-review-score-editor-architecture-contract.md`
 - `docs/roadmap.md`
