@@ -110,6 +110,7 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertIs(UI["principles"]["approvalIsNotPublication"], True)
 
     def test_design_system_and_figma_sequence_are_defined(self) -> None:
+        self.assertEqual("contracts/web-brand-rules-v1.json", UI["designSystem"]["brandRulesContract"])
         self.assertIn("color_tokens", UI["designSystem"]["foundations"])
         self.assertIn("button", UI["designSystem"]["coreComponents"])
         self.assertIn("score_viewer", UI["designSystem"]["musicComponents"])
