@@ -18,12 +18,12 @@
   <script src="edit-intent.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#score-view">Skip to Score View</a>
+  <a class="skip-link" href="#product-content">Skip to primary content</a>
 
   <header class="app-header" aria-label="Application context">
     <div class="brand" aria-label="ScoreMosaic">
       <span class="brand-mark" aria-hidden="true">M</span>
-      <span class="brand-copy"><strong>SCOREMOSAIC</strong><small>Teacher Review Workspace</small></span>
+      <span class="brand-copy"><strong>SCOREMOSAIC</strong><small>Music Review Platform</small></span>
     </div>
     <div class="document-context" aria-label="Document context">
       <span class="context-label">Document</span>
@@ -33,142 +33,279 @@
     </div>
     <div class="security-state" aria-label="Runtime state">
       <span class="state-dot" aria-hidden="true"></span>
-      <span>Local typed contracts · no backend</span>
+      <span>Fixture preview · no backend</span>
     </div>
   </header>
 
-  <main class="workspace" aria-label="ScoreMosaic Stage 10 application shell">
-    <aside class="panel issues-panel" aria-labelledby="issues-title">
-      <div class="panel-header">
-        <div><p class="eyebrow">Review queue</p><h1 id="issues-title">Issues</h1></div>
-        <span id="issue-count" class="badge badge--neutral" role="status" aria-live="polite" aria-atomic="true">0 shown</span>
-      </div>
-      <div class="toolbar" aria-label="Issue filters">
-        <button type="button" data-filter="all" aria-pressed="true">All</button>
-        <button type="button" data-filter="blocking" aria-pressed="false">Blocking</button>
-        <button type="button" data-filter="warning" aria-pressed="false">Warnings</button>
-      </div>
-      <p id="issue-keyboard-help" class="sr-only">Use Arrow Up, Arrow Down, Home, or End while focused on an issue to move through the visible issue list.</p>
-      <div id="issue-list" class="issue-list" role="group" aria-label="Fixture review issues" aria-describedby="issue-keyboard-help"></div>
-      <div class="mini-summary" aria-label="Issue summary">
-        <span><strong>Blocking</strong> <span id="blocking-count">—</span></span>
-        <span><strong>Warnings</strong> <span id="warning-count">—</span></span>
-        <span><strong>Info</strong> <span id="info-count">—</span></span>
-      </div>
-    </aside>
+  <nav class="product-nav" aria-label="Primary product navigation">
+    <button id="nav-dashboard" type="button" data-product-nav="dashboard" aria-controls="view-dashboard">Dashboard</button>
+    <button id="nav-documents" type="button" data-product-nav="documents" aria-controls="view-documents">Documents</button>
+    <button id="nav-upload" type="button" data-product-nav="upload" aria-controls="view-upload">Upload</button>
+    <button id="nav-teacher-review" type="button" data-product-nav="teacher-review" aria-controls="view-teacher-review" aria-current="page">Teacher Review</button>
+    <button id="nav-guitar-tab" type="button" data-product-nav="guitar-tab" aria-controls="view-guitar-tab">Guitar TAB</button>
+    <span class="product-nav-note">Non-production preview</span>
+  </nav>
 
-    <section id="score-view" class="panel score-panel" aria-labelledby="score-title" aria-describedby="score-authority-note" tabindex="-1">
-      <div class="panel-header panel-header--wide">
-        <div><p class="eyebrow">Primary workspace</p><h2 id="score-title">Score View</h2></div>
-        <div class="panel-actions" aria-label="Score view status">
-          <span class="badge badge--safe">Fixture presentation</span>
-          <button type="button" disabled>Fit width</button>
-          <button type="button" disabled>100%</button>
-        </div>
+  <div id="product-content" tabindex="-1">
+    <section id="view-dashboard" class="product-view product-page" data-product-view="dashboard" aria-labelledby="dashboard-title" hidden tabindex="-1">
+      <div class="product-page-header">
+        <div><p class="eyebrow">Product home</p><h1 id="dashboard-title">Dashboard</h1></div>
+        <span class="badge badge--neutral">Fixture overview</span>
       </div>
-      <p id="score-authority-note" class="sr-only">This score presentation is a repository fixture and is not authoritative musical truth.</p>
-      <div class="score-canvas" role="img" aria-label="Repository-owned fixture score presentation; not musical authority.">
-        <div class="paper-sheet" aria-hidden="true">
-          <span class="staff"></span><span class="staff"></span><span class="staff"></span>
-          <span class="measure-line measure-line--one"></span>
-          <span class="measure-line measure-line--two"></span>
-        </div>
-        <div class="canvas-message">
-          <strong id="score-focus-label">Select a fixture issue</strong>
-          <p id="selected-issue-summary">This presentation is local evidence only and does not read production MusicXML or Canonical Score artifacts.</p>
-        </div>
-      </div>
-      <div class="focus-strip" aria-label="Focused musical location">
-        <span><strong>Page</strong> <span id="focused-page">—</span></span>
-        <span><strong>Measure</strong> <span id="focused-measure">—</span></span>
-        <span><strong>Staff</strong> <span id="focused-staff">—</span></span>
-        <span><strong>Voice</strong> <span id="focused-voice">—</span></span>
-        <span><strong>Event</strong> <span id="focused-event">—</span></span>
+      <div class="overview-grid">
+        <article class="panel overview-card">
+          <p class="eyebrow">Start</p>
+          <h2>New score</h2>
+          <p>Preview the PDF/JPG/PNG intake flow without sending a real file.</p>
+          <button type="button" class="primary-button" data-open-product-view="upload">Open Upload</button>
+        </article>
+        <article class="panel overview-card">
+          <p class="eyebrow">Needs review</p>
+          <h2>1 fixture document</h2>
+          <p>The repository fixture is ready for the disconnected Teacher Review workspace.</p>
+          <button type="button" data-open-product-view="teacher-review">Continue Review</button>
+        </article>
+        <article class="panel overview-card">
+          <p class="eyebrow">Derived workspace</p>
+          <h2>Guitar TAB</h2>
+          <p>Separate guitar arrangement/fingering workspace. Engine runtime remains disconnected.</p>
+          <button type="button" data-open-product-view="guitar-tab">Open Guitar TAB</button>
+        </article>
       </div>
     </section>
 
-    <aside class="panel edit-panel" aria-labelledby="edit-title">
-      <div class="panel-header">
-        <div><p class="eyebrow">Bounded correction</p><h2 id="edit-title">Structured Edit</h2></div>
-        <span class="badge badge--locked">Local draft only</span>
-      </div>
-      <section class="edit-section" aria-labelledby="selection-title">
-        <h3 id="selection-title">Selected event</h3>
-        <p id="selected-issue-title" class="selection-title">—</p>
-        <dl class="detail-list">
-          <div><dt>Pitch</dt><dd id="selected-pitch">—</dd></div>
-          <div><dt>Duration</dt><dd id="selected-duration">—</dd></div>
-          <div><dt>Voice</dt><dd id="selected-voice">—</dd></div>
-        </dl>
-      </section>
-      <section class="edit-section" aria-labelledby="intent-title">
-        <div class="intent-heading">
-          <h3 id="intent-title">Edit intent</h3>
-          <span id="intent-status" class="intent-status" data-kind="neutral" role="status" aria-live="polite" aria-atomic="true">Local draft only</span>
-        </div>
-        <p id="edit-intent-help" class="sr-only">This editor creates only a disconnected local intent preview. It cannot create a ScoreEditCommand, revision, approval, or publication.</p>
-        <label class="field-label" for="edit-operation">Operation</label>
-        <select id="edit-operation" class="edit-control" aria-describedby="edit-intent-help">
-          <option value="set_pitch">Set pitch</option>
-          <option value="set_effective_duration">Set effective duration</option>
-          <option value="set_dots">Set dots</option>
-          <option value="remove_event">Remove event</option>
-        </select>
-        <label class="field-label" for="edit-value">Proposed value</label>
-        <input id="edit-value" class="edit-control" type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-describedby="edit-intent-help">
-        <label class="field-label" for="edit-reason">Reviewer note <span>(optional)</span></label>
-        <textarea id="edit-reason" class="edit-control edit-reason" maxlength="300" rows="3" aria-describedby="edit-intent-help"></textarea>
-        <div class="intent-actions">
-          <button id="prepare-intent" class="primary-button" data-local-action="prepare-intent" type="button" disabled aria-describedby="edit-intent-help">Prepare local intent</button>
-          <button id="clear-intent" type="button" disabled>Clear</button>
-        </div>
-        <pre id="intent-preview" class="intent-preview" role="status" aria-live="polite" aria-atomic="true">No local intent prepared.</pre>
-      </section>
-      <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created. Local intent is non-authoritative and contains no server authorization, old-value precondition, or command identity.</p>
-    </aside>
-
-    <section class="panel evidence-panel" aria-labelledby="evidence-title">
-      <div class="panel-header panel-header--wide">
-        <div><p class="eyebrow">Immutable comparison</p><h2 id="evidence-title">Source Evidence</h2></div>
+    <section id="view-documents" class="product-view product-page" data-product-view="documents" aria-labelledby="documents-title" hidden tabindex="-1">
+      <div class="product-page-header">
+        <div><p class="eyebrow">Library</p><h1 id="documents-title">Documents</h1></div>
         <span class="badge badge--neutral">Fixture only</span>
       </div>
-      <div class="evidence-layout">
-        <div class="source-placeholder" role="img" aria-label="Synthetic source-region presentation for repository fixture only.">
-          <div class="source-page" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          <strong id="source-region">—</strong>
-        </div>
-        <div class="evidence-copy">
-          <p class="eyebrow">Evidence chain</p>
-          <h3>Repository-owned synthetic identifiers</h3>
-          <dl class="detail-list">
-            <div><dt>Source SHA-256</dt><dd id="source-sha">—</dd></div>
-            <div><dt>Candidate</dt><dd id="candidate-id">—</dd></div>
-            <div><dt>Canonical</dt><dd id="canonical-id">—</dd></div>
-            <div><dt>Canonical SHA-256</dt><dd id="canonical-sha">—</dd></div>
-          </dl>
+      <div class="panel document-list-preview">
+        <div class="document-row document-row--header" aria-hidden="true"><span>Document</span><span>Status</span><span>Revision</span><span>Action</span></div>
+        <div class="document-row">
+          <span><strong>Teacher Review Fixture</strong><small>Synthetic repository data</small></span>
+          <span class="badge badge--safe">Needs Review</span>
+          <span>Local revision</span>
+          <button type="button" data-open-product-view="teacher-review">Open review</button>
         </div>
       </div>
     </section>
-  </main>
 
-  <section class="transport" aria-labelledby="transport-title">
-    <div><p class="eyebrow">Review transport</p><h2 id="transport-title">Presentation Controls</h2></div>
-    <div class="transport-controls" aria-label="Disabled review transport controls">
-      <button type="button" disabled aria-label="Go to beginning">|◀</button>
-      <button type="button" disabled>Play</button>
-      <button type="button" disabled>Pause</button>
-      <button type="button" disabled>Stop</button>
-      <button type="button" disabled>Loop measure</button>
-      <span class="tempo">Tempo —</span>
-    </div>
-  </section>
+    <section id="view-upload" class="product-view product-page" data-product-view="upload" data-view="upload" aria-labelledby="upload-title" hidden tabindex="-1">
+      <div class="product-page-header">
+        <div><p class="eyebrow">New document</p><h1 id="upload-title">Upload</h1></div>
+        <span class="badge badge--locked">Preview only · Upload not connected</span>
+      </div>
+      <div class="upload-layout">
+        <section class="panel upload-dropzone" aria-labelledby="upload-dropzone-title">
+          <span class="upload-icon" aria-hidden="true">↑</span>
+          <h2 id="upload-dropzone-title">Select a score document</h2>
+          <p>PDF, JPG/JPEG or PNG will be accepted after authenticated Safe Intake is connected.</p>
+          <button type="button" class="primary-button" disabled>Choose PDF/JPG/PNG</button>
+          <small>No file leaves this browser preview.</small>
+        </section>
+        <section class="panel upload-pipeline" aria-labelledby="upload-pipeline-title">
+          <div class="panel-header panel-header--wide">
+            <div><p class="eyebrow">Future live flow</p><h2 id="upload-pipeline-title">Processing path</h2></div>
+            <span class="badge badge--neutral">All runtime steps locked</span>
+          </div>
+          <ol class="pipeline-list">
+            <li><strong>1. Safe Intake</strong><span>type, size and structure validation</span></li>
+            <li><strong>2. Object Storage</strong><span>immutable source artifact</span></li>
+            <li><strong>3. OMR Gateway</strong><span>bounded candidate processing</span></li>
+            <li><strong>4. Review Ready</strong><span>Teacher Review handoff</span></li>
+          </ol>
+          <p class="security-note">Coolify alone does not activate upload. Authenticated API, Safe Intake, object storage and job/OMR runtime evidence are required before real submission is enabled.</p>
+        </section>
+      </div>
+    </section>
 
-  <footer class="statusbar" aria-label="Validation and revision status">
-    <span><strong>Validation</strong> <span id="validation-label">—</span></span>
-    <span><strong>Blocking issues</strong> <span id="status-blocking">—</span></span>
-    <span><strong>Revision</strong> <span id="status-revision">—</span></span>
-    <span><strong>Approval</strong> unavailable</span>
-    <span class="statusbar-lock">Fixture only · no API · no persistence · no playback · no publication</span>
-  </footer>
+    <section id="view-teacher-review" class="product-view" data-product-view="teacher-review" aria-labelledby="score-title" tabindex="-1">
+      <main class="workspace" aria-label="ScoreMosaic Stage 10 application shell">
+        <aside class="panel issues-panel" aria-labelledby="issues-title">
+          <div class="panel-header">
+            <div><p class="eyebrow">Review queue</p><h1 id="issues-title">Issues</h1></div>
+            <span id="issue-count" class="badge badge--neutral" role="status" aria-live="polite" aria-atomic="true">0 shown</span>
+          </div>
+          <div class="toolbar" aria-label="Issue filters">
+            <button type="button" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" data-filter="blocking" aria-pressed="false">Blocking</button>
+            <button type="button" data-filter="warning" aria-pressed="false">Warnings</button>
+          </div>
+          <p id="issue-keyboard-help" class="sr-only">Use Arrow Up, Arrow Down, Home, or End while focused on an issue to move through the visible issue list.</p>
+          <div id="issue-list" class="issue-list" role="group" aria-label="Fixture review issues" aria-describedby="issue-keyboard-help"></div>
+          <div class="mini-summary" aria-label="Issue summary">
+            <span><strong>Blocking</strong> <span id="blocking-count">—</span></span>
+            <span><strong>Warnings</strong> <span id="warning-count">—</span></span>
+            <span><strong>Info</strong> <span id="info-count">—</span></span>
+          </div>
+        </aside>
+
+        <section id="score-view" class="panel score-panel" aria-labelledby="score-title" aria-describedby="score-authority-note" tabindex="-1">
+          <div class="panel-header panel-header--wide">
+            <div><p class="eyebrow">Primary workspace</p><h2 id="score-title">Score View</h2></div>
+            <div class="panel-actions" aria-label="Score view status">
+              <span class="badge badge--safe">Fixture presentation</span>
+              <button type="button" disabled>Fit width</button>
+              <button type="button" disabled>100%</button>
+            </div>
+          </div>
+          <p id="score-authority-note" class="sr-only">This score presentation is a repository fixture and is not authoritative musical truth.</p>
+          <div class="score-canvas" role="img" aria-label="Repository-owned fixture score presentation; not musical authority.">
+            <div class="paper-sheet" aria-hidden="true">
+              <span class="staff"></span><span class="staff"></span><span class="staff"></span>
+              <span class="measure-line measure-line--one"></span>
+              <span class="measure-line measure-line--two"></span>
+            </div>
+            <div class="canvas-message">
+              <strong id="score-focus-label">Select a fixture issue</strong>
+              <p id="selected-issue-summary">This presentation is local evidence only and does not read production MusicXML or Canonical Score artifacts.</p>
+            </div>
+          </div>
+          <div class="focus-strip" aria-label="Focused musical location">
+            <span><strong>Page</strong> <span id="focused-page">—</span></span>
+            <span><strong>Measure</strong> <span id="focused-measure">—</span></span>
+            <span><strong>Staff</strong> <span id="focused-staff">—</span></span>
+            <span><strong>Voice</strong> <span id="focused-voice">—</span></span>
+            <span><strong>Event</strong> <span id="focused-event">—</span></span>
+          </div>
+        </section>
+
+        <aside class="panel edit-panel" aria-labelledby="edit-title">
+          <div class="panel-header">
+            <div><p class="eyebrow">Bounded correction</p><h2 id="edit-title">Structured Edit</h2></div>
+            <span class="badge badge--locked">Local draft only</span>
+          </div>
+          <section class="edit-section" aria-labelledby="selection-title">
+            <h3 id="selection-title">Selected event</h3>
+            <p id="selected-issue-title" class="selection-title">—</p>
+            <dl class="detail-list">
+              <div><dt>Pitch</dt><dd id="selected-pitch">—</dd></div>
+              <div><dt>Duration</dt><dd id="selected-duration">—</dd></div>
+              <div><dt>Voice</dt><dd id="selected-voice">—</dd></div>
+            </dl>
+          </section>
+          <section class="edit-section" aria-labelledby="intent-title">
+            <div class="intent-heading">
+              <h3 id="intent-title">Edit intent</h3>
+              <span id="intent-status" class="intent-status" data-kind="neutral" role="status" aria-live="polite" aria-atomic="true">Local draft only</span>
+            </div>
+            <p id="edit-intent-help" class="sr-only">This editor creates only a disconnected local intent preview. It cannot create a ScoreEditCommand, revision, approval, or publication.</p>
+            <label class="field-label" for="edit-operation">Operation</label>
+            <select id="edit-operation" class="edit-control" aria-describedby="edit-intent-help">
+              <option value="set_pitch">Set pitch</option>
+              <option value="set_effective_duration">Set effective duration</option>
+              <option value="set_dots">Set dots</option>
+              <option value="remove_event">Remove event</option>
+            </select>
+            <label class="field-label" for="edit-value">Proposed value</label>
+            <input id="edit-value" class="edit-control" type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-describedby="edit-intent-help">
+            <label class="field-label" for="edit-reason">Reviewer note <span>(optional)</span></label>
+            <textarea id="edit-reason" class="edit-control edit-reason" maxlength="300" rows="3" aria-describedby="edit-intent-help"></textarea>
+            <div class="intent-actions">
+              <button id="prepare-intent" class="primary-button" data-local-action="prepare-intent" type="button" disabled aria-describedby="edit-intent-help">Prepare local intent</button>
+              <button id="clear-intent" type="button" disabled>Clear</button>
+            </div>
+            <pre id="intent-preview" class="intent-preview" role="status" aria-live="polite" aria-atomic="true">No local intent prepared.</pre>
+          </section>
+          <p class="security-note">No ScoreEditCommand, revision, approval, or publication can be created. Local intent is non-authoritative and contains no server authorization, old-value precondition, or command identity.</p>
+        </aside>
+
+        <section class="panel evidence-panel" aria-labelledby="evidence-title">
+          <div class="panel-header panel-header--wide">
+            <div><p class="eyebrow">Immutable comparison</p><h2 id="evidence-title">Source Evidence</h2></div>
+            <span class="badge badge--neutral">Fixture only</span>
+          </div>
+          <div class="evidence-layout">
+            <div class="source-placeholder" role="img" aria-label="Synthetic source-region presentation for repository fixture only.">
+              <div class="source-page" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+              <strong id="source-region">—</strong>
+            </div>
+            <div class="evidence-copy">
+              <p class="eyebrow">Evidence chain</p>
+              <h3>Repository-owned synthetic identifiers</h3>
+              <dl class="detail-list">
+                <div><dt>Source SHA-256</dt><dd id="source-sha">—</dd></div>
+                <div><dt>Candidate</dt><dd id="candidate-id">—</dd></div>
+                <div><dt>Canonical</dt><dd id="canonical-id">—</dd></div>
+                <div><dt>Canonical SHA-256</dt><dd id="canonical-sha">—</dd></div>
+              </dl>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <section class="transport" aria-labelledby="transport-title">
+        <div><p class="eyebrow">Review transport</p><h2 id="transport-title">Presentation Controls</h2></div>
+        <div class="transport-controls" aria-label="Disabled review transport controls">
+          <button type="button" disabled aria-label="Go to beginning">|◀</button>
+          <button type="button" disabled>Play</button>
+          <button type="button" disabled>Pause</button>
+          <button type="button" disabled>Stop</button>
+          <button type="button" disabled>Loop measure</button>
+          <span class="tempo">Tempo —</span>
+        </div>
+      </section>
+
+      <footer class="statusbar" aria-label="Validation and revision status">
+        <span><strong>Validation</strong> <span id="validation-label">—</span></span>
+        <span><strong>Blocking issues</strong> <span id="status-blocking">—</span></span>
+        <span><strong>Revision</strong> <span id="status-revision">—</span></span>
+        <span><strong>Approval</strong> unavailable</span>
+        <span class="statusbar-lock">Fixture only · no API · no persistence · no playback · no publication</span>
+      </footer>
+    </section>
+
+    <section id="view-guitar-tab" class="product-view product-page" data-product-view="guitar-tab" data-view="guitar-tab" aria-labelledby="guitar-tab-title" hidden tabindex="-1">
+      <div class="product-page-header">
+        <div><p class="eyebrow">Downstream derivative workspace</p><h1 id="guitar-tab-title">Guitar TAB</h1></div>
+        <span class="badge badge--locked">Engine not connected</span>
+      </div>
+      <div class="guitar-workspace">
+        <section class="panel guitar-notation" aria-labelledby="standard-notation-title">
+          <div class="panel-header panel-header--wide">
+            <div><p class="eyebrow">Source context</p><h2 id="standard-notation-title">Standard notation</h2></div>
+            <span class="badge badge--neutral">Fixture presentation</span>
+          </div>
+          <div class="notation-placeholder" role="img" aria-label="Synthetic standard-notation preview; no production MusicXML is read.">
+            <span></span><span></span><span></span><span></span><span></span>
+            <strong>Validated/approved score context will appear here.</strong>
+          </div>
+        </section>
+        <section class="panel guitar-tab-panel" aria-labelledby="tab-view-title">
+          <div class="panel-header panel-header--wide">
+            <div><p class="eyebrow">Derived candidate</p><h2 id="tab-view-title">TAB view</h2></div>
+            <span class="badge badge--neutral">Non-authoritative</span>
+          </div>
+          <pre class="tab-preview" aria-label="Synthetic six-string guitar tablature placeholder">e|----------------|----------------|
+B|----------------|----------------|
+G|----------------|----------------|
+D|----------------|----------------|
+A|----------------|----------------|
+E|----------------|----------------|</pre>
+        </section>
+        <section class="panel fingering-panel" aria-labelledby="fingering-title">
+          <div class="panel-header">
+            <div><p class="eyebrow">Options</p><h2 id="fingering-title">Fingering</h2></div>
+            <span class="badge badge--neutral">Fixture</span>
+          </div>
+          <div class="option-card"><strong>Primary candidate</strong><span>Position and string/fret assignment unavailable until engine integration.</span></div>
+          <div class="option-card"><strong>Alternative</strong><span>Alternative fingering evidence will remain explicit rather than silently replacing the primary.</span></div>
+        </section>
+        <section class="panel playability-panel" aria-labelledby="playability-title">
+          <div class="panel-header">
+            <div><p class="eyebrow">Evidence</p><h2 id="playability-title">Position & playability</h2></div>
+            <span class="badge badge--locked">No runtime evidence</span>
+          </div>
+          <dl class="detail-list guitar-details">
+            <div><dt>Tuning</dt><dd>Standard EADGBE (preview)</dd></div>
+            <div><dt>Fret domain</dt><dd>Not connected</dd></div>
+            <div><dt>Capo</dt><dd>Not connected</dd></div>
+            <div><dt>Playability</dt><dd>Not evaluated</dd></div>
+          </dl>
+          <p class="security-note">Guitar TAB is a downstream derivative workspace. It cannot mutate Canonical Score, create TeacherScoreRevision, approve, publish, or call the GuitarTab Engine directly from the browser.</p>
+        </section>
+      </div>
+    </section>
+  </div>
 </body>
 </html>
