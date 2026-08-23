@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://scoremosaic.invalid/contracts/teacher-review-api-revision-result-v1.schema.json",
   "title": "ScoreMosaic Teacher Review API Revision Result v1",
-  "description": "Bounded public result for one revision proposal. It may expose safe immutable revision/validation identity but never internal authorization grants, signatures, raw provider errors, raw MusicXML, approval authority or publication authority.",
+  "description": "Bounded public result for one revision proposal. Successful authorized results may expose safe immutable parent/revision/validation identity. Error results never expose server-resolved parent/current-head identity, internal authorization grants, signatures, raw provider errors, raw MusicXML, approval authority or publication authority.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -30,7 +30,12 @@
       "enum": ["created", "replayed", "rejected", "stale", "conflict", "unavailable"]
     },
     "documentId": {"$ref": "#/$defs/id"},
-    "parent": {"$ref": "#/$defs/parent"},
+    "parent": {
+      "oneOf": [
+        {"$ref": "#/$defs/parent"},
+        {"type": "null"}
+      ]
+    },
     "revision": {
       "oneOf": [
         {"$ref": "#/$defs/revision"},
@@ -147,6 +152,7 @@
       },
       "then": {
         "properties": {
+          "parent": {"$ref": "#/$defs/parent"},
           "revision": {"$ref": "#/$defs/revision"},
           "error": {"type": "null"}
         }
@@ -159,6 +165,7 @@
       },
       "then": {
         "properties": {
+          "parent": {"type": "null"},
           "revision": {"type": "null"},
           "error": {"$ref": "#/$defs/error"}
         }
