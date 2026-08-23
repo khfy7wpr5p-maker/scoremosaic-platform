@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scoremosaic-stage11-edit-intent-request-v1",
+  "title": "ScoreMosaic Stage 11 edit-intent prepare request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "kind", "documentId", "revision", "issueId", "target", "operation", "reason", "authority"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-stage11-edit-intent-request-v1"},
+    "requestId": {"$ref": "#/$defs/requestId"},
+    "kind": {"const": "editIntent.prepare"},
+    "documentId": {"$ref": "#/$defs/id"},
+    "revision": {"$ref": "#/$defs/id"},
+    "issueId": {"$ref": "#/$defs/id"},
+    "target": {"$ref": "#/$defs/target"},
+    "operation": {"$ref": "#/$defs/operation"},
+    "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 300},
+    "authority": {"$ref": "#/$defs/authority"}
+  },
+  "$defs": {
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page", "measure", "staff", "voice", "event"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "measure": {"type": "integer", "minimum": 1},
+        "staff": {"type": "integer", "minimum": 1},
+        "voice": {"type": "integer", "minimum": 1},
+        "event": {"$ref": "#/$defs/id"}
+      }
+    },
+    "operation": {
+      "oneOf": [
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/setPitch"},
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/setEffectiveDuration"},
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/setDots"},
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/removeEvent"}
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritativeCapability", "serverAuthorizationIncluded", "oldValuePreconditionIncluded", "commandIdentityIncluded", "networkSubmissionAllowed"],
+      "properties": {
+        "authoritativeCapability": {"const": false},
+        "serverAuthorizationIncluded": {"const": false},
+        "oldValuePreconditionIncluded": {"const": false},
+        "commandIdentityIncluded": {"const": false},
+        "networkSubmissionAllowed": {"const": false}
+      }
+    }
+  }
+}
