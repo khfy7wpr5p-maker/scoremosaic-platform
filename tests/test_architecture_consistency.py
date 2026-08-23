@@ -215,6 +215,14 @@ class ArchitectureConsistencyTests(unittest.TestCase):
 
     def test_web_preview_is_not_silently_reassigned_or_overclaiming_production(self) -> None:
         self.assertIn("does not create Stage 12", TEXT["web-preview"])
+        self.assertIn(
+            "verified fixture-only GitHub Pages deployment",
+            TEXT["architecture.md"],
+        )
+        self.assertNotIn(
+            "- a deployed/public Web Preview URL;",
+            TEXT["architecture.md"],
+        )
         preview = CONTRACT["approvedWorkstreams"]["webPreviewV1"]
         self.assertIs(preview["stageNumberAssigned"], False)
         self.assertIs(preview["publicPreviewDeploymentAuthorized"], True)

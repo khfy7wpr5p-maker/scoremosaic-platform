@@ -304,14 +304,14 @@ Approved unnumbered workstreams:
 - Stage 10 disconnected product experience;
 - Stage 11 typed local UI/application integration;
 - approved UI Architecture Phase 1 product-design baseline;
-- deterministic non-production Web Preview artifact build and CI boundary;
+- deterministic non-production Web Preview artifact build, CI boundary and verified fixture-only GitHub Pages deployment;
 - approved Live UI ↔ API repository security architecture baseline;
 - approved Teacher Review API repository contract baseline;
 - architecture-only downstream music-application seam.
 
 ### Repository evidence does not prove
 
-- a deployed/public Web Preview URL;
+- a production deployment or any public runtime beyond the verified fixture-only GitHub Pages preview;
 - public production upload/API traffic;
 - real production provider provisioning;
 - production PostgreSQL/object-storage operation;
