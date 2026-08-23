@@ -14,8 +14,9 @@
   "approvedWorkstreams": {
     "uiArchitecturePhase1": {
       "stageNumberAssigned": false,
-      "status": "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_FIGMA_NEXT",
+      "status": "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_LOW_FIDELITY_STARTED",
       "contract": "contracts/ui-architecture-phase1-v1.json",
+      "figmaLowFidelityStarted": true,
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false
     },
