@@ -68,6 +68,35 @@
     selectedIssueId: issuesModel.items[0]?.id ?? null,
   };
 
+  const normalizeLocalSearch = (value) => String(value ?? '').trim().toLowerCase();
+  const documentRows = Array.from(document.querySelectorAll('[data-document-row]'));
+
+  const renderDashboardSummary = () => {
+    const localReviewState = fixture.document?.reviewState ?? '';
+    text('dashboard-needs-review-count', localReviewState === 'needs-review' ? 1 : 0);
+    text('dashboard-processing-count', localReviewState === 'processing' ? 1 : 0);
+  };
+
+  const renderDocumentList = () => {
+    const search = normalizeLocalSearch(byId('document-search')?.value);
+    const status = byId('document-status-filter')?.value || 'all';
+    let visibleCount = 0;
+
+    documentRows.forEach((row) => {
+      const rowSearch = normalizeLocalSearch(row.dataset.documentSearch);
+      const rowStatus = row.dataset.documentStatus || '';
+      const matchesSearch = search.length === 0 || rowSearch.includes(search);
+      const matchesStatus = status === 'all' || rowStatus === status;
+      const visible = matchesSearch && matchesStatus;
+      row.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+
+    text('document-result-count', `${visibleCount} shown`);
+    const emptyState = byId('document-empty-filter');
+    if (emptyState) emptyState.hidden = visibleCount !== 0;
+  };
+
   const countSeverity = (severity) => issuesModel.items.filter((issue) => issue.severity === severity).length;
 
   const filteredIssues = () => {
@@ -182,10 +211,15 @@
   };
 
   const render = () => {
+    renderDashboardSummary();
+    renderDocumentList();
     renderDocument();
     renderIssues();
     renderSelectedIssue();
   };
+
+  byId('document-search')?.addEventListener('input', renderDocumentList);
+  byId('document-status-filter')?.addEventListener('change', renderDocumentList);
 
   document.querySelectorAll('[data-filter]').forEach((button) => {
     button.addEventListener('click', () => {
