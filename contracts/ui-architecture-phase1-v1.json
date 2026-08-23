@@ -62,7 +62,7 @@
       "navigationLabel": "Upload",
       "presentationOnlyUntilLiveGate": true,
       "realFileSubmissionActivated": false,
-      "acceptedPresentationTypes": ["pdf", "jpeg", "png"],
+      "acceptedPresentationTypes": ["pdf", "jpg", "jpeg", "png"],
       "requiredStates": ["select_input", "validating", "preparing", "processing", "review_ready", "rejected", "unavailable"],
       "liveDependencies": ["authenticated_api", "safe_intake", "object_storage", "job_creation", "omr_gateway"]
     },
@@ -181,11 +181,9 @@
       "issue_marker",
       "evidence_viewer",
       "revision_indicator",
-      "structured_edit_field",
-      "guitar_tab_viewer",
-      "fingering_option_card",
-      "playability_evidence"
+      "structured_edit_field"
     ],
+    "guitarTabComponentArchitectureRequiresSeparateContractEvolution": true,
     "tokenNamingRequired": true
   },
   "responsiveAccessibility": {
