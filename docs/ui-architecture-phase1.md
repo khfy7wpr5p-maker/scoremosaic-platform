@@ -24,8 +24,11 @@ ScoreMosaic
 │   ├── Needs Review
 │   ├── Approved
 │   └── Published
-├── New Document
-├── Review
+├── Upload
+├── Teacher Review
+└── Guitar TAB
+
+Secondary navigation:
 └── Account
 
 Deferred from Phase 1 primary navigation:
@@ -34,13 +37,13 @@ Deferred from Phase 1 primary navigation:
 └── Billing
 ```
 
-The navigation must stay task-oriented. The primary workflow is reviewing musical documents, not exploring analytics.
+The navigation must stay task-oriented. `Upload` is the product label for the New Document/input-processing flow. `Guitar TAB` is a separate downstream derivative workspace; adding it to navigation does not grant the GuitarTab Engine any authority over OMR, Canonical Score, Teacher Review, approval or publication.
 
 ## 3. Primary user journey
 
 ```text
 Dashboard
-  -> New Document
+  -> Upload / New Document
   -> Input Validation
   -> OMR Processing
   -> Review Ready
@@ -50,6 +53,7 @@ Dashboard
   -> Revision
   -> Human Approval
   -> Publication Eligibility
+  -> optional downstream Guitar TAB workspace
 ```
 
 The UI must preserve these separations:
@@ -59,6 +63,7 @@ Save/Edit != Approve
 Approve != Publish
 Validation PASS != Approval
 Published label != Public visibility
+Guitar TAB output != authoritative ScoreMosaic truth
 ```
 
 ## 4. Global application shell
@@ -66,16 +71,16 @@ Published label != Public visibility
 Normal product pages use a global shell:
 
 ```text
-+----------------------------------------------------------------+
-| ScoreMosaic | Dashboard | Documents | Review        Account     |
-+----------------------------------------------------------------+
-|                                                                |
-|                         PAGE CONTENT                           |
-|                                                                |
-+----------------------------------------------------------------+
++--------------------------------------------------------------------------------+
+| ScoreMosaic | Dashboard | Documents | Upload | Teacher Review | Guitar TAB     |
++--------------------------------------------------------------------------------+
+|                                                                                |
+|                              PAGE CONTENT                                      |
+|                                                                                |
++--------------------------------------------------------------------------------+
 ```
 
-Teacher Review enters a focused workspace while keeping document/revision context visible.
+Teacher Review enters a focused workspace while keeping document/revision context visible. Guitar TAB enters its own derivative workspace while preserving the same product shell and source/revision context when available.
 
 The regular application shell uses the **Compact Logo** from `docs/web-brand-rules-v1.md`. The large Primary Logo is reserved for brand moments such as landing/product-overview surfaces rather than repeated inside dense professional workspaces.
 
@@ -85,11 +90,12 @@ Dashboard is action-oriented and intentionally not analytics-heavy.
 
 Required regions:
 
-- `New Document` primary action;
+- `Upload` / New Document primary action;
 - Needs Review count/summary;
 - Processing count/summary;
 - Continue Review cards;
-- recent document state where useful.
+- recent document state where useful;
+- optional entry to downstream Guitar TAB where source eligibility exists.
 
 Primary question answered by the dashboard: **What needs my attention now?**
 
@@ -114,12 +120,12 @@ Required interactions:
 
 The browser presentation of a status does not itself create that status.
 
-## 7. New Document / OMR processing UX
+## 7. Upload / New Document / OMR processing UX
 
 Phase 1 defines the **presentation flow only**:
 
 ```text
-Select PDF/Image
+Select PDF/JPG/JPEG/PNG
   -> Validating
   -> Preparing
   -> OMR Processing
@@ -135,7 +141,7 @@ Required error states:
 - processing failed;
 - stale/replaced source context where applicable.
 
-Real file upload remains locked. A later live-integration gate must map these states to authenticated server evidence.
+The preview may display the upload screen and accepted presentation types, but must not contain a live file-submission path. Real file upload remains locked until authenticated API, Safe Intake, object storage, job creation and OMR Gateway runtime evidence are all present. Coolify deployment alone does not grant upload authority.
 
 ## 8. Teacher Review Workspace v1
 
@@ -263,9 +269,39 @@ Publicly Visible
 
 These states must not be collapsed by visual shorthand. Phase 1 does not execute publication.
 
-## 14. Design System architecture
+## 14. Guitar TAB workspace
 
-Brand identity and logo usage are governed by `contracts/web-brand-rules-v1.json` / `docs/web-brand-rules-v1.md`. `ScoreMosaic` is the master brand; `OMR Gateway`, `Teacher Review` and future named workspaces are module lockups rather than replacements for the master brand.
+`Guitar TAB` is a separate product workspace backed in the future by `MusicXML-to-GuitarTab-Engine`. The current repository preview is presentation-only and does not call the engine.
+
+The workspace regions are:
+
+```text
+Standard notation context
+        +
+Guitar TAB candidate
+        +
+Fingering options
+        +
+Position / playability evidence
+```
+
+Future live integration must bind the request to an exact validated/approved Teacher Review source revision and corrected MusicXML hash through the typed downstream adapter boundary. Production-derived TAB requires an approved Teacher Review revision.
+
+Fixed Guitar TAB authority rules:
+
+```text
+Guitar TAB != OMR authority
+Guitar TAB != Canonical Score authority
+Guitar TAB != Teacher Review authority
+Guitar TAB != approval authority
+Guitar TAB != publication authority
+```
+
+The browser must not call the GuitarTab Engine directly. Engine transport, credentials and runtime remain locked until a separate downstream live-integration gate passes.
+
+## 15. Design System architecture
+
+Brand identity and logo usage are governed by `contracts/web-brand-rules-v1.json` / `docs/web-brand-rules-v1.md`. `ScoreMosaic` is the master brand; `OMR Gateway`, `Teacher Review` and `Guitar TAB` are module/workspace names rather than replacements for the master brand.
 
 Brand color is decorative/identity-level input to the Design System and must not replace semantic status tokens. In particular, the ScoreMosaic brand gradient cannot by itself encode validation, approval, publication or issue severity.
 
@@ -305,11 +341,14 @@ Brand color is decorative/identity-level input to the Design System and must not
 - Issue Marker;
 - Evidence Viewer;
 - Revision Indicator;
-- Structured Edit Field.
+- Structured Edit Field;
+- Guitar TAB Viewer;
+- Fingering Option Card;
+- Playability Evidence.
 
 Design tokens should use semantic names such as `color.status.blocking`, `color.text.primary`, `space.200`, `type.label`, rather than screen-specific names.
 
-## 15. Responsive and accessibility architecture
+## 16. Responsive and accessibility architecture
 
 Desktop is the primary review surface, but all design work must preserve:
 
@@ -323,9 +362,10 @@ Desktop is the primary review surface, but all design work must preserve:
 - scalable text;
 - Score View priority on narrow layouts;
 - Issues and Structured Edit collapsing into accessible drawers/tabs when necessary;
-- Source Evidence switching between adjacent and stacked layouts.
+- Source Evidence switching between adjacent and stacked layouts;
+- horizontally safe or stacked Upload/Guitar TAB workspace behavior on narrow screens.
 
-## 16. Future modernization model
+## 17. Future modernization model
 
 UI modernization is expected and supported.
 
@@ -353,7 +393,7 @@ Change ownership:
 
 Breaking contract changes require versioning and backward-compatibility evidence.
 
-## 17. Figma sequence and Starter-plan physical layout
+## 18. Figma sequence and Starter-plan physical layout
 
 The repository baseline is green and **low-fidelity Figma work has started**. High-fidelity work remains intentionally not started.
 
@@ -368,7 +408,7 @@ Low-fidelity wireframes
   -> Design Freeze v1
 ```
 
-The UI architecture still contains eleven logical design areas:
+The UI architecture contains twelve logical design areas:
 
 ```text
 00 — Foundations
@@ -382,9 +422,10 @@ The UI architecture still contains eleven logical design areas:
 08 — Approval & Publication
 09 — Prototype
 10 — Archive
+11 — Guitar TAB Workspace
 ```
 
-The active Figma Starter plan permits only three physical pages. This does **not** remove or merge architectural responsibilities. The eleven logical areas are grouped as editable frames/sections under three physical pages:
+The active Figma Starter plan permits only three physical pages. This does **not** remove or merge architectural responsibilities. The twelve logical areas are grouped as editable frames/sections under three physical pages:
 
 ```text
 00 — Foundations & Components
@@ -402,12 +443,13 @@ The active Figma Starter plan permits only three physical pages. This does **not
   ├── 07 Revision
   ├── 08 Approval & Publication
   ├── 09 Prototype
-  └── 10 Archive
+  ├── 10 Archive
+  └── 11 Guitar TAB Workspace
 ```
 
 If the Figma plan later allows more pages, these logical areas may be split into separate physical pages without changing the product or authority architecture.
 
-## 18. Fixed non-activation boundary
+## 19. Fixed non-activation boundary
 
 UI Architecture Phase 1 does not activate:
 
@@ -421,23 +463,25 @@ UI Architecture Phase 1 does not activate:
 - approval execution;
 - publication execution;
 - playback;
-- production infrastructure.
+- production infrastructure;
+- GuitarTab Engine network transport or production-derived TAB output.
 
-## 19. Exit criteria before high-fidelity Figma
+## 20. Exit criteria before high-fidelity Figma
 
 Low-fidelity architecture is ready to advance only when:
 
 1. product navigation is explicit;
 2. end-to-end user flow is explicit;
-3. Dashboard/Documents/New Document/Teacher Review/Revision/Approval/Publication screen responsibilities are explicit;
-4. Score Viewer interactions are explicit;
-5. Structured Edit authority boundary is explicit;
-6. validation/revision semantics are explicit;
-7. approval/publication separation is explicit;
-8. Design System component taxonomy is explicit;
-9. Web Brand Rules are explicit and bound to the Design System;
-10. accessibility/responsive requirements are explicit;
-11. future modernization/change-governance rules are explicit;
-12. all eleven logical Figma areas remain represented despite physical page limits;
-13. Stage 10/11 and production locks remain unchanged;
-14. architecture and UI contract CI are green.
+3. Dashboard/Documents/Upload/Teacher Review/Revision/Approval/Publication screen responsibilities are explicit;
+4. Guitar TAB is modeled as a separate downstream workspace with no upstream authority;
+5. Score Viewer interactions are explicit;
+6. Structured Edit authority boundary is explicit;
+7. validation/revision semantics are explicit;
+8. approval/publication separation is explicit;
+9. Design System component taxonomy is explicit;
+10. Web Brand Rules are explicit and bound to the Design System;
+11. accessibility/responsive requirements are explicit;
+12. future modernization/change-governance rules are explicit;
+13. all twelve logical Figma areas remain represented despite physical page limits;
+14. Stage 10/11, downstream-engine and production locks remain unchanged;
+15. architecture and UI contract CI are green.
