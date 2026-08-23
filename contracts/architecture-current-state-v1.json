@@ -33,6 +33,17 @@
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false
     },
+    "webPreviewV1": {
+      "stageNumberAssigned": false,
+      "status": "APPROVED_REPOSITORY_WEB_PREVIEW_BUILD_READY_NOT_PUBLISHED",
+      "contract": "contracts/web-preview-v1.json",
+      "repositoryPreviewBuildReady": true,
+      "previewArtifactCiReady": true,
+      "githubPagesEnabled": false,
+      "publicPreviewDeployed": false,
+      "publicUrlAssigned": false,
+      "publicTrafficActivated": false
+    },
     "liveUiApiSecurityDesign": {
       "stageNumberAssigned": false,
       "status": "APPROVED_REPOSITORY_LIVE_UI_API_SECURITY_ARCHITECTURE_BASELINE",

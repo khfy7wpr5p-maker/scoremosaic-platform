@@ -17,11 +17,13 @@ Every capability is gated. Code presence, model accuracy, a successful UI demo, 
 | Product UI experience — Stage 10 | ✅ Complete repository scope | Disconnected fixture-backed product UI; no production backend authority. |
 | Typed UI/application integration — Stage 11 | ✅ Complete repository scope | Closed typed reads/edit-intent/state model/local integration; live API locked. |
 | UI Architecture Phase 1 | ✅ Repository pre-Figma baseline complete | Unnumbered product-design workstream; Figma application/high-fidelity still pending. |
+| Web Preview v1 | ✅ Repository build ready | Deterministic fixture-only static preview artifact can be built/downloaded from CI; public deployment remains locked. |
 | Live UI↔API Security Architecture | ✅ Complete repository baseline | OIDC/session, server authorization, CSRF/origin/CSP, idempotency, audit and rollback contracts complete; runtime off. |
 | Teacher Review API Contract v1 | ✅ Complete repository baseline | Exact read + bounded revision-proposal API contracts bridge browser intent to Stage 8 authority; no routes registered. |
 | Downstream Music Application Integration | 🟡 Architecture-only seam | Validated/approved MusicXML may later feed bounded derivative services; GuitarTab live integration off. |
 | ST-OMR architecture/development track | 🟡 Isolated | Not in Gateway/Stage 7 quorum; no production authority. |
 | Production infrastructure | 🔒 Not activated | No paid/provider resources, production DB/object store, credentials, DNS/TLS or public traffic activated by repo stages. |
+| Public Web Preview | 🔒 Not activated | No GitHub Pages/Netlify/Coolify Preview URL or public traffic is created by the repository preview build. |
 | Live Teacher Review API | 🔒 Not activated | Security/API contracts exist, but HTTP routes, live auth, browser network and production persistence remain gated. |
 | Publication execution | 🔒 Not activated | Stage 8-O stops at non-executing publisher-bound handoff. |
 | Playback | 🔒 Not activated | Review timeline/presentation state exists; no real audio/MIDI/SoundFont runtime. |
@@ -38,13 +40,14 @@ Safe Intake
   -> Stage 10 disconnected product UI
   -> Stage 11 typed local UI/application integration
   -> UI Architecture Phase 1  [unnumbered]
+  -> Web Preview v1 build  [unnumbered, repository only]
   -> Live UI↔API Security Architecture  [unnumbered, repository only]
   -> Teacher Review API Contract v1  [unnumbered, repository only]
   -> High-fidelity Figma / prototype
   -> [LIVE/EXTERNAL GATES]
 ```
 
-UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. The Live UI↔API Security and Teacher Review API workstreams are likewise unnumbered and do not imply a Stage 12 assignment.
+UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. Web Preview v1, Live UI↔API Security and Teacher Review API are likewise unnumbered and do not imply a Stage 12 assignment.
 
 ## Approved repository workstream — UI Architecture Phase 1
 
@@ -62,6 +65,27 @@ Fixed UI boundaries:
 - approval is not publication;
 - real upload/auth/server write/playback/publication remain locked;
 - future visual modernization starts in Figma/Design System/UI before changing lower authority layers.
+
+## Completed repository preview build — Web Preview v1
+
+Goal: make the current Stage 10/11 disconnected product UI inspectable as one deterministic browser-ready static artifact without activating public hosting or backend behavior.
+
+Safe build path:
+
+```text
+Stage 10 UI + fixture
+  + Stage 11 local typed application scripts
+  -> deterministic preview builder
+  -> visible NON-PRODUCTION / FIXTURE DATA marker
+  -> CSP-locked standalone static files
+  -> CI security regressions
+  -> downloadable Actions artifact
+  -> [PUBLIC PREVIEW DEPLOYMENT LOCKED]
+```
+
+The preview retains `connect-src 'none'`, contains no browser persistence/network API, and cannot upload, authenticate, create ScoreEditCommand/TeacherScoreRevision, approve, publish, or persist production state.
+
+GitHub Pages, Netlify, Coolify Preview, public URL assignment and public traffic require a separate operational gate.
 
 ## Completed repository security baseline — Live UI↔API Security
 
@@ -149,7 +173,7 @@ Required:
 - architecture-current-state contract;
 - cross-document consistency tests;
 - stale/current document classification;
-- UI/security/API/downstream integration drift guards;
+- UI/preview/security/API/downstream integration drift guards;
 - no current document may overclaim production activation.
 
 Activation effect: none.
@@ -288,7 +312,7 @@ Repository-only work may continue while all live/production activation locks rem
 - paid resource creation;
 - real credential generation/bootstrap;
 - DNS/TLS changes;
-- public traffic;
+- public preview/site traffic;
 - production data writes;
 - production publication execution;
 - live downstream music-service activation;
