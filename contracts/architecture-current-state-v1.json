@@ -43,6 +43,18 @@
       "authRuntimeActivated": false,
       "serverWriteActivated": false
     },
+    "teacherReviewApiContract": {
+      "stageNumberAssigned": false,
+      "status": "APPROVED_REPOSITORY_TEACHER_REVIEW_API_CONTRACT_BASELINE",
+      "contract": "contracts/teacher-review-api-v1.json",
+      "requestSchema": "contracts/teacher-review-api-edit-intent-v1.schema.json",
+      "responseSchema": "contracts/teacher-review-api-revision-result-v1.schema.json",
+      "repositoryApiContractReady": true,
+      "httpRoutesRegistered": false,
+      "liveReadApiActivated": false,
+      "liveWriteApiActivated": false,
+      "productionPersistenceActivated": false
+    },
     "downstreamMusicApplicationIntegration": {
       "stageNumberAssigned": false,
       "status": "ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION",
@@ -61,6 +73,7 @@
     "repositoryRevisionApprovalPublicationPreparationComplete": true,
     "disconnectedProductUiComplete": true,
     "typedLocalUiApplicationIntegrationComplete": true,
+    "repositoryApiContractReady": true,
     "liveTeacherReviewApiActivated": false,
     "productionWriteActivated": false,
     "productionApprovalPersistenceActivated": false,

@@ -16,6 +16,7 @@ CURRENT_DOCS = {
     "stage9-11": ROOT / "docs" / "architecture-stage9-11-current.md",
     "ui-phase1": ROOT / "docs" / "ui-architecture-phase1.md",
     "live-ui-api-security": ROOT / "docs" / "live-ui-api-security-architecture-v1.md",
+    "teacher-review-api": ROOT / "docs" / "teacher-review-api-contract-v1.md",
     "downstream-music-apps": ROOT / "docs" / "downstream-music-application-integration-boundary.md",
     "st-omr": ROOT / "docs" / "st-omr-architecture-contract-v1.md",
     "teacher-review": ROOT / "docs" / "teacher-review-score-editor-architecture-contract.md",
@@ -67,6 +68,13 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         for key in ("runtimeActivated", "liveNetworkActivated", "authRuntimeActivated", "serverWriteActivated"):
             self.assertIs(security[key], False, key)
 
+        api = CONTRACT["approvedWorkstreams"]["teacherReviewApiContract"]
+        self.assertIs(api["stageNumberAssigned"], False)
+        self.assertEqual("APPROVED_REPOSITORY_TEACHER_REVIEW_API_CONTRACT_BASELINE", api["status"])
+        self.assertIs(api["repositoryApiContractReady"], True)
+        for key in ("httpRoutesRegistered", "liveReadApiActivated", "liveWriteApiActivated", "productionPersistenceActivated"):
+            self.assertIs(api[key], False, key)
+
         downstream = CONTRACT["approvedWorkstreams"]["downstreamMusicApplicationIntegration"]
         self.assertIs(downstream["stageNumberAssigned"], False)
         self.assertEqual("ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION", downstream["status"])
@@ -113,6 +121,7 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIs(review["repositoryRevisionApprovalPublicationPreparationComplete"], True)
         self.assertIs(review["disconnectedProductUiComplete"], True)
         self.assertIs(review["typedLocalUiApplicationIntegrationComplete"], True)
+        self.assertIs(review["repositoryApiContractReady"], True)
         for key in (
             "liveTeacherReviewApiActivated",
             "productionWriteActivated",
@@ -159,6 +168,7 @@ class ArchitectureConsistencyTests(unittest.TestCase):
             "architecture-stage9-11-current.md",
             "ui-architecture-phase1.md",
             "live-ui-api-security-architecture-v1.md",
+            "teacher-review-api-contract-v1.md",
             "downstream-music-application-integration-boundary.md",
         ):
             self.assertIn(marker, text)
@@ -171,6 +181,10 @@ class ArchitectureConsistencyTests(unittest.TestCase):
     def test_live_ui_api_security_is_not_silently_reassigned_to_stage12(self) -> None:
         self.assertIn("does not consume Stage 12", TEXT["live-ui-api-security"])
         self.assertIs(CONTRACT["approvedWorkstreams"]["liveUiApiSecurityDesign"]["stageNumberAssigned"], False)
+
+    def test_teacher_review_api_is_not_silently_reassigned_to_stage12(self) -> None:
+        self.assertIn("does not consume Stage 12", TEXT["teacher-review-api"])
+        self.assertIs(CONTRACT["approvedWorkstreams"]["teacherReviewApiContract"]["stageNumberAssigned"], False)
 
     def test_stale_current_state_phrases_do_not_return(self) -> None:
         forbidden = {

@@ -1,0 +1,278 @@
+{
+  "version": "scoremosaic-teacher-review-api-v1",
+  "workstream": "Teacher Review API Contract v1",
+  "stageNumberAssigned": false,
+  "status": "APPROVED_REPOSITORY_TEACHER_REVIEW_API_CONTRACT_BASELINE",
+  "scope": "repository_only_api_contract_no_http_runtime_activation",
+  "parents": [
+    "scoremosaic-live-ui-api-security-architecture-v1",
+    "scoremosaic-stage11-ui-application-eligibility-v1"
+  ],
+  "stage8InternalContracts": {
+    "scoreEditCommandSchema": "contracts/score-edit-command-v1.schema.json",
+    "teacherRevisionSchema": "contracts/teacher-score-revision-v1.schema.json",
+    "internalWriteEnvelopeSchema": "contracts/teacher-review-write-request-v1.schema.json",
+    "internalWriteBoundary": "Stage 8-G",
+    "internalWriteEnvelopeIsPublicApiRequest": false
+  },
+  "principles": {
+    "browserIntentIsNotScoreEditCommand": true,
+    "publicApiRequestCarriesNoAuthorizationAuthority": true,
+    "serverCreatesOrValidatesCommandIdentity": true,
+    "serverResolvesReviewerIdentityFromAuthenticatedPrincipal": true,
+    "serverResolvesAuthorizationDecision": true,
+    "serverResolvesCurrentMusicalLocationAndOldValuePrecondition": true,
+    "stage8WriteBoundaryRemainsSingleAuthoritativeMutationMaterializer": true,
+    "exactCurrentSnapshotRequired": true,
+    "staleRequestsFailClosedBeforeInternalWrite": true,
+    "idempotencyDoesNotAuthorizeHistoricalReplay": true,
+    "validationEvidenceRemainsVisible": true,
+    "draftRevisionDoesNotImplyApproval": true,
+    "approvalAndPublicationEndpointsExcluded": true,
+    "liveActivationRequiresSeparateRuntimeGate": true
+  },
+  "readEndpoints": [
+    {
+      "operation": "review.read",
+      "method": "GET",
+      "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/review",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
+      "mutation": false
+    },
+    {
+      "operation": "issues.read",
+      "method": "GET",
+      "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/issues",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
+      "mutation": false
+    },
+    {
+      "operation": "sourceEvidence.read",
+      "method": "GET",
+      "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/source-evidence",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
+      "mutation": false
+    },
+    {
+      "operation": "validation.read",
+      "method": "GET",
+      "pathTemplate": "/api/v1/documents/{document_id}/revisions/{revision_id}/validation",
+      "responseSchema": "contracts/teacher-review-api-read-result-v1.schema.json",
+      "mutation": false
+    }
+  ],
+  "readRules": {
+    "onlyStage11ReadVocabularyExposedInV1": true,
+    "readEndpointExpansionRequiresVersionedContractChange": true,
+    "responseSchemaRequiredForEveryReadEndpoint": true,
+    "serverCorrelationIdRequired": true,
+    "errorResponsesExposeResolvedDocumentOrRevisionIdentity": false
+  },
+  "mutationEndpoints": [
+    {
+      "operation": "revision.propose",
+      "method": "POST",
+      "pathTemplate": "/api/v1/documents/{document_id}/revision-proposals",
+      "requestSchema": "contracts/teacher-review-api-edit-intent-v1.schema.json",
+      "responseSchema": "contracts/teacher-review-api-revision-result-v1.schema.json",
+      "idempotencyHeaderRequired": true,
+      "csrfRequired": true,
+      "exactOriginRequired": true,
+      "runtimeActivated": false
+    }
+  ],
+  "transportRules": {
+    "contentType": "application/json",
+    "requestBodyBytesMustBeBoundedByServerConfiguration": true,
+    "rawBodyMayGrantAuthorization": false,
+    "boundedBodyParsingOccursOnlyAfterSessionCsrfOriginAndCoarseResourceAuthorization": true,
+    "clientRequestIdOptionalForReadCorrelation": true,
+    "serverCanonicalCorrelationIdRequired": true
+  },
+  "initialBrowserOperationSurface": [
+    "set_pitch",
+    "set_effective_duration",
+    "set_dots",
+    "remove_event"
+  ],
+  "stage8ClosedServerOperationVocabulary": [
+    "set_pitch",
+    "set_effective_duration",
+    "set_written_type",
+    "set_dots",
+    "set_staff_voice",
+    "set_time_signature",
+    "set_tab",
+    "remove_event"
+  ],
+  "operationRules": {
+    "apiMayExpandToAllStage8OperationsWithoutVersionedContractChange": false,
+    "apiMayIntroduceOperationOutsideStage8Vocabulary": false,
+    "unsupportedBrowserOperationFailsClosed": true,
+    "rawXmlAllowed": false,
+    "jsonPatchAllowed": false,
+    "arbitraryObjectPathAllowed": false,
+    "rendererNativeMutationAllowed": false
+  },
+  "browserRequestMayContain": [
+    "schemaVersion",
+    "requestId",
+    "projectionSha256",
+    "snapshot",
+    "evidenceContext",
+    "target",
+    "operation",
+    "reason"
+  ],
+  "browserRequestMustNotContain": [
+    "reviewerId",
+    "tenantId",
+    "authorizationDecisionId",
+    "authorizationGrant",
+    "authorizationSignature",
+    "commandId",
+    "commandSha256",
+    "oldValueSha256",
+    "staff",
+    "voice",
+    "onset",
+    "approvalDecision",
+    "publicationDecision"
+  ],
+  "serverResolutionOrder": [
+    "authenticate_session",
+    "validate_csrf_and_origin",
+    "authorize_revision_propose_and_document_scope",
+    "parse_and_validate_bounded_api_intent",
+    "authorize_requested_musical_operation",
+    "resolve_exact_current_document_revision_head",
+    "verify_projection_and_snapshot_binding",
+    "resolve_stable_target_against_current_state",
+    "resolve_current_staff_voice_onset_and_old_value_sha256",
+    "issue_or_resolve_revision_propose_authorization_grant",
+    "generate_server_command_identity",
+    "construct_and_validate_score_edit_command",
+    "construct_internal_teacher_review_write_request",
+    "invoke_stage8g_authorized_write_boundary",
+    "append_security_audit_evidence",
+    "map_safe_result_to_public_api_response"
+  ],
+  "snapshotRules": {
+    "baseRevisionKindAllowed": true,
+    "baseKindRequiresNullRevisionId": true,
+    "baseKindRequiresNullRevisionSha256": true,
+    "revisionKindRequiresRevisionIdAndSha256": true,
+    "stateSha256Required": true,
+    "projectionSha256Required": true,
+    "freshDurableHeadMustMatchRequestSnapshot": true,
+    "mismatchResult": "stale"
+  },
+  "idempotency": {
+    "header": "Idempotency-Key",
+    "requiredForRevisionProposal": true,
+    "keyMinLength": 16,
+    "keyMaxLength": 128,
+    "keyPattern": "^[A-Za-z0-9._~-]{16,128}$",
+    "rawKeyMayBeLogged": false,
+    "clientKeyIsDomainIdentity": false,
+    "serverScopeMustInclude": [
+      "principal",
+      "tenant",
+      "document",
+      "operation",
+      "exact_parent_revision",
+      "request_digest"
+    ],
+    "exactReplayMayReturnExistingRevision": true,
+    "sameKeyDifferentDigestRejected": true,
+    "staleHistoricalParentReplayAllowed": false,
+    "automaticBrowserMutationRetryAllowed": false,
+    "ambiguousOutcomeRequiresReconciliation": true
+  },
+  "publicResponse": {
+    "mayExposeRevisionIdentityAndHashesOnAuthorizedSuccess": true,
+    "mayExposeValidationCountsOnAuthorizedSuccess": true,
+    "errorResponsesMayEchoParsedClientRequestId": false,
+    "errorResponsesExposeDocumentIdentity": false,
+    "errorResponsesExposeParentIdentity": false,
+    "staleOrConflictResponsesExposeFreshCurrentHead": false,
+    "mayExposeInternalAuthorizationGrant": false,
+    "mayExposeAuthorizationSignature": false,
+    "mayExposeRawProviderError": false,
+    "mayExposeInternalStack": false,
+    "mayExposeRawMusicXml": false,
+    "mayExposeServerFilesystemPath": false,
+    "draftRevisionStatus": "draft",
+    "draftRevisionApprovalEligible": false,
+    "draftRevisionPublicationEligible": false
+  },
+  "httpSemantics": {
+    "readSuccess": 200,
+    "revisionCreated": 201,
+    "idempotentReplay": 200,
+    "malformedRequest": 400,
+    "unauthenticated": 401,
+    "unauthorized": 403,
+    "notVisibleOrUnknownResource": 404,
+    "staleOrIdempotencyConflict": 409,
+    "semanticallyRejectedEdit": 422,
+    "rateLimited": 429,
+    "temporarilyUnavailable": 503,
+    "errorBodiesMustUseStablePublicCodes": true,
+    "crossTenantExistenceDisclosureForbidden": true
+  },
+  "approvalPublicationBoundary": {
+    "approvalReadOrWriteEndpointsDefinedHere": false,
+    "publicationReadOrWriteEndpointsDefinedHere": false,
+    "revisionProposalMayApprove": false,
+    "revisionProposalMayPublish": false,
+    "revisionProposalMayPersistCorrectedMusicXmlToProduction": false,
+    "futureApprovalApiRequiresSeparateContract": true,
+    "futurePublicationApiRequiresSeparateContract": true
+  },
+  "negativeCoverage": [
+    "browser_supplied_reviewer_id",
+    "browser_supplied_authorization_decision",
+    "browser_supplied_command_id",
+    "browser_supplied_old_value_sha256",
+    "unsupported_operation",
+    "raw_xml_payload",
+    "json_patch_payload",
+    "oversized_request_body",
+    "invalid_idempotency_key",
+    "stale_projection_sha256",
+    "stale_revision_id",
+    "stale_revision_sha256",
+    "state_sha256_mismatch",
+    "unknown_or_missing_target",
+    "cross_tenant_document",
+    "cross_resource_revision",
+    "missing_idempotency_key",
+    "same_idempotency_key_different_digest",
+    "historical_parent_replay",
+    "missing_csrf",
+    "wrong_origin",
+    "unauthorized_request_body_oracle",
+    "unauthorized_parent_identity_leak",
+    "stale_response_fresh_head_leak",
+    "internal_error_detail_leak",
+    "revision_proposal_attempt_to_approve",
+    "revision_proposal_attempt_to_publish"
+  ],
+  "activationLocks": {
+    "httpRoutesRegistered": false,
+    "liveTeacherReviewReadApiActivated": false,
+    "liveTeacherReviewWriteApiActivated": false,
+    "browserNetworkActivated": false,
+    "authRuntimeActivated": false,
+    "sessionRuntimeActivated": false,
+    "rbacRuntimeActivated": false,
+    "productionPersistenceActivated": false,
+    "scoreEditCommandCreationActivated": false,
+    "teacherScoreRevisionCreationActivated": false,
+    "correctedMusicXmlProductionPersistenceActivated": false,
+    "approvalExecutionActivated": false,
+    "publicationExecutionActivated": false,
+    "publicTrafficActivated": false
+  }
+}

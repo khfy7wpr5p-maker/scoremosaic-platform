@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.invalid/contracts/teacher-review-api-revision-result-v1.schema.json",
+  "title": "ScoreMosaic Teacher Review API Revision Result v1",
+  "description": "Bounded public result for one revision proposal. Successful authorized results may expose safe immutable parent/revision/validation identity. Error results never require or expose parsed client request identity, document/current-head identity, internal authorization grants, signatures, raw provider errors, raw MusicXML, approval authority or publication authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "requestId",
+    "correlationId",
+    "state",
+    "documentId",
+    "parent",
+    "revision",
+    "error",
+    "authority"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-teacher-review-api-revision-result-v1"},
+    "requestId": {
+      "oneOf": [
+        {"type": "string", "pattern": "^req_[A-Za-z0-9_-]{8,120}$"},
+        {"type": "null"}
+      ]
+    },
+    "correlationId": {
+      "type": "string",
+      "pattern": "^corr_[A-Za-z0-9_-]{8,120}$"
+    },
+    "state": {
+      "enum": ["created", "replayed", "rejected", "stale", "conflict", "unavailable"]
+    },
+    "documentId": {
+      "oneOf": [
+        {"$ref": "#/$defs/id"},
+        {"type": "null"}
+      ]
+    },
+    "parent": {
+      "oneOf": [
+        {"$ref": "#/$defs/parent"},
+        {"type": "null"}
+      ]
+    },
+    "revision": {
+      "oneOf": [
+        {"$ref": "#/$defs/revision"},
+        {"type": "null"}
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {"$ref": "#/$defs/error"},
+        {"type": "null"}
+      ]
+    },
+    "authority": {"$ref": "#/$defs/authority"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "parent": {
+      "oneOf": [
+        {"$ref": "#/$defs/baseParent"},
+        {"$ref": "#/$defs/revisionParent"}
+      ]
+    },
+    "baseParent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "revisionId": {"type": "null"},
+        "revisionSha256": {"type": "null"},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "revisionParent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "revisionId": {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+        "revisionSha256": {"$ref": "#/$defs/sha256"},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revisionId",
+        "revisionSha256",
+        "resultingMusicalStateSha256",
+        "validationReportSha256",
+        "blockingIssueCount",
+        "unresolvedIssueCount",
+        "status",
+        "immutable",
+        "approvalEligible",
+        "publicationEligible"
+      ],
+      "properties": {
+        "revisionId": {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+        "revisionSha256": {"$ref": "#/$defs/sha256"},
+        "resultingMusicalStateSha256": {"$ref": "#/$defs/sha256"},
+        "validationReportSha256": {"$ref": "#/$defs/sha256"},
+        "blockingIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "unresolvedIssueCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "status": {"const": "draft"},
+        "immutable": {"const": true},
+        "approvalEligible": {"const": false},
+        "publicationEligible": {"const": false}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "reconciliationRequired"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,79}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "retryable": {"type": "boolean"},
+        "reconciliationRequired": {"type": "boolean"}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canCreateAnotherRevision",
+        "canApprove",
+        "canPublish",
+        "canPersistCorrectedMusicXmlToProduction"
+      ],
+      "properties": {
+        "canCreateAnotherRevision": {"const": false},
+        "canApprove": {"const": false},
+        "canPublish": {"const": false},
+        "canPersistCorrectedMusicXmlToProduction": {"const": false}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"state": {"enum": ["created", "replayed"]}},
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "requestId": {"type": "string", "pattern": "^req_[A-Za-z0-9_-]{8,120}$"},
+          "documentId": {"$ref": "#/$defs/id"},
+          "parent": {"$ref": "#/$defs/parent"},
+          "revision": {"$ref": "#/$defs/revision"},
+          "error": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"state": {"enum": ["rejected", "stale", "conflict", "unavailable"]}},
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "requestId": {"type": "null"},
+          "documentId": {"type": "null"},
+          "parent": {"type": "null"},
+          "revision": {"type": "null"},
+          "error": {"$ref": "#/$defs/error"}
+        }
+      }
+    }
+  ]
+}

@@ -16,11 +16,13 @@ Every capability is gated. Code presence, model accuracy, a successful UI demo, 
 | Production foundation — Stage 9 | ✅ Complete repository scope | Hetzner/Coolify/PostgreSQL/Object Storage/Auth/RBAC/Secrets architecture documented; real provisioning deferred. |
 | Product UI experience — Stage 10 | ✅ Complete repository scope | Disconnected fixture-backed product UI; no production backend authority. |
 | Typed UI/application integration — Stage 11 | ✅ Complete repository scope | Closed typed reads/edit-intent/state model/local integration; live API locked. |
-| UI Architecture Phase 1 | ✅ Approved repository baseline in progress | Unnumbered product-design workstream; no live activation; Figma follows green baseline. |
+| UI Architecture Phase 1 | ✅ Repository pre-Figma baseline complete | Unnumbered product-design workstream; Figma application/high-fidelity still pending. |
+| Live UI↔API Security Architecture | ✅ Complete repository baseline | OIDC/session, server authorization, CSRF/origin/CSP, idempotency, audit and rollback contracts complete; runtime off. |
+| Teacher Review API Contract v1 | ✅ Complete repository baseline | Exact read + bounded revision-proposal API contracts bridge browser intent to Stage 8 authority; no routes registered. |
 | Downstream Music Application Integration | 🟡 Architecture-only seam | Validated/approved MusicXML may later feed bounded derivative services; GuitarTab live integration off. |
 | ST-OMR architecture/development track | 🟡 Isolated | Not in Gateway/Stage 7 quorum; no production authority. |
 | Production infrastructure | 🔒 Not activated | No paid/provider resources, production DB/object store, credentials, DNS/TLS or public traffic activated by repo stages. |
-| Live Teacher Review API | 🔒 Not activated | Stage 8 server foundations exist, but public/live UI↔server transport and production persistence remain gated. |
+| Live Teacher Review API | 🔒 Not activated | Security/API contracts exist, but HTTP routes, live auth, browser network and production persistence remain gated. |
 | Publication execution | 🔒 Not activated | Stage 8-O stops at non-executing publisher-bound handoff. |
 | Playback | 🔒 Not activated | Review timeline/presentation state exists; no real audio/MIDI/SoundFont runtime. |
 
@@ -36,34 +38,19 @@ Safe Intake
   -> Stage 10 disconnected product UI
   -> Stage 11 typed local UI/application integration
   -> UI Architecture Phase 1  [unnumbered]
+  -> Live UI↔API Security Architecture  [unnumbered, repository only]
+  -> Teacher Review API Contract v1  [unnumbered, repository only]
   -> High-fidelity Figma / prototype
   -> [LIVE/EXTERNAL GATES]
 ```
 
-UI Architecture Phase 1 does not consume or reserve Stage 12 numbering.
+UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. The Live UI↔API Security and Teacher Review API workstreams are likewise unnumbered and do not imply a Stage 12 assignment.
 
-## Immediate approved workstream — UI Architecture Phase 1
+## Approved repository workstream — UI Architecture Phase 1
 
 Goal: finish the complete product/UI architecture before high-fidelity Figma.
 
-Required sequence:
-
-```text
-1. Product navigation
-2. Dashboard / Documents
-3. New Document + Upload/OMR processing presentation
-4. Teacher Review Workspace v1
-5. Score Viewer interaction architecture
-6. Structured Edit architecture
-7. Validation / Revision architecture
-8. Approval / Publication UX
-9. Design System architecture
-10. High-fidelity Figma
-11. Clickable prototype
-12. Design Freeze v1
-```
-
-Repository architecture work covers items 1-9 first. Figma begins only after the Phase 1 architecture contract and compatibility tests are green.
+Repository-side architecture is complete through brand rules, Design System foundations, core components, music-domain components and product interaction patterns. Figma application and high-fidelity work remain separate.
 
 Fixed UI boundaries:
 
@@ -75,6 +62,63 @@ Fixed UI boundaries:
 - approval is not publication;
 - real upload/auth/server write/playback/publication remain locked;
 - future visual modernization starts in Figma/Design System/UI before changing lower authority layers.
+
+## Completed repository security baseline — Live UI↔API Security
+
+Goal: define how the completed Stage 10/11 UI contract model may later connect to real server data without giving the browser authority.
+
+Repository baseline now defines:
+
+- Authentik OIDC/OAuth2 Authorization Code + PKCE target model;
+- state/nonce/redirect/issuer/audience/signature/token validation requirements;
+- server-managed session boundary with provider tokens excluded from application JavaScript;
+- tenant/resource authorization on every protected request;
+- exact versioned `/api/v1` read mappings;
+- CSRF/origin/CORS requirements;
+- current `connect-src 'none'` and future maximum same-origin `connect-src 'self'` transition rule;
+- exact-current revision and server-resolved old-value mutation guards;
+- idempotency/reconciliation rules;
+- privacy-safe errors/audit evidence;
+- rate-limit and rollback/kill-switch requirements.
+
+Activation effect: none. HTTP/runtime/auth/browser-network/production flags remain false.
+
+## Completed repository API baseline — Teacher Review API Contract v1
+
+Goal: define the public API seam without exposing Stage 8-G internal authority envelopes to the browser.
+
+Safe request path:
+
+```text
+browser non-authoritative intent
+  -> session / CSRF / exact-origin gate
+  -> server resource authorization
+  -> fresh durable-head + snapshot check
+  -> server stable-target and old-value resolution
+  -> server authorization grant + command identity
+  -> internal Stage 8-G write envelope
+  -> immutable draft TeacherScoreRevision
+  -> bounded public result
+```
+
+The public v1 mutation surface reserves only:
+
+```text
+POST /api/v1/documents/{document_id}/revision-proposals
+```
+
+The first browser operation surface remains the four Stage 11 operations:
+
+```text
+set_pitch
+set_effective_duration
+set_dots
+remove_event
+```
+
+Stage 8's broader internal closed vocabulary is not implicitly exposed.
+
+No approval/publication endpoints are defined here. No HTTP route is registered and no live network/server write/production persistence is activated.
 
 ## Approved architecture-only extension — downstream music applications
 
@@ -105,7 +149,7 @@ Required:
 - architecture-current-state contract;
 - cross-document consistency tests;
 - stale/current document classification;
-- UI Phase 1 and downstream integration drift guards;
+- UI/security/API/downstream integration drift guards;
 - no current document may overclaim production activation.
 
 Activation effect: none.
@@ -142,24 +186,23 @@ Required before any ST-OMR production promotion:
 
 Current Audiveris/HOMR/Clarity production-candidate contracts remain unchanged until a versioned migration passes these gates.
 
-### C. Live UI↔API security design
+### C. Disconnected authenticated-API adapter / security test harness
 
-Goal: connect the completed Stage 10/11 UI contract model and approved Phase 1 product architecture to real server data without giving the browser authority.
+Goal: implement the security/API contracts against deterministic non-production collaborators without enabling browser networking or production identity/persistence.
 
-Required before activation:
+Required before any live runtime activation:
 
-- authenticated principal/session semantics;
-- tenant/resource RBAC;
-- exact versioned endpoints;
-- origin/CSRF/production CSP policy;
-- exact-current revision + old-value checks;
-- idempotency/failure/retry semantics;
-- privacy-safe errors/logs;
-- append-only audit evidence;
-- rollback/kill switch;
-- production credential handling.
+- contract-faithful request/response adapter;
+- server-side principal/resource-scope test doubles only;
+- CSRF/origin/idempotency/stale-parent negative tests;
+- server construction of ScoreEditCommand from non-authoritative intent;
+- exact Stage 8-G boundary composition;
+- reconciliation behavior for ambiguous mutations;
+- safe error/audit mapping;
+- no HTTP listener/public route;
+- no provider credentials or production persistence.
 
-Activation effect: none until a separate reviewed runtime gate.
+Activation effect: none.
 
 ### D. External production provisioning
 
@@ -184,6 +227,7 @@ Goal: wire Stage 8 server-side revision/approval foundations to an authenticated
 
 Requires C + D plus:
 
+- real production session/RBAC evidence;
 - production durable exact-parent revision persistence;
 - authorized read/write resource scope;
 - corrected MusicXML production artifact persistence;

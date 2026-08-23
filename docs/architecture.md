@@ -10,6 +10,7 @@ Historical Gate B-E details remain documented in their dedicated gate documents.
 - `docs/architecture-stage9-11-current.md`
 - `docs/ui-architecture-phase1.md`
 - `docs/live-ui-api-security-architecture-v1.md`
+- `docs/teacher-review-api-contract-v1.md`
 - `docs/downstream-music-application-integration-boundary.md`
 
 ## 1. Purpose
@@ -146,11 +147,35 @@ Browser
 
 The target identity provider remains Authentik through OIDC/OAuth2 Authorization Code + PKCE terminated at a server-side BFF or equivalent confidential boundary. Provider access/refresh tokens are not exposed to application JavaScript or browser persistence.
 
-Initial live-read path templates are versioned for `review.read`, `issues.read`, `sourceEvidence.read`, and `validation.read`. Mutation endpoints remain deferred to a separate Teacher Review API contract.
+Initial live-read path templates are versioned for `review.read`, `issues.read`, `sourceEvidence.read`, and `validation.read`.
 
 Current `connect-src 'none'` remains active. `connect-src 'self'` is only the maximum future same-origin baseline and cannot activate before a separate runtime gate. Auth/session/RBAC runtime, production artifact reads, server writes, command/revision creation, approval, publication, upload, production infrastructure and public traffic remain false.
 
-### 5.3 Downstream music-application integration boundary
+### 5.3 Teacher Review API Contract v1 — approved unnumbered workstream
+
+The repository API baseline is defined by `contracts/teacher-review-api-v1.json` and `docs/teacher-review-api-contract-v1.md`.
+
+The contract reserves exact versioned read endpoints and one bounded future revision-proposal endpoint while preserving the browser/server authority split:
+
+```text
+Browser non-authoritative edit intent
+  -> authenticated / CSRF / origin gate
+  -> server document/resource authorization
+  -> exact-current snapshot + stable target resolution
+  -> server-derived old-value/location precondition
+  -> server-created ScoreEditCommand identity
+  -> internal Stage 8-G write envelope
+  -> immutable draft TeacherScoreRevision
+  -> bounded public revision result
+```
+
+The browser may not submit the existing Stage 8-G `teacher-review-write-request-v1` envelope directly and may not provide reviewer/tenant authority, authorization grants/signatures, command identity, old-value preconditions or authoritative staff/voice/onset location.
+
+The initial browser operation surface remains the four Stage 11 families: `set_pitch`, `set_effective_duration`, `set_dots`, and `remove_event`. The broader Stage 8 internal command vocabulary is not implicitly exposed over the API.
+
+No HTTP route is registered by this contract. Live read/write API, browser networking, ScoreEditCommand/TeacherScoreRevision creation, production persistence, approval, publication and public traffic remain false.
+
+### 5.4 Downstream music-application integration boundary
 
 Validated ScoreMosaic musical artifacts may later feed sibling applications only through a dedicated downstream boundary.
 
@@ -203,7 +228,7 @@ Real provisioning remains behind the Stage 9 external-production boundary.
 
 | Stage | Current status | Authority meaning |
 |---|---|---|
-| 5 | Controlled staging execution complete | Authenticated bounded private dispatch/execution exists in controlled staging; not production activation. |
+| 5 | Controlled staging execution complete | Authenticated bounded private staging dispatch/execution exists; not production activation. |
 | 6 | Candidate ingestion/persistence complete | Engine results can become immutable authenticated candidates; candidates are not truth. |
 | 7 | Canonical/Ensemble convergence complete | Deterministic Canonical admission and neutral comparison; >=2 Canonical candidates required. |
 | 8 | Teacher Review/publication preparation complete | Exact immutable review/approval/publication-handoff lineage; external publication effect locked. |
@@ -217,6 +242,7 @@ Approved unnumbered workstreams:
 |---|---|---|
 | UI Architecture Phase 1 | Approved repository baseline; Figma application pending | Product navigation, screen architecture, interaction model and Design System defined without live activation. |
 | Live UI ↔ API Security Architecture | Approved repository baseline; runtime locked | Identity/session, authorization, API transport, CSRF/origin/CSP, idempotency, audit and rollback rules defined without network activation. |
+| Teacher Review API Contract v1 | Approved repository API baseline; routes locked | Exact read/revision-proposal contracts bridge non-authoritative browser intent to Stage 8 server authority without registering HTTP routes. |
 | Downstream Music Application Integration | Architecture-only | Safe post-validation seam reserved; MusicXML-to-GuitarTab-Engine live integration remains off. |
 
 ## 8. Authority invariants
@@ -245,6 +271,7 @@ Approved unnumbered workstreams:
 - Stage 11 typed local UI/application integration;
 - approved UI Architecture Phase 1 product-design baseline;
 - approved Live UI ↔ API repository security architecture baseline;
+- approved Teacher Review API repository contract baseline;
 - architecture-only downstream music-application seam.
 
 ### Repository evidence does not prove
@@ -254,7 +281,7 @@ Approved unnumbered workstreams:
 - production PostgreSQL/object-storage operation;
 - production Authentik/Infisical runtime;
 - production credentials/DNS/TLS;
-- live public Teacher Review write routes;
+- live public Teacher Review read/write routes;
 - production publication execution;
 - production browser playback;
 - ST-OMR Gateway/Ensemble integration;
