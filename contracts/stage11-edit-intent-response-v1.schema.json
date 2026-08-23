@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scoremosaic-stage11-edit-intent-response-v1",
+  "title": "ScoreMosaic Stage 11 edit-intent response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "kind", "state", "documentId", "revision", "data", "error"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-stage11-edit-intent-response-v1"},
+    "requestId": {"$ref": "#/$defs/requestId"},
+    "kind": {"enum": ["editIntent.prepare", "unknown"]},
+    "state": {"enum": ["success", "rejected", "unavailable"]},
+    "documentId": {"$ref": "#/$defs/id"},
+    "revision": {"$ref": "#/$defs/id"},
+    "data": {"oneOf": [{"$ref": "#/$defs/localIntent"}, {"type": "null"}]},
+    "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]}
+  },
+  "$defs": {
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page", "measure", "staff", "voice", "event"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "measure": {"type": "integer", "minimum": 1},
+        "staff": {"type": "integer", "minimum": 1},
+        "voice": {"type": "integer", "minimum": 1},
+        "event": {"$ref": "#/$defs/id"}
+      }
+    },
+    "operation": {
+      "oneOf": [
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/setPitch"},
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/setEffectiveDuration"},
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/setDots"},
+        {"$ref": "score-edit-command-v1.schema.json#/$defs/removeEvent"}
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritativeCapability", "serverAuthorizationIncluded", "oldValuePreconditionIncluded", "commandIdentityIncluded", "networkSubmissionAllowed", "canCreateScoreEditCommand", "canCreateRevision", "canApprove", "canPublish"],
+      "properties": {
+        "authoritativeCapability": {"const": false},
+        "serverAuthorizationIncluded": {"const": false},
+        "oldValuePreconditionIncluded": {"const": false},
+        "commandIdentityIncluded": {"const": false},
+        "networkSubmissionAllowed": {"const": false},
+        "canCreateScoreEditCommand": {"const": false},
+        "canCreateRevision": {"const": false},
+        "canApprove": {"const": false},
+        "canPublish": {"const": false}
+      }
+    },
+    "localIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intentVersion", "issueId", "target", "operation", "reason", "authority"],
+      "properties": {
+        "intentVersion": {"const": "scoremosaic-stage11-local-edit-intent-v1"},
+        "issueId": {"$ref": "#/$defs/id"},
+        "target": {"$ref": "#/$defs/target"},
+        "operation": {"$ref": "#/$defs/operation"},
+        "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 300},
+        "authority": {"$ref": "#/$defs/authority"}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 80},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500},
+        "retryable": {"type": "boolean"}
+      }
+    }
+  }
+}
