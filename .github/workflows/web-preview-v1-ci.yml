@@ -5,8 +5,10 @@ on:
     branches:
       - main
       - "feature/web-preview-v1"
+      - "feature/web-preview-pages-deploy"
     paths:
       - ".github/workflows/web-preview-v1-ci.yml"
+      - ".github/workflows/web-preview-pages-deploy.yml"
       - "contracts/web-preview-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/web-preview-v1.md"
@@ -14,6 +16,7 @@ on:
       - "docs/roadmap.md"
       - "scripts/build_web_preview.py"
       - "tests/test_web_preview_v1.py"
+      - "tests/test_web_preview_pages_deploy.py"
       - "tests/test_architecture_consistency.py"
       - "prototypes/stage10-ui-application-experience/**"
       - "prototypes/stage11-ui-application-contracts/**"
@@ -22,6 +25,7 @@ on:
       - main
     paths:
       - ".github/workflows/web-preview-v1-ci.yml"
+      - ".github/workflows/web-preview-pages-deploy.yml"
       - "contracts/web-preview-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/web-preview-v1.md"
@@ -29,6 +33,7 @@ on:
       - "docs/roadmap.md"
       - "scripts/build_web_preview.py"
       - "tests/test_web_preview_v1.py"
+      - "tests/test_web_preview_pages_deploy.py"
       - "tests/test_architecture_consistency.py"
       - "prototypes/stage10-ui-application-experience/**"
       - "prototypes/stage11-ui-application-contracts/**"
@@ -66,6 +71,9 @@ jobs:
 
       - name: Run preview security regressions
         run: python -m unittest discover -s tests -p 'test_web_preview_v1.py' -v
+
+      - name: Run Pages deployment-policy regressions
+        run: python -m unittest discover -s tests -p 'test_web_preview_pages_deploy.py' -v
 
       - name: Run Stage 10 experience regression
         run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
