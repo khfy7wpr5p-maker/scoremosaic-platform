@@ -21,6 +21,7 @@ on:
       - "docs/architecture.md"
       - "docs/roadmap.md"
       - "tests/test_teacher_review_api_contract_v1.py"
+      - "tests/test_teacher_review_api_response_security_v1.py"
       - "tests/test_architecture_consistency.py"
       - "services/teacher-review-service/**"
   pull_request:
@@ -42,6 +43,7 @@ on:
       - "docs/architecture.md"
       - "docs/roadmap.md"
       - "tests/test_teacher_review_api_contract_v1.py"
+      - "tests/test_teacher_review_api_response_security_v1.py"
       - "tests/test_architecture_consistency.py"
       - "services/teacher-review-service/**"
   workflow_dispatch:
@@ -84,6 +86,9 @@ jobs:
 
       - name: Run Teacher Review API contract tests
         run: python -m unittest discover -s tests -p 'test_teacher_review_api_contract_v1.py' -v
+
+      - name: Run Teacher Review API response-security regressions
+        run: python -m unittest discover -s tests -p 'test_teacher_review_api_response_security_v1.py' -v
 
       - name: Run Live UI API security regression
         run: python -m unittest discover -s tests -p 'test_live_ui_api_security_architecture_v1.py' -v
