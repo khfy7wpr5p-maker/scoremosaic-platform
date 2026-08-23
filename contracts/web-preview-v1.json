@@ -1,0 +1,61 @@
+{
+  "version": "scoremosaic-web-preview-v1",
+  "workstream": "Web Preview v1",
+  "stageNumberAssigned": false,
+  "status": "APPROVED_REPOSITORY_WEB_PREVIEW_BUILD_READY_NOT_PUBLISHED",
+  "scope": "repository_only_static_preview_build_no_public_deployment",
+  "sources": {
+    "ui": "prototypes/stage10-ui-application-experience",
+    "typedApplication": "prototypes/stage11-ui-application-contracts"
+  },
+  "build": {
+    "script": "scripts/build_web_preview.py",
+    "artifactName": "scoremosaic-web-preview-v1",
+    "entrypoint": "index.html",
+    "generatedDirectoryCommitted": false,
+    "deterministicBuildRequired": true,
+    "dependencyFree": true
+  },
+  "previewContent": {
+    "fixtureOnly": true,
+    "productionArtifact": false,
+    "authoritativeTruth": false,
+    "visibleNonProductionMarkerRequired": true,
+    "visibleFixtureMarkerRequired": true,
+    "scoreViewPrimary": true,
+    "structuredEditIsLocalIntentOnly": true
+  },
+  "security": {
+    "connectSrcNoneRequired": true,
+    "formActionNoneRequired": true,
+    "objectSrcNoneRequired": true,
+    "frameSrcNoneRequired": true,
+    "baseUriNoneRequired": true,
+    "externalScriptAllowed": false,
+    "externalStyleAllowed": false,
+    "networkApiAllowed": false,
+    "browserPersistenceAllowed": false,
+    "cookieUseAllowed": false,
+    "realUploadAllowed": false,
+    "realAuthenticationAllowed": false,
+    "serverWriteAllowed": false,
+    "approvalExecutionAllowed": false,
+    "publicationExecutionAllowed": false
+  },
+  "ci": {
+    "buildAndValidateArtifact": true,
+    "artifactUploadIsDeployment": false,
+    "pagesDeployActionAllowed": false,
+    "pagesWritePermissionAllowed": false,
+    "idTokenWritePermissionAllowed": false
+  },
+  "activationLocks": {
+    "githubPagesEnabled": false,
+    "publicPreviewDeployed": false,
+    "publicUrlAssigned": false,
+    "browserNetworkActivated": false,
+    "liveApiActivated": false,
+    "productionPersistenceActivated": false,
+    "publicTrafficActivated": false
+  }
+}
