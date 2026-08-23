@@ -64,7 +64,7 @@ class DesignSystemFoundationsV1Tests(unittest.TestCase):
             self.assertNotIn(status[key], brand_values, key)
         self.assertIs(FOUNDATIONS["principles"]["brandColorDoesNotEncodeAuthority"], True)
         self.assertIs(FOUNDATIONS["principles"]["statusMeaningCannotRelyOnColorAlone"], True)
-        self.assertIn("does **not** automatically mean success", DOC)
+        self.assertIn("do **not** automatically mean success", DOC)
 
     def test_semantic_colors_reference_known_primitives(self) -> None:
         roots = {
