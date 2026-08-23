@@ -12,6 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = json.loads((ROOT / "contracts" / "web-preview-v1.json").read_text(encoding="utf-8"))
 WORKFLOW = (ROOT / ".github" / "workflows" / "web-preview-v1-ci.yml")
+BUILDER = ROOT / "scripts" / "build_web_preview.py"
 
 
 def tree_digest(root: Path) -> dict[str, str]:
@@ -61,7 +62,7 @@ class WebPreviewV1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as first_tmp, tempfile.TemporaryDirectory() as second_tmp:
             first = Path(first_tmp) / "site"
             second = Path(second_tmp) / "site"
-            command = [sys.executable, str(ROOT / "scripts" / "build_web_preview.py"), "--output"]
+            command = [sys.executable, str(BUILDER), "--output"]
             subprocess.run(command + [str(first)], cwd=ROOT, check=True)
             subprocess.run(command + [str(second)], cwd=ROOT, check=True)
 
@@ -92,7 +93,35 @@ class WebPreviewV1Tests(unittest.TestCase):
             self.assertNotIn("../stage11-ui-application-contracts/", index)
             self.assertIn('src="application/read-adapter.js"', index)
 
-    def test_generated_preview_contains_no_network_or_persistence_capabilities(self) -> None:
+    def test_builder_never_overwrites_or_deletes_existing_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "site"
+            output.mkdir()
+            sentinel = output / "keep-me.txt"
+            sentinel.write_text("user-owned", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(BUILDER), "--output", str(output)],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual("user-owned", sentinel.read_text(encoding="utf-8"))
+            self.assertEqual({"keep-me.txt"}, {path.name for path in output.iterdir()})
+
+    def test_builder_refuses_output_inside_repository(self) -> None:
+        output = ROOT / ".web-preview-v1-unsafe-test-output"
+        self.assertFalse(output.exists(), "reserved regression-test path unexpectedly exists")
+        result = subprocess.run(
+            [sys.executable, str(BUILDER), "--output", str(output)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(output.exists())
+
+    def test_generated_preview_contains_no_network_persistence_or_external_http(self) -> None:
         forbidden = (
             "fetch(",
             "XMLHttpRequest",
@@ -103,11 +132,13 @@ class WebPreviewV1Tests(unittest.TestCase):
             "sessionStorage",
             "indexedDB",
             "document.cookie",
+            "http://",
+            "https://",
         )
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "site"
             subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / "build_web_preview.py"), "--output", str(output)],
+                [sys.executable, str(BUILDER), "--output", str(output)],
                 cwd=ROOT,
                 check=True,
             )
