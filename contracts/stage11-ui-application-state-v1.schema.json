@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scoremosaic-stage11-ui-application-state-v1",
+  "title": "ScoreMosaic Stage 11 UI application state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "phase", "requestId", "kind", "documentId", "revision", "data", "error", "authority"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-stage11-ui-application-state-v1"},
+    "phase": {"enum": ["idle", "loading", "ready", "empty", "rejected", "unavailable"]},
+    "requestId": {"oneOf": [{"$ref": "#/$defs/requestId"}, {"type": "null"}]},
+    "kind": {"oneOf": [{"$ref": "#/$defs/kind"}, {"type": "null"}]},
+    "documentId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "revision": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "data": {
+      "oneOf": [
+        {"$ref": "stage11-read-response-v1.schema.json#/$defs/reviewData"},
+        {"$ref": "stage11-read-response-v1.schema.json#/$defs/issuesData"},
+        {"$ref": "stage11-read-response-v1.schema.json#/$defs/sourceEvidenceData"},
+        {"$ref": "stage11-read-response-v1.schema.json#/$defs/validationData"},
+        {"$ref": "stage11-edit-intent-response-v1.schema.json#/$defs/localIntent"},
+        {"type": "null"}
+      ]
+    },
+    "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]},
+    "authority": {"$ref": "#/$defs/authority"}
+  },
+  "$defs": {
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "kind": {"enum": ["review.read", "issues.read", "sourceEvidence.read", "validation.read", "editIntent.prepare"]},
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "code", "message", "retryable"],
+      "properties": {
+        "category": {"enum": ["invalid_request", "stale_context", "not_found", "protocol", "unavailable", "unknown"]},
+        "code": {"type": "string", "minLength": 1, "maxLength": 80},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500},
+        "retryable": {"type": "boolean"}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritative", "canWrite", "canApprove", "canPublish", "canPlayback"],
+      "properties": {
+        "authoritative": {"const": false},
+        "canWrite": {"const": false},
+        "canApprove": {"const": false},
+        "canPublish": {"const": false},
+        "canPlayback": {"const": false}
+      }
+    }
+  }
+}
