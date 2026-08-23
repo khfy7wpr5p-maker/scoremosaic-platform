@@ -1,0 +1,217 @@
+{
+  "version": "scoremosaic-design-system-core-components-v1",
+  "scope": "repository_component_architecture_only",
+  "parentFoundations": "scoremosaic-design-system-foundations-v1",
+  "parentWorkstream": "scoremosaic-ui-architecture-phase1-v1",
+  "stageNumberAssigned": false,
+  "status": "APPROVED_REPOSITORY_CORE_COMPONENT_ARCHITECTURE_BASELINE",
+  "implementationState": {
+    "repositorySpecificationReady": true,
+    "figmaComponentsCreated": false,
+    "productionComponentsImplemented": false,
+    "highFidelityScreensStarted": false
+  },
+  "globalRules": {
+    "semanticTokensOnly": true,
+    "screenSpecificHardcodedColorForbiddenForLibraryComponents": true,
+    "visualEmphasisDoesNotGrantAuthority": true,
+    "statusPresentationDoesNotCreateStatus": true,
+    "browserComponentStateIsNotDomainAuthority": true,
+    "minimumPointerHitTargetPx": 44,
+    "visibleFocusRequired": true,
+    "keyboardOperationRequired": true,
+    "colorOnlyMeaningForbidden": true,
+    "reducedMotionCompatible": true,
+    "iconOnlyControlsRequireAccessibleName": true,
+    "disabledStateMustBeProgrammaticallyExposed": true,
+    "loadingStateMustPreserveAccessibleName": true
+  },
+  "sharedSizing": {
+    "compact": {"visualHeightPx": 32, "minimumHitTargetPx": 44},
+    "default": {"visualHeightPx": 36, "minimumHitTargetPx": 44},
+    "comfortable": {"visualHeightPx": 40, "minimumHitTargetPx": 44}
+  },
+  "button": {
+    "variants": ["primary", "secondary", "ghost", "danger"],
+    "sizes": ["compact", "default", "comfortable"],
+    "states": ["default", "hover", "focus_visible", "pressed", "disabled", "loading"],
+    "content": {
+      "labelRequired": true,
+      "leadingIconOptional": true,
+      "trailingIconOptional": true,
+      "fullWidthOptional": true
+    },
+    "semantics": {
+      "primaryUsesBrandPrimary": true,
+      "primaryDoesNotMeanApprove": true,
+      "primaryDoesNotMeanPublish": true,
+      "dangerUsesStatusDanger": true,
+      "dangerReservedForDestructiveIntent": true,
+      "dangerDoesNotBypassConfirmationPolicy": true
+    },
+    "accessibility": {
+      "spaceActivates": true,
+      "enterActivates": true,
+      "loadingExposesBusyState": true,
+      "disabledIsNotFocusableByDefault": true
+    }
+  },
+  "iconButton": {
+    "variants": ["neutral", "ghost", "danger"],
+    "sizes": ["compact", "default", "comfortable"],
+    "states": ["default", "hover", "focus_visible", "pressed", "selected", "disabled"],
+    "iconSizePx": {"compact": 16, "default": 18, "comfortable": 20},
+    "properties": {
+      "iconUsesInstanceSwap": true,
+      "accessibleNameRequired": true,
+      "tooltipOnHoverAndFocusRequired": true,
+      "selectedStateMustHaveNonColorCue": true
+    }
+  },
+  "tabs": {
+    "variants": ["workspace", "subtle"],
+    "states": ["default", "hover", "focus_visible", "selected", "disabled"],
+    "properties": {
+      "labelRequired": true,
+      "leadingIconOptional": true,
+      "badgeOptional": true,
+      "selectedIndicatorRequired": true,
+      "selectedStateMustNotRelyOnColorAlone": true
+    },
+    "keyboard": {
+      "arrowNavigationRequired": true,
+      "homeEndNavigationRequired": true,
+      "rovingTabIndexRequired": true
+    },
+    "authority": {
+      "tabSelectionIsPresentationState": true,
+      "tabSelectionMayNotMutateScoreDirectly": true
+    }
+  },
+  "statusBadge": {
+    "tones": ["neutral", "info", "success", "warning", "danger", "locked"],
+    "sizes": ["compact", "default"],
+    "properties": {
+      "textLabelRequired": true,
+      "iconOptional": true,
+      "shapeCueRequiredForCriticalStates": true,
+      "colorOnlyMeaningForbidden": true
+    },
+    "authority": {
+      "badgeReflectsExistingStateOnly": true,
+      "badgeMayNotCreateApproval": true,
+      "badgeMayNotCreatePublication": true,
+      "badgeMayNotCreateValidationPass": true
+    }
+  },
+  "panel": {
+    "variants": ["surface", "muted", "floating"],
+    "slots": ["header", "body", "footer"],
+    "properties": {
+      "titleOptional": true,
+      "headerActionsOptional": true,
+      "footerOptional": true,
+      "interactiveByDefault": false,
+      "borderUsesSemanticToken": true,
+      "elevationUsesFoundationStyle": true
+    },
+    "layout": {
+      "defaultRadiusToken": "radius.panel",
+      "defaultGapToken": "space.200",
+      "preferBorderBeforeHigherElevation": true
+    }
+  },
+  "input": {
+    "types": ["text", "search", "number"],
+    "sizes": ["compact", "default", "comfortable"],
+    "states": ["default", "hover", "focus_visible", "invalid", "disabled", "read_only"],
+    "properties": {
+      "visibleLabelRequiredUnlessProgrammaticEquivalentExists": true,
+      "supportingTextOptional": true,
+      "errorMessageRequiredWhenInvalid": true,
+      "leadingIconOptional": true,
+      "trailingActionOptional": true,
+      "searchClearActionAccessibleNameRequired": true
+    },
+    "authority": {
+      "fieldValueIsLocalPresentationStateUntilTypedIntentBoundary": true,
+      "fieldMayNotWriteScoreDirectly": true,
+      "invalidVisualStateMayNotSubstituteServerValidation": true
+    }
+  },
+  "select": {
+    "sizes": ["compact", "default", "comfortable"],
+    "states": ["default", "hover", "focus_visible", "open", "invalid", "disabled", "read_only"],
+    "properties": {
+      "visibleLabelRequiredUnlessProgrammaticEquivalentExists": true,
+      "selectedValueRequired": true,
+      "supportingTextOptional": true,
+      "errorMessageRequiredWhenInvalid": true
+    },
+    "keyboard": {
+      "comboboxOrNativeSemanticsRequired": true,
+      "escapeClosesPopup": true,
+      "arrowNavigationRequired": true
+    },
+    "authority": {
+      "selectedValueIsLocalUntilTypedIntentBoundary": true,
+      "selectionMayNotWriteScoreDirectly": true
+    }
+  },
+  "toolbar": {
+    "variants": ["workspace", "score", "contextual"],
+    "properties": {
+      "groupingRequired": true,
+      "separatorOptional": true,
+      "overflowPatternRequiredForNarrowWidth": true,
+      "iconButtonReuseRequired": true,
+      "textButtonReuseRequired": true,
+      "ambiguousIconOnlyDestructiveActionForbidden": true
+    },
+    "keyboard": {
+      "allActionsReachable": true,
+      "logicalTabOrderRequired": true,
+      "tooltipsDoNotReplaceAccessibleNames": true
+    },
+    "authority": {
+      "toolbarIsNotPermissionBoundary": true,
+      "hiddenOrDisabledActionDoesNotReplaceServerAuthorization": true
+    }
+  },
+  "deferredComponents": [
+    "dialog",
+    "drawer",
+    "toast",
+    "empty_state",
+    "loading_state",
+    "validation_message"
+  ],
+  "nextMusicDomainComponents": [
+    "issue_card",
+    "validation_status",
+    "revision_indicator",
+    "evidence_viewer",
+    "structured_edit_field"
+  ],
+  "figmaBuildPolicy": {
+    "foundationsMustBeAppliedBeforeComponentCreation": true,
+    "oneComponentFamilyAtATime": true,
+    "variablesMustBeBound": true,
+    "variantSetRequiredWhereStatesOrStylesVary": true,
+    "instanceSwapRequiredForIcons": true,
+    "metadataValidationRequired": true,
+    "visualScreenshotValidationRequired": true,
+    "currentFigmaBuildBlockedByStarterToolCallLimit": true,
+    "componentCreationAuthorizedWhenToolAccessReturns": true
+  },
+  "activationLocks": {
+    "figmaComponentLibraryApplied": false,
+    "productionUiComponentsImplemented": false,
+    "highFidelityStarted": false,
+    "liveApiActivated": false,
+    "serverWriteActivated": false,
+    "approvalExecutionActivated": false,
+    "publicationExecutionActivated": false,
+    "productionInfrastructureActivated": false
+  }
+}
