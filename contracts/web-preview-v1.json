@@ -2,7 +2,7 @@
   "version": "scoremosaic-web-preview-v1",
   "workstream": "Web Preview v1",
   "stageNumberAssigned": false,
-  "status": "APPROVED_PUBLIC_GITHUB_PAGES_PREVIEW_DEPLOYMENT_AUTHORIZED_NOT_YET_VERIFIED",
+  "status": "PUBLIC_GITHUB_PAGES_FIXTURE_PREVIEW_DEPLOYED_VERIFIED",
   "scope": "fixture_only_static_preview_with_explicit_public_github_pages_authority",
   "sources": {
     "ui": "prototypes/stage10-ui-application-experience",
@@ -62,15 +62,22 @@
     "productionDeployment": false,
     "productionAuthorityGranted": false,
     "apiAuthorityGranted": false,
-    "pagesRepositorySettingMustBeVerifiedByDeploymentEvidence": true
+    "pagesRepositorySettingMustBeVerifiedByDeploymentEvidence": true,
+    "deploymentEvidence": {
+      "publicUrl": "https://khfy7wpr5p-maker.github.io/scoremosaic-platform/",
+      "workflowRunUrl": "https://github.com/khfy7wpr5p-maker/scoremosaic-platform/actions/runs/32652403651",
+      "workflowRunId": 32652403651,
+      "verifiedDeploymentCommitSha": "33555ed152d1f8f3bdec0072bec7693c29b2aa1c",
+      "verifiedOn": "2026-08-23"
+    }
   },
   "activationLocks": {
-    "githubPagesEnabled": false,
-    "publicPreviewDeployed": false,
-    "publicUrlAssigned": false,
+    "githubPagesEnabled": true,
+    "publicPreviewDeployed": true,
+    "publicUrlAssigned": true,
     "browserNetworkActivated": false,
     "liveApiActivated": false,
     "productionPersistenceActivated": false,
-    "publicTrafficActivated": false
+    "publicTrafficActivated": true
   }
 }

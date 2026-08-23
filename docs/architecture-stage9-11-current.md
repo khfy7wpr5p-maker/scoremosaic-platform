@@ -148,7 +148,7 @@ Stage 10/11 and UI Architecture Phase 1 do not bypass or replace that chain. The
 
 ## Relationship to Stage 9
 
-Stage 10/11 and UI Architecture Phase 1 do not provision infrastructure. Real Hetzner, PostgreSQL, object storage, Authentik, Infisical, credentials, DNS/TLS and public traffic remain deferred behind Stage 9-I.
+Stage 10/11 and UI Architecture Phase 1 do not provision infrastructure. Real Hetzner, PostgreSQL, object storage, Authentik, Infisical, credentials, DNS/TLS and production public traffic remain deferred behind Stage 9-I. The separately authorized fixture-only GitHub Pages preview grants no production authority.
 
 ## Current stop boundary
 
@@ -157,7 +157,7 @@ Repository-only architecture, UI design contracts and tests may continue where t
 No repository document may treat local UI/Figma readiness as permission to:
 
 - create real provider resources;
-- accept production/public traffic;
+- accept production API/upload traffic;
 - read production artifacts;
 - create server-side teacher revisions from browser state;
 - approve or publish;

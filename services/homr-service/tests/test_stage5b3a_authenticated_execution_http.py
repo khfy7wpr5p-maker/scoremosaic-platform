@@ -81,6 +81,11 @@ else:
     raise RuntimeError("unexpected engine service root")
 
 _SIGNATURE_DOMAIN = b"scoremosaic-authenticated-execution-trigger-v1"
+_WORKSPACE_ENV_BY_ENGINE = {
+    "audiveris": "SCOREMOSAIC_AUDIVERIS_WORKSPACE_ROOT",
+    "homr": "SCOREMOSAIC_HOMR_WORKSPACE_ROOT",
+    "clarity": "SCOREMOSAIC_CLARITY_WORKSPACE_ROOT",
+}
 
 
 def canonical(value: object) -> bytes:
@@ -92,6 +97,7 @@ class Stage5B3aAuthenticatedExecutionHttpTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
+        self.config = load_config({_WORKSPACE_ENV_BY_ENGINE[ENGINE]: str(root / "workspace")})
         self.now = 1_800_700_000
         if ENGINE == "clarity":
             self.source = b"%PDF-1.4\n" + b"stage5b3a" * 64
@@ -139,7 +145,7 @@ class Stage5B3aAuthenticatedExecutionHttpTests(unittest.TestCase):
 
         execution_context = EngineExecutionHttpContext(
             claim_store=self.claims,
-            config=load_config({}),
+            config=self.config,
             rotation=ExecutionCredentialRotation(
                 current_generation_id=self.generation,
                 current_activated_at=self.now - 5,
@@ -221,6 +227,16 @@ class Stage5B3aAuthenticatedExecutionHttpTests(unittest.TestCase):
         self.assertEqual(second.status, 409)
         self.assertEqual(self.transcriber_calls, 1)
 
+    def test_independent_cases_do_not_share_execution_workspace(self) -> None:
+        for _ in range(2):
+            case = Stage5B3aAuthenticatedExecutionHttpTests(
+                "test_authenticated_route_executes_exactly_once_and_returns_no_result_bytes"
+            )
+            result = unittest.TestResult()
+            case.run(result)
+            self.assertEqual([], result.failures)
+            self.assertEqual([], result.errors)
+
     def test_prerequisites_fail_before_execution_credential_resolution(self) -> None:
         calls = 0
         def resolver(_key: str, _generation: str):
@@ -243,7 +259,7 @@ class Stage5B3aAuthenticatedExecutionHttpTests(unittest.TestCase):
             source_credential_resolver=lambda _k, _g: None,
             execution_http_context=EngineExecutionHttpContext(
                 claim_store=EngineExecutionClaimStore(root=root / "claims", integrity_key=secrets.token_bytes(32)),
-                config=load_config({}),
+                config=self.config,
                 rotation=ExecutionCredentialRotation(current_generation_id=self.generation, current_activated_at=self.now - 5),
                 credential_resolver=resolver,
                 transcriber=lambda *_args: (_ for _ in ()).throw(AssertionError("must not execute")),

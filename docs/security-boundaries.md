@@ -22,7 +22,7 @@ AI/OMR output is evidence, not authoritative musical truth.
 - ST-OMR is not currently integrated into Gateway/Stage 7.
 - Controlled-staging authenticated private dispatch/execution exists through Stage 5.
 - Controlled staging must not be described as public or production orchestration.
-- Real production service credentials, provider resources, DNS/TLS and public traffic remain locked.
+- Real production service credentials, provider resources, DNS/TLS and production public traffic remain locked. The verified fixture-only GitHub Pages preview is the sole current public exception and has no API or production authority.
 - Engine services must never receive browser-visible API keys or caller-controlled executable options.
 
 ## 3. Safe Intake Gate
@@ -272,4 +272,4 @@ Required negative coverage includes at minimum:
 
 ## 16. Stop rule
 
-Repository-only work may continue only while production/live activation remains false. Stop before paid resource creation, real credentials, DNS/TLS changes, public traffic, production writes, destructive provider operations, actual publication execution, or live downstream music-service activation unless a separate explicit operational gate authorizes that action.
+Repository-only work may continue only while production/live activation remains false. Stop before paid resource creation, real credentials, DNS/TLS changes, new public traffic beyond the authorized fixture-only Pages preview, production writes, destructive provider operations, actual publication execution, or live downstream music-service activation unless a separate explicit operational gate authorizes that action.

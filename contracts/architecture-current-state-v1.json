@@ -35,17 +35,20 @@
     },
     "webPreviewV1": {
       "stageNumberAssigned": false,
-      "status": "APPROVED_PUBLIC_GITHUB_PAGES_PREVIEW_DEPLOYMENT_AUTHORIZED_NOT_YET_VERIFIED",
+      "status": "PUBLIC_GITHUB_PAGES_FIXTURE_PREVIEW_DEPLOYED_VERIFIED",
       "contract": "contracts/web-preview-v1.json",
       "repositoryPreviewBuildReady": true,
       "previewArtifactCiReady": true,
       "publicPreviewDeploymentAuthorized": true,
       "githubPagesDeploymentWorkflowReady": true,
-      "githubPagesSiteConfigurationVerified": false,
-      "githubPagesEnabled": false,
-      "publicPreviewDeployed": false,
-      "publicUrlAssigned": false,
-      "publicTrafficActivated": false
+      "githubPagesSiteConfigurationVerified": true,
+      "githubPagesEnabled": true,
+      "publicPreviewDeployed": true,
+      "publicUrlAssigned": true,
+      "publicUrl": "https://khfy7wpr5p-maker.github.io/scoremosaic-platform/",
+      "verificationEvidenceWorkflowRunId": 32652403651,
+      "verificationEvidenceCommitSha": "33555ed152d1f8f3bdec0072bec7693c29b2aa1c",
+      "publicTrafficActivated": true
     },
     "liveUiApiSecurityDesign": {
       "stageNumberAssigned": false,
@@ -81,7 +84,13 @@
     "stOmrIntegratedIntoGateway": false,
     "stage7MinimumCanonicalCandidates": 2,
     "engineOutputAuthoritativeMusicalTruth": false,
-    "automaticWinnerAuthority": false
+    "automaticWinnerAuthority": false,
+    "fixedRegressionDatasetCaseCount": 1,
+    "stOmrSyntheticEvaluationFixtureCount": 3,
+    "teacherGoldEvaluationComplete": false,
+    "realWorldShadowBenchmarkComplete": false,
+    "realOmrAccuracyMeasured": false,
+    "generalAccuracyClaim": false
   },
   "teacherReview": {
     "repositoryRevisionApprovalPublicationPreparationComplete": true,
@@ -94,6 +103,7 @@
     "publicationExecutionActivated": false
   },
   "production": {
+    "productionReady": false,
     "providerPlanDocumented": true,
     "hetznerCoolifyBaselineDocumented": true,
     "postgresql18PlanDocumented": true,

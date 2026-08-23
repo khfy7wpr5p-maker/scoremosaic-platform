@@ -24,9 +24,13 @@ def tree_digest(root: Path) -> dict[str, str]:
 
 
 class WebPreviewV1Tests(unittest.TestCase):
-    def test_contract_is_fixture_only_with_public_preview_authorized_but_not_yet_live(self) -> None:
+    def test_contract_is_fixture_only_with_verified_public_pages_preview(self) -> None:
         self.assertEqual("scoremosaic-web-preview-v1", CONTRACT["version"])
         self.assertIs(CONTRACT["stageNumberAssigned"], False)
+        self.assertEqual(
+            "PUBLIC_GITHUB_PAGES_FIXTURE_PREVIEW_DEPLOYED_VERIFIED",
+            CONTRACT["status"],
+        )
         self.assertEqual(
             "fixture_only_static_preview_with_explicit_public_github_pages_authority",
             CONTRACT["scope"],
@@ -41,8 +45,31 @@ class WebPreviewV1Tests(unittest.TestCase):
         self.assertIs(deployment["productionDeployment"], False)
         self.assertIs(deployment["productionAuthorityGranted"], False)
         self.assertIs(deployment["apiAuthorityGranted"], False)
-        for value in CONTRACT["activationLocks"].values():
-            self.assertIs(value, False)
+        evidence = deployment["deploymentEvidence"]
+        self.assertEqual(
+            "https://khfy7wpr5p-maker.github.io/scoremosaic-platform/",
+            evidence["publicUrl"],
+        )
+        self.assertEqual(32652403651, evidence["workflowRunId"])
+        self.assertEqual(
+            "33555ed152d1f8f3bdec0072bec7693c29b2aa1c",
+            evidence["verifiedDeploymentCommitSha"],
+        )
+
+        activation = CONTRACT["activationLocks"]
+        for key in (
+            "githubPagesEnabled",
+            "publicPreviewDeployed",
+            "publicUrlAssigned",
+            "publicTrafficActivated",
+        ):
+            self.assertIs(activation[key], True, key)
+        for key in (
+            "browserNetworkActivated",
+            "liveApiActivated",
+            "productionPersistenceActivated",
+        ):
+            self.assertIs(activation[key], False, key)
 
     def test_security_contract_forbids_network_persistence_and_authority(self) -> None:
         security = CONTRACT["security"]
