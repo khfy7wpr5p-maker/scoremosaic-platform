@@ -22,6 +22,9 @@
       "coreComponentsContract": "contracts/design-system-core-components-v1.json",
       "coreComponentArchitectureRepositoryReady": true,
       "coreComponentsAppliedInFigma": false,
+      "musicDomainComponentsContract": "contracts/design-system-music-domain-components-v1.json",
+      "musicDomainComponentArchitectureRepositoryReady": true,
+      "musicDomainComponentsAppliedInFigma": false,
       "figmaLowFidelityStarted": true,
       "figmaHighFidelityStarted": false,
       "liveActivationGranted": false
