@@ -7,17 +7,19 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PATTERNS = json.loads((ROOT / "contracts" / "design-system-product-patterns-v1.json").read_text(encoding="utf-8"))
+V2 = json.loads((ROOT / "contracts" / "design-system-product-patterns-v2.json").read_text(encoding="utf-8"))
 UI = json.loads((ROOT / "contracts" / "ui-architecture-phase1-v1.json").read_text(encoding="utf-8"))
 CURRENT = json.loads((ROOT / "contracts" / "architecture-current-state-v1.json").read_text(encoding="utf-8"))
 DOC = (ROOT / "docs" / "design-system-product-patterns-v1.md").read_text(encoding="utf-8")
 
 
 class ProductPatternsV1Tests(unittest.TestCase):
-    def test_identity_parent_and_registration(self) -> None:
+    def test_identity_parent_and_historical_registration(self) -> None:
         self.assertEqual("scoremosaic-design-system-product-patterns-v1", PATTERNS["version"])
         self.assertEqual("scoremosaic-design-system-music-domain-components-v1", PATTERNS["parentMusicDomainComponents"])
         self.assertIs(PATTERNS["stageNumberAssigned"], False)
-        self.assertEqual("contracts/design-system-product-patterns-v1.json", UI["designSystem"]["productPatternsContract"])
+        self.assertEqual(PATTERNS["version"], V2["supersedes"])
+        self.assertEqual("contracts/design-system-product-patterns-v2.json", UI["designSystem"]["productPatternsContract"])
 
     def test_async_state_vocabulary_is_complete_and_distinct(self) -> None:
         self.assertEqual(["idle", "loading", "success", "empty", "error", "unavailable", "stale"], PATTERNS["globalAsyncStates"])
@@ -28,7 +30,7 @@ class ProductPatternsV1Tests(unittest.TestCase):
         self.assertIs(rules["unavailableIsNotEmpty"], True)
         self.assertIs(rules["browserStatusIsNotDomainAuthority"], True)
 
-    def test_application_shell_and_dashboard_are_task_oriented_not_authoritative(self) -> None:
+    def test_v1_application_shell_remains_immutable_historical_baseline(self) -> None:
         shell = PATTERNS["applicationShell"]
         self.assertEqual(["dashboard", "documents", "new_document", "review"], shell["primaryNavigation"])
         self.assertIs(shell["rules"]["compactLogoRequired"], True)
@@ -94,7 +96,7 @@ class ProductPatternsV1Tests(unittest.TestCase):
         self.assertIn("explicit_stale_banner", PATTERNS["recoveryPatterns"]["staleRevision"])
         self.assertIn("do_not_fake_success", PATTERNS["recoveryPatterns"]["networkUnavailableFuture"])
 
-    def test_repository_prefigma_exit_is_true_but_visual_application_remains_required(self) -> None:
+    def test_repository_prefigma_exit_is_historical_and_visual_application_remains_required(self) -> None:
         exit_state = PATTERNS["preFigmaRepositoryExit"]
         for key in ("brandRulesReady", "foundationsReady", "coreComponentArchitectureReady", "musicDomainComponentArchitectureReady", "productPatternArchitectureReady"):
             self.assertIs(exit_state[key], True, key)
@@ -105,10 +107,10 @@ class ProductPatternsV1Tests(unittest.TestCase):
         self.assertIs(UI["figma"]["highFidelityStarted"], False)
         self.assertIn("Figma application         REQUIRED", DOC)
 
-    def test_current_state_registers_same_fail_closed_exit(self) -> None:
+    def test_current_state_registers_v2_while_v1_remains_readable(self) -> None:
         workstream = CURRENT["approvedWorkstreams"]["uiArchitecturePhase1"]
         self.assertEqual("11-F", CURRENT["asOfStage"])
-        self.assertEqual("contracts/design-system-product-patterns-v1.json", workstream["productPatternsContract"])
+        self.assertEqual("contracts/design-system-product-patterns-v2.json", workstream["productPatternsContract"])
         self.assertIs(workstream["productPatternArchitectureRepositoryReady"], True)
         self.assertIs(workstream["productPatternsAppliedInFigma"], False)
         self.assertIs(workstream["preFigmaRepositoryArchitectureReady"], True)

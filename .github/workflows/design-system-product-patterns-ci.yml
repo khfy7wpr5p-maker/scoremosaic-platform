@@ -1,4 +1,4 @@
-name: Design System Product Patterns v1 CI
+name: Design System Product Patterns v2 CI
 
 on:
   push:
@@ -8,13 +8,16 @@ on:
     paths:
       - ".github/workflows/design-system-product-patterns-ci.yml"
       - "contracts/design-system-product-patterns-v1.json"
+      - "contracts/design-system-product-patterns-v2.json"
       - "contracts/design-system-music-domain-components-v1.json"
       - "contracts/design-system-core-components-v1.json"
       - "contracts/design-system-foundations-v1.json"
       - "contracts/ui-architecture-phase1-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/design-system-product-patterns-v1.md"
+      - "docs/design-system-product-patterns-v2.md"
       - "tests/test_design_system_product_patterns_v1.py"
+      - "tests/test_design_system_product_patterns_v2.py"
       - "tests/test_design_system_music_domain_components_v1.py"
       - "tests/test_design_system_core_components_v1.py"
       - "tests/test_design_system_foundations_v1.py"
@@ -26,13 +29,16 @@ on:
     paths:
       - ".github/workflows/design-system-product-patterns-ci.yml"
       - "contracts/design-system-product-patterns-v1.json"
+      - "contracts/design-system-product-patterns-v2.json"
       - "contracts/design-system-music-domain-components-v1.json"
       - "contracts/design-system-core-components-v1.json"
       - "contracts/design-system-foundations-v1.json"
       - "contracts/ui-architecture-phase1-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/design-system-product-patterns-v1.md"
+      - "docs/design-system-product-patterns-v2.md"
       - "tests/test_design_system_product_patterns_v1.py"
+      - "tests/test_design_system_product_patterns_v2.py"
       - "tests/test_design_system_music_domain_components_v1.py"
       - "tests/test_design_system_core_components_v1.py"
       - "tests/test_design_system_foundations_v1.py"
@@ -44,7 +50,7 @@ permissions:
   contents: read
 
 jobs:
-  product-patterns-v1:
+  product-patterns-v2:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -59,13 +65,16 @@ jobs:
       - name: Validate JSON contracts
         run: |
           python -m json.tool contracts/design-system-product-patterns-v1.json > /dev/null
+          python -m json.tool contracts/design-system-product-patterns-v2.json > /dev/null
           python -m json.tool contracts/design-system-music-domain-components-v1.json > /dev/null
           python -m json.tool contracts/design-system-core-components-v1.json > /dev/null
           python -m json.tool contracts/design-system-foundations-v1.json > /dev/null
           python -m json.tool contracts/ui-architecture-phase1-v1.json > /dev/null
           python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
-      - name: Run Product Patterns v1 tests
+      - name: Run Product Patterns v1 historical regression
         run: python -m unittest discover -s tests -p 'test_design_system_product_patterns_v1.py' -v
+      - name: Run Product Patterns v2 tests
+        run: python -m unittest discover -s tests -p 'test_design_system_product_patterns_v2.py' -v
       - name: Run Music-Domain Components regression
         run: python -m unittest discover -s tests -p 'test_design_system_music_domain_components_v1.py' -v
       - name: Run Core Components regression

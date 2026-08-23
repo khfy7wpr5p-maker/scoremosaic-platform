@@ -1,6 +1,41 @@
 (() => {
   'use strict';
 
+  const byId = (id) => document.getElementById(id);
+  const text = (id, value) => {
+    const node = byId(id);
+    if (node) node.textContent = String(value);
+  };
+
+  const productNavButtons = Array.from(document.querySelectorAll('[data-product-nav]'));
+  const productViews = Array.from(document.querySelectorAll('[data-product-view]'));
+
+  const activateProductView = (viewName, focusView = true) => {
+    const target = productViews.find((view) => view.dataset.productView === viewName);
+    if (!target) return;
+
+    productViews.forEach((view) => {
+      view.hidden = view !== target;
+    });
+    productNavButtons.forEach((button) => {
+      if (button.dataset.productNav === viewName) {
+        button.setAttribute('aria-current', 'page');
+      } else {
+        button.removeAttribute('aria-current');
+      }
+    });
+
+    if (focusView) target.focus();
+  };
+
+  productNavButtons.forEach((button) => {
+    button.addEventListener('click', () => activateProductView(button.dataset.productNav || 'teacher-review'));
+  });
+  document.querySelectorAll('[data-open-product-view]').forEach((button) => {
+    button.addEventListener('click', () => activateProductView(button.dataset.openProductView || 'teacher-review'));
+  });
+  activateProductView('teacher-review', false);
+
   const fixture = window.ScoreMosaicFixture;
   const application = window.ScoreMosaicLocalApplication;
   if (
@@ -33,10 +68,33 @@
     selectedIssueId: issuesModel.items[0]?.id ?? null,
   };
 
-  const byId = (id) => document.getElementById(id);
-  const text = (id, value) => {
-    const node = byId(id);
-    if (node) node.textContent = String(value);
+  const normalizeLocalSearch = (value) => String(value ?? '').trim().toLowerCase();
+  const documentRows = Array.from(document.querySelectorAll('[data-document-row]'));
+
+  const renderDashboardSummary = () => {
+    const localReviewState = fixture.document?.reviewState ?? '';
+    text('dashboard-needs-review-count', localReviewState === 'needs-review' ? 1 : 0);
+    text('dashboard-processing-count', localReviewState === 'processing' ? 1 : 0);
+  };
+
+  const renderDocumentList = () => {
+    const search = normalizeLocalSearch(byId('document-search')?.value);
+    const status = byId('document-status-filter')?.value || 'all';
+    let visibleCount = 0;
+
+    documentRows.forEach((row) => {
+      const rowSearch = normalizeLocalSearch(row.dataset.documentSearch);
+      const rowStatus = row.dataset.documentStatus || '';
+      const matchesSearch = search.length === 0 || rowSearch.includes(search);
+      const matchesStatus = status === 'all' || rowStatus === status;
+      const visible = matchesSearch && matchesStatus;
+      row.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+
+    text('document-result-count', `${visibleCount} shown`);
+    const emptyState = byId('document-empty-filter');
+    if (emptyState) emptyState.hidden = visibleCount !== 0;
   };
 
   const countSeverity = (severity) => issuesModel.items.filter((issue) => issue.severity === severity).length;
@@ -153,10 +211,15 @@
   };
 
   const render = () => {
+    renderDashboardSummary();
+    renderDocumentList();
     renderDocument();
     renderIssues();
     renderSelectedIssue();
   };
+
+  byId('document-search')?.addEventListener('input', renderDocumentList);
+  byId('document-status-filter')?.addEventListener('change', renderDocumentList);
 
   document.querySelectorAll('[data-filter]').forEach((button) => {
     button.addEventListener('click', () => {

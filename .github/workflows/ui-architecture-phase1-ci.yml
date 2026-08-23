@@ -12,13 +12,16 @@ on:
       - "contracts/downstream-music-application-integration-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/ui-architecture-phase1.md"
+      - "docs/ui-product-navigation-v1.md"
       - "docs/web-brand-rules-v1.md"
       - "docs/downstream-music-application-integration-boundary.md"
       - "docs/architecture.md"
       - "docs/architecture-stage9-11-current.md"
       - "docs/roadmap.md"
       - "README.md"
+      - "prototypes/stage10-ui-application-experience/**"
       - "tests/test_ui_architecture_phase1.py"
+      - "tests/test_ui_product_navigation_v1.py"
       - "tests/test_web_brand_rules_v1.py"
       - "tests/test_architecture_consistency.py"
   pull_request:
@@ -31,13 +34,16 @@ on:
       - "contracts/downstream-music-application-integration-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/ui-architecture-phase1.md"
+      - "docs/ui-product-navigation-v1.md"
       - "docs/web-brand-rules-v1.md"
       - "docs/downstream-music-application-integration-boundary.md"
       - "docs/architecture.md"
       - "docs/architecture-stage9-11-current.md"
       - "docs/roadmap.md"
       - "README.md"
+      - "prototypes/stage10-ui-application-experience/**"
       - "tests/test_ui_architecture_phase1.py"
+      - "tests/test_ui_product_navigation_v1.py"
       - "tests/test_web_brand_rules_v1.py"
       - "tests/test_architecture_consistency.py"
   workflow_dispatch:
@@ -66,6 +72,8 @@ jobs:
           python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
       - name: Run UI Architecture Phase 1 tests
         run: python -m unittest discover -s tests -p 'test_ui_architecture_phase1.py' -v
+      - name: Run product navigation workspace tests
+        run: python -m unittest discover -s tests -p 'test_ui_product_navigation_v1.py' -v
       - name: Run Web Brand Rules v1 tests
         run: python -m unittest discover -s tests -p 'test_web_brand_rules_v1.py' -v
       - name: Run architecture consistency regression
