@@ -66,25 +66,29 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "nullableRevisionId": {
-      "oneOf": [
-        {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
-        {"type": "null"}
-      ]
-    },
-    "nullableSha256": {
-      "oneOf": [
-        {"$ref": "#/$defs/sha256"},
-        {"type": "null"}
-      ]
-    },
     "parent": {
+      "oneOf": [
+        {"$ref": "#/$defs/baseParent"},
+        {"$ref": "#/$defs/revisionParent"}
+      ]
+    },
+    "baseParent": {
       "type": "object",
       "additionalProperties": false,
       "required": ["revisionId", "revisionSha256", "stateSha256"],
       "properties": {
-        "revisionId": {"$ref": "#/$defs/nullableRevisionId"},
-        "revisionSha256": {"$ref": "#/$defs/nullableSha256"},
+        "revisionId": {"type": "null"},
+        "revisionSha256": {"type": "null"},
+        "stateSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "revisionParent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "revisionSha256", "stateSha256"],
+      "properties": {
+        "revisionId": {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+        "revisionSha256": {"$ref": "#/$defs/sha256"},
         "stateSha256": {"$ref": "#/$defs/sha256"}
       }
     },
