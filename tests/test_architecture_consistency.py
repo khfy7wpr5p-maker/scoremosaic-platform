@@ -48,7 +48,11 @@ class ArchitectureConsistencyTests(unittest.TestCase):
     def test_approved_post_stage11_workstreams_are_unnumbered_and_non_live(self) -> None:
         ui = CONTRACT["approvedWorkstreams"]["uiArchitecturePhase1"]
         self.assertIs(ui["stageNumberAssigned"], False)
-        self.assertEqual("APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_FIGMA_NEXT", ui["status"])
+        self.assertEqual(
+            "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_LOW_FIDELITY_STARTED",
+            ui["status"],
+        )
+        self.assertIs(ui["figmaLowFidelityStarted"], True)
         self.assertIs(ui["figmaHighFidelityStarted"], False)
         self.assertIs(ui["liveActivationGranted"], False)
         downstream = CONTRACT["approvedWorkstreams"]["downstreamMusicApplicationIntegration"]
