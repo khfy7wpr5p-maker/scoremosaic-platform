@@ -22,7 +22,10 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertEqual("scoremosaic-ui-architecture-phase1-v1", UI["version"])
         self.assertEqual("UI Architecture Phase 1", UI["workstream"])
         self.assertIs(UI["stageNumberAssigned"], False)
-        self.assertEqual("APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_FIGMA_NEXT", UI["status"])
+        self.assertEqual(
+            "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_LOW_FIDELITY_STARTED",
+            UI["status"],
+        )
         self.assertIn("not Stage 12", DOC)
 
     def test_primary_navigation_and_flow_are_closed(self) -> None:
@@ -111,10 +114,25 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertIn("button", UI["designSystem"]["coreComponents"])
         self.assertIn("score_viewer", UI["designSystem"]["musicComponents"])
         self.assertIs(UI["designSystem"]["tokenNamingRequired"], True)
-        self.assertIs(UI["figma"]["eligibleAfterThisBaseline"], True)
-        self.assertIs(UI["figma"]["highFidelityStarted"], False)
-        self.assertEqual("00_foundations", UI["figma"]["requiredPages"][0])
-        self.assertEqual("design_freeze_v1", UI["figma"]["sequence"][-1])
+        figma = UI["figma"]
+        self.assertIs(figma["eligibleAfterThisBaseline"], True)
+        self.assertIs(figma["lowFidelityStarted"], True)
+        self.assertIs(figma["highFidelityStarted"], False)
+        self.assertEqual("00_foundations", figma["logicalAreas"][0])
+        self.assertEqual("design_freeze_v1", figma["sequence"][-1])
+
+    def test_starter_page_grouping_preserves_all_logical_figma_areas(self) -> None:
+        figma = UI["figma"]
+        self.assertEqual("starter_plan_three_page_grouping", figma["physicalPagePolicy"])
+        self.assertEqual(3, len(figma["physicalPages"]))
+        grouped = [
+            area
+            for page in figma["physicalPages"]
+            for area in page["logicalAreas"]
+        ]
+        self.assertEqual(set(figma["logicalAreas"]), set(grouped))
+        self.assertEqual(len(figma["logicalAreas"]), len(grouped))
+        self.assertIs(figma["logicalAreasMustNotBeDroppedBecauseOfPlanLimits"], True)
 
     def test_all_phase1_activation_locks_remain_false(self) -> None:
         for key, value in UI["activationLocks"].items():
@@ -153,6 +171,7 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertEqual("11-F", CURRENT["asOfStage"])
         ui = CURRENT["approvedWorkstreams"]["uiArchitecturePhase1"]
         self.assertIs(ui["stageNumberAssigned"], False)
+        self.assertIs(ui["figmaLowFidelityStarted"], True)
         self.assertIs(ui["figmaHighFidelityStarted"], False)
         downstream = CURRENT["approvedWorkstreams"]["downstreamMusicApplicationIntegration"]
         self.assertIs(downstream["stageNumberAssigned"], False)
