@@ -8,7 +8,7 @@
   "properties": {
     "schemaVersion": {"const": "scoremosaic-stage11-read-response-v1"},
     "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
-    "kind": {"enum": ["review.read", "issues.read", "sourceEvidence.read", "validation.read"]},
+    "kind": {"enum": ["review.read", "issues.read", "sourceEvidence.read", "validation.read", "unknown"]},
     "state": {"enum": ["success", "empty", "rejected", "unavailable"]},
     "documentId": {"type": "string", "minLength": 1, "maxLength": 160},
     "revision": {"type": "string", "minLength": 1, "maxLength": 160},
