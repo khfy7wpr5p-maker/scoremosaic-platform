@@ -1,0 +1,147 @@
+{
+  "version": "scoremosaic-design-system-music-domain-components-v1",
+  "scope": "repository_music_domain_component_architecture_only",
+  "parentCoreComponents": "scoremosaic-design-system-core-components-v1",
+  "parentWorkstream": "scoremosaic-ui-architecture-phase1-v1",
+  "stageNumberAssigned": false,
+  "status": "APPROVED_REPOSITORY_MUSIC_DOMAIN_COMPONENT_ARCHITECTURE_BASELINE",
+  "implementationState": {
+    "repositorySpecificationReady": true,
+    "figmaComponentsCreated": false,
+    "productionComponentsImplemented": false,
+    "highFidelityScreensStarted": false
+  },
+  "globalRules": {
+    "musicComponentsComposeCoreComponents": true,
+    "stableDomainIdentityRequiredForSelection": true,
+    "rendererCoordinatesAreNotDomainIdentity": true,
+    "visualSelectionIsNotScoreMutation": true,
+    "evidenceIsNotAuthoritativeTruth": true,
+    "statusPresentationDoesNotCreateStatus": true,
+    "revisionPresentationDoesNotCreateRevision": true,
+    "localEditFieldDoesNotCreateScoreEditCommand": true,
+    "colorOnlyMeaningForbidden": true,
+    "keyboardReachabilityRequired": true,
+    "screenReaderTextRequiredForStatusAndIssues": true
+  },
+  "issueCard": {
+    "severities": ["blocking", "warning", "info"],
+    "states": ["default", "hover", "focus_visible", "selected", "resolved", "stale"],
+    "requiredContent": ["issue_identity", "severity_text", "summary", "location_context"],
+    "optionalContent": ["engine_evidence_summary", "confidence_evidence", "suggested_review_action"],
+    "interaction": {
+      "keyboardSelectable": true,
+      "selectedStateHasNonColorCue": true,
+      "selectionMayRequestScoreFocus": true,
+      "selectionMayRequestEvidenceFocus": true,
+      "selectionMayRequestEditTargetFocus": true
+    },
+    "authority": {
+      "issueCardMayResolveIssueDirectly": false,
+      "issueCardMayMutateScore": false,
+      "suggestedReviewActionIsAuthoritative": false
+    }
+  },
+  "validationStatus": {
+    "states": ["pass", "warning", "blocking", "unknown", "stale"],
+    "requiredContent": ["validation_label", "state_text", "exact_revision_identity"],
+    "optionalContent": ["details", "affected_measure_count"],
+    "authority": {
+      "displayedPassMayCreateApproval": false,
+      "displayedPassMayCreatePublicationEligibility": false,
+      "localRecalculationMaySubstituteServerValidation": false
+    }
+  },
+  "revisionIndicator": {
+    "states": ["current", "historical", "stale", "read_only"],
+    "requiredContent": ["revision_identity", "state_text"],
+    "optionalContent": ["parent_revision_identity", "change_summary", "validation_summary", "author_context"],
+    "authority": {
+      "indicatorMayCreateRevision": false,
+      "indicatorMayChangeCurrentRevision": false,
+      "historicalRevisionMustNotAppearCurrent": true,
+      "staleStateMustBeExplicit": true
+    }
+  },
+  "evidenceViewer": {
+    "modes": ["source_image", "engine_evidence", "comparison"],
+    "requiredContext": ["document_identity", "source_or_candidate_identity"],
+    "optionalCapabilities": ["zoom", "pan", "region_highlight", "engine_toggle", "comparison_split"],
+    "safety": {
+      "sourceCropMayBePresentedAsTruth": false,
+      "enginePredictionMayBePresentedAsTruth": false,
+      "viewerCoordinatesMayBecomeMutationIdentity": false,
+      "unsafeExternalResourceFetchAllowed": false,
+      "evidenceMustRemainBoundToExactContext": true
+    }
+  },
+  "structuredEditField": {
+    "operationFamilies": ["pitch", "effective_duration", "dots", "remove_event"],
+    "states": ["idle", "focused", "changed_local", "invalid_local", "read_only", "stale"],
+    "requiredContext": ["stable_target_identity", "exact_revision_identity", "old_value_precondition"],
+    "behavior": {
+      "showsCurrentValue": true,
+      "showsProposedValueWhenChanged": true,
+      "prepareIntentOnly": true,
+      "rawMusicXmlEditingAllowed": false,
+      "directServerWriteAllowed": false,
+      "staleContextFailsClosed": true
+    },
+    "authority": {
+      "localFieldValueIsScoreEditCommand": false,
+      "preparedIntentIsTeacherRevision": false,
+      "previewIsAuthoritativeScore": false
+    }
+  },
+  "measureMarker": {
+    "states": ["issue", "selected", "focused", "resolved"],
+    "requiredContext": ["stable_measure_identity"],
+    "properties": {
+      "labelOrAccessibleDescriptionRequired": true,
+      "selectedStateHasNonColorCue": true,
+      "markerMayNavigateToMeasure": true
+    },
+    "authority": {
+      "markerPositionIsDomainIdentity": false,
+      "markerMayMutateMeasure": false
+    }
+  },
+  "issueMarker": {
+    "states": ["blocking", "warning", "info", "selected", "resolved"],
+    "requiredContext": ["issue_identity", "stable_domain_target_identity"],
+    "properties": {
+      "accessibleDescriptionRequired": true,
+      "severityHasTextOrShapeEquivalent": true,
+      "markerMaySynchronizeIssueSelection": true
+    },
+    "authority": {
+      "markerMayResolveIssue": false,
+      "markerMayMutateScore": false
+    }
+  },
+  "compositionPatterns": {
+    "issueSelectionSynchronization": ["issue_card", "score_focus", "evidence_focus", "structured_edit_target"],
+    "revisionSafetyStrip": ["revision_indicator", "validation_status", "stale_state"],
+    "editInspection": ["structured_edit_field", "evidence_viewer", "validation_status"]
+  },
+  "figmaBuildPolicy": {
+    "foundationsAndCoreComponentsMustExistFirst": true,
+    "oneMusicComponentFamilyAtATime": true,
+    "coreComponentsMustBeReused": true,
+    "metadataValidationRequired": true,
+    "visualScreenshotValidationRequired": true,
+    "keyboardAndAccessibilityReviewRequired": true,
+    "currentFigmaBuildBlockedByStarterToolCallLimit": true,
+    "componentCreationAuthorizedWhenToolAccessReturns": true
+  },
+  "activationLocks": {
+    "figmaMusicComponentLibraryApplied": false,
+    "productionMusicComponentsImplemented": false,
+    "highFidelityStarted": false,
+    "liveApiActivated": false,
+    "serverWriteActivated": false,
+    "approvalExecutionActivated": false,
+    "publicationExecutionActivated": false,
+    "productionInfrastructureActivated": false
+  }
+}
