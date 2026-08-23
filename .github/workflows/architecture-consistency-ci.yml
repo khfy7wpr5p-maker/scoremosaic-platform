@@ -5,16 +5,22 @@ on:
     branches:
       - main
       - "feature/architecture-consistency-stage11-sync-v1"
+      - "feature/ui-architecture-phase1-baseline-v1"
     paths:
       - ".github/workflows/architecture-consistency-ci.yml"
       - "contracts/architecture-current-state-v1.json"
+      - "contracts/ui-architecture-phase1-v1.json"
+      - "contracts/downstream-music-application-integration-v1.json"
       - "README.md"
       - "docs/architecture*.md"
+      - "docs/ui-architecture-phase1.md"
+      - "docs/downstream-music-application-integration-boundary.md"
       - "docs/st-omr-architecture-contract-v1.md"
       - "docs/teacher-review-score-editor-architecture-contract.md"
       - "docs/roadmap.md"
       - "docs/security-boundaries.md"
       - "tests/test_architecture_consistency.py"
+      - "tests/test_ui_architecture_phase1.py"
       - "contracts/stage9-production-foundation-eligibility-v1.json"
       - "contracts/stage10-ui-experience-eligibility-v1.json"
       - "contracts/stage11-ui-application-eligibility-v1.json"
@@ -24,13 +30,18 @@ on:
     paths:
       - ".github/workflows/architecture-consistency-ci.yml"
       - "contracts/architecture-current-state-v1.json"
+      - "contracts/ui-architecture-phase1-v1.json"
+      - "contracts/downstream-music-application-integration-v1.json"
       - "README.md"
       - "docs/architecture*.md"
+      - "docs/ui-architecture-phase1.md"
+      - "docs/downstream-music-application-integration-boundary.md"
       - "docs/st-omr-architecture-contract-v1.md"
       - "docs/teacher-review-score-editor-architecture-contract.md"
       - "docs/roadmap.md"
       - "docs/security-boundaries.md"
       - "tests/test_architecture_consistency.py"
+      - "tests/test_ui_architecture_phase1.py"
       - "contracts/stage9-production-foundation-eligibility-v1.json"
       - "contracts/stage10-ui-experience-eligibility-v1.json"
       - "contracts/stage11-ui-application-eligibility-v1.json"
@@ -52,10 +63,15 @@ jobs:
           python-version: "3.12"
       - name: Validate immutable action pins
         run: python scripts/validate_github_actions_pins.py
-      - name: Validate current architecture state JSON
-        run: python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
+      - name: Validate current architecture and UI JSON contracts
+        run: |
+          python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
+          python -m json.tool contracts/ui-architecture-phase1-v1.json > /dev/null
+          python -m json.tool contracts/downstream-music-application-integration-v1.json > /dev/null
       - name: Run architecture incompatibility and drift tests
         run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+      - name: Run UI Architecture Phase 1 contract tests
+        run: python -m unittest discover -s tests -p 'test_ui_architecture_phase1.py' -v
       - name: Run Stage 7 acceptance drift guard
         run: python -m unittest discover -s services/omr-gateway/tests -p 'test_stage7_acceptance_contract.py' -v
       - name: Run Stage 9-I production boundary regression
