@@ -25,7 +25,7 @@
       "musicDomainComponentsContract": "contracts/design-system-music-domain-components-v1.json",
       "musicDomainComponentArchitectureRepositoryReady": true,
       "musicDomainComponentsAppliedInFigma": false,
-      "productPatternsContract": "contracts/design-system-product-patterns-v1.json",
+      "productPatternsContract": "contracts/design-system-product-patterns-v2.json",
       "productPatternArchitectureRepositoryReady": true,
       "productPatternsAppliedInFigma": false,
       "preFigmaRepositoryArchitectureReady": true,
