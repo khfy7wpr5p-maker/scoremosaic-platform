@@ -1,0 +1,21 @@
+ScoreMosaic
+
+Required Notice: Copyright 2026 Önder Özüdoğru.
+
+The PolyForm Noncommercial License 1.0.0 in LICENSE applies only to
+first-party ScoreMosaic software identified in LICENSE-SCOPE.md.
+
+First-party documentation and repository-owned synthetic test/model/data
+materials identified in LICENSE-SCOPE.md are licensed separately under
+Creative Commons Attribution-NonCommercial 4.0 International.
+
+Third-party software, models, data, fonts, media, and other materials retain
+their upstream licenses and notices. They are not relicensed by ScoreMosaic.
+The machine-readable inventory is third_party/dependency-licenses.json.
+Engine-specific notices are:
+
+- services/audiveris-service/THIRD_PARTY_NOTICES.md
+- services/homr-service/THIRD_PARTY_NOTICES.md
+- services/clarity-service/THIRD_PARTY_NOTICES.md
+
+ScoreMosaic names and branding are governed separately by TRADEMARKS.md.

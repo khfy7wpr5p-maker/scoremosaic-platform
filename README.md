@@ -154,6 +154,7 @@ Current architecture:
 - `docs/architecture-stage9-11-current.md`
 - `docs/ui-architecture-phase1.md`
 - `docs/downstream-music-application-integration-boundary.md`
+- `docs/licensing-governance.md`
 - `docs/st-omr-architecture-contract-v1.md`
 - `docs/teacher-review-score-editor-architecture-contract.md`
 - `docs/roadmap.md`
@@ -166,3 +167,21 @@ Historical gate/stage documents remain evidence for the boundary they originally
 - Automated verification: GitHub Actions
 - Integration target: controlled/private staging
 - Production: blocked until external provisioning and production-readiness gates pass
+
+## Licensing
+
+ScoreMosaic is **source-available, not OSI open source**. First-party software
+is available for permitted noncommercial purposes under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use requires a
+separate signed written agreement; see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+
+First-party documentation and identified repository-owned synthetic test/model
+assets use CC BY-NC 4.0. Third-party engines, packages, model assets and other
+materials retain their own terms and are not relicensed by ScoreMosaic. Some
+current OMR components are AGPL/GPL or have unresolved model licensing, so
+commercial production/redistribution remains blocked until the exact deployment
+passes the dependency-license gate.
+
+See [LICENSE-SCOPE.md](LICENSE-SCOPE.md), [NOTICE](NOTICE),
+[TRADEMARKS.md](TRADEMARKS.md), and [CONTRIBUTING.md](CONTRIBUTING.md) for the
+complete repository policy.

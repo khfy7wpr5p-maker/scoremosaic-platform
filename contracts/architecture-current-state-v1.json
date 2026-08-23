@@ -152,6 +152,17 @@
     "mayRemoveExistingProductionEnginesNow": false,
     "existingEnginesMayRemainOfflineBenchmarksAfterMigration": true
   },
+  "licensingGovernance": {
+    "firstPartySoftwareLicense": "PolyForm-Noncommercial-1.0.0",
+    "firstPartyDocumentationAndSyntheticAssetsLicense": "CC-BY-NC-4.0",
+    "commercialUseRequiresSignedAgreement": true,
+    "trademarkRightsGrantedBySoftwareLicense": false,
+    "externalContributorClaRequired": true,
+    "thirdPartyRelicensed": false,
+    "criticalProductionModelsPublic": false,
+    "unresolvedThirdPartyMayEnterProduction": false,
+    "licensePolicyCiEnabled": true
+  },
   "authorityInvariants": {
     "aiEvidenceOnly": true,
     "canonicalAdmissionDeterministic": true,

@@ -41,6 +41,12 @@ jobs:
       - name: Validate JSON contracts and devcontainer
         run: python scripts/validate_foundation.py
 
+      - name: Validate license policy and dependency inventory
+        run: python scripts/validate_license_policy.py
+
+      - name: Run license policy regressions
+        run: python -m unittest discover -s tests -p 'test_license_policy.py' -v
+
       - name: Validate UI-0B static isolation
         run: python -m unittest discover -s tests -p 'test_ui_0b_static_shell.py'
 

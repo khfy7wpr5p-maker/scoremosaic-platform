@@ -19,6 +19,7 @@ CURRENT_DOCS = {
     "live-ui-api-security": ROOT / "docs" / "live-ui-api-security-architecture-v1.md",
     "teacher-review-api": ROOT / "docs" / "teacher-review-api-contract-v1.md",
     "downstream-music-apps": ROOT / "docs" / "downstream-music-application-integration-boundary.md",
+    "licensing": ROOT / "docs" / "licensing-governance.md",
     "st-omr": ROOT / "docs" / "st-omr-architecture-contract-v1.md",
     "teacher-review": ROOT / "docs" / "teacher-review-score-editor-architecture-contract.md",
     "roadmap": ROOT / "docs" / "roadmap.md",
@@ -188,6 +189,18 @@ class ArchitectureConsistencyTests(unittest.TestCase):
         self.assertIs(guitar["architecturalSeamReserved"], True)
         self.assertIs(guitar["liveIntegrationActivated"], False)
 
+    def test_licensing_governance_is_fail_closed(self) -> None:
+        licensing = CONTRACT["licensingGovernance"]
+        self.assertEqual("PolyForm-Noncommercial-1.0.0", licensing["firstPartySoftwareLicense"])
+        self.assertEqual("CC-BY-NC-4.0", licensing["firstPartyDocumentationAndSyntheticAssetsLicense"])
+        self.assertIs(licensing["commercialUseRequiresSignedAgreement"], True)
+        self.assertIs(licensing["trademarkRightsGrantedBySoftwareLicense"], False)
+        self.assertIs(licensing["externalContributorClaRequired"], True)
+        self.assertIs(licensing["thirdPartyRelicensed"], False)
+        self.assertIs(licensing["criticalProductionModelsPublic"], False)
+        self.assertIs(licensing["unresolvedThirdPartyMayEnterProduction"], False)
+        self.assertIs(licensing["licensePolicyCiEnabled"], True)
+
     def test_all_current_architecture_documents_bind_to_current_state_contract(self) -> None:
         marker = "contracts/architecture-current-state-v1.json"
         for name, text in TEXT.items():
@@ -205,6 +218,7 @@ class ArchitectureConsistencyTests(unittest.TestCase):
             "live-ui-api-security-architecture-v1.md",
             "teacher-review-api-contract-v1.md",
             "downstream-music-application-integration-boundary.md",
+            "licensing-governance.md",
         ):
             self.assertIn(marker, text)
 

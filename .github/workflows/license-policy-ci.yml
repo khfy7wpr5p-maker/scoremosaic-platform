@@ -1,0 +1,91 @@
+name: License Policy CI
+
+on:
+  push:
+    branches:
+      - main
+      - "licensing/**"
+    paths:
+      - "LICENSE"
+      - "NOTICE"
+      - "LICENSE-SCOPE.md"
+      - "COMMERCIAL-LICENSE.md"
+      - "TRADEMARKS.md"
+      - "CONTRIBUTOR-LICENSE-AGREEMENT.md"
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "third_party/**"
+      - "services/**/requirements-runtime.txt"
+      - "services/**/pyproject.toml"
+      - "services/**/Dockerfile"
+      - "services/**/THIRD_PARTY_NOTICES.md"
+      - "scripts/validate_license_policy.py"
+      - "scripts/validate_cla_acceptance.py"
+      - "tests/test_license_policy.py"
+      - "docs/licensing-governance.md"
+      - "docs/architecture.md"
+      - "contracts/architecture-current-state-v1.json"
+      - ".github/pull_request_template.md"
+      - ".github/workflows/license-policy-ci.yml"
+      - ".github/workflows/cla-ci.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "LICENSE"
+      - "NOTICE"
+      - "LICENSE-SCOPE.md"
+      - "COMMERCIAL-LICENSE.md"
+      - "TRADEMARKS.md"
+      - "CONTRIBUTOR-LICENSE-AGREEMENT.md"
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "third_party/**"
+      - "services/**/requirements-runtime.txt"
+      - "services/**/pyproject.toml"
+      - "services/**/Dockerfile"
+      - "services/**/THIRD_PARTY_NOTICES.md"
+      - "scripts/validate_license_policy.py"
+      - "scripts/validate_cla_acceptance.py"
+      - "tests/test_license_policy.py"
+      - "docs/licensing-governance.md"
+      - "docs/architecture.md"
+      - "contracts/architecture-current-state-v1.json"
+      - ".github/pull_request_template.md"
+      - ".github/workflows/license-policy-ci.yml"
+      - ".github/workflows/cla-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: license-policy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-license-policy:
+    name: Validate licensing and third-party inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate machine-readable inventory
+        run: python -m json.tool third_party/dependency-licenses.json > /dev/null
+      - name: Validate license policy and dependency coverage
+        run: python scripts/validate_license_policy.py
+      - name: Run license policy regressions
+        run: python -m unittest discover -s tests -p 'test_license_policy.py' -v
+      - name: Run architecture licensing-boundary regression
+        run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
