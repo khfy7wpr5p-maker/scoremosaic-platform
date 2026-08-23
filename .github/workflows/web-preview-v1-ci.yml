@@ -1,0 +1,104 @@
+name: Web Preview v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/web-preview-v1"
+    paths:
+      - ".github/workflows/web-preview-v1-ci.yml"
+      - "contracts/web-preview-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/web-preview-v1.md"
+      - "docs/architecture.md"
+      - "docs/roadmap.md"
+      - "scripts/build_web_preview.py"
+      - "tests/test_web_preview_v1.py"
+      - "tests/test_architecture_consistency.py"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "prototypes/stage11-ui-application-contracts/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/web-preview-v1-ci.yml"
+      - "contracts/web-preview-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/web-preview-v1.md"
+      - "docs/architecture.md"
+      - "docs/roadmap.md"
+      - "scripts/build_web_preview.py"
+      - "tests/test_web_preview_v1.py"
+      - "tests/test_architecture_consistency.py"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "prototypes/stage11-ui-application-contracts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-preview-v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-preview-v1:
+    name: Build disconnected Web Preview v1 artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate preview contract
+        run: python -m json.tool contracts/web-preview-v1.json > /dev/null
+
+      - name: Run preview security regressions
+        run: python -m unittest discover -s tests -p 'test_web_preview_v1.py' -v
+
+      - name: Run Stage 10 experience regression
+        run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
+
+      - name: Run Stage 11 application-boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage11f_ui_application_eligibility.py' -v
+
+      - name: Run architecture consistency regression
+        run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+
+      - name: Build static preview artifact
+        run: python scripts/build_web_preview.py --output /tmp/scoremosaic-web-preview-v1
+
+      - name: Verify preview entrypoint and safety marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/scoremosaic-web-preview-v1/index.html
+          grep -F "connect-src 'none'" /tmp/scoremosaic-web-preview-v1/index.html
+          grep -F "Non-production preview" /tmp/scoremosaic-web-preview-v1/index.html
+          grep -F "Fixture data only" /tmp/scoremosaic-web-preview-v1/index.html
+          test -s /tmp/scoremosaic-web-preview-v1/PREVIEW-NOTICE.txt
+
+      - name: Upload non-production preview artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scoremosaic-web-preview-v1
+          path: /tmp/scoremosaic-web-preview-v1
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Check repository diff formatting
+        run: git diff --check
