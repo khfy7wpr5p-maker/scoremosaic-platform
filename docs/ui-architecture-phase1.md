@@ -3,6 +3,7 @@
 Status: **approved unnumbered UI/product-design workstream; repository baseline green; low-fidelity Figma started**  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`  
 UI architecture contract: `contracts/ui-architecture-phase1-v1.json`  
+Product navigation note: `docs/ui-product-navigation-v1.md`  
 Web brand rules: `contracts/web-brand-rules-v1.json` and `docs/web-brand-rules-v1.md`
 
 UI Architecture Phase 1 is deliberately **not Stage 12**. Stage 5-11 numbering remains unchanged. This workstream sits after the completed Stage 10/11 local UI/application foundations and before any live UI↔API activation.
@@ -333,7 +334,7 @@ Brand color is decorative/identity-level input to the Design System and must not
 - Loading State;
 - Validation Message.
 
-### Music-domain components
+### Current music-domain component baseline
 
 - Issue Card;
 - Score Viewer;
@@ -341,10 +342,9 @@ Brand color is decorative/identity-level input to the Design System and must not
 - Issue Marker;
 - Evidence Viewer;
 - Revision Indicator;
-- Structured Edit Field;
-- Guitar TAB Viewer;
-- Fingering Option Card;
-- Playability Evidence.
+- Structured Edit Field.
+
+The Guitar TAB preview currently composes existing generic Panel/Status patterns. Dedicated `Guitar TAB Viewer`, `Fingering Option Card` or `Playability Evidence` Design System components are **not** claimed by this navigation workstream; adding those reusable component families requires a separate versioned evolution of `contracts/design-system-music-domain-components-v1.json`.
 
 Design tokens should use semantic names such as `color.status.blocking`, `color.text.primary`, `space.200`, `type.label`, rather than screen-specific names.
 
@@ -478,7 +478,7 @@ Low-fidelity architecture is ready to advance only when:
 6. Structured Edit authority boundary is explicit;
 7. validation/revision semantics are explicit;
 8. approval/publication separation is explicit;
-9. Design System component taxonomy is explicit;
+9. Design System component taxonomy is explicit without claiming undeclared Guitar TAB component families;
 10. Web Brand Rules are explicit and bound to the Design System;
 11. accessibility/responsive requirements are explicit;
 12. future modernization/change-governance rules are explicit;
