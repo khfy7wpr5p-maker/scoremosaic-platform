@@ -25,9 +25,7 @@ class UiProductNavigationV1Tests(unittest.TestCase):
         upload = UI_CONTRACT["screenArchitecture"]["upload"]
         self.assertIs(upload["presentationOnlyUntilLiveGate"], True)
         self.assertIs(upload["realFileSubmissionActivated"], False)
-        self.assertIn("pdf", upload["acceptedPresentationTypes"])
-        self.assertIn("jpeg", upload["acceptedPresentationTypes"])
-        self.assertIn("png", upload["acceptedPresentationTypes"])
+        self.assertEqual(["pdf", "jpg", "jpeg", "png"], upload["acceptedPresentationTypes"])
         self.assertIn('data-view="upload"', HTML)
         self.assertIn("Preview only · Upload not connected", HTML)
         self.assertNotIn('type="file"', HTML)
