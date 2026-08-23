@@ -2,7 +2,7 @@
   "version": "scoremosaic-ui-architecture-phase1-v1",
   "workstream": "UI Architecture Phase 1",
   "stageNumberAssigned": false,
-  "status": "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_FIGMA_NEXT",
+  "status": "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_LOW_FIDELITY_STARTED",
   "parents": [
     "scoremosaic-stage10-ui-experience-eligibility-v1",
     "scoremosaic-stage11-ui-application-eligibility-v1"
@@ -178,8 +178,9 @@
   },
   "figma": {
     "eligibleAfterThisBaseline": true,
+    "lowFidelityStarted": true,
     "highFidelityStarted": false,
-    "requiredPages": [
+    "logicalAreas": [
       "00_foundations",
       "01_components",
       "02_patterns",
@@ -192,6 +193,22 @@
       "09_prototype",
       "10_archive"
     ],
+    "physicalPagePolicy": "starter_plan_three_page_grouping",
+    "physicalPages": [
+      {
+        "name": "00_foundations_components",
+        "logicalAreas": ["00_foundations", "01_components", "02_patterns"]
+      },
+      {
+        "name": "01_product_flows",
+        "logicalAreas": ["03_dashboard", "04_documents", "05_upload_processing"]
+      },
+      {
+        "name": "02_teacher_review_approval",
+        "logicalAreas": ["06_teacher_review", "07_revision", "08_approval_publication", "09_prototype", "10_archive"]
+      }
+    ],
+    "logicalAreasMustNotBeDroppedBecauseOfPlanLimits": true,
     "sequence": ["low_fidelity_wireframes", "component_system", "high_fidelity_screens", "clickable_prototype", "design_freeze_v1"]
   },
   "activationLocks": {
