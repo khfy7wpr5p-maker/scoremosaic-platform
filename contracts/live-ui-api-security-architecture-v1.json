@@ -37,7 +37,9 @@
       "exactRedirectUriAllowlistRequired": true,
       "openRedirectAllowed": false,
       "authorizationResponseStateMustMatch": true,
-      "authorizationResponseNonceMustMatch": true
+      "stateOneTimeUseRequired": true,
+      "nonceOneTimeUseRequired": true,
+      "idTokenNonceMustMatchAuthorizationRequest": true
     },
     "idTokenValidation": {
       "signatureValidationRequired": true,
