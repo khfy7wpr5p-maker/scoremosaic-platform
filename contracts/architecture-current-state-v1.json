@@ -11,6 +11,21 @@
     "10": "REPOSITORY_UI_EXPERIENCE_COMPLETE",
     "11": "REPOSITORY_TYPED_UI_APPLICATION_INTEGRATION_COMPLETE_LIVE_INTEGRATION_LOCKED"
   },
+  "approvedWorkstreams": {
+    "uiArchitecturePhase1": {
+      "stageNumberAssigned": false,
+      "status": "APPROVED_REPOSITORY_UI_ARCHITECTURE_BASELINE_FIGMA_NEXT",
+      "contract": "contracts/ui-architecture-phase1-v1.json",
+      "figmaHighFidelityStarted": false,
+      "liveActivationGranted": false
+    },
+    "downstreamMusicApplicationIntegration": {
+      "stageNumberAssigned": false,
+      "status": "ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION",
+      "contract": "contracts/downstream-music-application-integration-v1.json",
+      "guitarTabLiveIntegrationActivated": false
+    }
+  },
   "currentOmr": {
     "productionCandidateEngines": ["audiveris", "homr", "clarity"],
     "stOmrIntegratedIntoGateway": false,
@@ -53,6 +68,18 @@
     "serverWriteAllowed": false,
     "playbackAllowed": false
   },
+  "downstreamMusicApplications": {
+    "integrationPosition": "POST_CANONICAL_TEACHER_REVIEW_VALIDATION",
+    "rawOmrCandidateInputAllowed": false,
+    "directBrowserEngineCallsAllowed": false,
+    "downstreamMayMutateCanonicalOrTeacherRevision": false,
+    "productionDerivedOutputRequiresApprovedTeacherRevision": true,
+    "musicXmlToGuitarTabEngine": {
+      "architecturalSeamReserved": true,
+      "liveIntegrationActivated": false,
+      "role": "downstream_guitar_arrangement_and_fingering_service"
+    }
+  },
   "stOmrMigration": {
     "currentState": "ARCHITECTURE_ONLY_ISOLATED_TRACK",
     "longTermTargetMayBecomePrimaryOrSoleOmr": true,
@@ -71,6 +98,7 @@
     "publicationSeparateFromApproval": true,
     "localEditIntentIsNotScoreEditCommand": true,
     "browserIsNotAuthority": true,
+    "downstreamMusicApplicationIsNotScoreAuthority": true,
     "productionActivationRequiresSeparateGate": true
   }
 }

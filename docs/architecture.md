@@ -1,6 +1,6 @@
 # ScoreMosaic Architecture
 
-Status: **authoritative current architecture through Stage 11-F**  
+Status: **authoritative current architecture through Stage 11-F plus approved unnumbered workstreams**  
 Current-state contract: `contracts/architecture-current-state-v1.json`
 
 Historical Gate B-E details remain documented in their dedicated gate documents. Current activation truth is defined by this document together with:
@@ -8,12 +8,14 @@ Historical Gate B-E details remain documented in their dedicated gate documents.
 - `docs/architecture-stage5-7-current.md`
 - `docs/architecture-stage8-current.md`
 - `docs/architecture-stage9-11-current.md`
+- `docs/ui-architecture-phase1.md`
+- `docs/downstream-music-application-integration-boundary.md`
 
 ## 1. Purpose
 
 ScoreMosaic is a security-first OMR and teacher-review platform. It receives untrusted score documents, preserves immutable source lineage, obtains bounded OMR evidence, validates engine outputs as untrusted artifacts, derives deterministic Canonical Score representations, compares evidence, and supports immutable teacher review and publication preparation.
 
-ScoreMosaic is not the learner-facing playback, narration, or lesson application.
+ScoreMosaic may later provide exact validated musical artifacts to downstream music applications, but those applications do not become Canonical, Teacher Review, approval or publication authority.
 
 ## 2. Current trust chain
 
@@ -93,6 +95,67 @@ The browser remains non-authoritative. `connect-src 'none'` remains the current 
 
 A local edit intent is not a ScoreEditCommand. Any future live mutation must independently prove authenticated principal/session semantics, tenant/resource authorization, exact API transport, origin/CSRF/CSP policy, failure/retry/idempotency behavior, audit evidence, exact-current revision validation, old-value preconditions, and rollback/disable behavior.
 
+### 5.1 UI Architecture Phase 1 — approved unnumbered workstream
+
+UI Architecture Phase 1 is **not Stage 12** and does not alter the existing stage map. It defines the product-design structure that sits on top of Stage 10/11 before Figma and before any live API activation.
+
+```text
+Product navigation
+  -> Dashboard / Documents
+  -> New Document / OMR processing presentation
+  -> Teacher Review Workspace
+  -> Score Viewer interactions
+  -> Structured Edit UX
+  -> Validation / Revision UX
+  -> Approval / Publication UX
+  -> Design System
+  -> High-fidelity Figma
+```
+
+The repository baseline is defined by `contracts/ui-architecture-phase1-v1.json` and `docs/ui-architecture-phase1.md`.
+
+Modernization remains intentionally layered:
+
+```text
+Figma / UX
+  -> Design System
+  -> UI Components
+  -> Typed Application Contract
+  -> Adapter
+  -> Authenticated API
+  -> Server / Domain Authority
+```
+
+Visual changes should remain above the contract boundary when possible. Data-shape changes belong in typed contracts; transport changes in adapters; authority/business-rule changes in server/domain contracts.
+
+### 5.2 Downstream music-application integration boundary
+
+Validated ScoreMosaic musical artifacts may later feed sibling applications only through a dedicated downstream boundary.
+
+```text
+Canonical / Teacher Review
+  -> deterministic validation
+  -> corrected MusicXML
+  -> exact approved revision/artifact identity
+  -> typed downstream application contract
+  -> dedicated adapter
+  -> music application
+```
+
+Raw OMR candidates are not valid production sources for downstream derivation. A downstream service cannot mutate Canonical Score or TeacherScoreRevision and cannot approve or publish.
+
+The first reserved integration is MusicXML-to-GuitarTab-Engine:
+
+```text
+approved MusicXML
+  -> GuitarTab application contract
+  -> GuitarTab adapter
+  -> MusicXML-to-GuitarTab-Engine
+  -> non-authoritative TAB/fingering candidates
+```
+
+This seam is architecture-only today. No live GuitarTab transport or credential is activated.
+
 ## 6. Production foundation
 
 Stage 9-A through 9-I are complete as repository production-foundation design. The repository documents a Hetzner Germany + Coolify baseline, PostgreSQL 18 requirements, object-storage immutability/copy semantics, Authentik OIDC/RBAC mapping, Infisical capability requirements, service identity/secret scopes, and crash-safe publication persistence protocol.
@@ -126,17 +189,25 @@ Real provisioning remains behind the Stage 9 external-production boundary.
 | 10 | Repository UI experience complete | Disconnected, fixture-backed, non-authoritative product UI. |
 | 11 | Typed UI/application local integration complete | Typed local adapters/state model complete; live API remains locked. |
 
+Approved unnumbered workstreams:
+
+| Workstream | Status | Meaning |
+|---|---|---|
+| UI Architecture Phase 1 | Approved repository baseline; Figma next | Product navigation, screen architecture, interaction model and Design System defined without live activation. |
+| Downstream Music Application Integration | Architecture-only | Safe post-validation seam reserved; MusicXML-to-GuitarTab-Engine live integration remains off. |
+
 ## 8. Authority invariants
 
 1. External input and engine output remain untrusted until their applicable gates pass.
-2. Source documents, raw candidates, revisions, approvals, and publication handoffs are immutable lineage artifacts.
+2. Source documents, raw candidates, revisions, approvals and publication handoffs are immutable lineage artifacts.
 3. AI/OMR evidence cannot directly mutate authoritative score state.
 4. Canonical admission and musical validation remain deterministic and fail closed.
 5. Unknown or ambiguous content is surfaced as evidence or abstention, not silently guessed.
 6. Teacher approval is explicit and bound to an exact immutable revision/artifact.
 7. Publication is a separate transition from approval.
 8. Browser/local application state is never server authority.
-9. Production activation requires a separate security gate and concrete external facts.
+9. Downstream music applications are derivative services, never upstream score authority.
+10. Production activation requires a separate security gate and concrete external facts.
 
 ## 9. Current boundaries
 
@@ -148,7 +219,9 @@ Real provisioning remains behind the Stage 9 external-production boundary.
 - Stage 8 immutable teacher-review/publication-preparation chain;
 - Stage 9 production architecture contracts;
 - Stage 10 disconnected product experience;
-- Stage 11 typed local UI/application integration.
+- Stage 11 typed local UI/application integration;
+- approved UI Architecture Phase 1 product-design baseline;
+- architecture-only downstream music-application seam.
 
 ### Repository evidence does not prove
 
@@ -161,8 +234,10 @@ Real provisioning remains behind the Stage 9 external-production boundary.
 - production publication execution;
 - production browser playback;
 - ST-OMR Gateway/Ensemble integration;
-- ST-OMR superiority over the current multi-engine baseline.
+- ST-OMR superiority over the current multi-engine baseline;
+- high-fidelity Figma completion;
+- live MusicXML-to-GuitarTab-Engine integration.
 
 ## 10. Current development boundary
 
-Safe autonomous repository work may continue only where it does not cross external production effects. Any step that creates paid provider resources, real credentials, DNS/TLS changes, public traffic, production persistence, or actual publication requires a separate explicit operational gate.
+Safe autonomous repository work may continue only where it does not cross external production effects. Any step that creates paid provider resources, real credentials, DNS/TLS changes, public traffic, production persistence, actual publication, or live downstream provider effects requires a separate explicit operational gate.

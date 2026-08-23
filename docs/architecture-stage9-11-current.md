@@ -80,6 +80,43 @@ unavailable
 
 Request/response correlation must match exact schema, request ID, kind, document and revision. Stale/mismatched/unknown responses are rejected rather than rendered as trusted data.
 
+## Approved post-Stage-11 UI workstream
+
+`UI Architecture Phase 1` is an approved **unnumbered** product-design workstream. It is not Stage 12 and does not alter the stage sequence.
+
+It defines:
+
+```text
+Product navigation
+  -> Dashboard / Documents
+  -> New Document / OMR processing presentation
+  -> Teacher Review Workspace v1
+  -> Score Viewer interactions
+  -> Structured Edit UX
+  -> Validation / Revision UX
+  -> Approval / Publication UX
+  -> Design System
+  -> High-fidelity Figma
+```
+
+The workstream contract is `contracts/ui-architecture-phase1-v1.json`. High-fidelity Figma starts only after the repository baseline and consistency tests are green.
+
+This workstream remains presentation/architecture only: real upload, live API, production auth, server write, approval execution, publication execution, playback and infrastructure stay locked.
+
+## Downstream music-application extension seam
+
+A separate architecture-only seam exists for later validated MusicXML consumers, including MusicXML-to-GuitarTab-Engine.
+
+```text
+validated / approved Teacher Review artifact
+  -> exact corrected MusicXML identity
+  -> typed downstream application contract
+  -> dedicated adapter
+  -> downstream music service
+```
+
+Raw OMR candidates are not valid production inputs to this seam. A downstream service cannot mutate Canonical Score or TeacherScoreRevision and cannot approve or publish. Live GuitarTab integration is not activated.
+
 ## Browser/network boundary
 
 The current disconnected UI keeps `connect-src 'none'` and repository-local scripts only.
@@ -107,17 +144,17 @@ productionInfrastructureEligible=false
 
 Stage 8 already defines the server-side repository foundations for typed ScoreEditCommand, immutable TeacherScoreRevision, validation, explicit human approval and non-executing publication handoff.
 
-Stage 10/11 do not bypass or replace that chain. They provide a disconnected product/UI contract layer that may later connect to it only after a separate live-integration security gate proves authentication, authorization, transport, CSRF/origin/CSP, exact-current revision checks, old-value preconditions, failure/retry/idempotency, audit and rollback.
+Stage 10/11 and UI Architecture Phase 1 do not bypass or replace that chain. They provide disconnected/local product and design layers that may later connect to it only after a separate live-integration security gate proves authentication, authorization, transport, CSRF/origin/CSP, exact-current revision checks, old-value preconditions, failure/retry/idempotency, audit and rollback.
 
 ## Relationship to Stage 9
 
-Stage 10/11 do not provision infrastructure. Real Hetzner, PostgreSQL, object storage, Authentik, Infisical, credentials, DNS/TLS and public traffic remain deferred behind Stage 9-I.
+Stage 10/11 and UI Architecture Phase 1 do not provision infrastructure. Real Hetzner, PostgreSQL, object storage, Authentik, Infisical, credentials, DNS/TLS and public traffic remain deferred behind Stage 9-I.
 
 ## Current stop boundary
 
-Repository-only architecture and tests may continue where they preserve all activation locks. The next **live** transition requires concrete operational facts and a narrow security gate.
+Repository-only architecture, UI design contracts and tests may continue where they preserve all activation locks. The next **live** transition requires concrete operational facts and a narrow security gate.
 
-No repository document may treat local UI readiness as permission to:
+No repository document may treat local UI/Figma readiness as permission to:
 
 - create real provider resources;
 - accept production/public traffic;
@@ -125,4 +162,5 @@ No repository document may treat local UI readiness as permission to:
 - create server-side teacher revisions from browser state;
 - approve or publish;
 - activate playback;
-- expose production credentials.
+- expose production credentials;
+- call GuitarTab/downstream engines directly from the browser.

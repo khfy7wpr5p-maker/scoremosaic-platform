@@ -121,7 +121,7 @@ The external publication effect remains locked.
 
 ## 8. Browser/UI boundary
 
-Stage 10/11 are disconnected repository/local-integration layers.
+Stage 10/11 are disconnected repository/local-integration layers. `UI Architecture Phase 1` is an approved unnumbered product-design workstream above those layers; it does not activate transport or authority.
 
 Current browser rules:
 
@@ -137,13 +137,32 @@ Current browser rules:
 
 Typed local reads and `editIntent.prepare` are non-authoritative. A local edit intent is not a ScoreEditCommand.
 
+UI Phase 1 may define navigation, Dashboard/Documents/New Document flows, Score Viewer interactions, Structured Edit UX, revision/validation presentation, approval/publication presentation and a Design System. These visual/product decisions must not reinterpret a displayed state as server authority.
+
 Any future live UI integration requires a separate gate for authentication/session, tenant/resource authorization, exact API scope, CSRF/origin/CSP, exact-current revision checks, old-value preconditions, idempotency/failure/retry, privacy-safe errors/logs, audit and rollback.
 
-## 9. Storage and artifact controls
+## 9. Downstream music-application boundary
+
+A downstream music application is a derivative consumer, not an upstream score authority.
+
+Required invariants:
+
+- production derivation does not consume raw OMR candidates or raw engine output;
+- exact Canonical/Teacher revision and corrected MusicXML identity remain bound;
+- production-derived output requires an approved TeacherScoreRevision unless a future versioned contract explicitly changes that rule;
+- downstream results cannot mutate Canonical Score or TeacherScoreRevision;
+- downstream results cannot approve or publish;
+- browser code cannot call downstream engines directly;
+- stale source revision invalidates currentness of older downstream results;
+- downstream failure cannot corrupt or roll back ScoreMosaic state.
+
+The reserved MusicXML-to-GuitarTab-Engine seam remains architecture-only. Any future live integration requires dedicated service authentication, bounded transport, idempotency/failure handling, exact source lineage, engine/model version provenance, and rollback/disable evidence.
+
+## 10. Storage and artifact controls
 
 - source paths and artifact identities are server-derived;
 - source documents and raw engine results are immutable;
-- candidate/revision/publication derivatives are new artifacts, never overwrites;
+- candidate/revision/publication/downstream derivatives are new artifacts, never overwrites;
 - SHA-256 and provenance remain bound to stored content;
 - conflicting create-once writes fail closed;
 - service writable areas remain separated;
@@ -151,7 +170,7 @@ Any future live UI integration requires a separate gate for authentication/sessi
 
 Stage 9 documents production PostgreSQL/object-storage architecture but does not activate those providers.
 
-## 10. Production infrastructure boundary
+## 11. Production infrastructure boundary
 
 Stage 9 repository contracts document the planned Hetzner/Coolify, PostgreSQL 18, object-storage, Authentik and Infisical boundaries.
 
@@ -172,7 +191,7 @@ publicationExecutionActivated=false
 
 Real provider configuration and billing authority are outside repository-only development.
 
-## 11. Logging and privacy
+## 12. Logging and privacy
 
 Logs may expose bounded operational identifiers such as job ID, engine identity/version, lifecycle state, duration/resource summary and stable error category.
 
@@ -186,7 +205,7 @@ Logs/external errors must not expose:
 - unrestricted local paths;
 - sensitive filename-derived personal information.
 
-## 12. Supply chain
+## 13. Supply chain
 
 Required principles:
 
@@ -198,7 +217,7 @@ Required principles:
 - pin production container base images by digest;
 - retain SBOM/provenance for production releases.
 
-## 13. ST-OMR migration boundary
+## 14. ST-OMR migration boundary
 
 ST-OMR may become primary or sole production OMR only after explicit migration evidence.
 
@@ -216,7 +235,7 @@ Required gates include:
 
 Training success or a high symbol F1 alone does not authorize production promotion or removal of existing engines.
 
-## 14. Threat-test catalogue
+## 15. Threat-test catalogue
 
 Required negative coverage includes at minimum:
 
@@ -245,8 +264,12 @@ Required negative coverage includes at minimum:
 - stale or cross-resource Teacher Review mutation;
 - stale approval/publication artifacts;
 - browser authority escalation;
-- ST-OMR model/version/provenance substitution.
+- ST-OMR model/version/provenance substitution;
+- direct-browser downstream-engine call attempt;
+- raw-OMR-to-GuitarTab production bypass attempt;
+- stale TeacherRevision used as current downstream source;
+- downstream result attempting Canonical/TeacherRevision mutation.
 
-## 15. Stop rule
+## 16. Stop rule
 
-Repository-only work may continue only while production/live activation remains false. Stop before paid resource creation, real credentials, DNS/TLS changes, public traffic, production writes, destructive provider operations or actual publication execution unless a separate explicit operational gate authorizes that action.
+Repository-only work may continue only while production/live activation remains false. Stop before paid resource creation, real credentials, DNS/TLS changes, public traffic, production writes, destructive provider operations, actual publication execution, or live downstream music-service activation unless a separate explicit operational gate authorizes that action.
