@@ -2,9 +2,24 @@
   'use strict';
 
   const fixture = window.ScoreMosaicFixture;
-  if (!fixture || fixture.productionArtifact !== false || fixture.authoritativeTruth !== false) {
+  const application = window.ScoreMosaicLocalApplication;
+  if (
+    !fixture
+    || fixture.productionArtifact !== false
+    || fixture.authoritativeTruth !== false
+    || !application
+    || application.productionApplication !== false
+    || application.authoritative !== false
+    || application.networkCapable !== false
+    || application.persistent !== false
+  ) {
     return;
   }
+
+  const issuesState = application.read('issues.read');
+  const issues = issuesState?.phase === 'ready' && issuesState.authority?.authoritative === false
+    ? issuesState.data.items
+    : [];
 
   const ALLOWED_OPERATIONS = new Set([
     'set_pitch',
@@ -14,6 +29,24 @@
   ]);
   const PITCH_RE = /^([A-G])([#b]?)(-?[0-9]{1,2})$/;
   const DURATION_RE = /^([1-9][0-9]{0,8})\/([1-9][0-9]{0,6})$/;
+  const REQUEST_AUTHORITY = Object.freeze({
+    authoritativeCapability: false,
+    serverAuthorizationIncluded: false,
+    oldValuePreconditionIncluded: false,
+    commandIdentityIncluded: false,
+    networkSubmissionAllowed: false
+  });
+  const EXPECTED_LOCAL_AUTHORITY = Object.freeze({
+    authoritativeCapability: false,
+    serverAuthorizationIncluded: false,
+    oldValuePreconditionIncluded: false,
+    commandIdentityIncluded: false,
+    networkSubmissionAllowed: false,
+    canCreateScoreEditCommand: false,
+    canCreateRevision: false,
+    canApprove: false,
+    canPublish: false
+  });
 
   const byId = (id) => document.getElementById(id);
   const operation = byId('edit-operation');
@@ -32,7 +65,7 @@
   const selectedIssue = () => {
     const selected = issueList.querySelector('[data-issue-id][aria-pressed="true"]');
     const issueId = selected?.dataset.issueId;
-    return fixture.issues.find((issue) => issue.id === issueId) ?? null;
+    return issues.find((issue) => issue.id === issueId) ?? null;
   };
 
   const setStatus = (message, kind = 'neutral') => {
@@ -110,17 +143,16 @@
     return {type, value: null};
   };
 
+  const authorityMatches = (authority) => Object.entries(EXPECTED_LOCAL_AUTHORITY)
+    .every(([key, expected]) => authority?.[key] === expected);
+
   const prepareIntent = () => {
     const issue = selectedIssue();
     if (!issue) throw new Error('TARGET_INVALID');
     const note = reason.value.trim();
     if (note.length > 300) throw new Error('REASON_TOO_LONG');
 
-    const intent = Object.freeze({
-      schemaVersion: 'scoremosaic-stage10-local-edit-intent-v1',
-      fixtureVersion: fixture.fixtureVersion,
-      fixtureDocumentId: fixture.document.id,
-      fixtureRevision: fixture.document.revision,
+    const result = application.prepareEditIntent({
       issueId: issue.id,
       target: Object.freeze({
         page: issue.location.page,
@@ -131,22 +163,18 @@
       }),
       operation: Object.freeze(operationPayload()),
       reason: note.length === 0 ? null : note,
-      authority: Object.freeze({
-        authoritativeCapability: false,
-        serverAuthorizationIncluded: false,
-        oldValuePreconditionIncluded: false,
-        commandIdentityIncluded: false,
-        networkSubmissionAllowed: false,
-        canCreateScoreEditCommand: false,
-        canCreateRevision: false,
-        canApprove: false,
-        canPublish: false
-      })
+      authority: REQUEST_AUTHORITY
     });
 
+    if (result?.phase !== 'ready' || result.authority?.authoritative !== false || !result.data || !authorityMatches(result.data.authority)) {
+      const code = result?.error?.code ?? 'INTENT_APPLICATION_REJECTED';
+      throw new Error(code);
+    }
+
+    const intent = result.data;
     preview.textContent = JSON.stringify(intent, null, 2);
     clearButton.disabled = false;
-    setStatus('Prepared locally · not submitted', 'safe');
+    setStatus('Prepared locally · typed contract · not submitted', 'safe');
   };
 
   const syncSelection = () => {

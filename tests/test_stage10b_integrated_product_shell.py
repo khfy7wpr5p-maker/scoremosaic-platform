@@ -82,8 +82,16 @@ class Stage10BIntegratedProductShellTests(unittest.TestCase):
         self.assertEqual(self.parser.forms, 0)
         for url in self.parser.urls:
             self.assertFalse(re.match(r"^(?:https?:)?//", url), url)
-        for script in self.parser.scripts:
-            self.assertIn(script.get("src"), {"fixture.js", "app.js", "edit-intent.js"})
+        allowed_local_scripts = {
+            "fixture.js",
+            "../stage11-ui-application-contracts/read-adapter.js",
+            "../stage11-ui-application-contracts/edit-intent-adapter.js",
+            "../stage11-ui-application-contracts/application-state.js",
+            "../stage11-ui-application-contracts/local-application.js",
+            "app.js",
+            "edit-intent.js",
+        }
+        self.assertEqual({script.get("src") for script in self.parser.scripts}, allowed_local_scripts)
 
     def test_future_authority_controls_remain_disabled(self) -> None:
         self.assertGreater(len(self.parser.buttons), 0)
