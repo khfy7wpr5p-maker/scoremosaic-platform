@@ -21,10 +21,12 @@
 
   const cloneJson = (value) => JSON.parse(JSON.stringify(value));
 
+  const responseKind = (request) => ALLOWED_KINDS.has(request?.kind) ? request.kind : 'unknown';
+
   const envelope = (request, state, data, error) => freezeDeep({
     schemaVersion: RESPONSE_SCHEMA,
-    requestId: typeof request?.requestId === 'string' ? request.requestId : 'invalid-request',
-    kind: typeof request?.kind === 'string' ? request.kind : 'review.read',
+    requestId: typeof request?.requestId === 'string' && request.requestId.length > 0 ? request.requestId : 'invalid-request',
+    kind: responseKind(request),
     state,
     documentId: fixture.document.id,
     revision: fixture.document.revision,
