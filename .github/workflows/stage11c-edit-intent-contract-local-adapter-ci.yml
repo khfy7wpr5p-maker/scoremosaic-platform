@@ -1,0 +1,66 @@
+name: Stage 11-C Edit Intent Contract Local Adapter CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage11c-edit-intent-contract-local-adapter-v1"
+    paths:
+      - ".github/workflows/stage11c-edit-intent-contract-local-adapter-ci.yml"
+      - "contracts/stage11-*.json"
+      - "contracts/score-edit-command-v1.schema.json"
+      - "docs/stage11*.md"
+      - "prototypes/stage11-ui-application-contracts/**"
+      - "tests/test_stage11*.py"
+      - "tests/stage11c_edit_intent_adapter_behavior.js"
+      - "prototypes/stage10-ui-application-experience/fixture.js"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage11c-edit-intent-contract-local-adapter-ci.yml"
+      - "contracts/stage11-*.json"
+      - "contracts/score-edit-command-v1.schema.json"
+      - "docs/stage11*.md"
+      - "prototypes/stage11-ui-application-contracts/**"
+      - "tests/test_stage11*.py"
+      - "tests/stage11c_edit_intent_adapter_behavior.js"
+      - "prototypes/stage10-ui-application-experience/fixture.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage11c-edit-intent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate Stage 11 JSON schemas/contracts
+        run: |
+          for file in contracts/stage11-*.json; do python -m json.tool "$file" > /dev/null; done
+          python -m json.tool contracts/score-edit-command-v1.schema.json > /dev/null
+      - name: Check Stage 11 local adapter syntax
+        run: |
+          node --check prototypes/stage11-ui-application-contracts/read-adapter.js
+          node --check prototypes/stage11-ui-application-contracts/edit-intent-adapter.js
+      - name: Run edit-intent adapter behavior harness
+        run: node tests/stage11c_edit_intent_adapter_behavior.js
+      - name: Run Stage 11 tests
+        run: python -m unittest discover -s tests -p 'test_stage11*.py' -v
+      - name: Run Stage 8-H browser intent regression
+        run: python -m unittest discover -s tests -p 'test_stage8h_disconnected_edit_intent.py' -v
+      - name: Run Stage 10-F boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
+      - name: Run Stage 9-I stop-boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
