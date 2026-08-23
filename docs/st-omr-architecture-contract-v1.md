@@ -3,7 +3,7 @@
 Status: **isolated architecture/development track; not integrated into current Gateway/Stage 7 quorum**  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`
 
-This document defines the ScoreMosaic-native ST-OMR architecture boundary. It does not activate an ST-OMR production service, Gateway key, Ensemble membership, public endpoint, training runtime, or production deployment.
+This phase is architecture-only. This document defines the ScoreMosaic-native ST-OMR architecture boundary. It does not activate an ST-OMR production service, Gateway key, Ensemble membership, public endpoint, training runtime, or production deployment.
 
 ## Purpose
 
