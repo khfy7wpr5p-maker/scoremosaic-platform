@@ -2,13 +2,35 @@
   'use strict';
 
   const fixture = window.ScoreMosaicFixture;
-  if (!fixture || fixture.productionArtifact !== false || fixture.authoritativeTruth !== false) {
+  const application = window.ScoreMosaicLocalApplication;
+  if (
+    !fixture
+    || fixture.productionArtifact !== false
+    || fixture.authoritativeTruth !== false
+    || !application
+    || application.productionApplication !== false
+    || application.authoritative !== false
+    || application.networkCapable !== false
+    || application.persistent !== false
+  ) {
     return;
   }
 
+  const reviewState = application.read('review.read');
+  const issuesState = application.read('issues.read');
+  const evidenceState = application.read('sourceEvidence.read');
+  const validationState = application.read('validation.read');
+  const statesReady = [reviewState, issuesState, evidenceState, validationState]
+    .every((entry) => entry?.phase === 'ready' && entry.authority?.authoritative === false);
+
+  const review = statesReady ? reviewState.data : null;
+  const issuesModel = statesReady ? issuesState.data : {items: [], counts: {blocking: 0, warning: 0, info: 0}};
+  const evidence = statesReady ? evidenceState.data : null;
+  const validation = statesReady ? validationState.data : null;
+
   const state = {
     filter: 'all',
-    selectedIssueId: fixture.issues[0]?.id ?? null
+    selectedIssueId: issuesModel.items[0]?.id ?? null,
   };
 
   const byId = (id) => document.getElementById(id);
@@ -17,11 +39,11 @@
     if (node) node.textContent = String(value);
   };
 
-  const countSeverity = (severity) => fixture.issues.filter((issue) => issue.severity === severity).length;
+  const countSeverity = (severity) => issuesModel.items.filter((issue) => issue.severity === severity).length;
 
   const filteredIssues = () => {
-    if (state.filter === 'all') return fixture.issues;
-    return fixture.issues.filter((issue) => issue.severity === state.filter);
+    if (state.filter === 'all') return issuesModel.items;
+    return issuesModel.items.filter((issue) => issue.severity === state.filter);
   };
 
   const focusRenderedIssue = (issueId) => {
@@ -33,7 +55,7 @@
   };
 
   const selectIssue = (issueId, focusMode = 'score') => {
-    const exists = fixture.issues.some((issue) => issue.id === issueId);
+    const exists = issuesModel.items.some((issue) => issue.id === issueId);
     if (!exists) return;
     state.selectedIssueId = issueId;
     render();
@@ -75,9 +97,9 @@
     const issues = filteredIssues();
     issues.forEach((issue) => list.append(createIssueButton(issue)));
     text('issue-count', `${issues.length} shown`);
-    text('blocking-count', countSeverity('blocking'));
-    text('warning-count', countSeverity('warning'));
-    text('info-count', countSeverity('info'));
+    text('blocking-count', issuesModel.counts.blocking ?? countSeverity('blocking'));
+    text('warning-count', issuesModel.counts.warning ?? countSeverity('warning'));
+    text('info-count', issuesModel.counts.info ?? countSeverity('info'));
 
     document.querySelectorAll('[data-filter]').forEach((button) => {
       button.setAttribute('aria-pressed', button.dataset.filter === state.filter ? 'true' : 'false');
@@ -85,9 +107,10 @@
   };
 
   const renderSelectedIssue = () => {
-    const issue = fixture.issues.find((candidate) => candidate.id === state.selectedIssueId);
+    const issue = issuesModel.items.find((candidate) => candidate.id === state.selectedIssueId);
     if (!issue) return;
 
+    const evidenceRegion = evidence?.regions.find((candidate) => candidate.issueId === issue.id) ?? issue.evidence;
     text('focused-page', issue.location.page);
     text('focused-measure', issue.location.measure);
     text('focused-staff', issue.location.staff);
@@ -98,20 +121,35 @@
     text('selected-voice', issue.event.voice);
     text('selected-issue-title', issue.title);
     text('selected-issue-summary', issue.summary);
-    text('source-region', issue.evidence.sourceRegion);
-    text('candidate-id', issue.evidence.candidate);
-    text('canonical-id', issue.evidence.canonical);
+    text('source-region', evidenceRegion.sourceRegion);
+    text('candidate-id', evidenceRegion.candidate);
+    text('canonical-id', evidenceRegion.canonical);
     text('score-focus-label', `Measure ${issue.location.measure} · ${issue.title}`);
   };
 
+  const renderUnavailable = () => {
+    text('document-label', 'Local contract unavailable');
+    text('revision-label', application.context.revision);
+    text('source-sha', '—');
+    text('canonical-sha', '—');
+    text('validation-label', 'unavailable');
+    text('status-blocking', '—');
+    text('status-revision', application.context.revision);
+    text('selected-issue-summary', 'Local typed application data failed closed. No production fallback is available.');
+  };
+
   const renderDocument = () => {
-    text('document-label', fixture.document.label);
-    text('revision-label', fixture.document.revision);
-    text('source-sha', fixture.document.sourceSha256);
-    text('canonical-sha', fixture.document.canonicalSha256);
-    text('validation-label', fixture.validation.status);
-    text('status-blocking', fixture.validation.blocking);
-    text('status-revision', fixture.document.revision);
+    if (!statesReady || !review || !validation || !evidence) {
+      renderUnavailable();
+      return;
+    }
+    text('document-label', review.label);
+    text('revision-label', application.context.revision);
+    text('source-sha', evidence.sourceSha256);
+    text('canonical-sha', evidence.canonicalSha256);
+    text('validation-label', validation.status);
+    text('status-blocking', validation.blocking);
+    text('status-revision', application.context.revision);
   };
 
   const render = () => {
