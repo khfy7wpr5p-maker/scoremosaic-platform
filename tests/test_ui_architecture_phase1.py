@@ -30,7 +30,7 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
 
     def test_primary_navigation_and_flow_are_closed(self) -> None:
         self.assertEqual(
-            ["dashboard", "documents", "new_document", "review"],
+            ["dashboard", "documents", "upload", "teacher_review", "guitar_tab"],
             UI["informationArchitecture"]["primaryNavigation"],
         )
         self.assertEqual(["account"], UI["informationArchitecture"]["secondaryNavigation"])
@@ -55,6 +55,16 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
             UI["primaryUserFlow"],
         )
 
+    def test_upload_is_explicit_but_real_submission_stays_locked(self) -> None:
+        upload = UI["screenArchitecture"]["upload"]
+        self.assertEqual("Upload", upload["navigationLabel"])
+        self.assertIs(upload["presentationOnlyUntilLiveGate"], True)
+        self.assertIs(upload["realFileSubmissionActivated"], False)
+        self.assertEqual(["pdf", "jpeg", "png"], upload["acceptedPresentationTypes"])
+        self.assertIn("safe_intake", upload["liveDependencies"])
+        self.assertIn("object_storage", upload["liveDependencies"])
+        self.assertIs(UI["activationLocks"]["realUploadActivated"], False)
+
     def test_teacher_review_workspace_has_required_regions(self) -> None:
         self.assertEqual(
             [
@@ -69,6 +79,19 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         )
         self.assertIs(UI["principles"]["scoreViewIsPrimaryWorkspace"], True)
         self.assertIs(UI["principles"]["rendererIsPresentationOnly"], True)
+
+    def test_guitar_tab_workspace_is_separate_and_non_authoritative(self) -> None:
+        guitar = UI["screenArchitecture"]["guitarTab"]
+        self.assertEqual("Guitar TAB", guitar["navigationLabel"])
+        self.assertIs(guitar["separateWorkspace"], True)
+        self.assertIs(guitar["presentationOnlyUntilLiveGate"], True)
+        self.assertIs(guitar["engineRuntimeActivated"], False)
+        self.assertEqual(
+            ["standard_notation", "guitar_tab", "fingering_options", "position_playability_evidence"],
+            guitar["requiredRegions"],
+        )
+        for value in guitar["authority"].values():
+            self.assertIs(value, False)
 
     def test_score_viewer_interactions_are_explicit(self) -> None:
         required = set(UI["scoreViewer"]["requiredInteractions"])
@@ -114,12 +137,14 @@ class UiArchitecturePhase1Tests(unittest.TestCase):
         self.assertIn("color_tokens", UI["designSystem"]["foundations"])
         self.assertIn("button", UI["designSystem"]["coreComponents"])
         self.assertIn("score_viewer", UI["designSystem"]["musicComponents"])
+        self.assertIn("guitar_tab_viewer", UI["designSystem"]["musicComponents"])
         self.assertIs(UI["designSystem"]["tokenNamingRequired"], True)
         figma = UI["figma"]
         self.assertIs(figma["eligibleAfterThisBaseline"], True)
         self.assertIs(figma["lowFidelityStarted"], True)
         self.assertIs(figma["highFidelityStarted"], False)
         self.assertEqual("00_foundations", figma["logicalAreas"][0])
+        self.assertIn("11_guitar_tab_workspace", figma["logicalAreas"])
         self.assertEqual("design_freeze_v1", figma["sequence"][-1])
 
     def test_starter_page_grouping_preserves_all_logical_figma_areas(self) -> None:
