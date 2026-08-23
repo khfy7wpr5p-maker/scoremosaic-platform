@@ -29,6 +29,35 @@
     "protocol": "OIDC_OAUTH2",
     "flow": "authorization_code_with_pkce",
     "termination": "server_side_bff_or_equivalent_confidential_boundary",
+    "authorizationRequestValidation": {
+      "stateRequired": true,
+      "nonceRequired": true,
+      "pkceRequired": true,
+      "pkceMethod": "S256",
+      "exactRedirectUriAllowlistRequired": true,
+      "openRedirectAllowed": false,
+      "authorizationResponseStateMustMatch": true,
+      "authorizationResponseNonceMustMatch": true
+    },
+    "idTokenValidation": {
+      "signatureValidationRequired": true,
+      "trustedIssuerMatchRequired": true,
+      "audienceMatchRequired": true,
+      "expirationValidationRequired": true,
+      "issuedAtValidationRequired": true,
+      "nonceMatchRequired": true,
+      "algorithmAllowlistRequired": true,
+      "trustedJwksOrEquivalentKeyValidationRequired": true,
+      "boundedClockSkewOnly": true
+    },
+    "providerTokenHandling": {
+      "serverSideOnly": true,
+      "applicationJavascriptAccessAllowed": false,
+      "loggingAllowed": false,
+      "persistentStorageRequiresEncryptionAtRest": true,
+      "refreshTokenRotationOrEquivalentReplayProtectionRequired": true,
+      "revocationOnSessionTerminationRequiredWhereSupported": true
+    },
     "browserReceivesProviderAccessToken": false,
     "browserReceivesProviderRefreshToken": false,
     "browserStoresSessionInLocalStorage": false,
@@ -62,6 +91,8 @@
   "apiTransport": {
     "basePath": "/api/v1",
     "httpsRequiredForRuntime": true,
+    "strictTransportSecurityRequiredForProduction": true,
+    "authenticatedResponsesNoStoreByDefault": true,
     "sameOriginApplicationApiPreferred": true,
     "browserMaySupplyArbitraryApiOrigin": false,
     "contentType": "application/json",
@@ -168,6 +199,7 @@
     "outcomeRequired": true,
     "correlationIdRequired": true,
     "rawSessionTokenLogged": false,
+    "rawProviderTokenLogged": false,
     "rawCsrfTokenLogged": false,
     "rawIdempotencyKeyLogged": false,
     "privacySafeErrorCategoryRequired": true
@@ -190,6 +222,14 @@
     "rollbackMustNotRollBackImmutableTeacherRevisionHistory": true
   },
   "negativeSecurityCoverage": [
+    "oidc_state_mismatch",
+    "oidc_nonce_mismatch",
+    "oidc_redirect_uri_substitution",
+    "oidc_pkce_downgrade",
+    "oidc_wrong_issuer",
+    "oidc_wrong_audience",
+    "oidc_expired_token",
+    "oidc_invalid_signature",
     "missing_session",
     "expired_session",
     "forged_session",
