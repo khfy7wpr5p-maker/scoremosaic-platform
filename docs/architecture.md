@@ -9,6 +9,7 @@ Historical Gate B-E details remain documented in their dedicated gate documents.
 - `docs/architecture-stage8-current.md`
 - `docs/architecture-stage9-11-current.md`
 - `docs/ui-architecture-phase1.md`
+- `docs/live-ui-api-security-architecture-v1.md`
 - `docs/downstream-music-application-integration-boundary.md`
 
 ## 1. Purpose
@@ -128,7 +129,28 @@ Figma / UX
 
 Visual changes should remain above the contract boundary when possible. Data-shape changes belong in typed contracts; transport changes in adapters; authority/business-rule changes in server/domain contracts.
 
-### 5.2 Downstream music-application integration boundary
+### 5.2 Live UI ↔ API Security Architecture — approved unnumbered workstream
+
+The repository security baseline is defined by `contracts/live-ui-api-security-architecture-v1.json` and `docs/live-ui-api-security-architecture-v1.md`.
+
+It defines a future same-origin authenticated transport without activating it:
+
+```text
+Browser
+  -> server-managed session
+  -> /api/v1
+  -> CSRF + exact-origin checks
+  -> server tenant/resource authorization
+  -> application/domain boundary
+```
+
+The target identity provider remains Authentik through OIDC/OAuth2 Authorization Code + PKCE terminated at a server-side BFF or equivalent confidential boundary. Provider access/refresh tokens are not exposed to application JavaScript or browser persistence.
+
+Initial live-read path templates are versioned for `review.read`, `issues.read`, `sourceEvidence.read`, and `validation.read`. Mutation endpoints remain deferred to a separate Teacher Review API contract.
+
+Current `connect-src 'none'` remains active. `connect-src 'self'` is only the maximum future same-origin baseline and cannot activate before a separate runtime gate. Auth/session/RBAC runtime, production artifact reads, server writes, command/revision creation, approval, publication, upload, production infrastructure and public traffic remain false.
+
+### 5.3 Downstream music-application integration boundary
 
 Validated ScoreMosaic musical artifacts may later feed sibling applications only through a dedicated downstream boundary.
 
@@ -193,7 +215,8 @@ Approved unnumbered workstreams:
 
 | Workstream | Status | Meaning |
 |---|---|---|
-| UI Architecture Phase 1 | Approved repository baseline; Figma next | Product navigation, screen architecture, interaction model and Design System defined without live activation. |
+| UI Architecture Phase 1 | Approved repository baseline; Figma application pending | Product navigation, screen architecture, interaction model and Design System defined without live activation. |
+| Live UI ↔ API Security Architecture | Approved repository baseline; runtime locked | Identity/session, authorization, API transport, CSRF/origin/CSP, idempotency, audit and rollback rules defined without network activation. |
 | Downstream Music Application Integration | Architecture-only | Safe post-validation seam reserved; MusicXML-to-GuitarTab-Engine live integration remains off. |
 
 ## 8. Authority invariants
@@ -221,6 +244,7 @@ Approved unnumbered workstreams:
 - Stage 10 disconnected product experience;
 - Stage 11 typed local UI/application integration;
 - approved UI Architecture Phase 1 product-design baseline;
+- approved Live UI ↔ API repository security architecture baseline;
 - architecture-only downstream music-application seam.
 
 ### Repository evidence does not prove
