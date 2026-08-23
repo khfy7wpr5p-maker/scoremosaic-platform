@@ -39,16 +39,17 @@ class Stage11FUiApplicationEligibilityTests(unittest.TestCase):
 
     def test_live_and_production_readiness_remains_false(self) -> None:
         readiness = CONTRACT["readiness"]
+        complete_keys = {
+            "stage11RepositoryScopeComplete",
+            "typedBoundaryComplete",
+            "typedReadContractsComplete",
+            "typedEditIntentContractsComplete",
+            "applicationStateModelComplete",
+            "localUiApplicationIntegrationComplete",
+            "readyForLaterLiveIntegrationSecurityDesign",
+        }
         for key, value in readiness.items():
-            if key in {
-                "stage11RepositoryScopeComplete",
-                "typedBoundaryComplete",
-                "typedReadContractsComplete",
-                "typedEditIntentContractsComplete",
-                "applicationStateModelComplete",
-                "localUiApplicationIntegrationComplete",
-                "readyForLaterLiveIntegrationSecurityDesign",
-            }:
+            if key in complete_keys:
                 continue
             with self.subTest(readiness=key):
                 self.assertIs(value, False)
@@ -106,7 +107,8 @@ class Stage11FUiApplicationEligibilityTests(unittest.TestCase):
         for key, value in STAGE10["activationLocks"].items():
             with self.subTest(stage10_lock=key):
                 self.assertIs(value, False)
-        for key, value in STAGE9["runtimeActivationLocks"].items():
+        self.assertTrue(STAGE9["preservedLocks"])
+        for key, value in STAGE9["preservedLocks"].items():
             with self.subTest(stage9_lock=key):
                 self.assertIs(value, False)
 
