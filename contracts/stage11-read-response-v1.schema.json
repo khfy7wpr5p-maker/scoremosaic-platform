@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scoremosaic-stage11-read-response-v1",
+  "title": "ScoreMosaic Stage 11 read response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "kind", "state", "documentId", "revision", "data", "error"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-stage11-read-response-v1"},
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "kind": {"enum": ["review.read", "issues.read", "sourceEvidence.read", "validation.read", "unknown"]},
+    "state": {"enum": ["success", "empty", "rejected", "unavailable"]},
+    "documentId": {"type": "string", "minLength": 1, "maxLength": 160},
+    "revision": {"type": "string", "minLength": 1, "maxLength": 160},
+    "data": {
+      "oneOf": [
+        {"$ref": "#/$defs/reviewData"},
+        {"$ref": "#/$defs/issuesData"},
+        {"$ref": "#/$defs/sourceEvidenceData"},
+        {"$ref": "#/$defs/validationData"},
+        {"type": "null"}
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/error"}
+      ]
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page", "measure", "staff", "voice", "event"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "measure": {"type": "integer", "minimum": 1},
+        "staff": {"type": "integer", "minimum": 1},
+        "voice": {"type": "integer", "minimum": 1},
+        "event": {"type": "string", "minLength": 1, "maxLength": 160}
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "title", "summary", "location", "event", "evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "severity": {"enum": ["blocking", "warning", "info"]},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "location": {"$ref": "#/$defs/location"},
+        "event": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pitch", "duration", "voice"],
+          "properties": {
+            "pitch": {"type": "string", "maxLength": 32},
+            "duration": {"type": "string", "maxLength": 32},
+            "voice": {"type": "string", "maxLength": 32}
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sourceRegion", "candidate", "canonical"],
+          "properties": {
+            "sourceRegion": {"type": "string", "maxLength": 240},
+            "candidate": {"type": "string", "maxLength": 240},
+            "canonical": {"type": "string", "maxLength": 240}
+          }
+        }
+      }
+    },
+    "reviewData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "reviewState", "sourceSha256", "canonicalSha256"],
+      "properties": {
+        "label": {"type": "string", "maxLength": 240},
+        "reviewState": {"type": "string", "maxLength": 80},
+        "sourceSha256": {"type": "string", "maxLength": 160},
+        "canonicalSha256": {"type": "string", "maxLength": 160}
+      }
+    },
+    "issuesData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "counts"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/issue"}},
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["blocking", "warning", "info"],
+          "properties": {
+            "blocking": {"type": "integer", "minimum": 0},
+            "warning": {"type": "integer", "minimum": 0},
+            "info": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "sourceEvidenceData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceSha256", "canonicalSha256", "regions"],
+      "properties": {
+        "sourceSha256": {"type": "string", "maxLength": 160},
+        "canonicalSha256": {"type": "string", "maxLength": 160},
+        "regions": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["issueId", "sourceRegion", "candidate", "canonical"],
+            "properties": {
+              "issueId": {"type": "string", "maxLength": 160},
+              "sourceRegion": {"type": "string", "maxLength": 240},
+              "candidate": {"type": "string", "maxLength": 240},
+              "canonical": {"type": "string", "maxLength": 240}
+            }
+          }
+        }
+      }
+    },
+    "validationData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocking", "warnings", "info", "approvalEligible", "publicationEligible", "authoritative"],
+      "properties": {
+        "status": {"type": "string", "maxLength": 80},
+        "blocking": {"type": "integer", "minimum": 0},
+        "warnings": {"type": "integer", "minimum": 0},
+        "info": {"type": "integer", "minimum": 0},
+        "approvalEligible": {"type": "boolean"},
+        "publicationEligible": {"type": "boolean"},
+        "authoritative": {"const": false}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 80},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500},
+        "retryable": {"type": "boolean"}
+      }
+    }
+  }
+}
