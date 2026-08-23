@@ -1,0 +1,79 @@
+name: Design System Music-Domain Components v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/design-system-music-domain-components-v1"
+    paths:
+      - ".github/workflows/design-system-music-domain-components-ci.yml"
+      - "contracts/design-system-music-domain-components-v1.json"
+      - "contracts/design-system-core-components-v1.json"
+      - "contracts/design-system-foundations-v1.json"
+      - "contracts/ui-architecture-phase1-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/design-system-music-domain-components-v1.md"
+      - "tests/test_design_system_music_domain_components_v1.py"
+      - "tests/test_design_system_core_components_v1.py"
+      - "tests/test_design_system_foundations_v1.py"
+      - "tests/test_ui_architecture_phase1.py"
+      - "tests/test_architecture_consistency.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/design-system-music-domain-components-ci.yml"
+      - "contracts/design-system-music-domain-components-v1.json"
+      - "contracts/design-system-core-components-v1.json"
+      - "contracts/design-system-foundations-v1.json"
+      - "contracts/ui-architecture-phase1-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/design-system-music-domain-components-v1.md"
+      - "tests/test_design_system_music_domain_components_v1.py"
+      - "tests/test_design_system_core_components_v1.py"
+      - "tests/test_design_system_foundations_v1.py"
+      - "tests/test_ui_architecture_phase1.py"
+      - "tests/test_architecture_consistency.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  music-domain-components-v1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate JSON contracts
+        run: |
+          python -m json.tool contracts/design-system-music-domain-components-v1.json > /dev/null
+          python -m json.tool contracts/design-system-core-components-v1.json > /dev/null
+          python -m json.tool contracts/design-system-foundations-v1.json > /dev/null
+          python -m json.tool contracts/ui-architecture-phase1-v1.json > /dev/null
+          python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
+      - name: Run Music-Domain Components v1 tests
+        run: python -m unittest discover -s tests -p 'test_design_system_music_domain_components_v1.py' -v
+      - name: Run Core Components regression
+        run: python -m unittest discover -s tests -p 'test_design_system_core_components_v1.py' -v
+      - name: Run Foundations regression
+        run: python -m unittest discover -s tests -p 'test_design_system_foundations_v1.py' -v
+      - name: Run UI Architecture Phase 1 regression
+        run: python -m unittest discover -s tests -p 'test_ui_architecture_phase1.py' -v
+      - name: Run architecture consistency regression
+        run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+      - name: Run Stage 10-F UI boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
+      - name: Run Stage 11-F UI application boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage11f_ui_application_eligibility.py' -v
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+      - name: Check repository diff formatting
+        run: git diff --check
