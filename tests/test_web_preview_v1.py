@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT = json.loads((ROOT / "contracts" / "web-preview-v1.json").read_text(encoding="utf-8"))
+WORKFLOW = (ROOT / ".github" / "workflows" / "web-preview-v1-ci.yml")
+
+
+def tree_digest(root: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            result[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
+
+
+class WebPreviewV1Tests(unittest.TestCase):
+    def test_contract_is_repository_only_and_not_published(self) -> None:
+        self.assertEqual("scoremosaic-web-preview-v1", CONTRACT["version"])
+        self.assertIs(CONTRACT["stageNumberAssigned"], False)
+        self.assertEqual("repository_only_static_preview_build_no_public_deployment", CONTRACT["scope"])
+        self.assertIs(CONTRACT["previewContent"]["fixtureOnly"], True)
+        self.assertIs(CONTRACT["previewContent"]["productionArtifact"], False)
+        self.assertIs(CONTRACT["previewContent"]["authoritativeTruth"], False)
+        for value in CONTRACT["activationLocks"].values():
+            self.assertIs(value, False)
+
+    def test_security_contract_forbids_network_persistence_and_authority(self) -> None:
+        security = CONTRACT["security"]
+        for key in (
+            "connectSrcNoneRequired",
+            "formActionNoneRequired",
+            "objectSrcNoneRequired",
+            "frameSrcNoneRequired",
+            "baseUriNoneRequired",
+        ):
+            self.assertIs(security[key], True, key)
+        for key in (
+            "externalScriptAllowed",
+            "externalStyleAllowed",
+            "networkApiAllowed",
+            "browserPersistenceAllowed",
+            "cookieUseAllowed",
+            "realUploadAllowed",
+            "realAuthenticationAllowed",
+            "serverWriteAllowed",
+            "approvalExecutionAllowed",
+            "publicationExecutionAllowed",
+        ):
+            self.assertIs(security[key], False, key)
+
+    def test_builder_produces_standalone_deterministic_preview(self) -> None:
+        with tempfile.TemporaryDirectory() as first_tmp, tempfile.TemporaryDirectory() as second_tmp:
+            first = Path(first_tmp) / "site"
+            second = Path(second_tmp) / "site"
+            command = [sys.executable, str(ROOT / "scripts" / "build_web_preview.py"), "--output"]
+            subprocess.run(command + [str(first)], cwd=ROOT, check=True)
+            subprocess.run(command + [str(second)], cwd=ROOT, check=True)
+
+            expected = {
+                ".nojekyll",
+                "PREVIEW-NOTICE.txt",
+                "index.html",
+                "styles.css",
+                "accessibility.css",
+                "edit-intent.css",
+                "fixture.js",
+                "app.js",
+                "edit-intent.js",
+                "preview.css",
+                "application/read-adapter.js",
+                "application/edit-intent-adapter.js",
+                "application/application-state.js",
+                "application/local-application.js",
+            }
+            self.assertEqual(expected, set(tree_digest(first)))
+            self.assertEqual(tree_digest(first), tree_digest(second))
+
+            index = (first / "index.html").read_text(encoding="utf-8")
+            self.assertIn("connect-src 'none'", index)
+            self.assertIn("form-action 'none'", index)
+            self.assertIn("Non-production preview", index)
+            self.assertIn("Fixture data only", index)
+            self.assertNotIn("../stage11-ui-application-contracts/", index)
+            self.assertIn('src="application/read-adapter.js"', index)
+
+    def test_generated_preview_contains_no_network_or_persistence_capabilities(self) -> None:
+        forbidden = (
+            "fetch(",
+            "XMLHttpRequest",
+            "WebSocket",
+            "EventSource",
+            "navigator.sendBeacon",
+            "localStorage",
+            "sessionStorage",
+            "indexedDB",
+            "document.cookie",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "site"
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "build_web_preview.py"), "--output", str(output)],
+                cwd=ROOT,
+                check=True,
+            )
+            for path in output.rglob("*"):
+                if path.is_file() and path.suffix in {".html", ".js", ".css"}:
+                    text = path.read_text(encoding="utf-8")
+                    for token in forbidden:
+                        self.assertNotIn(token, text, f"{token} in {path.relative_to(output)}")
+
+    def test_ci_builds_artifact_but_cannot_deploy_pages(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("actions/upload-artifact@", text)
+        self.assertIn("scoremosaic-web-preview-v1", text)
+        self.assertNotIn("actions/deploy-pages@", text)
+        self.assertNotIn("actions/configure-pages@", text)
+        self.assertNotIn("pages: write", text)
+        self.assertNotIn("id-token: write", text)
+        self.assertNotIn("environment:", text)
+        self.assertIn("contents: read", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
