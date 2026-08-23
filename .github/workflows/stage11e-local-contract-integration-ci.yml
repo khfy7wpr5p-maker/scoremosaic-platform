@@ -1,0 +1,75 @@
+name: Stage 11-E Local Contract Integration CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/stage11e-local-contract-integration-v1"
+    paths:
+      - ".github/workflows/stage11e-local-contract-integration-ci.yml"
+      - "contracts/stage11-*.json"
+      - "docs/stage11*.md"
+      - "prototypes/stage11-ui-application-contracts/**"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage11*.py"
+      - "tests/test_stage10*.py"
+      - "tests/stage11*.js"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/stage11e-local-contract-integration-ci.yml"
+      - "contracts/stage11-*.json"
+      - "docs/stage11*.md"
+      - "prototypes/stage11-ui-application-contracts/**"
+      - "prototypes/stage10-ui-application-experience/**"
+      - "tests/test_stage11*.py"
+      - "tests/test_stage10*.py"
+      - "tests/stage11*.js"
+      - "tests/test_stage8h_disconnected_edit_intent.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-stage11e-local-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate Stage 11 JSON schemas/contracts
+        run: for file in contracts/stage11-*.json; do python -m json.tool "$file" > /dev/null; done
+      - name: Check local JavaScript syntax
+        run: |
+          node --check prototypes/stage11-ui-application-contracts/read-adapter.js
+          node --check prototypes/stage11-ui-application-contracts/edit-intent-adapter.js
+          node --check prototypes/stage11-ui-application-contracts/application-state.js
+          node --check prototypes/stage11-ui-application-contracts/local-application.js
+          node --check prototypes/stage10-ui-application-experience/fixture.js
+          node --check prototypes/stage10-ui-application-experience/app.js
+          node --check prototypes/stage10-ui-application-experience/edit-intent.js
+      - name: Run Stage 11 behavior harnesses
+        run: |
+          node tests/stage11b_read_adapter_behavior.js
+          node tests/stage11c_edit_intent_adapter_behavior.js
+          node tests/stage11d_application_state_behavior.js
+          node tests/stage11e_local_application_integration.js
+      - name: Run complete Stage 11 tests
+        run: python -m unittest discover -s tests -p 'test_stage11*.py' -v
+      - name: Run complete Stage 10 regressions
+        run: python -m unittest discover -s tests -p 'test_stage10*.py' -v
+      - name: Run Stage 8-H browser intent regression
+        run: python -m unittest discover -s tests -p 'test_stage8h_disconnected_edit_intent.py' -v
+      - name: Run Stage 9-I stop-boundary regression
+        run: python -m unittest discover -s tests -p 'test_stage9i_production_foundation_eligibility.py' -v
+      - name: Check repository diff formatting
+        run: git diff --check
