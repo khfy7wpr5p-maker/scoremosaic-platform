@@ -1,0 +1,100 @@
+name: Teacher Review API Harness v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/teacher-review-api-harness-v1"
+    paths:
+      - ".github/workflows/teacher-review-api-harness-v1-ci.yml"
+      - "contracts/teacher-review-api-harness-v1.json"
+      - "contracts/teacher-review-api-v1.json"
+      - "contracts/teacher-review-api-edit-intent-v1.schema.json"
+      - "contracts/teacher-review-api-revision-result-v1.schema.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/teacher-review-api-harness-v1.md"
+      - "docs/teacher-review-api-contract-v1.md"
+      - "docs/architecture.md"
+      - "docs/roadmap.md"
+      - "tests/test_teacher_review_api_harness_v1.py"
+      - "tests/test_teacher_review_api_contract_v1.py"
+      - "tests/test_teacher_review_api_response_security_v1.py"
+      - "tests/test_architecture_consistency.py"
+      - "services/teacher-review-service/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/teacher-review-api-harness-v1-ci.yml"
+      - "contracts/teacher-review-api-harness-v1.json"
+      - "contracts/teacher-review-api-v1.json"
+      - "contracts/teacher-review-api-edit-intent-v1.schema.json"
+      - "contracts/teacher-review-api-revision-result-v1.schema.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/teacher-review-api-harness-v1.md"
+      - "docs/teacher-review-api-contract-v1.md"
+      - "docs/architecture.md"
+      - "docs/roadmap.md"
+      - "tests/test_teacher_review_api_harness_v1.py"
+      - "tests/test_teacher_review_api_contract_v1.py"
+      - "tests/test_teacher_review_api_response_security_v1.py"
+      - "tests/test_architecture_consistency.py"
+      - "services/teacher-review-service/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  teacher-review-api-harness-v1:
+    name: Verify disconnected authenticated API harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate JSON contracts
+        run: |
+          python -m json.tool contracts/teacher-review-api-harness-v1.json > /dev/null
+          python -m json.tool contracts/teacher-review-api-v1.json > /dev/null
+          python -m json.tool contracts/teacher-review-api-edit-intent-v1.schema.json > /dev/null
+          python -m json.tool contracts/teacher-review-api-revision-result-v1.schema.json > /dev/null
+          python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
+
+      - name: Compile Teacher Review library
+        run: python -m compileall -q services/teacher-review-service/src
+
+      - name: Run repository harness contract tests
+        run: python -m unittest discover -s tests -p 'test_teacher_review_api_harness_v1.py' -v
+
+      - name: Run disconnected harness behavior/security tests
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_teacher_review_api_harness_v1.py' -v
+
+      - name: Run parent Teacher Review API contract regressions
+        run: |
+          python -m unittest discover -s tests -p 'test_teacher_review_api_contract_v1.py' -v
+          python -m unittest discover -s tests -p 'test_teacher_review_api_response_security_v1.py' -v
+
+      - name: Run Stage 8-G write boundary regression
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_stage8g_*.py' -v
+
+      - name: Run architecture consistency regression
+        run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Check repository diff formatting
+        run: git diff --check
