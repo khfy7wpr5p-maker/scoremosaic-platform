@@ -4,6 +4,7 @@ from copy import deepcopy
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
@@ -18,6 +19,7 @@ SOURCE = SCRIPT.read_text(encoding="utf-8")
 spec = importlib.util.spec_from_file_location("coolify_preflight", SCRIPT)
 assert spec is not None and spec.loader is not None
 preflight = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = preflight
 spec.loader.exec_module(preflight)
 
 
