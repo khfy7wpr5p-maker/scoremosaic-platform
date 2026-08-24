@@ -205,7 +205,7 @@ def _parse_intent(raw_body: bytes) -> dict[str, Any]:
         _fail("API_REQUEST_TOO_LARGE")
     try:
         payload = json.loads(raw_body.decode("utf-8"))
-    except (UnicodeError, json.JSONDecodeError):
+    except (UnicodeError, ValueError):
         _fail("API_REQUEST_INVALID")
     if type(payload) is not dict:
         _fail("API_REQUEST_INVALID")
@@ -322,7 +322,7 @@ class ApiDocumentContext:
 class ApiHarnessRequest:
     document_id: str
     raw_body: bytes
-    content_type: str
+    content_type: str | None
     origin: str | None
     session_token: str | None
     csrf_token: str | None
@@ -921,7 +921,10 @@ def handle_revision_proposal(
             message="The requested action is not allowed.",
         )
 
-    if request.content_type.lower().strip() != "application/json":
+    if (
+        type(request.content_type) is not str
+        or request.content_type.lower().strip() != "application/json"
+    ):
         return _error_response(
             400,
             correlation_id=correlation_id,
