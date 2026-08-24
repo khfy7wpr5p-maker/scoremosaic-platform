@@ -11,6 +11,8 @@ CONTRACT = json.loads((ROOT / "contracts" / "teacher-review-api-harness-v1.json"
 API = json.loads((ROOT / "contracts" / "teacher-review-api-v1.json").read_text(encoding="utf-8"))
 CURRENT = json.loads((ROOT / "contracts" / "architecture-current-state-v1.json").read_text(encoding="utf-8"))
 DOC = (ROOT / "docs" / "teacher-review-api-harness-v1.md").read_text(encoding="utf-8")
+ARCH = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+ROADMAP = (ROOT / "docs" / "roadmap.md").read_text(encoding="utf-8")
 MODULE = (ROOT / "services" / "teacher-review-service" / "src" / "scoremosaic_teacher_review" / "api_harness.py").read_text(encoding="utf-8")
 PYPROJECT = (ROOT / "services" / "teacher-review-service" / "pyproject.toml").read_text(encoding="utf-8")
 
@@ -106,6 +108,7 @@ class TeacherReviewApiHarnessV1RepositoryTests(unittest.TestCase):
         self.assertIs(harness["stageNumberAssigned"], False)
         self.assertEqual("contracts/teacher-review-api-harness-v1.json", harness["contract"])
         self.assertIs(harness["repositoryHarnessReady"], True)
+        self.assertIs(CURRENT["teacherReview"]["repositoryApiHarnessReady"], True)
         for key in (
             "httpRoutesRegistered",
             "liveNetworkActivated",
@@ -113,6 +116,15 @@ class TeacherReviewApiHarnessV1RepositoryTests(unittest.TestCase):
             "productionIdentityActivated",
         ):
             self.assertIs(harness[key], False, key)
+
+    def test_current_architecture_and_roadmap_name_completed_harness_without_activation(self) -> None:
+        self.assertIn("docs/teacher-review-api-harness-v1.md", ARCH)
+        self.assertIn("Teacher Review API Security Harness v1", ARCH)
+        self.assertIn("Teacher Review API Security Harness v1", ROADMAP)
+        self.assertIn("C. Disconnected authenticated-API adapter / security test harness — ✅ complete repository baseline", ROADMAP)
+        self.assertIn("The next infrastructure step is D", ROADMAP)
+        self.assertIn("No HTTP listener", ARCH)
+        self.assertIn("real provisioning deferred", ARCH)
 
 
 if __name__ == "__main__":
