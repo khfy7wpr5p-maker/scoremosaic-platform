@@ -72,6 +72,18 @@
       "liveWriteApiActivated": false,
       "productionPersistenceActivated": false
     },
+    "teacherReviewApiHarness": {
+      "stageNumberAssigned": false,
+      "status": "APPROVED_REPOSITORY_DISCONNECTED_API_SECURITY_HARNESS_BASELINE",
+      "contract": "contracts/teacher-review-api-harness-v1.json",
+      "repositoryHarnessReady": true,
+      "stage8GCompositionTested": true,
+      "ambiguousMutationReconciliationTested": true,
+      "httpRoutesRegistered": false,
+      "liveNetworkActivated": false,
+      "productionPersistenceActivated": false,
+      "productionIdentityActivated": false
+    },
     "downstreamMusicApplicationIntegration": {
       "stageNumberAssigned": false,
       "status": "ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION",
@@ -97,6 +109,7 @@
     "disconnectedProductUiComplete": true,
     "typedLocalUiApplicationIntegrationComplete": true,
     "repositoryApiContractReady": true,
+    "repositoryApiHarnessReady": true,
     "liveTeacherReviewApiActivated": false,
     "productionWriteActivated": false,
     "productionApprovalPersistenceActivated": false,
