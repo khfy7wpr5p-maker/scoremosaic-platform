@@ -1,0 +1,126 @@
+{
+  "version": "scoremosaic-teacher-review-api-harness-v1",
+  "workstream": "Disconnected Authenticated-API Adapter/Security Harness",
+  "stageNumberAssigned": false,
+  "status": "APPROVED_REPOSITORY_DISCONNECTED_API_SECURITY_HARNESS_BASELINE",
+  "scope": "repository_only_in_process_no_http_no_provider_runtime",
+  "parents": [
+    "scoremosaic-teacher-review-api-v1",
+    "scoremosaic-live-ui-api-security-architecture-v1",
+    "scoremosaic-stage8-server-write-boundary-v1"
+  ],
+  "implementation": {
+    "module": "services/teacher-review-service/src/scoremosaic_teacher_review/api_harness.py",
+    "entryPoint": "handle_revision_proposal",
+    "httpListenerImplemented": false,
+    "routeRegistered": false,
+    "networkTransportImplemented": false,
+    "externalIdentityProviderConnected": false,
+    "productionPersistenceConnected": false
+  },
+  "securityOrder": [
+    "authenticate_session_test_double",
+    "validate_csrf",
+    "validate_exact_origin",
+    "authorize_revision_propose_and_document_scope",
+    "validate_content_type_and_idempotency_header",
+    "parse_and_validate_bounded_api_intent",
+    "authorize_requested_musical_operation",
+    "inspect_server_scoped_idempotency_ledger",
+    "resolve_server_document_context",
+    "resolve_exact_current_document_revision_head",
+    "verify_projection_and_snapshot_binding",
+    "resolve_stable_target_against_current_state",
+    "resolve_current_staff_voice_onset_and_old_value_sha256",
+    "reserve_server_scoped_idempotency_slot",
+    "issue_revision_propose_authorization_grant",
+    "generate_server_command_identity",
+    "construct_and_validate_score_edit_command",
+    "construct_internal_teacher_review_write_request",
+    "invoke_stage8g_authorized_write_boundary",
+    "append_security_audit_evidence",
+    "commit_safe_idempotent_result",
+    "map_safe_public_api_result"
+  ],
+  "browserAuthority": {
+    "browserMayProvideReviewerId": false,
+    "browserMayProvideTenantId": false,
+    "browserMayProvideAuthorizationDecision": false,
+    "browserMayProvideCommandIdentity": false,
+    "browserMayProvideOldValueSha256": false,
+    "browserMayProvideStaffVoiceOnset": false,
+    "browserMayApprove": false,
+    "browserMayPublish": false
+  },
+  "publicOperationSurface": [
+    "set_pitch",
+    "set_effective_duration",
+    "set_dots",
+    "remove_event"
+  ],
+  "idempotency": {
+    "rawKeyLogged": false,
+    "keyMinLength": 16,
+    "keyMaxLength": 128,
+    "exactCommittedReplayReturnsSameRevision": true,
+    "sameKeyDifferentBindingConflicts": true,
+    "ambiguousOutcomeAutoRetried": false,
+    "pendingOutcomeRequiresAuthorizedReconciliation": true,
+    "historicalMutationReplayAuthorityGranted": false
+  },
+  "errorBoundary": {
+    "errorResultsExposeRequestId": false,
+    "errorResultsExposeDocumentId": false,
+    "errorResultsExposeParentIdentity": false,
+    "errorResultsExposeRevisionIdentity": false,
+    "providerExceptionTextMayEscape": false,
+    "sessionTokenMayEscape": false,
+    "csrfTokenMayEscape": false,
+    "rawIdempotencyKeyMayEscape": false,
+    "authorizationSignatureMayEscape": false,
+    "rawMusicXmlMayEscape": false
+  },
+  "ambiguousMutationPolicy": {
+    "writeExceptionAfterReservationIsAmbiguous": true,
+    "auditFailureAfterAppendIsAmbiguous": true,
+    "sameExactRequestWhilePendingInvokesStage8Again": false,
+    "reconciliationRequiredFlag": true
+  },
+  "stage8Composition": {
+    "serverConstructsScoreEditCommand": true,
+    "serverResolvesCurrentOldValuePrecondition": true,
+    "serverResolvesExactStaffVoiceOnset": true,
+    "serverIssuesSealedRevisionProposeGrant": true,
+    "internalWriteEnvelopeConstructedServerSide": true,
+    "stage8GRemainsSingleMutationMaterializer": true,
+    "draftRevisionMayAutoApprove": false,
+    "draftRevisionMayAutoPublish": false
+  },
+  "testDoublePolicy": {
+    "sessionPrincipalTestDoubleAllowed": true,
+    "resourceAuthorizationTestDoubleAllowed": true,
+    "operationAuthorizationTestDoubleAllowed": true,
+    "documentContextTestDoubleAllowed": true,
+    "inMemoryIdempotencyAllowed": true,
+    "realProviderCredentialAllowed": false,
+    "realUserDataAllowed": false
+  },
+  "activationLocks": {
+    "httpRoutesRegistered": false,
+    "httpListenerActivated": false,
+    "browserNetworkActivated": false,
+    "liveTeacherReviewReadApiActivated": false,
+    "liveTeacherReviewWriteApiActivated": false,
+    "authRuntimeActivated": false,
+    "sessionRuntimeActivated": false,
+    "rbacRuntimeActivated": false,
+    "productionPersistenceActivated": false,
+    "productionIdentityActivated": false,
+    "productionSecretsActivated": false,
+    "correctedMusicXmlProductionPersistenceActivated": false,
+    "approvalExecutionActivated": false,
+    "publicationExecutionActivated": false,
+    "publicApiActivated": false,
+    "productionPublicTrafficActivated": false
+  }
+}
