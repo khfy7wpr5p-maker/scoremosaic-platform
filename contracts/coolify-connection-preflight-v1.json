@@ -1,0 +1,116 @@
+{
+  "version": "scoremosaic-coolify-connection-preflight-v1",
+  "stageNumberAssigned": false,
+  "status": "REPOSITORY_COOLIFY_PRIVATE_STAGING_PREFLIGHT_READY_NOT_CONNECTED",
+  "purpose": "Prove the repository-owned Coolify private-staging connection inputs and safety invariants before any provider-side resource, credential, network, domain or traffic activation.",
+  "sourceOfTruth": "contracts/architecture-current-state-v1.json",
+  "target": {
+    "provider": "Coolify",
+    "environment": "staging",
+    "repository": "khfy7wpr5p-maker/scoremosaic-platform",
+    "branch": "main",
+    "baseDirectory": "/",
+    "composePath": "/deploy/coolify/staging/compose.yaml",
+    "environmentTemplate": "/deploy/coolify/staging/.env.example",
+    "publicDomains": [],
+    "productionFlag": false,
+    "gitConnectedApplication": true,
+    "buildPack": "docker-compose"
+  },
+  "expectedServices": {
+    "homr-foundation": {
+      "internalPort": 8080,
+      "healthPath": "/health",
+      "readyPath": "/ready"
+    },
+    "clarity-foundation": {
+      "internalPort": 8081,
+      "healthPath": "/health",
+      "readyPath": "/ready"
+    },
+    "audiveris-foundation": {
+      "internalPort": 8082,
+      "healthPath": "/health",
+      "readyPath": "/ready"
+    },
+    "omr-gateway": {
+      "internalPort": 8090,
+      "healthPath": "/health",
+      "readyPath": "/ready",
+      "requiredReadyState": "orchestration_disabled",
+      "requiredReadyHttpStatus": 503
+    }
+  },
+  "composeSecurityInvariants": {
+    "onlyExpectedServices": true,
+    "hostPortsPublished": false,
+    "traefikRoutingEnabled": false,
+    "internalNetworkRequired": true,
+    "internalNetworkName": "omr-internal",
+    "readOnlyRootFilesystemRequired": true,
+    "nonRootUidGid": "65532:65532",
+    "dropAllCapabilities": true,
+    "noNewPrivilegesRequired": true,
+    "persistentScoreVolumesAllowed": false,
+    "temporaryWorkspacesOnly": true,
+    "gatewayOrchestrationMode": "disabled"
+  },
+  "repositoryPreflight": {
+    "deterministicValidator": "scripts/validate_coolify_connection_preflight.py",
+    "ciWorkflow": ".github/workflows/coolify-connection-preflight-v1-ci.yml",
+    "renderedComposeMustPass": true,
+    "nonSecretEnvironmentTemplateMustPass": true,
+    "architectureActivationLocksMustRemainFalse": true,
+    "preflightArtifactMayBeUploadedToGitHubActions": true,
+    "preflightArtifactIsDeployment": false
+  },
+  "externalInputsRequiredAtConnection": [
+    {
+      "name": "coolifyBaseUrl",
+      "resolved": false,
+      "secret": false
+    },
+    {
+      "name": "coolifyProjectOrEnvironmentIdentity",
+      "resolved": false,
+      "secret": false
+    },
+    {
+      "name": "coolifyDestinationServerIdentity",
+      "resolved": false,
+      "secret": false
+    },
+    {
+      "name": "coolifyGitSourceOrRepositoryAccess",
+      "resolved": false,
+      "secret": true
+    }
+  ],
+  "licenseAndPromotionLocks": {
+    "clarityModelLicenseApprovedForProduction": false,
+    "homrModelLicenseApprovedForProduction": false,
+    "thirdPartyProductionRedistributionApproved": false,
+    "publicOrUserFacingDeploymentAuthorized": false,
+    "realUserDocumentsAuthorized": false
+  },
+  "activationLocks": {
+    "coolifyConnected": false,
+    "providerResourceCreated": false,
+    "providerCredentialsStored": false,
+    "providerNetworkActivated": false,
+    "publicDomainAssigned": false,
+    "publicRouteEnabled": false,
+    "gatewayOrchestrationActivated": false,
+    "productionPersistenceActivated": false,
+    "publicApiActivated": false,
+    "productionTrafficActivated": false,
+    "realUserUploadsAllowed": false
+  },
+  "handoff": {
+    "repositoryPreflightCanCompleteWithoutProviderFacts": true,
+    "externalConnectionRequiresProviderFacts": true,
+    "externalConnectionRequiresSeparateOperationalExecution": true,
+    "connectionTargetMustRemainPrivateStaging": true,
+    "connectionDoesNotAuthorizeProduction": true
+  }
+}

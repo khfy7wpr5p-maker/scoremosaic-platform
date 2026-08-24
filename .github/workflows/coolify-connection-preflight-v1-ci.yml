@@ -1,0 +1,126 @@
+name: Coolify Connection Preflight v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "infra/coolify-connection-preflight-v1"
+    paths:
+      - ".github/workflows/coolify-connection-preflight-v1-ci.yml"
+      - "contracts/coolify-connection-preflight-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "deploy/coolify/staging/**"
+      - "scripts/validate_coolify_connection_preflight.py"
+      - "tests/test_coolify_connection_preflight_v1.py"
+      - "docs/coolify-connection-preflight-v1.md"
+      - "tests/test_architecture_consistency.py"
+      - "tests/test_license_policy.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/coolify-connection-preflight-v1-ci.yml"
+      - "contracts/coolify-connection-preflight-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "deploy/coolify/staging/**"
+      - "scripts/validate_coolify_connection_preflight.py"
+      - "tests/test_coolify_connection_preflight_v1.py"
+      - "docs/coolify-connection-preflight-v1.md"
+      - "tests/test_architecture_consistency.py"
+      - "tests/test_license_policy.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coolify-connection-preflight-v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-preflight:
+    name: Validate private Coolify connection preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate preflight and architecture JSON
+        run: |
+          python -m json.tool contracts/coolify-connection-preflight-v1.json > /dev/null
+          python -m json.tool contracts/architecture-current-state-v1.json > /dev/null
+
+      - name: Run preflight unit and fail-closed regressions
+        run: python -m unittest discover -s tests -p 'test_coolify_connection_preflight_v1.py' -v
+
+      - name: Render exact private staging Compose
+        run: |
+          docker compose \
+            --env-file deploy/coolify/staging/.env.example \
+            -f deploy/coolify/staging/compose.yaml \
+            config --format json > /tmp/scoremosaic-coolify-staging-rendered.json
+
+      - name: Validate exact rendered connection target
+        run: |
+          python scripts/validate_coolify_connection_preflight.py \
+            --rendered-compose /tmp/scoremosaic-coolify-staging-rendered.json \
+            --output /tmp/scoremosaic-coolify-connection-preflight-v1.json
+
+      - name: Verify handoff remains non-deployment
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(
+              Path('/tmp/scoremosaic-coolify-connection-preflight-v1.json').read_text(encoding='utf-8')
+          )
+          assert payload['repositoryPreflightPassed'] is True
+          assert payload['externalConnectionPerformed'] is False
+          assert payload['deploymentPerformed'] is False
+          assert payload['productionAuthorized'] is False
+          assert payload['realUserDataAuthorized'] is False
+          assert payload['target']['provider'] == 'Coolify'
+          assert payload['target']['environment'] == 'staging'
+          assert payload['target']['publicDomains'] == []
+          assert all(value is False for value in payload['activationLocks'].values())
+          PY
+
+      - name: Run architecture consistency regression
+        run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+
+      - name: Run licensing policy regression
+        run: python -m unittest discover -s tests -p 'test_license_policy.py' -v
+
+      - name: Validate existing Coolify staging syntax
+        run: |
+          docker compose \
+            --env-file deploy/coolify/staging/.env.example \
+            -f deploy/coolify/staging/compose.yaml \
+            config --quiet
+
+      - name: Upload repository-only preflight handoff
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scoremosaic-coolify-connection-preflight-v1
+          path: /tmp/scoremosaic-coolify-connection-preflight-v1.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Check repository diff formatting
+        run: git diff --check

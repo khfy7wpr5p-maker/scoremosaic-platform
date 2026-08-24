@@ -84,6 +84,19 @@
       "productionPersistenceActivated": false,
       "productionIdentityActivated": false
     },
+    "coolifyConnectionPreflight": {
+      "stageNumberAssigned": false,
+      "status": "REPOSITORY_COOLIFY_PRIVATE_STAGING_PREFLIGHT_READY_NOT_CONNECTED",
+      "contract": "contracts/coolify-connection-preflight-v1.json",
+      "repositoryPreflightReady": true,
+      "renderedComposeValidationReady": true,
+      "nonSecretEnvironmentValidationReady": true,
+      "providerConnectionPerformed": false,
+      "providerResourcesCreated": false,
+      "providerCredentialsConfigured": false,
+      "publicRouteEnabled": false,
+      "productionActivation": false
+    },
     "downstreamMusicApplicationIntegration": {
       "stageNumberAssigned": false,
       "status": "ARCHITECTURE_ONLY_FUTURE_DOWNSTREAM_INTEGRATION",
@@ -123,6 +136,7 @@
     "objectStoragePlanDocumented": true,
     "authentikPlanDocumented": true,
     "infisicalEligibilityPlanDocumented": true,
+    "coolifyPrivateStagingRepositoryPreflightReady": true,
     "providerResourcesCreated": false,
     "productionCredentialsProvisioned": false,
     "productionNetworkActivated": false,
