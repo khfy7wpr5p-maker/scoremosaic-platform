@@ -12,6 +12,7 @@ Historical Gate B-E details remain documented in their dedicated gate documents.
 - `docs/web-preview-v1.md`
 - `docs/live-ui-api-security-architecture-v1.md`
 - `docs/teacher-review-api-contract-v1.md`
+- `docs/teacher-review-api-harness-v1.md`
 - `docs/downstream-music-application-integration-boundary.md`
 - `docs/licensing-governance.md`
 
@@ -205,7 +206,36 @@ The initial browser operation surface remains the four Stage 11 families: `set_p
 
 No HTTP route is registered by this contract. Live read/write API, browser networking, ScoreEditCommand/TeacherScoreRevision creation, production persistence, approval, publication and public API traffic remain false.
 
-### 5.4 Downstream music-application integration boundary
+### 5.4 Teacher Review API Security Harness v1 — approved unnumbered repository workstream
+
+The disconnected implementation baseline is defined by `contracts/teacher-review-api-harness-v1.json` and `docs/teacher-review-api-harness-v1.md`.
+
+It exercises the future mutation path against deterministic non-production collaborators without opening a network route:
+
+```text
+non-authoritative API intent
+  -> session test double
+  -> CSRF + exact Origin
+  -> document/resource authorization
+  -> bounded closed parser
+  -> musical-operation authorization
+  -> server idempotency/reconciliation ledger
+  -> fresh durable head + exact projection/snapshot check
+  -> server-resolved staff/voice/onset + oldValueSha256
+  -> server-issued revision:propose grant
+  -> server-created ScoreEditCommand
+  -> internal Stage 8-G write request
+  -> Stage 8-G
+  -> immutable draft TeacherScoreRevision
+  -> safe audit evidence
+  -> bounded public result
+```
+
+This harness proves server construction of authority-sensitive fields, exact Stage 8-G composition, stale-target/snapshot rejection, exact idempotent replay, conflicting-key rejection and ambiguous mutation quarantine. An exception after mutation begins or an audit failure after append remains pending and requires authorized reconciliation; it is never automatically retried as a fresh mutation.
+
+No HTTP listener, route, browser network, Authentik runtime, provider credential, production persistence, production secret, approval execution, publication execution or production public API is activated.
+
+### 5.5 Downstream music-application integration boundary
 
 Validated ScoreMosaic musical artifacts may later feed sibling applications only through a dedicated downstream boundary.
 
@@ -297,6 +327,7 @@ Approved unnumbered workstreams:
 | Web Preview v1 | Public fixture-only Pages preview deployed and verified | Deterministic CSP-locked preview is public; browser API, persistence, real data and production traffic remain off. |
 | Live UI ↔ API Security Architecture | Approved repository baseline; runtime locked | Identity/session, authorization, API transport, CSRF/origin/CSP, idempotency, audit and rollback rules defined without network activation. |
 | Teacher Review API Contract v1 | Approved repository API baseline; routes locked | Exact read/revision-proposal contracts bridge non-authoritative browser intent to Stage 8 server authority without registering HTTP routes. |
+| Teacher Review API Security Harness v1 | Approved repository execution harness; runtime locked | Deterministic in-process auth/CSRF/resource/snapshot/idempotency/Stage 8-G composition is tested without HTTP, provider credentials or production persistence. |
 | Downstream Music Application Integration | Architecture-only | Safe post-validation seam reserved; MusicXML-to-GuitarTab-Engine live integration remains off. |
 
 ## 8. Authority invariants
@@ -327,6 +358,7 @@ Approved unnumbered workstreams:
 - deterministic non-production Web Preview artifact build, CI boundary and verified fixture-only GitHub Pages deployment;
 - approved Live UI ↔ API repository security architecture baseline;
 - approved Teacher Review API repository contract baseline;
+- disconnected Teacher Review API Security Harness with exact Stage 8-G mutation composition and reconciliation tests;
 - architecture-only downstream music-application seam.
 
 ### Repository evidence does not prove

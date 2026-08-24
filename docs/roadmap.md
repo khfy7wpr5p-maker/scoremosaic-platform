@@ -20,11 +20,12 @@ Every capability is gated. Code presence, model accuracy, a successful UI demo, 
 | Web Preview v1 | ✅ Public fixture preview verified | Deterministic CSP-locked GitHub Pages preview is deployed; browser API, persistence, real data and production authority remain off. |
 | Live UI↔API Security Architecture | ✅ Complete repository baseline | OIDC/session, server authorization, CSRF/origin/CSP, idempotency, audit and rollback contracts complete; runtime off. |
 | Teacher Review API Contract v1 | ✅ Complete repository baseline | Exact read + bounded revision-proposal API contracts bridge browser intent to Stage 8 authority; no routes registered. |
+| Teacher Review API Security Harness v1 | ✅ Complete repository baseline | Disconnected authenticated mutation adapter composes API intent to Stage 8-G with server-derived authority, idempotency/reconciliation and safe audit/error mapping; no HTTP/runtime activation. |
 | Downstream Music Application Integration | 🟡 Architecture-only seam | Validated/approved MusicXML may later feed bounded derivative services; GuitarTab live integration off. |
 | ST-OMR architecture/development track | 🟡 Isolated | Not in Gateway/Stage 7 quorum; no production authority. |
 | Production infrastructure | 🔒 Not activated | No paid/provider resources, production DB/object store, credentials, DNS/TLS or public traffic activated by repo stages. |
 | Public Web Preview | ✅ Fixture-only GitHub Pages active | Public URL and preview traffic are verified; this grants no live API, persistence, real-data or production authority. |
-| Live Teacher Review API | 🔒 Not activated | Security/API contracts exist, but HTTP routes, live auth, browser network and production persistence remain gated. |
+| Live Teacher Review API | 🔒 Not activated | Security/API contracts and disconnected harness exist, but HTTP routes, live auth, browser network and production persistence remain gated. |
 | Publication execution | 🔒 Not activated | Stage 8-O stops at non-executing publisher-bound handoff. |
 | Playback | 🔒 Not activated | Review timeline/presentation state exists; no real audio/MIDI/SoundFont runtime. |
 
@@ -43,11 +44,12 @@ Safe Intake
   -> Web Preview v1  [unnumbered, public fixture-only Pages preview]
   -> Live UI↔API Security Architecture  [unnumbered, repository only]
   -> Teacher Review API Contract v1  [unnumbered, repository only]
+  -> Teacher Review API Security Harness v1  [unnumbered, repository only]
   -> High-fidelity Figma / prototype
   -> [LIVE/EXTERNAL GATES]
 ```
 
-UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. Web Preview v1, Live UI↔API Security and Teacher Review API are likewise unnumbered and do not imply a Stage 12 assignment.
+UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. Web Preview v1, Live UI↔API Security, Teacher Review API and the disconnected API Security Harness are likewise unnumbered and do not imply a Stage 12 assignment.
 
 ## Approved repository workstream — UI Architecture Phase 1
 
@@ -156,6 +158,35 @@ Stage 8's broader internal closed vocabulary is not implicitly exposed.
 
 No approval/publication endpoints are defined here. No HTTP route is registered and no live network/server write/production persistence is activated.
 
+## Completed repository execution harness — Teacher Review API Security Harness v1
+
+Goal: prove the mutation-side API/security composition against deterministic non-production collaborators before external runtime provisioning.
+
+Implemented repository path:
+
+```text
+non-authoritative edit intent
+  -> session test double
+  -> CSRF + exact Origin
+  -> document/resource authorization
+  -> closed bounded API parser
+  -> operation authorization
+  -> server-scoped idempotency/reconciliation ledger
+  -> exact current durable head + projection/snapshot binding
+  -> server-resolved staff/voice/onset + oldValueSha256
+  -> server-issued revision:propose grant
+  -> server-created ScoreEditCommand
+  -> internal teacher-review-write-request-v1
+  -> exact Stage 8-G mutation boundary
+  -> immutable draft revision
+  -> safe audit evidence
+  -> bounded public response
+```
+
+Verified behavior includes malformed/hostile request gating, forbidden authority fields, cross-tenant non-disclosure, stale projection/snapshot/target rejection, exact idempotent replay, same-key/different-digest conflict, ambiguous-write quarantine and audit-failure reconciliation behavior.
+
+This workstream does not register HTTP routes, open a listener, connect Authentik, use provider credentials, activate browser networking or production persistence. Activation effect: none.
+
 ## Approved architecture-only extension — downstream music applications
 
 Goal: preserve a safe seam for future sibling music applications without coupling them into OMR or Teacher Review authority.
@@ -185,7 +216,7 @@ Required:
 - architecture-current-state contract;
 - cross-document consistency tests;
 - stale/current document classification;
-- UI/preview/security/API/downstream integration drift guards;
+- UI/preview/security/API/harness/downstream integration drift guards;
 - no current document may overclaim production activation.
 
 Activation effect: none.
@@ -222,15 +253,15 @@ Required before any ST-OMR production promotion:
 
 Current Audiveris/HOMR/Clarity production-candidate contracts remain unchanged until a versioned migration passes these gates.
 
-### C. Disconnected authenticated-API adapter / security test harness
+### C. Disconnected authenticated-API adapter / security test harness — ✅ complete repository baseline
 
 Goal: implement the security/API contracts against deterministic non-production collaborators without enabling browser networking or production identity/persistence.
 
-Required before any live runtime activation:
+Completed evidence:
 
-- contract-faithful request/response adapter;
+- contract-faithful bounded mutation request/response adapter;
 - server-side principal/resource-scope test doubles only;
-- CSRF/origin/idempotency/stale-parent negative tests;
+- CSRF/origin/idempotency/stale-snapshot negative tests;
 - server construction of ScoreEditCommand from non-authoritative intent;
 - exact Stage 8-G boundary composition;
 - reconciliation behavior for ambiguous mutations;
@@ -238,7 +269,7 @@ Required before any live runtime activation:
 - no HTTP listener/public route;
 - no provider credentials or production persistence.
 
-Activation effect: none.
+Activation effect: none. The next infrastructure step is D and requires external operational authority.
 
 ### D. External production provisioning
 
