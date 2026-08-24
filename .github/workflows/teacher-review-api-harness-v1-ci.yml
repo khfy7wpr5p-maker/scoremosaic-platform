@@ -80,7 +80,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_teacher_review_api_harness_v1.py' -v
 
       - name: Run disconnected harness behavior/security tests
-        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_teacher_review_api_harness_v1.py' -v
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_teacher_review_api_harness_v1*.py' -v
 
       - name: Run parent Teacher Review API contract regressions
         run: |
