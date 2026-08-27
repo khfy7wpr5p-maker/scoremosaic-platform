@@ -1,0 +1,93 @@
+.workspace {
+  grid-template-areas:
+    "issues score edit"
+    "issues orchestration edit"
+    "issues evidence edit";
+}
+
+.orchestration-preview-panel {
+  grid-area: orchestration;
+  min-width: 0;
+}
+
+.orchestration-preview-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.orchestration-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.orchestration-confidence,
+.orchestration-preview-footnote {
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+}
+
+.orchestration-alternatives h3 {
+  margin: 4px 0 8px;
+  font-size: 0.95rem;
+}
+
+.orchestration-alternative-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orchestration-alternative {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.orchestration-lineage {
+  margin-top: 12px;
+}
+
+.orchestration-lineage dd {
+  overflow-wrap: anywhere;
+}
+
+.orchestration-preview-unavailable {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+@media (max-width: 1050px) {
+  .workspace {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "issues"
+      "score"
+      "orchestration"
+      "edit"
+      "evidence";
+  }
+
+  .orchestration-preview-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (forced-colors: active) {
+  .orchestration-preview-card,
+  .orchestration-preview-unavailable {
+    border: 1px solid CanvasText;
+  }
+}
