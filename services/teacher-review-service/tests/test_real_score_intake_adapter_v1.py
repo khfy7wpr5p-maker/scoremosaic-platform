@@ -100,6 +100,15 @@ class RealScoreIntakeAdapterV1Tests(unittest.TestCase):
         self.assertEqual(second_events[0]["kind"], "note")
         self.assertEqual(second_events[0]["note"]["pitch"]["step"], "G")
 
+    def test_unnamed_part_uses_canonical_part_id_as_core_name(self) -> None:
+        score = canonical_score()
+        canonical_part_id = score["parts"][0]["partId"]
+        score["parts"][0]["name"] = None
+        rehash(score)
+        payload, score = v1_1_payload(score)
+        runtime = build_real_score_runtime_projection(payload, musicxml=MUSICXML, canonical_score=score).as_dict()
+        self.assertEqual(runtime["score"]["parts"][0]["name"], canonical_part_id)
+
     def test_projection_is_deterministic(self) -> None:
         payload, score = v1_1_payload()
         first = build_real_score_runtime_projection(payload, musicxml=MUSICXML, canonical_score=score).as_dict()
@@ -170,6 +179,18 @@ class RealScoreIntakeAdapterV1Tests(unittest.TestCase):
             "severity": "warning",
             "message": "MusicXML attribute 'clef' is preserved only in the raw candidate.",
             "xmlPath": "/score-partwise/part[1]/measure[1]/attributes[1]/clef",
+        }]
+        rehash(score)
+        payload, score = v1_1_payload(score)
+        self.assert_adapter_error(payload, score, "ADAPTER_V1_NOTATION_COVERAGE_UNSUPPORTED")
+
+    def test_truncated_diagnostics_fail_closed(self) -> None:
+        score = canonical_score()
+        score["diagnostics"] = [{
+            "code": "diagnostics-truncated",
+            "severity": "warning",
+            "message": "Additional normalization diagnostics were omitted.",
+            "xmlPath": None,
         }]
         rehash(score)
         payload, score = v1_1_payload(score)
