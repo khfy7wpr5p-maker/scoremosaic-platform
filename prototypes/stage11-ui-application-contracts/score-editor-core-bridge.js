@@ -3,7 +3,7 @@
 
   const fixture = window.ScoreMosaicFixture;
   const runtime = window.STScoreEditorCoreRuntime;
-  const CORE_COMMIT = '70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b';
+  const CORE_COMMIT = 'b317abef915d1e16b37572221a38feb3e504450d';
   const INTEGRATION_VERSION = 'scoremosaic-st-score-editor-core-bridge-v1';
   let sequence = 0;
   let session = null;
@@ -160,9 +160,9 @@
     sequence += 1;
     const suffix = String(sequence).padStart(4, '0');
     return freezeDeep({
-      transactionId: `e7g-tx-${suffix}`,
-      commandId: `e7g-cmd-${suffix}`,
-      nextRevisionId: `fixture-e7g-r${suffix}`
+      transactionId: `e7h-tx-${suffix}`,
+      commandId: `e7h-cmd-${suffix}`,
+      nextRevisionId: `fixture-e7h-r${suffix}`
     });
   };
 
