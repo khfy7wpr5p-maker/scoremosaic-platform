@@ -99,6 +99,9 @@ PREVIEW_STYLES = """\
 .score-render-host[hidden] {
   display: none;
 }
+#score-fixture-fallback[hidden] {
+  display: none;
+}
 """
 
 PREVIEW_BANNER = (
@@ -236,11 +239,15 @@ def _inject_renderer_html(source_html: str) -> str:
         1,
     )
     html = html.replace("<body>", f"<body>\n  {PREVIEW_BANNER}", 1)
-    html = html.replace(
-        '<div class="page-stack">',
-        '<div id="score-render-host" class="score-render-host" hidden aria-label="Rendered fixture score"></div>\n        <div class="page-stack" id="score-fixture-fallback">',
-        1,
+
+    score_canvas = '<div class="score-canvas" role="img" aria-label="Repository-owned fixture score presentation; not musical authority.">'
+    score_surfaces = (
+        '<div id="score-render-host" class="score-render-host" hidden aria-label="Rendered fixture score"></div>\n'
+        '          <div id="score-fixture-fallback" class="score-canvas" role="img" aria-label="Repository-owned fixture score presentation; not musical authority.">'
     )
+    if html.count(score_canvas) != 1:
+        raise ValueError("preview source score canvas drifted; refusing renderer surface injection")
+    html = html.replace(score_canvas, score_surfaces, 1)
 
     source_scripts = (
         '  <script src="fixture.js" defer></script>\n'
