@@ -58,7 +58,16 @@ const readContract = () => {
   if (transport.route !== ROUTE || transport.authenticationScheme !== 'hmac-sha256-v1' || transport.keyId !== KEY_ID) throw new StagingPreviewAdapterError('transport identity drift');
   if (transport.minimumSecretBytes !== 32 || transport.maximumClockSkewSeconds !== 300) throw new StagingPreviewAdapterError('authentication limits drift');
   if (transport.requestSizeLimitBytes !== MAX_REQUEST_BYTES || transport.responseSizeLimitBytes !== MAX_RESPONSE_BYTES || transport.timeoutMs !== TIMEOUT_MS) throw new StagingPreviewAdapterError('transport bounds drift');
-  if (transport.httpsRequiredForNonLoopback !== true || transport.loopbackHttpAllowedForExplicitTestHarnessOnly !== true || transport.redirectsAllowed !== false || transport.realCredentialMayBeCommitted !== false || transport.externalStagingDeploymentProvisionedByRepository !== false) {
+  if (
+    transport.httpsRequiredForNonLoopback !== true
+    || transport.nonLoopbackAllowedOriginPinRequired !== true
+    || transport.loopbackHttpAllowedForExplicitTestHarnessOnly !== true
+    || transport.redirectsAllowed !== false
+    || transport.endpointCredentialsInUrlAllowed !== false
+    || transport.endpointQueryOrFragmentAllowed !== false
+    || transport.realCredentialMayBeCommitted !== false
+    || transport.externalStagingDeploymentProvisionedByRepository !== false
+  ) {
     throw new StagingPreviewAdapterError('transport safety boundary drift');
   }
   const browser = contract.browserBoundary || {};
@@ -86,7 +95,21 @@ const normalizeSecret = (secret) => {
 
 const isLoopback = (hostname) => ['127.0.0.1', '::1', '[::1]', 'localhost'].includes(hostname);
 
-const validateEndpoint = (endpoint, {allowLoopbackHttpForTest = false} = {}) => {
+const parseAllowedOrigin = (allowedOrigin) => {
+  if (typeof allowedOrigin !== 'string' || allowedOrigin.trim() === '') {
+    throw new StagingPreviewAdapterError('non-loopback staging endpoint requires an exact allowed origin pin');
+  }
+  let pinned;
+  try { pinned = new URL(allowedOrigin); }
+  catch (error) { throw new StagingPreviewAdapterError(`invalid allowed staging origin: ${error.message}`); }
+  if (pinned.username || pinned.password) throw new StagingPreviewAdapterError('allowed staging origin credentials are forbidden');
+  if (pinned.search || pinned.hash) throw new StagingPreviewAdapterError('allowed staging origin query/fragment is forbidden');
+  if (pinned.pathname !== '/') throw new StagingPreviewAdapterError('allowed staging origin must not contain a path');
+  if (pinned.protocol !== 'https:') throw new StagingPreviewAdapterError('allowed staging origin must use HTTPS');
+  return pinned;
+};
+
+const validateEndpoint = (endpoint, {allowLoopbackHttpForTest = false, allowedOrigin} = {}) => {
   let url;
   try { url = new URL(endpoint); } catch (error) { throw new StagingPreviewAdapterError(`invalid staging endpoint: ${error.message}`); }
   if (url.username || url.password) throw new StagingPreviewAdapterError('staging endpoint credentials in URL are forbidden');
@@ -94,7 +117,12 @@ const validateEndpoint = (endpoint, {allowLoopbackHttpForTest = false} = {}) => 
   if (url.pathname !== '/') throw new StagingPreviewAdapterError('staging endpoint must be an origin URL without a path');
   if (url.protocol === 'http:') {
     if (!allowLoopbackHttpForTest || !isLoopback(url.hostname)) throw new StagingPreviewAdapterError('plain HTTP is allowed only for an explicit loopback test harness');
-  } else if (url.protocol !== 'https:') {
+  } else if (url.protocol === 'https:') {
+    if (!isLoopback(url.hostname)) {
+      const pinned = parseAllowedOrigin(allowedOrigin);
+      if (pinned.origin !== url.origin) throw new StagingPreviewAdapterError('staging endpoint origin does not match the allowed origin pin');
+    }
+  } else {
     throw new StagingPreviewAdapterError('non-loopback staging transport requires HTTPS');
   }
   return url;
@@ -174,10 +202,10 @@ const validateResult = (wrapper, input, contract = readContract()) => {
   return freezeDeep(deepCopy(wrapper));
 };
 
-const requestStagingPreview = ({endpoint, secret, input, allowLoopbackHttpForTest = false, timestamp, nonce, timeoutMs = TIMEOUT_MS}) => {
+const requestStagingPreview = ({endpoint, secret, input, allowLoopbackHttpForTest = false, allowedOrigin, timestamp, nonce, timeoutMs = TIMEOUT_MS}) => {
   const contract = readContract();
   const validatedInput = validateInput(input, contract);
-  const endpointUrl = validateEndpoint(endpoint, {allowLoopbackHttpForTest});
+  const endpointUrl = validateEndpoint(endpoint, {allowLoopbackHttpForTest, allowedOrigin});
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > contract.transportBoundary.timeoutMs) throw new StagingPreviewAdapterError('timeout exceeds staging contract');
   const signed = buildSignedRequest(validatedInput, secret, {timestamp, nonce});
   if (signed.body.length > contract.transportBoundary.requestSizeLimitBytes) throw new StagingPreviewAdapterError('signed request exceeds staging contract');
