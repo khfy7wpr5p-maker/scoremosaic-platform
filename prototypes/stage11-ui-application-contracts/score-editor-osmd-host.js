@@ -112,12 +112,7 @@
   };
 
   const measuredWidth = () => {
-    const candidates = [
-      Number(host.clientWidth),
-      Number(scorePanel?.clientWidth),
-      Number(host.getBoundingClientRect?.().width),
-      Number(scorePanel?.getBoundingClientRect?.().width)
-    ];
+    const candidates = [Number(host.clientWidth), Number(scorePanel?.clientWidth)];
     const width = candidates.find((candidate) => Number.isFinite(candidate) && candidate > 0);
     return width ?? FIT_WIDTH_POLICY.referenceWidth;
   };
