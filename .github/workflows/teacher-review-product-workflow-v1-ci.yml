@@ -1,0 +1,47 @@
+name: Teacher Review Product Workflow v1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teacher-review-product-workflow-v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-teacher-review-product-workflow:
+    name: Validate Teacher Review product workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Run Teacher Review product workflow regressions
+        run: python -m unittest discover -s tests -p 'test_teacher_review_product_workflow_v1.py' -v
+
+      - name: Check browser JavaScript syntax
+        run: node --check prototypes/stage10-ui-application-experience/app.js
+
+      - name: Check repository diff formatting
+        run: git diff --check
