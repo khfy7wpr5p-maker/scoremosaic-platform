@@ -204,11 +204,11 @@ jobs:
             --virtual-time-budget=12000 \
             --dump-dom \
             http://127.0.0.1:8765/ > /tmp/e7h-real-osmd-dom.html
-          grep -F 'data-e7h-real-osmd-smoke="pass"' /tmp/e7h-real-osmd-dom.html
-          grep -F 'E7H_REAL_OSMD_BROWSER_SMOKE_PASS:' /tmp/e7h-real-osmd-dom.html
           if grep -F 'E7H_REAL_OSMD_BROWSER_SMOKE_FAIL:' /tmp/e7h-real-osmd-dom.html; then
             exit 1
           fi
+          grep -F 'data-e7h-real-osmd-smoke="pass"' /tmp/e7h-real-osmd-dom.html
+          grep -F 'E7H_REAL_OSMD_BROWSER_SMOKE_PASS:' /tmp/e7h-real-osmd-dom.html
 
       - name: Verify preview entrypoint and safety marker
         shell: bash
