@@ -1,0 +1,88 @@
+name: Real Score Core Runtime v1 CI
+
+on:
+  push:
+    branches:
+      - "feature/real-score-intake-adapter-v1"
+    paths:
+      - ".github/workflows/real-score-core-runtime-v1-ci.yml"
+      - "prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js"
+      - "tests/e7k_real_score_core_bridge_runtime.js"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/real_score_intake_adapter_v1.py"
+      - "services/teacher-review-service/tests/test_real_score_intake_adapter_v1.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/real-score-core-runtime-v1-ci.yml"
+      - "prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js"
+      - "tests/e7k_real_score_core_bridge_runtime.js"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/real_score_intake_adapter_v1.py"
+      - "services/teacher-review-service/tests/test_real_score_intake_adapter_v1.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-score-core-runtime-v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CORE_COMMIT: b317abef915d1e16b37572221a38feb3e504450d
+
+jobs:
+  exact-core-runtime:
+    name: Validate real score against exact Core runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out ScoreMosaic
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Check out exact ST Score Editor Core
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: khfy7wpr5p-maker/st-score-editor-core
+          ref: ${{ env.CORE_COMMIT }}
+          path: .integration/st-score-editor-core
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Verify exact Core commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .integration/st-score-editor-core rev-parse HEAD)" = "$CORE_COMMIT"
+
+      - name: Build and test exact Core
+        working-directory: .integration/st-score-editor-core
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          npm run ci
+
+      - name: Validate E7-K JavaScript
+        run: |
+          node --check prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js
+          node --check tests/e7k_real_score_core_bridge_runtime.js
+
+      - name: Run E7-K exact-Core runtime regression
+        run: node tests/e7k_real_score_core_bridge_runtime.js .integration/st-score-editor-core/dist/browser/st-score-editor-core.runtime.js
+
+      - name: Check repository diff formatting
+        run: git diff --check
