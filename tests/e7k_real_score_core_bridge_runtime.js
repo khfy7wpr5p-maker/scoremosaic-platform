@@ -93,14 +93,19 @@ const runtimeInput = () => ({
 });
 
 const boot = (input, fixture) => {
-  const window = {};
-  if (input !== undefined) window.ScoreMosaicRealScoreRuntimeInput = input;
-  if (fixture !== undefined) window.ScoreMosaicFixture = fixture;
-  const context = vm.createContext({window, console});
+  const context = vm.createContext({
+    console,
+    inputJson: input === undefined ? null : JSON.stringify(input),
+    fixtureJson: fixture === undefined ? null : JSON.stringify(fixture)
+  });
+  vm.runInContext(
+    "globalThis.window = {}; if (inputJson !== null) window.ScoreMosaicRealScoreRuntimeInput = JSON.parse(inputJson); if (fixtureJson !== null) window.ScoreMosaicFixture = JSON.parse(fixtureJson);",
+    context
+  );
   vm.runInContext(coreBundle, context, {filename: 'st-score-editor-core.runtime.js'});
-  window.STScoreEditorCoreRuntime = context.STScoreEditorCoreRuntime;
+  vm.runInContext('window.STScoreEditorCoreRuntime = globalThis.STScoreEditorCoreRuntime;', context);
   vm.runInContext(bridgeSource, context, {filename: 'score-editor-core-bridge.js'});
-  return window.ScoreMosaicScoreEditorCoreBridge;
+  return context.window.ScoreMosaicScoreEditorCoreBridge;
 };
 
 const inspectorField = (inspector, key) => inspector?.fields?.find((field) => field.key === key)?.value ?? null;
