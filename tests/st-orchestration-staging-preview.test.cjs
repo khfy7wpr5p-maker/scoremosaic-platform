@@ -27,6 +27,7 @@ const UI = path.join(ROOT, 'prototypes', 'stage10-ui-application-experience', 'o
 const SYNTHETIC_TEST_KEY = 'scoremosaic-h7d-ci-noncredential-key-material-32-bytes-minimum';
 const liveEndpoint = process.env.ST_ORCHESTRATION_STAGING_ENDPOINT;
 const liveSecret = process.env.ST_ORCHESTRATION_STAGING_HMAC_SECRET;
+const liveAllowedOrigin = process.env.ST_ORCHESTRATION_STAGING_ALLOWED_ORIGIN;
 const allowLoopback = process.env.ST_ORCHESTRATION_ALLOW_LOOPBACK_HTTP_TEST === '1';
 
 const input = () => JSON.parse(fs.readFileSync(INPUT, 'utf8'));
@@ -84,6 +85,7 @@ test('H7-D ScoreMosaic contract pins exact ST main and keeps production/mutation
   assert.equal(contract.target.abstentionThreshold, 0.55);
   assert.equal(contract.transportBoundary.authenticationScheme, 'hmac-sha256-v1');
   assert.equal(contract.transportBoundary.httpsRequiredForNonLoopback, true);
+  assert.equal(contract.transportBoundary.nonLoopbackAllowedOriginPinRequired, true);
   assert.equal(contract.browserBoundary.browserDirectEngineCallAllowed, false);
   assert.equal(contract.browserBoundary.browserReceivesAuthenticationSecret, false);
   assert.equal(contract.browserBoundary.applyActionExists, false);
@@ -92,8 +94,20 @@ test('H7-D ScoreMosaic contract pins exact ST main and keeps production/mutation
   }
 });
 
-test('endpoint policy requires HTTPS except explicit loopback test harness', () => {
-  assert.equal(validateEndpoint('https://staging.example.invalid/').protocol, 'https:');
+test('endpoint policy requires exact HTTPS origin pin except explicit loopback test harness', () => {
+  assert.throws(() => validateEndpoint('https://staging.example.invalid/'), /requires an exact allowed origin pin/);
+  assert.equal(
+    validateEndpoint('https://staging.example.invalid/', {allowedOrigin: 'https://staging.example.invalid/'}).origin,
+    'https://staging.example.invalid'
+  );
+  assert.throws(
+    () => validateEndpoint('https://staging.example.invalid/', {allowedOrigin: 'https://other.example.invalid/'}),
+    /does not match the allowed origin pin/
+  );
+  assert.throws(
+    () => validateEndpoint('https://staging.example.invalid/', {allowedOrigin: 'http://staging.example.invalid/'}),
+    /allowed staging origin must use HTTPS/
+  );
   assert.throws(() => validateEndpoint('http://staging.example.invalid/'), /plain HTTP/);
   assert.throws(() => validateEndpoint('http://127.0.0.1:8081/'), /plain HTTP/);
   assert.equal(validateEndpoint('http://127.0.0.1:8081/', {allowLoopbackHttpForTest: true}).hostname, '127.0.0.1');
@@ -101,6 +115,22 @@ test('endpoint policy requires HTTPS except explicit loopback test harness', () 
   assert.throws(() => validateEndpoint('https://staging.example.invalid/path'), /origin URL/);
   assert.throws(() => validateEndpoint('https://staging.example.invalid/?x=1'), /query\/fragment/);
   assert.throws(() => validateEndpoint('ftp://staging.example.invalid/'), /requires HTTPS/);
+});
+
+test('non-loopback request fails closed before network without exact origin pin', () => {
+  assert.throws(
+    () => requestStagingPreview({endpoint: 'https://staging.example.invalid/', secret: SYNTHETIC_TEST_KEY, input: input()}),
+    /requires an exact allowed origin pin/
+  );
+  assert.throws(
+    () => requestStagingPreview({
+      endpoint: 'https://staging.example.invalid/',
+      allowedOrigin: 'https://other.example.invalid/',
+      secret: SYNTHETIC_TEST_KEY,
+      input: input(),
+    }),
+    /does not match the allowed origin pin/
+  );
 });
 
 test('signed request binds method path timestamp nonce and exact body digest', () => {
@@ -153,7 +183,7 @@ test('validated H7-D staging result becomes browser-safe evidence without endpoi
   assert.equal(payload.sourceMutationAllowed, false);
   assert.equal(payload.teacherRevisionMutationAllowed, false);
   const serialized = JSON.stringify(payload);
-  assert.doesNotMatch(serialized, /ST_ORCHESTRATION_STAGING_HMAC_SECRET/);
+  assert.doesNotMatch(serialized, /ST_ORCHESTRATION_STAGING_HMAC_SECRET|ST_ORCHESTRATION_STAGING_ALLOWED_ORIGIN/);
   assert.doesNotMatch(serialized, /https?:\/\//);
   assert.doesNotMatch(serialized, /scoremosaic-h7d-ci-noncredential/);
 });
@@ -273,6 +303,7 @@ test('real ST H7-D loopback transport returns exact bounded proposal', {skip: !(
     secret: liveSecret,
     input: input(),
     allowLoopbackHttpForTest: allowLoopback,
+    allowedOrigin: liveAllowedOrigin,
   });
   assert.equal(wrapper.authenticated, true);
   assert.equal(wrapper.staging_transport, true);
@@ -290,6 +321,7 @@ test('real ST H7-D endpoint rejects a wrong staging secret', {skip: !(liveEndpoi
       secret: 'wrong-scoremosaic-h7d-test-key-material-at-least-32-bytes',
       input: input(),
       allowLoopbackHttpForTest: allowLoopback,
+      allowedOrigin: liveAllowedOrigin,
     }),
     /rejected request \(401\)/
   );
@@ -306,6 +338,7 @@ test('staging generator produces H7-D browser evidence through server-side trans
       ...process.env,
       ST_ORCHESTRATION_STAGING_ENDPOINT: liveEndpoint,
       ST_ORCHESTRATION_STAGING_HMAC_SECRET: liveSecret,
+      ST_ORCHESTRATION_STAGING_ALLOWED_ORIGIN: liveAllowedOrigin || '',
       ST_ORCHESTRATION_ALLOW_LOOPBACK_HTTP_TEST: allowLoopback ? '1' : '0',
     },
   });
@@ -320,7 +353,7 @@ test('staging generator produces H7-D browser evidence through server-side trans
     assert.equal(data.networkCapable, false);
     assert.equal(data.target.mainCommit, '80b1e925804616d36c2b46c8074e6a608aa7bff4');
     assert.equal(data.result.alternatives[0].instrument, 'violin-1');
-    assert.doesNotMatch(fs.readFileSync(tmp, 'utf8'), /ST_ORCHESTRATION_STAGING_HMAC_SECRET|scoremosaic-h7d-ci-noncredential/);
+    assert.doesNotMatch(fs.readFileSync(tmp, 'utf8'), /ST_ORCHESTRATION_STAGING_HMAC_SECRET|ST_ORCHESTRATION_STAGING_ALLOWED_ORIGIN|scoremosaic-h7d-ci-noncredential/);
   } finally {
     if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
   }
