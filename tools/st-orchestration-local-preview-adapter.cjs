@@ -58,6 +58,8 @@ const assertExactTarget = (stRoot, contract) => {
   if (actual !== contract.target.mainCommit) throw new LocalPreviewAdapterError(`ST-Orchestration HEAD mismatch: ${actual}`);
   const dirty = run('git', ['-C', stRoot, 'status', '--porcelain'], {timeout: 5000, maxBuffer: 16384});
   if (dirty) throw new LocalPreviewAdapterError('ST-Orchestration working tree must be clean for H7-C preview');
+  const ignoredPython = run('git', ['-C', stRoot, 'ls-files', '--others', '--ignored', '--exclude-standard', '--', '*.py'], {timeout: 5000, maxBuffer: 16384});
+  if (ignoredPython) throw new LocalPreviewAdapterError('ST-Orchestration contains ignored Python files that could overlay the pinned H7-C runtime');
   for (const relativePath of [contract.target.contractPath, contract.target.runtimePath, contract.target.cliPath]) {
     const resolved = path.join(stRoot, relativePath);
     if (!fs.existsSync(resolved)) throw new LocalPreviewAdapterError(`required ST-Orchestration path missing: ${relativePath}`);
