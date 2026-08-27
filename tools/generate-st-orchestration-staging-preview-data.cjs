@@ -15,11 +15,12 @@ const sourceFor = (payload) => `(() => {\n  'use strict';\n  const freezeDeep = 
 const main = async () => {
   const endpoint = process.env.ST_ORCHESTRATION_STAGING_ENDPOINT;
   const secret = process.env.ST_ORCHESTRATION_STAGING_HMAC_SECRET;
+  const allowedOrigin = process.env.ST_ORCHESTRATION_STAGING_ALLOWED_ORIGIN;
   if (!endpoint) throw new Error('ST_ORCHESTRATION_STAGING_ENDPOINT is required');
   if (!secret) throw new Error('ST_ORCHESTRATION_STAGING_HMAC_SECRET is required');
   const allowLoopbackHttpForTest = process.env.ST_ORCHESTRATION_ALLOW_LOOPBACK_HTTP_TEST === '1';
   const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
-  const wrapper = await requestStagingPreview({endpoint, secret, input, allowLoopbackHttpForTest});
+  const wrapper = await requestStagingPreview({endpoint, secret, input, allowLoopbackHttpForTest, allowedOrigin});
   const payload = toBrowserPreviewData(wrapper, input);
   const source = sourceFor(payload);
   const output = process.argv[2];
