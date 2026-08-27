@@ -4,9 +4,9 @@
   const HOST_VERSION = 'scoremosaic-osmd-host-v1';
   const VIEW_MODES = Object.freeze(['fit-width', '100']);
   const FIT_WIDTH_POLICY = Object.freeze({
-    minZoom: 1.45,
-    maxZoom: 1.9,
-    referenceWidth: 380,
+    minZoom: 1.0,
+    maxZoom: 1.15,
+    referenceWidth: 640,
     rerenderWidthDelta: 32
   });
   const bridge = window.ScoreMosaicScoreEditorCoreBridge;
@@ -127,7 +127,16 @@
     // below. OSMD autoResize is intentionally disabled to prevent a second,
     // competing render lifecycle from appending another presentation surface.
     autoResize: false,
+    drawCredits: false,
     drawTitle: false,
+    drawSubtitle: false,
+    drawComposer: false,
+    drawLyricist: false,
+    drawPartNames: false,
+    drawPartAbbreviations: false,
+    drawMeasureNumbers: true,
+    drawMeasureNumbersOnlyAtSystemStart: false,
+    measureNumberInterval: 1,
     followCursor: false,
     stretchLastSystemLine: viewMode === 'fit-width'
   });
