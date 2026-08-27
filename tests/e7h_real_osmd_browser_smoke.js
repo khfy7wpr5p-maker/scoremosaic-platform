@@ -54,8 +54,9 @@
     if (fallback.hidden !== true) fail('FALLBACK_NOT_HIDDEN');
     if (host.dataset.renderState !== 'rendered') fail('RENDER_STATE_INVALID', host.dataset.renderState ?? 'missing');
     if (host.dataset.renderedRevision !== expectedRevision) fail('REVISION_MISMATCH', host.dataset.renderedRevision ?? 'missing');
-    const svg = host.querySelector('svg');
-    if (!svg) fail('SVG_MISSING');
+    const svgs = host.querySelectorAll('svg');
+    if (svgs.length !== 1) fail('SVG_SURFACE_COUNT_INVALID', String(svgs.length));
+    const svg = svgs[0];
     const graphics = svg.querySelectorAll('path,use,line,polyline,polygon,ellipse,circle').length;
     if (graphics === 0) fail('SVG_GRAPHICS_EMPTY');
     const rect = svg.getBoundingClientRect();
