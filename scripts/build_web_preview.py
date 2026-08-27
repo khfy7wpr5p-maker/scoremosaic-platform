@@ -241,33 +241,44 @@ def _inject_renderer_html(source_html: str) -> str:
         '<div id="score-render-host" class="score-render-host" hidden aria-label="Rendered fixture score"></div>\n        <div class="page-stack" id="score-fixture-fallback">',
         1,
     )
-    html = html.replace(
-        '<script src="application/read-adapter.js"></script>',
-        '<script src="vendor/opensheetmusicdisplay-2.1.1.min.js"></script>\n'
-        '  <script src="vendor/st-score-editor-core.runtime.js"></script>\n'
-        '  <script src="application/read-adapter.js"></script>',
-        1,
+
+    source_scripts = (
+        '  <script src="fixture.js" defer></script>\n'
+        '  <script src="application/read-adapter.js" defer></script>\n'
+        '  <script src="application/edit-intent-adapter.js" defer></script>\n'
+        '  <script src="application/application-state.js" defer></script>\n'
+        '  <script src="application/local-application.js" defer></script>\n'
+        '  <script src="app.js" defer></script>\n'
+        '  <script src="edit-intent.js" defer></script>'
     )
-    html = html.replace(
-        '<script src="fixture.js"></script>',
-        '<script src="fixture.js"></script>\n'
-        '  <script src="application/score-editor-core-bridge.js"></script>\n'
-        '  <script src="vendor/renderer-profile.js"></script>\n'
-        '  <script src="application/score-editor-osmd-host.js"></script>',
-        1,
+    generated_scripts = (
+        '  <script src="vendor/opensheetmusicdisplay-2.1.1.min.js" defer></script>\n'
+        '  <script src="vendor/st-score-editor-core.runtime.js" defer></script>\n'
+        '  <script src="fixture.js" defer></script>\n'
+        '  <script src="application/read-adapter.js" defer></script>\n'
+        '  <script src="application/edit-intent-adapter.js" defer></script>\n'
+        '  <script src="application/application-state.js" defer></script>\n'
+        '  <script src="application/local-application.js" defer></script>\n'
+        '  <script src="application/score-editor-core-bridge.js" defer></script>\n'
+        '  <script src="vendor/renderer-profile.js" defer></script>\n'
+        '  <script src="application/score-editor-osmd-host.js" defer></script>\n'
+        '  <script src="app.js" defer></script>\n'
+        '  <script src="edit-intent.js" defer></script>'
     )
-    return html
+    if html.count(source_scripts) != 1:
+        raise ValueError("preview source script block drifted; refusing partial renderer injection")
+    return html.replace(source_scripts, generated_scripts, 1)
 
 
 def _validate_script_order(index: str) -> None:
     scripts = (
         'vendor/opensheetmusicdisplay-2.1.1.min.js',
         'vendor/st-score-editor-core.runtime.js',
+        'fixture.js',
         'application/read-adapter.js',
         'application/edit-intent-adapter.js',
         'application/application-state.js',
         'application/local-application.js',
-        'fixture.js',
         'application/score-editor-core-bridge.js',
         'vendor/renderer-profile.js',
         'application/score-editor-osmd-host.js',
