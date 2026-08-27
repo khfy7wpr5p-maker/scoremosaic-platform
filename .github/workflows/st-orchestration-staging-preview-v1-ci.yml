@@ -87,8 +87,8 @@ jobs:
             sleep 0.25
           done
           python - <<'PY'
-          import json, pathlib
-          p=json.loads(pathlib.Path("${RUNNER_TEMP}/h7d-health.json").read_text())
+          import json, os, pathlib
+          p=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"]) / "h7d-health.json").read_text())
           assert p == {"mutation": False, "production": False, "status": "staging-transport-ready"}, p
           PY
 
