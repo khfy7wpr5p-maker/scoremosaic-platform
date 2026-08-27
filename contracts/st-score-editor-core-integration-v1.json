@@ -1,24 +1,26 @@
 {
   "version": "scoremosaic-st-score-editor-core-integration-v1",
+  "stage": "E7-H",
+  "status": "FIXTURE_PREVIEW_BROWSER_RUNTIME_AND_OSMD_HOST_READY",
+  "scope": "fixture_only_local_browser_runtime_and_presentation_renderer",
   "repositoryIntegrationOnly": true,
   "productionActivation": false,
   "core": {
     "repository": "khfy7wpr5p-maker/st-score-editor-core",
-    "commit": "70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b",
+    "commit": "b317abef915d1e16b37572221a38feb3e504450d",
+    "runtimePackage": "browser-runtime",
     "runtimeVersion": "1.0.0",
+    "browserBundleContract": "ST_SCORE_EDITOR_CORE_BROWSER_BUNDLE",
+    "browserBundleArtifact": "dist/browser/st-score-editor-core.runtime.js",
+    "browserBundleManifest": "dist/browser/st-score-editor-core.runtime.manifest.json",
+    "browserBundleGlobal": "STScoreEditorCoreRuntime",
     "packagePrivate": true,
     "hostInjected": true,
     "remoteBrowserFetchAllowed": false,
     "copiedCoreSourceAllowed": false,
-    "runtimeBundledInPublicPreview": false
-  },
-  "target": {
-    "workspace": "ScoreMosaic Teacher Review Stage 10/11",
-    "rendererFamily": "osmd",
-    "rendererPackage": "opensheetmusicdisplay",
-    "rendererVersion": "2.1.1",
-    "rendererAuthority": false,
-    "rendererRuntimeActivated": false
+    "runtimeBundledInPublicPreview": true,
+    "exactCommitCheckoutRequiredByCi": true,
+    "artifactIntegrityVerifiedByBuilder": true
   },
   "operationMapping": {
     "set_pitch": "SET_PITCH",
@@ -26,20 +28,86 @@
     "set_dots": "SET_DOTS",
     "remove_event": null
   },
-  "failClosedOperations": ["remove_event"],
+  "failClosedOperations": [
+    "remove_event"
+  ],
+  "renderer": {
+    "family": "osmd",
+    "package": "opensheetmusicdisplay",
+    "version": "2.1.1",
+    "license": "BSD-3-Clause",
+    "presentationOnly": true,
+    "localArtifactRequired": true,
+    "remoteCdnAllowed": false,
+    "runtimeBundledInPublicPreview": true,
+    "packageIdentityVerifiedByBuilder": true,
+    "licenseFileCarriedInPreview": true,
+    "musicXmlStringInputOnly": true,
+    "urlInputAllowedByHost": false,
+    "networkUseAllowed": false,
+    "cspConnectSrcNoneRequired": true,
+    "coordinatesAuthoritative": false,
+    "domIdsAuthoritative": false,
+    "rendererObjectsAuthoritative": false,
+    "svgHitTestingAuthoritative": false,
+    "fallbackRetainedUntilSuccessfulRender": true
+  },
+  "selection": {
+    "issueDrivenSemanticSelection": true,
+    "revisionBoundRenderManifestRequired": true,
+    "rawRendererCoordinatesAccepted": false,
+    "rawRendererDomIdsAccepted": false,
+    "automaticRetargetingAllowed": false
+  },
+  "rerender": {
+    "initialFixtureCoreSessionRender": true,
+    "afterAcceptedLocalCoreEdit": true,
+    "acceptedRevisionOnly": true,
+    "renderFailureRollsBackCoreEdit": false,
+    "renderFailureRestoresFixtureFallback": true,
+    "renderFailureGrantsAuthority": false
+  },
   "authority": {
     "browserAuthoritative": false,
+    "rendererAuthoritative": false,
     "networkAllowed": false,
     "persistenceAllowed": false,
     "serverRevisionAuthority": false,
     "approvalAuthority": false,
     "publicationAuthority": false,
     "liveApiActivated": false,
-    "productionWriteActivated": false
+    "productionWriteActivated": false,
+    "productionRendererActivated": false,
+    "liveAiEditAuthority": false
   },
   "fallback": {
     "runtimeUnavailableKeepsExistingLocalIntentPreview": true,
+    "rendererFailureKeepsFixtureScoreVisible": true,
     "automaticRetargetingAllowed": false,
     "unknownOperationAllowed": false
+  },
+  "publicPreview": {
+    "fixtureOnly": true,
+    "realUserDataAllowed": false,
+    "carriesBridge": true,
+    "carriesCoreRuntime": true,
+    "carriesOsmdRuntime": true,
+    "carriesOsmdLicense": true,
+    "externalRuntimeFetch": false,
+    "networkAllowed": false,
+    "persistenceAllowed": false,
+    "productionAuthority": false
+  },
+  "ci": {
+    "exactCoreCheckout": true,
+    "runPinnedCoreCi": true,
+    "buildPinnedCoreBrowserArtifact": true,
+    "installExactOsmdPackage": true,
+    "verifyOsmdPackageIdentity": true,
+    "verifyCoreArtifactIntegrity": true,
+    "verifyGeneratedLocalVendorArtifacts": true,
+    "runStage10RegressionSuite": true,
+    "runStage11RegressionSuite": true,
+    "immutableActionPinsRequired": true
   }
 }
