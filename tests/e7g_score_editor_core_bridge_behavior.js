@@ -77,7 +77,7 @@ const bridge = run(runtime);
 assert.equal(bridge.available, true);
 assert.equal(bridge.authoritative, false);
 assert.equal(bridge.persistent, false);
-assert.equal(bridge.coreCommit, '70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b');
+assert.equal(bridge.coreCommit, 'b317abef915d1e16b37572221a38feb3e504450d');
 assert.equal(bridge.getSessionSnapshot().revisionId, 'fixture-r3');
 
 bridge.selectIssue('issue-1');
@@ -86,7 +86,7 @@ assert.deepEqual(calls.find((call) => call[0] === 'select'), ['select','stse-r1-
 bridge.commitOperation('issue-1', {type:'set_pitch',value:{step:'F',alter:{numerator:1,denominator:1},octave:4}});
 const scoreCall = calls.find((call) => call[0] === 'score');
 assert.equal(JSON.stringify(scoreCall[1]), JSON.stringify({version:'1.0.0',type:'SET_PITCH',pitch:{step:'F',alter:1,octave:4}}));
-assert.match(scoreCall[2].nextRevisionId, /^fixture-e7g-r\d{4}$/);
+assert.match(scoreCall[2].nextRevisionId, /^fixture-e7h-r\d{4}$/);
 
 bridge.commitOperation('issue-1', {type:'set_dots',value:2});
 const notationCall = calls.find((call) => call[0] === 'notation');
@@ -99,4 +99,4 @@ assert.throws(() => bridge.commitOperation('missing', {type:'set_dots',value:1})
 bridge.undo();
 assert.ok(calls.some((call) => call[0] === 'history' && call[1] === 'UNDO'));
 
-console.log('E7-G Score Editor Core bridge behavior: PASS');
+console.log('E7-H Score Editor Core bridge behavior: PASS');

@@ -4,6 +4,7 @@
   const fixture = window.ScoreMosaicFixture;
   const application = window.ScoreMosaicLocalApplication;
   const coreBridge = window.ScoreMosaicScoreEditorCoreBridge;
+  const osmdHost = window.ScoreMosaicScoreEditorOsmdHost;
   if (
     !fixture
     || fixture.productionArtifact !== false
@@ -24,6 +25,16 @@
     && coreBridge.serverRevisionAuthority === false
     && coreBridge.approvalAuthority === false
     && coreBridge.publicationAuthority === false;
+  const rendererAvailable = coreAvailable
+    && osmdHost?.available === true
+    && osmdHost.authoritative === false
+    && osmdHost.presentationOnly === true
+    && osmdHost.coordinatesAuthoritative === false
+    && osmdHost.domIdsAuthoritative === false
+    && osmdHost.rendererObjectsAuthoritative === false
+    && osmdHost.networkCapable === false
+    && osmdHost.persistent === false
+    && typeof osmdHost.renderCurrentSession === 'function';
 
   const issuesState = application.read('issues.read');
   const issues = issuesState?.phase === 'ready' && issuesState.authority?.authoritative === false
@@ -193,12 +204,20 @@
         coreCommit: coreBridge.coreCommit,
         revisionId: snapshot.revisionId,
         rendererFamily: snapshot.rendererFamily,
+        rendererActive: rendererAvailable,
         authoritative: false,
         persistent: false,
         reviewerNote: note.length === 0 ? null : note
       }, null, 2);
       clearButton.disabled = false;
-      setStatus('Core-backed local revision · not submitted', 'safe');
+      setStatus(rendererAvailable ? 'Core-backed local revision · rerendering' : 'Core-backed local revision · not submitted', 'safe');
+      if (rendererAvailable) {
+        osmdHost.renderCurrentSession().then(() => {
+          setStatus('Core-backed local revision · score rerendered · not submitted', 'safe');
+        }).catch(() => {
+          setStatus('Core edit retained locally · renderer fallback visible', 'safe');
+        });
+      }
       return;
     }
 
@@ -211,6 +230,13 @@
   const syncSelection = () => {
     const issue = selectedIssue();
     prepareButton.disabled = issue === null;
+    if (issue && coreAvailable) {
+      try {
+        coreBridge.selectIssue(issue.id);
+      } catch {
+        prepareButton.disabled = true;
+      }
+    }
     clearIntent(issue
       ? (coreAvailable ? 'Selected fixture target changed. Apply a new local core edit.' : 'Selected fixture target changed. Prepare a new local intent.')
       : 'No local target selected.');

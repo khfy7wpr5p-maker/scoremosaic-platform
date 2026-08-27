@@ -1,39 +1,48 @@
 # ScoreMosaic ↔ ST Score Editor Core Integration v1
 
-Status: **repository integration bridge ready; runtime host and live API activation deferred**
+Status: **E7-H fixture-preview browser runtime and presentation-only OSMD host ready; live/production activation remains locked**
 
-This workstream connects the existing ScoreMosaic Teacher Review product shell to the shared `st-score-editor-core` contract without granting browser, renderer, network, approval, publication, or production authority.
+This workstream connects the existing ScoreMosaic Teacher Review product shell to the shared `st-score-editor-core` without granting browser, renderer, network, server revision, approval, publication, AI, or production authority.
 
 ## Exact upstream core
 
 - repository: `khfy7wpr5p-maker/st-score-editor-core`
-- exact commit: `70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b`
+- exact commit: `b317abef915d1e16b37572221a38feb3e504450d`
 - browser runtime contract: `1.0.0`
+- browser artifact: `dist/browser/st-score-editor-core.runtime.js`
+- browser artifact manifest: `dist/browser/st-score-editor-core.runtime.manifest.json`
+- global: `STScoreEditorCoreRuntime`
 - core package remains private/not published as an npm package
 - ScoreMosaic does not copy core source into this repository
 - ScoreMosaic does not load core code from GitHub/raw HTTP at browser runtime
 
-The exact commit is verified by cross-repository CI before integration is accepted.
+Cross-repository CI checks out the exact commit, runs the core's own CI and builds the browser artifact. The ScoreMosaic preview builder independently verifies the artifact manifest, byte length and SHA-256 before copying it into the generated fixture preview.
 
-## Current repository flow
+## E7-H fixture-preview flow
 
 ```text
-ScoreMosaic Teacher Review Stage 10/11
+ScoreMosaic Teacher Review fixture
+        ↓
+local bundled ST Score Editor Core runtime
         ↓
 Score Editor Core bridge
         ↓
-[host-injected ST Score Editor Core runtime]
+revision-bound semantic render manifest
         ↓
-semantic render manifest / selection
+issue-driven semantic selection
         ↓
-typed local score or notation intent
+typed local score / notation intent
         ↓
 immutable local editor revision
         ↓
-regenerated render request
+regenerated MusicXML render request
+        ↓
+OSMD 2.1.1 presentation host
+        ↓
+real notation display in Score View
 ```
 
-The bracketed runtime is deliberately not bundled into the public GitHub Pages fixture preview in v1. When it is absent, the bridge fails closed and the existing Stage 11 disconnected local-intent preview remains available.
+The original Stage 10 score mock remains in the generated preview as a fail-closed fallback. It is hidden only after OSMD successfully loads and renders the MusicXML string from the current core session.
 
 ## Authority boundary
 
@@ -52,7 +61,7 @@ browser local editor intent
   -> immutable TeacherScoreRevision
 ```
 
-The E7-G repository bridge does not bypass this chain.
+E7-H does not bypass this chain.
 
 ## Operation mapping v1
 
@@ -65,30 +74,54 @@ The E7-G repository bridge does not bypass this chain.
 
 `remove_event` is intentionally not translated to `REPLACE_WITH_REST`; those operations have different semantics.
 
-## Renderer boundary
+## OSMD renderer boundary
 
-OSMD `2.1.1` remains the admitted classical-score renderer target, but OSMD runtime activation is not part of this repository gate. Renderer state, SVG/DOM ids, glyphs and coordinates never become edit authority. Selection must resolve through the core revision-bound semantic manifest.
+The admitted fixture renderer is exactly:
+
+- package: `opensheetmusicdisplay`
+- version: `2.1.1`
+- license: `BSD-3-Clause`
+- distribution entry: `build/opensheetmusicdisplay.min.js`
+
+The preview builder accepts only the verified local npm package artifact and carries its BSD license file into the generated preview. No CDN or runtime remote fetch is used.
+
+OSMD itself supports URL-oriented loading paths, so the safety claim is deliberately narrower: the ScoreMosaic host accepts only a MusicXML string from the current core session, never a URL, and the preview CSP retains `connect-src 'none'`. Renderer SVG coordinates, DOM ids, glyph objects and renderer internals are presentation data only and never become edit targets or authority.
+
+## Selection and rerender
+
+E7-H keeps selection semantic and revision-bound:
+
+```text
+Teacher Review issue
+  -> fixture event id
+  -> core render manifest token
+  -> semantic note address
+```
+
+Direct SVG hit-testing is not authoritative in this stage. After an accepted local core edit, ScoreMosaic asks the presentation host to render the newly accepted core revision. A renderer failure does not undo or reinterpret the accepted local core edit; it restores the fixture visual fallback and reports no new authority.
 
 ## Public preview behavior
 
-The public fixture preview may contain the local bridge script, but it contains no core runtime and no OSMD bundle. Therefore:
+The generated fixture-only GitHub Pages artifact now carries local copies of:
 
-- no external runtime fetch;
-- no network API;
-- no browser persistence;
-- no server write;
-- no approval or publication execution;
-- existing fixture/local-intent behavior remains the safe fallback.
+- the exact ST Score Editor Core browser bundle and integrity manifest;
+- OSMD `2.1.1`;
+- the OSMD BSD license text;
+- a generated immutable renderer profile;
+- the ScoreMosaic core bridge and OSMD host.
 
-## Deferred gates
+It still carries no real user data and grants no network API, authentication, browser persistence, server write, approval, publication, or production authority.
+
+## Still-deferred gates
 
 Separate evidence and authorization are still required for:
 
-1. browser-safe core packaging/bundling;
-2. exact OSMD host installation and lockfile/provenance evidence;
-3. real MusicXML/Teacher Review artifact reads;
+1. real MusicXML / Teacher Review artifact reads;
+2. score-to-source evidence synchronization against real review data;
+3. authoritative server edit submission;
 4. authenticated live Teacher Review API;
-5. server write and persistence;
+5. server persistence;
 6. production approval persistence;
 7. publication execution;
-8. production deployment/traffic.
+8. production renderer/runtime activation;
+9. production deployment/traffic.

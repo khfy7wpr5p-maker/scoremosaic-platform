@@ -5,15 +5,19 @@ on:
     branches:
       - main
       - "feature/e7g-score-editor-core-integration-v1"
+      - "feature/e7h-browser-runtime-osmd-host-v1"
     paths:
       - ".github/workflows/st-score-editor-core-integration-ci.yml"
       - "contracts/st-score-editor-core-integration-v1.json"
+      - "contracts/web-preview-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/teacher-review-score-editor-architecture-contract.md"
       - "prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js"
+      - "prototypes/stage11-ui-application-contracts/score-editor-osmd-host.js"
       - "prototypes/stage10-ui-application-experience/edit-intent.js"
       - "scripts/build_web_preview.py"
       - "tests/e7g_score_editor_core_bridge_behavior.js"
+      - "tests/e7h_osmd_host_behavior.js"
       - "tests/test_st_score_editor_core_integration_v1.py"
       - "tests/test_web_preview_v1.py"
   pull_request:
@@ -22,12 +26,15 @@ on:
     paths:
       - ".github/workflows/st-score-editor-core-integration-ci.yml"
       - "contracts/st-score-editor-core-integration-v1.json"
+      - "contracts/web-preview-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/teacher-review-score-editor-architecture-contract.md"
       - "prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js"
+      - "prototypes/stage11-ui-application-contracts/score-editor-osmd-host.js"
       - "prototypes/stage10-ui-application-experience/edit-intent.js"
       - "scripts/build_web_preview.py"
       - "tests/e7g_score_editor_core_bridge_behavior.js"
+      - "tests/e7h_osmd_host_behavior.js"
       - "tests/test_st_score_editor_core_integration_v1.py"
       - "tests/test_web_preview_v1.py"
   workflow_dispatch:
@@ -35,10 +42,14 @@ on:
 permissions:
   contents: read
 
+env:
+  CORE_COMMIT: b317abef915d1e16b37572221a38feb3e504450d
+  OSMD_VERSION: 2.1.1
+
 jobs:
   verify-editor-core-integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - name: Check out ScoreMosaic
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -49,7 +60,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: khfy7wpr5p-maker/st-score-editor-core
-          ref: 70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b
+          ref: ${{ env.CORE_COMMIT }}
           path: .integration/st-score-editor-core
           persist-credentials: false
 
@@ -66,25 +77,29 @@ jobs:
       - name: Validate immutable action pins
         run: python scripts/validate_github_actions_pins.py
 
-      - name: Verify exact core commit and integration contract
+      - name: Verify exact core commit and E7-H authority contract
         shell: bash
         run: |
           set -euo pipefail
-          expected="70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b"
-          observed="$(git -C .integration/st-score-editor-core rev-parse HEAD)"
-          test "$observed" = "$expected"
+          test "$(git -C .integration/st-score-editor-core rev-parse HEAD)" = "$CORE_COMMIT"
           python - <<'PY'
           import json
           from pathlib import Path
-          expected = "70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b"
+          expected = "b317abef915d1e16b37572221a38feb3e504450d"
           scoremosaic = json.loads(Path("contracts/st-score-editor-core-integration-v1.json").read_text())
           core = json.loads(Path(".integration/st-score-editor-core/contracts/editor-core-v1.json").read_text())
+          assert scoremosaic["stage"] == "E7-H"
           assert scoremosaic["core"]["commit"] == expected
           assert scoremosaic["core"]["runtimeVersion"] == "1.0.0"
+          assert scoremosaic["core"]["runtimeBundledInPublicPreview"] is True
+          assert scoremosaic["renderer"]["version"] == "2.1.1"
+          assert scoremosaic["renderer"]["presentationOnly"] is True
+          assert scoremosaic["renderer"]["networkUseAllowed"] is False
           assert scoremosaic["productionActivation"] is False
-          assert core["currentStage"] == "E7-G"
-          assert core["ui"]["browserRuntime"]["version"] == "1.0.0"
-          assert core["ui"]["browserRuntime"]["scoreMosaicRepositoryIntegrationAuthorized"] is True
+          assert core["currentStage"] == "E7-H"
+          assert core["browserPackaging"]["global"] == "STScoreEditorCoreRuntime"
+          assert core["browserPackaging"]["externalImportsAllowed"] is False
+          assert core["browserPackaging"]["networkCapabilityIntroduced"] is False
           assert core["ui"]["browserRuntime"]["networkCapable"] is False
           assert core["ui"]["browserRuntime"]["persistenceCapable"] is False
           assert core["ui"]["browserRuntime"]["serverRevisionAuthority"] is False
@@ -94,22 +109,60 @@ jobs:
           assert core["humanGates"]["publicWriteApi"]["authorized"] is False
           PY
 
-      - name: Validate bridge JavaScript
+      - name: Build and test exact ST Score Editor Core
+        working-directory: .integration/st-score-editor-core
         run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          npm run ci
+
+      - name: Install and verify exact OSMD package
+        shell: bash
+        run: |
+          set -euo pipefail
+          osmd_root="$RUNNER_TEMP/osmd"
+          mkdir -p "$osmd_root"
+          npm install --prefix "$osmd_root" --ignore-scripts --no-audit --no-fund --no-package-lock --no-save "opensheetmusicdisplay@$OSMD_VERSION"
+          node - "$osmd_root/node_modules/opensheetmusicdisplay/package.json" <<'NODE'
+          const fs=require('node:fs');
+          const pkg=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(pkg.name!=='opensheetmusicdisplay'||pkg.version!=='2.1.1'||pkg.license!=='BSD-3-Clause'||pkg.main!=='build/opensheetmusicdisplay.min.js')process.exit(1);
+          NODE
+          test -s "$osmd_root/node_modules/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"
+          test -s "$osmd_root/node_modules/opensheetmusicdisplay/LICENSE"
+          echo "OSMD_ROOT=$osmd_root" >> "$GITHUB_ENV"
+
+      - name: Validate browser bridge and OSMD host JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
           node --check prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js
+          node --check prototypes/stage11-ui-application-contracts/score-editor-osmd-host.js
           node --check prototypes/stage10-ui-application-experience/edit-intent.js
           node tests/e7g_score_editor_core_bridge_behavior.js
+          node tests/e7h_osmd_host_behavior.js
 
       - name: Run ScoreMosaic integration regressions
         run: |
           python -m unittest tests/test_st_score_editor_core_integration_v1.py -v
           python -m unittest tests/test_web_preview_v1.py -v
 
-      - name: Run exact ST Score Editor Core CI
-        working-directory: .integration/st-score-editor-core
+      - name: Build real E7-H fixture preview artifact
+        shell: bash
         run: |
-          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
-          npm run ci
+          set -euo pipefail
+          output="$RUNNER_TEMP/e7h-preview"
+          python scripts/build_web_preview.py \
+            --output "$output" \
+            --core-bundle .integration/st-score-editor-core/dist/browser/st-score-editor-core.runtime.js \
+            --core-manifest .integration/st-score-editor-core/dist/browser/st-score-editor-core.runtime.manifest.json \
+            --osmd-bundle "$OSMD_ROOT/node_modules/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js" \
+            --osmd-package-json "$OSMD_ROOT/node_modules/opensheetmusicdisplay/package.json" \
+            --osmd-license "$OSMD_ROOT/node_modules/opensheetmusicdisplay/LICENSE"
+          test -s "$output/vendor/st-score-editor-core.runtime.js"
+          test -s "$output/vendor/opensheetmusicdisplay-2.1.1.min.js"
+          test -s "$output/vendor/OSMD-LICENSE.txt"
+          grep -F "connect-src 'none'" "$output/index.html"
+          grep -F 'id="score-render-host"' "$output/index.html"
 
       - name: Run Stage 10 and Stage 11 regression suites
         run: |
