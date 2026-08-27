@@ -1,0 +1,49 @@
+{
+  "contract": "SCOREMOSAIC_TEACHER_REVIEW_PRODUCT_WORKFLOW",
+  "version": "1.0.0",
+  "status": "fixture-product-ui-active",
+  "surface": "prototypes/stage10-ui-application-experience/app.js",
+  "flow": [
+    "teacher-review-workspace",
+    "score-view",
+    "structured-edit",
+    "mark-reviewed",
+    "validation",
+    "approval-preparation",
+    "production-approval-lock"
+  ],
+  "localCapabilities": {
+    "issueSelection": true,
+    "scorePresentation": true,
+    "structuredEdit": true,
+    "localIssueReviewedMarker": true,
+    "localReadinessValidation": true,
+    "localApprovalPreparation": true
+  },
+  "authority": {
+    "authoritative": false,
+    "networkCapable": false,
+    "persistent": false,
+    "canCreateScoreEditCommand": false,
+    "canCreateTeacherScoreRevision": false,
+    "canApprove": false,
+    "canPublish": false,
+    "canActivateProduction": false
+  },
+  "approvalGate": {
+    "requiresZeroUnresolvedBlockingIssues": true,
+    "requiresLocalValidationPass": true,
+    "productionApproveControlVisible": true,
+    "productionApproveControlEnabled": false,
+    "unlockRequiresSeparateSecurityGate": true
+  },
+  "security": {
+    "browserNetworkActivated": false,
+    "browserPersistenceActivated": false,
+    "authenticationActivated": false,
+    "rbacActivated": false,
+    "serverRevisionAuthorityActivated": false,
+    "approvalAuthorityActivated": false,
+    "publicationAuthorityActivated": false
+  }
+}

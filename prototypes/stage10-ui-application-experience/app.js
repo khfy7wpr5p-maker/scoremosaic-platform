@@ -249,3 +249,220 @@
 
   render();
 })();
+
+(() => {
+  'use strict';
+
+  const fixture = window.ScoreMosaicFixture;
+  const application = window.ScoreMosaicLocalApplication;
+  if (
+    !fixture
+    || fixture.productionArtifact !== false
+    || fixture.authoritativeTruth !== false
+    || !application
+    || application.productionApplication !== false
+    || application.authoritative !== false
+    || application.networkCapable !== false
+    || application.persistent !== false
+  ) {
+    return;
+  }
+
+  const issuesState = application.read('issues.read');
+  const issues = issuesState?.phase === 'ready' && issuesState.authority?.authoritative === false
+    ? issuesState.data.items
+    : [];
+  const issueList = document.getElementById('issue-list');
+  const editPanel = document.querySelector('.edit-panel');
+  const statusbar = document.querySelector('.statusbar');
+  if (!issueList || !editPanel || !statusbar) return;
+
+  const workflowState = {
+    reviewedIssueIds: new Set(),
+    validation: 'not-run',
+    approval: 'locked',
+  };
+
+  const selectedIssue = () => {
+    const selected = issueList.querySelector('[data-issue-id][aria-pressed="true"]');
+    const issueId = selected?.dataset.issueId;
+    return issues.find((issue) => issue.id === issueId) ?? null;
+  };
+
+  const unresolvedBlocking = () => issues.filter(
+    (issue) => issue.severity === 'blocking' && !workflowState.reviewedIssueIds.has(issue.id)
+  ).length;
+
+  const makeNode = (tag, options = {}) => {
+    const node = document.createElement(tag);
+    if (options.id) node.id = options.id;
+    if (options.className) node.className = options.className;
+    if (options.textContent !== undefined) node.textContent = options.textContent;
+    if (options.type) node.type = options.type;
+    return node;
+  };
+
+  const workflow = makeNode('section', {className: 'edit-section'});
+  workflow.dataset.reviewWorkflow = 'local';
+  workflow.setAttribute('aria-labelledby', 'review-workflow-title');
+
+  const heading = makeNode('div', {className: 'intent-heading'});
+  const title = makeNode('h3', {id: 'review-workflow-title', textContent: 'Validation & approval'});
+  const status = makeNode('span', {id: 'review-workflow-status', className: 'intent-status', textContent: 'Review required'});
+  status.dataset.kind = 'neutral';
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('aria-atomic', 'true');
+  heading.append(title, status);
+
+  const help = makeNode('p', {
+    className: 'security-note',
+    textContent: 'Local workflow only. It can mark fixture issues reviewed, run a bounded readiness check, and prepare the approval UI state. It cannot create TeacherScoreRevision, approve, publish, persist, or call a backend.'
+  });
+  help.id = 'review-workflow-help';
+
+  const details = makeNode('dl', {className: 'detail-list'});
+  const detailRow = (label, id) => {
+    const row = makeNode('div');
+    const dt = makeNode('dt', {textContent: label});
+    const dd = makeNode('dd', {id, textContent: '—'});
+    row.append(dt, dd);
+    return row;
+  };
+  details.append(
+    detailRow('Reviewed issues', 'reviewed-issue-count'),
+    detailRow('Unresolved blocking', 'workflow-blocking-count'),
+    detailRow('Validation', 'workflow-validation-label'),
+    detailRow('Approval', 'workflow-approval-label')
+  );
+
+  const actions = makeNode('div', {className: 'intent-actions'});
+  const markReviewed = makeNode('button', {id: 'mark-reviewed', type: 'button', textContent: 'Mark selected reviewed'});
+  const runValidation = makeNode('button', {id: 'run-local-validation', type: 'button', textContent: 'Run validation'});
+  const prepareApproval = makeNode('button', {id: 'prepare-local-approval', className: 'primary-button', type: 'button', textContent: 'Prepare approval'});
+  const approveScore = makeNode('button', {id: 'approve-score', type: 'button', textContent: 'Approve score'});
+  approveScore.disabled = true;
+  approveScore.setAttribute('aria-describedby', 'review-workflow-help');
+  approveScore.title = 'Production approval authority is not activated in this fixture preview.';
+  const reset = makeNode('button', {id: 'reset-review-workflow', type: 'button', textContent: 'Reset local review'});
+  actions.append(markReviewed, runValidation, prepareApproval, approveScore, reset);
+
+  const output = makeNode('pre', {id: 'review-workflow-output', className: 'intent-preview', textContent: 'Select an issue, review the score/evidence, apply any local structured edit, then mark the issue reviewed.'});
+  output.setAttribute('role', 'status');
+  output.setAttribute('aria-live', 'polite');
+  output.setAttribute('aria-atomic', 'true');
+
+  workflow.append(heading, details, actions, output, help);
+  const existingSecurityNote = editPanel.querySelector(':scope > .security-note');
+  if (existingSecurityNote) editPanel.insertBefore(workflow, existingSecurityNote);
+  else editPanel.append(workflow);
+
+  const approvalStatusSpan = Array.from(statusbar.querySelectorAll('span')).find((candidate) => {
+    const strong = candidate.querySelector('strong');
+    return strong?.textContent === 'Approval';
+  });
+  let approvalStatusValue = null;
+  if (approvalStatusSpan) {
+    const strong = approvalStatusSpan.querySelector('strong');
+    approvalStatusValue = makeNode('span', {id: 'status-approval', textContent: ' unavailable'});
+    approvalStatusSpan.replaceChildren(strong, approvalStatusValue);
+  }
+
+  const text = (id, value) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = String(value);
+  };
+
+  const updateIssueAnnotations = () => {
+    issueList.querySelectorAll('[data-issue-id]').forEach((button) => {
+      const reviewed = workflowState.reviewedIssueIds.has(button.dataset.issueId);
+      button.dataset.localReviewed = reviewed ? 'true' : 'false';
+      const base = button.getAttribute('aria-label')?.replace(/ Locally reviewed\.$/, '') ?? '';
+      button.setAttribute('aria-label', reviewed ? `${base} Locally reviewed.` : base);
+    });
+  };
+
+  const renderWorkflow = () => {
+    const selected = selectedIssue();
+    const blocking = unresolvedBlocking();
+    const reviewedCount = workflowState.reviewedIssueIds.size;
+    text('reviewed-issue-count', `${reviewedCount} / ${issues.length}`);
+    text('workflow-blocking-count', blocking);
+    text('workflow-validation-label', workflowState.validation === 'pass' ? 'PASS · local readiness' : 'Not run');
+    text('workflow-approval-label', workflowState.approval === 'ready-preview' ? 'Ready · production action locked' : 'Locked');
+
+    markReviewed.disabled = !selected || workflowState.reviewedIssueIds.has(selected.id);
+    runValidation.disabled = issues.length === 0 || blocking !== 0;
+    prepareApproval.disabled = workflowState.validation !== 'pass';
+
+    if (workflowState.approval === 'ready-preview') {
+      status.textContent = 'Ready for teacher approval · production locked';
+      status.dataset.kind = 'safe';
+      if (approvalStatusValue) approvalStatusValue.textContent = ' ready preview · production locked';
+    } else if (workflowState.validation === 'pass') {
+      status.textContent = 'Validation passed · prepare approval';
+      status.dataset.kind = 'safe';
+      if (approvalStatusValue) approvalStatusValue.textContent = ' locked pending local preparation';
+    } else if (blocking === 0) {
+      status.textContent = 'Ready to validate';
+      status.dataset.kind = 'neutral';
+      if (approvalStatusValue) approvalStatusValue.textContent = ' locked pending validation';
+    } else {
+      status.textContent = `${blocking} blocking issue${blocking === 1 ? '' : 's'} remaining`;
+      status.dataset.kind = 'locked';
+      if (approvalStatusValue) approvalStatusValue.textContent = ` locked · ${blocking} blocking remaining`;
+    }
+    updateIssueAnnotations();
+  };
+
+  const invalidateReadiness = () => {
+    workflowState.validation = 'not-run';
+    workflowState.approval = 'locked';
+  };
+
+  markReviewed.addEventListener('click', () => {
+    const issue = selectedIssue();
+    if (!issue) return;
+    workflowState.reviewedIssueIds.add(issue.id);
+    invalidateReadiness();
+    output.textContent = `Marked locally reviewed: ${issue.title}. This browser-only marker is non-authoritative and will disappear on reload.`;
+    renderWorkflow();
+  });
+
+  runValidation.addEventListener('click', () => {
+    const blocking = unresolvedBlocking();
+    if (blocking !== 0 || issues.length === 0) {
+      workflowState.validation = 'not-run';
+      workflowState.approval = 'locked';
+      output.textContent = `Validation blocked locally: ${blocking} unresolved blocking issue${blocking === 1 ? '' : 's'}.`;
+      renderWorkflow();
+      return;
+    }
+    workflowState.validation = 'pass';
+    workflowState.approval = 'locked';
+    output.textContent = 'Local readiness validation PASS. This is UI workflow evidence only; no authoritative server validation or revision was created.';
+    renderWorkflow();
+  });
+
+  prepareApproval.addEventListener('click', () => {
+    if (workflowState.validation !== 'pass' || unresolvedBlocking() !== 0) return;
+    workflowState.approval = 'ready-preview';
+    output.textContent = 'Approval UI is prepared and locally ready. The final Approve score action stays fail-closed until authenticated server revision, validation evidence, RBAC, persistence, and approval authority are separately activated.';
+    renderWorkflow();
+  });
+
+  reset.addEventListener('click', () => {
+    workflowState.reviewedIssueIds.clear();
+    invalidateReadiness();
+    output.textContent = 'Local review state reset. No server state existed or was changed.';
+    renderWorkflow();
+  });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('[data-issue-id], [data-filter]')) queueMicrotask(renderWorkflow);
+  });
+  issueList.addEventListener('keydown', () => queueMicrotask(renderWorkflow));
+
+  renderWorkflow();
+})();
