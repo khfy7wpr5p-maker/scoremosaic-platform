@@ -22,6 +22,7 @@ on:
       - "tests/test_st_score_editor_core_integration_v1.py"
       - "tests/test_architecture_consistency.py"
       - "tests/e7h_osmd_host_behavior.js"
+      - "tests/e7h_real_osmd_browser_smoke.js"
       - "prototypes/stage10-ui-application-experience/**"
       - "prototypes/stage11-ui-application-contracts/**"
   pull_request:
@@ -42,6 +43,7 @@ on:
       - "tests/test_st_score_editor_core_integration_v1.py"
       - "tests/test_architecture_consistency.py"
       - "tests/e7h_osmd_host_behavior.js"
+      - "tests/e7h_real_osmd_browser_smoke.js"
       - "prototypes/stage10-ui-application-experience/**"
       - "prototypes/stage11-ui-application-contracts/**"
   workflow_dispatch:
@@ -171,6 +173,43 @@ jobs:
             --osmd-package-json "$OSMD_ROOT/node_modules/opensheetmusicdisplay/package.json" \
             --osmd-license "$OSMD_ROOT/node_modules/opensheetmusicdisplay/LICENSE"
 
+      - name: Run real Chrome and real OSMD browser smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_root=/tmp/scoremosaic-web-preview-browser-smoke
+          cp -R /tmp/scoremosaic-web-preview-v1 "$smoke_root"
+          cp tests/e7h_real_osmd_browser_smoke.js "$smoke_root/e7h_real_osmd_browser_smoke.js"
+          python - "$smoke_root/index.html" <<'PY'
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          html = path.read_text(encoding='utf-8')
+          marker = '</head>'
+          script = '  <script src="e7h_real_osmd_browser_smoke.js" defer></script>\n'
+          if html.count(marker) != 1 or 'e7h_real_osmd_browser_smoke.js' in html:
+              raise SystemExit('browser smoke injection point drifted')
+          path.write_text(html.replace(marker, script + marker, 1), encoding='utf-8')
+          PY
+          python -m http.server 8765 --bind 127.0.0.1 --directory "$smoke_root" >/tmp/e7h-browser-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          sleep 1
+          google-chrome --version
+          timeout 40s google-chrome \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=12000 \
+            --dump-dom \
+            http://127.0.0.1:8765/ > /tmp/e7h-real-osmd-dom.html
+          grep -F 'data-e7h-real-osmd-smoke="pass"' /tmp/e7h-real-osmd-dom.html
+          grep -F 'E7H_REAL_OSMD_BROWSER_SMOKE_PASS:' /tmp/e7h-real-osmd-dom.html
+          if grep -F 'E7H_REAL_OSMD_BROWSER_SMOKE_FAIL:' /tmp/e7h-real-osmd-dom.html; then
+            exit 1
+          fi
+
       - name: Verify preview entrypoint and safety marker
         shell: bash
         run: |
@@ -181,6 +220,10 @@ jobs:
           grep -F "Fixture data only" /tmp/scoremosaic-web-preview-v1/index.html
           grep -F 'src="vendor/opensheetmusicdisplay-2.1.1.min.js"' /tmp/scoremosaic-web-preview-v1/index.html
           grep -F 'src="vendor/st-score-editor-core.runtime.js"' /tmp/scoremosaic-web-preview-v1/index.html
+          if grep -F 'e7h_real_osmd_browser_smoke.js' /tmp/scoremosaic-web-preview-v1/index.html; then
+            echo 'test-only smoke script leaked into deployable preview' >&2
+            exit 1
+          fi
           test -s /tmp/scoremosaic-web-preview-v1/vendor/OSMD-LICENSE.txt
           test -s /tmp/scoremosaic-web-preview-v1/PREVIEW-NOTICE.txt
 
