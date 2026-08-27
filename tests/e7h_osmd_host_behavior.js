@@ -116,7 +116,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   assert.equal(api.networkCapable,false);
   assert.equal(api.serverRevisionAuthority,false);
   assert.equal(api.presentationControls,true);
-  assert.deepEqual(JSON.parse(JSON.stringify(api.fitWidthPolicy)),{minZoom:1.45,maxZoom:1.9,referenceWidth:380,rerenderWidthDelta:32});
+  assert.deepEqual(JSON.parse(JSON.stringify(api.fitWidthPolicy)),{minZoom:1,maxZoom:1.15,referenceWidth:640,rerenderWidthDelta:32});
   assert.equal(api.getViewMode(),'fit-width');
   assert.equal(result.fitWidthButton.disabled,false);
   assert.equal(result.zoom100Button.disabled,false);
@@ -131,10 +131,9 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   assert.equal(result.host.dataset.viewMode,'fit-width');
   assert.equal(api.getLastRenderError(),null);
   const initialZoom = api.getPresentationZoom();
-  assert.ok(initialZoom >= 1.45 && initialZoom <= 1.9);
-  assert.ok(initialZoom > 1.0);
-  assert.equal(Number(result.host.dataset.presentationZoom),Number(initialZoom.toFixed(2)));
-  assert.match(result.fitWidthButton.getAttribute('aria-label'),/current scale 168 percent|current scale 169 percent/);
+  assert.equal(initialZoom,1.0);
+  assert.equal(Number(result.host.dataset.presentationZoom),1.0);
+  assert.match(result.fitWidthButton.getAttribute('aria-label'),/current scale 100 percent/);
   assert.ok(result.calls.some((call)=>call[0]==='load' && call[1].includes('<score-partwise')));
   assert.ok(result.calls.some((call)=>call[0]==='render' && call[2]===initialZoom));
   assert.ok(result.calls.filter((call)=>call[0]==='constructor').every((call)=>call[3]===false), 'OSMD constructor must never receive a hidden host');
@@ -143,6 +142,15 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   const fitConstructor = result.calls.find((call)=>call[0]==='constructor');
   assert.equal(fitConstructor[2].autoResize,false);
   assert.equal(fitConstructor[2].stretchLastSystemLine,true);
+  assert.equal(fitConstructor[2].drawCredits,false);
+  assert.equal(fitConstructor[2].drawTitle,false);
+  assert.equal(fitConstructor[2].drawSubtitle,false);
+  assert.equal(fitConstructor[2].drawComposer,false);
+  assert.equal(fitConstructor[2].drawLyricist,false);
+  assert.equal(fitConstructor[2].drawPartNames,false);
+  assert.equal(fitConstructor[2].drawPartAbbreviations,false);
+  assert.equal(fitConstructor[2].drawMeasureNumbers,true);
+  assert.equal(fitConstructor[2].measureNumberInterval,1);
 
   await api.setViewMode('100');
   assert.equal(api.getViewMode(),'100');
@@ -159,7 +167,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
 
   await api.setViewMode('fit-width');
   assert.equal(api.getViewMode(),'fit-width');
-  assert.ok(api.getPresentationZoom() > 1.0);
+  assert.ok(api.getPresentationZoom() >= 1.0 && api.getPresentationZoom() <= 1.15);
   const constructorsAfterFit = result.calls.filter((call)=>call[0]==='constructor');
   const finalFitConstructor = constructorsAfterFit.at(-1);
   assert.equal(finalFitConstructor[2].autoResize,false);
@@ -170,7 +178,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   result.setHostWidth(800);
   const responsive = await api.refreshResponsiveLayout();
   assert.equal(responsive.rerendered,true);
-  assert.equal(api.getPresentationZoom(),1.9);
+  assert.equal(api.getPresentationZoom(),1.15);
   assert.ok(api.getPresentationZoom() > beforeResponsiveZoom);
   const stable = await api.refreshResponsiveLayout();
   assert.equal(stable.rerendered,false);

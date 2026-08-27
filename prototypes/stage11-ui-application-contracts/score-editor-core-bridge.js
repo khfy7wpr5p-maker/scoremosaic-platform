@@ -5,6 +5,17 @@
   const runtime = window.STScoreEditorCoreRuntime;
   const CORE_COMMIT = 'b317abef915d1e16b37572221a38feb3e504450d';
   const INTEGRATION_VERSION = 'scoremosaic-st-score-editor-core-bridge-v1';
+  const SCORE_MEASURE_COUNT = 12;
+  const FILLER_PITCHES = Object.freeze([
+    Object.freeze({step: 'E', alter: 0, octave: 4}),
+    Object.freeze({step: 'G', alter: 0, octave: 4}),
+    Object.freeze({step: 'B', alter: 0, octave: 4}),
+    Object.freeze({step: 'D', alter: 0, octave: 5}),
+    Object.freeze({step: 'F', alter: 0, octave: 4}),
+    Object.freeze({step: 'A', alter: 0, octave: 4}),
+    Object.freeze({step: 'C', alter: 0, octave: 5}),
+    Object.freeze({step: 'E', alter: 0, octave: 5})
+  ]);
   let sequence = 0;
   let session = null;
 
@@ -85,9 +96,58 @@
     return freezeDeep({numerator, denominator});
   };
 
+  const fillerEvent = (measureOrdinal, eventOrdinal, onset, pitch) => {
+    const suffix = `${String(measureOrdinal).padStart(3, '0')}-${String(eventOrdinal).padStart(2, '0')}`;
+    const eventId = `fixture-event-${suffix}`;
+    return {
+      id: eventId,
+      kind: 'note',
+      onset,
+      duration: {numerator: 1, denominator: 4},
+      note: {
+        id: `note-${eventId}`,
+        pitch
+      }
+    };
+  };
+
+  const coherentMeasureEvents = (ordinal) => {
+    const issue = fixture.issues.find((candidate) => candidate.location.measure === ordinal) ?? null;
+    if (issue) {
+      const issueEvent = {
+        id: issue.location.event,
+        kind: 'note',
+        onset: {numerator: 0, denominator: 1},
+        duration: parseDurationText(issue.event.duration),
+        note: {
+          id: `note-${issue.location.event}`,
+          pitch: parsePitchText(issue.event.pitch)
+        }
+      };
+      const closingPitch = FILLER_PITCHES[(ordinal + 2) % FILLER_PITCHES.length];
+      return [
+        issueEvent,
+        fillerEvent(ordinal, 4, {numerator: 3, denominator: 4}, closingPitch)
+      ];
+    }
+
+    const onsets = [
+      {numerator: 0, denominator: 1},
+      {numerator: 1, denominator: 4},
+      {numerator: 1, denominator: 2},
+      {numerator: 3, denominator: 4}
+    ];
+    return onsets.map((onset, index) => fillerEvent(
+      ordinal,
+      index + 1,
+      onset,
+      FILLER_PITCHES[(ordinal + index - 1) % FILLER_PITCHES.length]
+    ));
+  };
+
   const scoreInput = () => {
-    const measures = fixture.issues.map((issue) => {
-      const ordinal = issue.location.measure;
+    const measures = Array.from({length: SCORE_MEASURE_COUNT}, (_, index) => {
+      const ordinal = index + 1;
       return {
         id: `measure-${ordinal}`,
         ordinal,
@@ -95,19 +155,11 @@
         voices: [{
           id: `voice-${ordinal}-1`,
           ordinal: 1,
-          events: [{
-            id: issue.location.event,
-            kind: 'note',
-            onset: {numerator: 0, denominator: 1},
-            duration: parseDurationText(issue.event.duration),
-            note: {
-              id: `note-${issue.location.event}`,
-              pitch: parsePitchText(issue.event.pitch)
-            }
-          }]
+          events: coherentMeasureEvents(ordinal)
         }]
       };
     });
+
     return freezeDeep({
       schemaVersion: '1.0.0',
       id: fixture.document.id,
@@ -115,7 +167,7 @@
       source: {sha256: 'f'.repeat(64), format: 'synthetic', byteLength: null},
       parts: [{
         id: 'part-fixture-1',
-        name: fixture.document.label,
+        name: 'Teacher Review score',
         staves: [{id: 'staff-fixture-1', ordinal: 1, measures}]
       }]
     });
@@ -183,6 +235,10 @@
     } else {
       throw new Error('OPERATION_INVALID');
     }
+
+    // Core edits invalidate selection by design. Re-select the same semantic
+    // issue target on the new revision so Structured Edit shows current values.
+    selectIssue(issueId);
     return getSessionSnapshot();
   };
 
@@ -193,6 +249,7 @@
     musicXml: session.renderRequest.musicXml,
     selectedKind: session.selection?.primary?.kind ?? null,
     inspector: session.inspector,
+    scoreFixtureMeasureCount: SCORE_MEASURE_COUNT,
     authoritative: false,
     persistent: false
   });
@@ -213,6 +270,7 @@
     approvalAuthority: false,
     publicationAuthority: false,
     syntheticFixtureMapping: true,
+    scoreFixtureMeasureCount: SCORE_MEASURE_COUNT,
     coreCommit: CORE_COMMIT,
     getSessionSnapshot,
     selectIssue: (issueId) => {

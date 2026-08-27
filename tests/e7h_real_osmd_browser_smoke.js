@@ -14,6 +14,14 @@
     throw new Error(code);
   };
 
+  const waitFor = async (predicate, code, attempts = 80) => {
+    for (let index = 0; index < attempts; index += 1) {
+      if (predicate()) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    fail(code);
+  };
+
   const graphicsSpanRatio = (svg) => {
     const graphics = [...svg.querySelectorAll('path,use,line,polyline,polygon,ellipse,circle')];
     let minX = Number.POSITIVE_INFINITY;
@@ -46,7 +54,54 @@
     return maximum;
   };
 
-  const assertRendered = (expectedRevision, {fitWidth = false} = {}) => {
+  const renderedSystemGeometry = (svg) => {
+    const svgRect = svg.getBoundingClientRect();
+    const minimumSegmentWidth = Math.max(24, svgRect.width * 0.08);
+    const rawLineYs = [];
+
+    for (const graphic of svg.querySelectorAll('path,line,polyline')) {
+      try {
+        const rect = graphic.getBoundingClientRect();
+        if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height)) continue;
+        if (rect.width < minimumSegmentWidth || rect.height > 3.5) continue;
+        rawLineYs.push(rect.top + (rect.height / 2));
+      } catch {
+        // Geometry probing is test-only; other staff-line segments still count.
+      }
+    }
+
+    rawLineYs.sort((left, right) => left - right);
+    const clusters = [];
+    for (const y of rawLineYs) {
+      const current = clusters.at(-1);
+      if (current && Math.abs(current.y - y) <= 2.5) {
+        current.y = ((current.y * current.count) + y) / (current.count + 1);
+        current.count += 1;
+      } else {
+        clusters.push({y, count: 1});
+      }
+    }
+
+    const lineYs = clusters.map((cluster) => cluster.y);
+    let systems = 0;
+    let index = 0;
+    while (index <= lineYs.length - 5) {
+      const five = lineYs.slice(index, index + 5);
+      const gaps = five.slice(1).map((value, gapIndex) => value - five[gapIndex]);
+      const looksLikeFiveLineStaff = gaps.every((gap) => gap >= 3 && gap <= 18)
+        && (five[4] - five[0]) <= 70;
+      if (looksLikeFiveLineStaff) {
+        systems += 1;
+        index += 5;
+      } else {
+        index += 1;
+      }
+    }
+
+    return {systems, staffLineClusters: lineYs.length, rawSegments: rawLineYs.length};
+  };
+
+  const assertRendered = (expectedRevision, {fitWidth = false, minimumSystems = 0} = {}) => {
     const host = document.getElementById('score-render-host');
     const fallback = document.getElementById('score-fixture-fallback');
     if (!host || !fallback) fail('SURFACE_MISSING');
@@ -63,11 +118,18 @@
     if (!(rect.width > 0) || !(rect.height > 0)) fail('SVG_ZERO_SIZE', `${rect.width}x${rect.height}`);
     const graphicHeight = maxGraphicPixelHeight(svg);
     if (!(graphicHeight > 0)) fail('SVG_GRAPHICS_ZERO_HEIGHT');
+    if (svg.textContent.includes('Teacher Review score') || svg.textContent.includes('Bach Study')) {
+      fail('FIXTURE_CREDIT_CONSUMES_SCORE_VIEW');
+    }
     if (fitWidth) {
       const ratio = graphicsSpanRatio(svg);
-      if (!(ratio >= 0.35)) fail('FIT_WIDTH_SPAN_TOO_SMALL', ratio.toFixed(3));
+      if (!(ratio >= 0.6)) fail('FIT_WIDTH_SPAN_TOO_SMALL', ratio.toFixed(3));
     }
-    return {svg, rect, graphicHeight};
+    const geometry = renderedSystemGeometry(svg);
+    if (minimumSystems > 0 && geometry.systems < minimumSystems) {
+      fail('SCORE_SYSTEM_COUNT_TOO_SMALL', `${geometry.systems}/staff-lines=${geometry.staffLineClusters}/segments=${geometry.rawSegments}`);
+    }
+    return {svg, rect, graphicHeight, systems: geometry.systems, staffLineClusters: geometry.staffLineClusters};
   };
 
   window.addEventListener('load', async () => {
@@ -80,6 +142,7 @@
       if (typeof renderer.getPresentationZoom !== 'function') fail('PRESENTATION_ZOOM_UNAVAILABLE');
       if (typeof renderer.refreshResponsiveLayout !== 'function') fail('RESPONSIVE_REFRESH_UNAVAILABLE');
       if (renderer.getViewMode() !== 'fit-width') fail('DEFAULT_VIEW_MODE_INVALID', renderer.getViewMode());
+      if (bridge.scoreFixtureMeasureCount !== 12) fail('FIXTURE_MEASURE_COUNT_CONTRACT_INVALID', String(bridge.scoreFixtureMeasureCount));
 
       const fitWidthButton = document.getElementById('score-fit-width');
       const zoom100Button = document.getElementById('score-zoom-100');
@@ -89,31 +152,27 @@
       if (fitWidthButton.getAttribute('aria-pressed') !== 'true') fail('FIT_WIDTH_NOT_ACTIVE');
 
       let snapshot = bridge.getSessionSnapshot();
+      const measureCount = (snapshot.musicXml.match(/<measure number=/g) || []).length;
+      if (measureCount !== 12) fail('MUSICXML_MEASURE_COUNT_INVALID', String(measureCount));
       await renderer.renderCurrentSession();
-      const initialFit = assertRendered(snapshot.revisionId, {fitWidth: true});
+      const initialFit = assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
+      if (!(initialFit.rect.height >= 300)) fail('SCORE_VIEW_TOO_SHORT', String(initialFit.rect.height));
       const initialFitZoom = renderer.getPresentationZoom();
       if (!(initialFitZoom >= renderer.fitWidthPolicy.minZoom && initialFitZoom <= renderer.fitWidthPolicy.maxZoom)) {
         fail('FIT_WIDTH_ZOOM_OUT_OF_BOUNDS', String(initialFitZoom));
       }
-      if (!(initialFitZoom > 1.0)) fail('FIT_WIDTH_ZOOM_NOT_ENLARGED', String(initialFitZoom));
       if (Number(host.dataset.presentationZoom) !== Number(initialFitZoom.toFixed(2))) fail('FIT_WIDTH_ZOOM_DATASET_MISMATCH');
 
       await renderer.setViewMode('100');
       if (renderer.getViewMode() !== '100') fail('ZOOM_100_MODE_NOT_APPLIED');
       if (renderer.getPresentationZoom() !== 1.0) fail('ZOOM_100_SCALE_INVALID', String(renderer.getPresentationZoom()));
       if (zoom100Button.getAttribute('aria-pressed') !== 'true') fail('ZOOM_100_NOT_ACTIVE');
-      const nativeView = assertRendered(snapshot.revisionId);
+      assertRendered(snapshot.revisionId);
 
       await renderer.setViewMode('fit-width');
       if (renderer.getViewMode() !== 'fit-width') fail('FIT_WIDTH_MODE_NOT_RESTORED');
       if (fitWidthButton.getAttribute('aria-pressed') !== 'true') fail('FIT_WIDTH_NOT_RESTORED');
-      const restoredFit = assertRendered(snapshot.revisionId, {fitWidth: true});
-      if (!(restoredFit.graphicHeight >= nativeView.graphicHeight * 1.15)) {
-        fail('FIT_WIDTH_GLYPH_SCALE_TOO_SMALL', `${restoredFit.graphicHeight.toFixed(2)}/${nativeView.graphicHeight.toFixed(2)}`);
-      }
-      if (!(initialFit.graphicHeight >= nativeView.graphicHeight * 1.15)) {
-        fail('INITIAL_FIT_GLYPH_SCALE_TOO_SMALL', `${initialFit.graphicHeight.toFixed(2)}/${nativeView.graphicHeight.toFixed(2)}`);
-      }
+      assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
 
       const originalInlineWidth = host.style.width;
       const originalWidth = host.getBoundingClientRect().width;
@@ -125,37 +184,51 @@
       if (!(narrowedZoom >= renderer.fitWidthPolicy.minZoom && narrowedZoom <= renderer.fitWidthPolicy.maxZoom)) {
         fail('RESPONSIVE_ZOOM_OUT_OF_BOUNDS', String(narrowedZoom));
       }
-      if (!(narrowedZoom <= initialFitZoom)) fail('RESPONSIVE_ZOOM_DID_NOT_DECREASE', `${narrowedZoom}/${initialFitZoom}`);
-      assertRendered(snapshot.revisionId, {fitWidth: true});
+      assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
       host.style.width = originalInlineWidth;
       await renderer.refreshResponsiveLayout();
-      assertRendered(snapshot.revisionId, {fitWidth: true});
+      assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
 
-      snapshot = bridge.commitOperation('issue-accidental-002', {
-        type: 'set_pitch',
-        value: {step: 'G', alter: {numerator: 0, denominator: 1}, octave: 4}
-      });
-      await renderer.renderCurrentSession();
-      assertRendered(snapshot.revisionId, {fitWidth: true});
+      const accidentalButton = [...document.querySelectorAll('[data-issue-id]')]
+        .find((button) => button.dataset.issueId === 'issue-accidental-002');
+      const operation = document.getElementById('edit-operation');
+      const proposedValue = document.getElementById('edit-value');
+      const applyButton = document.getElementById('prepare-intent');
+      const selectedPitch = document.getElementById('selected-pitch');
+      if (!accidentalButton || !operation || !proposedValue || !applyButton || !selectedPitch) fail('STRUCTURED_EDIT_CONTROLS_MISSING');
+      accidentalButton.click();
+      await waitFor(() => selectedPitch.textContent === 'F4', 'STRUCTURED_EDIT_SELECTION_NOT_SYNCED');
+      const beforePitchSvg = host.querySelector('svg').innerHTML;
+      operation.value = 'set_pitch';
+      operation.dispatchEvent(new Event('change', {bubbles: true}));
+      proposedValue.value = 'G4';
+      applyButton.click();
+      await waitFor(() => selectedPitch.textContent === 'G4', 'STRUCTURED_EDIT_VALUE_NOT_UPDATED');
+      snapshot = bridge.getSessionSnapshot();
+      await waitFor(() => host.dataset.renderedRevision === snapshot.revisionId, 'STRUCTURED_EDIT_RENDER_NOT_UPDATED');
+      const afterPitch = assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
+      if (afterPitch.svg.innerHTML === beforePitchSvg) fail('STRUCTURED_EDIT_SVG_UNCHANGED');
+      const pitchField = snapshot.inspector?.fields?.find((field) => field.key === 'pitch')?.value;
+      if (pitchField !== 'G4') fail('STRUCTURED_EDIT_INSPECTOR_NOT_CURRENT', String(pitchField));
 
       snapshot = bridge.commitOperation('issue-duration-001', {
         type: 'set_effective_duration',
         value: {numerator: 1, denominator: 4}
       });
       await renderer.renderCurrentSession();
-      assertRendered(snapshot.revisionId, {fitWidth: true});
+      assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
 
       snapshot = bridge.commitOperation('issue-source-003', {
         type: 'set_dots',
         value: 1
       });
       await renderer.renderCurrentSession();
-      assertRendered(snapshot.revisionId, {fitWidth: true});
+      assertRendered(snapshot.revisionId, {fitWidth: true, minimumSystems: 4});
 
       if (renderer.getLastRenderError() !== null) fail('UNEXPECTED_RENDER_ERROR', renderer.getLastRenderError());
       document.documentElement.dataset.e7hRealOsmdSmoke = 'pass';
       result.hidden = false;
-      result.textContent = `E7H_REAL_OSMD_BROWSER_SMOKE_PASS:${snapshot.revisionId}`;
+      result.textContent = `E7H_REAL_OSMD_BROWSER_SMOKE_PASS:${snapshot.revisionId}:systems>=4:measures=12:structured-edit=visible`;
     } catch (error) {
       if (document.documentElement.dataset.e7hRealOsmdSmoke !== 'fail') {
         const detail = error instanceof Error ? error.message : String(error);

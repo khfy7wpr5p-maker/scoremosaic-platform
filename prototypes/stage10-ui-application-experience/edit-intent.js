@@ -77,6 +77,9 @@
   const status = byId('intent-status');
   const preview = byId('intent-preview');
   const issueList = byId('issue-list');
+  const selectedPitchValue = byId('selected-pitch');
+  const selectedDurationValue = byId('selected-duration');
+  const selectedVoiceValue = byId('selected-voice');
 
   if (!operation || !proposedValue || !reason || !prepareButton || !clearButton || !status || !preview || !issueList) {
     return;
@@ -96,6 +99,32 @@
   const clearIntent = (message = 'No local intent prepared.') => {
     preview.textContent = message;
     clearButton.disabled = true;
+  };
+
+  const inspectorFieldMap = (snapshot) => new Map(
+    Array.isArray(snapshot?.inspector?.fields)
+      ? snapshot.inspector.fields.map((field) => [field.key, field.value])
+      : []
+  );
+
+  const formatInspectorPitch = (value) => {
+    const text = String(value ?? '');
+    const match = /^([A-G])([+-][12])?(-?[0-9]{1,2})$/.exec(text);
+    if (!match) return text;
+    const accidental = match[2] === '+1' ? '#'
+      : match[2] === '+2' ? '##'
+        : match[2] === '-1' ? 'b'
+          : match[2] === '-2' ? 'bb'
+            : '';
+    return `${match[1]}${accidental}${match[3]}`;
+  };
+
+  const syncStructuredEditFromSnapshot = (snapshot, issue) => {
+    if (!snapshot?.inspector || snapshot.inspector.targetKind !== 'note') return;
+    const fields = inspectorFieldMap(snapshot);
+    if (selectedPitchValue && fields.has('pitch')) selectedPitchValue.textContent = formatInspectorPitch(fields.get('pitch'));
+    if (selectedDurationValue && fields.has('duration')) selectedDurationValue.textContent = fields.get('duration');
+    if (selectedVoiceValue && issue?.event?.voice !== undefined) selectedVoiceValue.textContent = String(issue.event.voice);
   };
 
   const configureValueField = () => {
@@ -199,12 +228,14 @@
 
     if (coreAvailable) {
       const snapshot = coreBridge.commitOperation(issue.id, Object.freeze(payload));
+      syncStructuredEditFromSnapshot(snapshot, issue);
       preview.textContent = JSON.stringify({
         mode: 'st-score-editor-core-local-session',
         coreCommit: coreBridge.coreCommit,
         revisionId: snapshot.revisionId,
         rendererFamily: snapshot.rendererFamily,
         rendererActive: rendererAvailable,
+        selectedKind: snapshot.selectedKind,
         authoritative: false,
         persistent: false,
         reviewerNote: note.length === 0 ? null : note
@@ -232,7 +263,8 @@
     prepareButton.disabled = issue === null;
     if (issue && coreAvailable) {
       try {
-        coreBridge.selectIssue(issue.id);
+        const snapshot = coreBridge.selectIssue(issue.id);
+        syncStructuredEditFromSnapshot(snapshot, issue);
       } catch {
         prepareButton.disabled = true;
       }
