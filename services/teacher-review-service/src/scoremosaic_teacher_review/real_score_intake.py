@@ -9,15 +9,19 @@ from typing import Any, Mapping
 
 REAL_SCORE_INTAKE_VERSION = "scoremosaic-real-score-intake-v1"
 REAL_SCORE_INTAKE_BINDING_TYPE = "scoremosaic.real-score-intake-binding"
-MAX_MUSICXML_BYTES = 64 * 1024 * 1024
+VERIFIED_CANDIDATE_HANDOFF_VERSION = "scoremosaic-candidate-convergence-handoff-v1"
+MAX_MUSICXML_BYTES = 16 * 1024 * 1024
 MAX_REVIEW_BINDINGS = 1000
 
 _ENGINE_NAMES = frozenset({"homr", "clarity", "audiveris"})
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _GENERIC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$")
+_JOB_ID_RE = re.compile(r"^job_[A-Za-z0-9_-]{8,80}$")
+_PLAN_ID_RE = re.compile(r"^plan_[0-9a-f]{24}$")
+_RUN_ID_RE = re.compile(r"^run_[0-9a-f]{24}$")
 _ARTIFACT_ID_RE = re.compile(r"^artifact_[0-9a-f]{24}$")
 _CANDIDATE_ID_RE = re.compile(r"^candidate_[0-9a-f]{24}$")
-_SAFE_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$")
+_SAFE_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$")
 _SAFE_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$")
 
 _TOP_KEYS = frozenset({
@@ -34,16 +38,28 @@ _TOP_KEYS = frozenset({
 _DOCUMENT_KEYS = frozenset({"documentId", "revision"})
 _SOURCE_KEYS = frozenset({"sourceArtifactId", "sourceSha256"})
 _CANDIDATE_KEYS = frozenset({
-    "engine",
-    "candidateId",
-    "candidateNamespace",
-    "candidateSha256",
+    "version",
+    "jobId",
+    "planId",
+    "planSha256",
     "sourceArtifactId",
     "sourceSha256",
+    "engine",
+    "runId",
+    "candidateId",
+    "candidateSha256",
+    "persistenceRecordSha256",
     "musicxmlArtifactId",
+    "musicxmlArtifactRef",
     "musicxmlSha256",
+    "musicxmlBytes",
+    "handoffSha256",
     "engineVersion",
     "modelVersion",
+    "provenanceAuthenticated",
+    "persistedArtifactVerified",
+    "candidateOnly",
+    "authoritativeScore",
 })
 _CANONICAL_KEYS = frozenset({
     "canonicalSha256",
@@ -115,6 +131,15 @@ def _require_version(value: Any, code: str) -> str | None:
     return _require_match(value, _SAFE_VERSION_RE, code)
 
 
+def _require_safe_ref(value: Any, code: str) -> str:
+    ref = _require_match(value, _SAFE_REF_RE, code)
+    if ref.startswith("/") or "\\" in ref or "//" in ref:
+        _fail(code)
+    if any(part in {"", ".", ".."} for part in ref.split("/")):
+        _fail(code)
+    return ref
+
+
 def _require_bounded_text(value: Any, *, maximum: int, code: str) -> str:
     if type(value) is not str or not value or len(value) > maximum:
         _fail(code)
@@ -134,6 +159,32 @@ def _canonical_json(value: Any) -> bytes:
         _fail("INTAKE_PAYLOAD_INVALID")
 
 
+def _candidate_handoff_core(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "version": candidate["version"],
+        "jobId": candidate["jobId"],
+        "planId": candidate["planId"],
+        "planSha256": candidate["planSha256"],
+        "sourceArtifactId": candidate["sourceArtifactId"],
+        "sourceSha256": candidate["sourceSha256"],
+        "engine": candidate["engine"],
+        "runId": candidate["runId"],
+        "candidateId": candidate["candidateId"],
+        "candidateSha256": candidate["candidateSha256"],
+        "persistenceRecordSha256": candidate["persistenceRecordSha256"],
+        "musicxmlArtifactId": candidate["musicxmlArtifactId"],
+        "musicxmlArtifactRef": candidate["musicxmlArtifactRef"],
+        "musicxmlSha256": candidate["musicxmlSha256"],
+        "musicxmlBytes": candidate["musicxmlBytes"],
+        "engineVersion": candidate["engineVersion"],
+        "modelVersion": candidate["modelVersion"],
+        "provenanceAuthenticated": candidate["provenanceAuthenticated"],
+        "persistedArtifactVerified": candidate["persistedArtifactVerified"],
+        "candidateOnly": candidate["candidateOnly"],
+        "authoritativeScore": candidate["authoritativeScore"],
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class RealScoreIntakeBinding:
     document_id: str
@@ -143,7 +194,9 @@ class RealScoreIntakeBinding:
     engine: str
     candidate_id: str
     candidate_sha256: str
+    handoff_sha256: str
     musicxml_artifact_id: str
+    musicxml_artifact_ref: str
     musicxml_sha256: str
     canonical_sha256: str
     review_binding_count: int
@@ -159,7 +212,9 @@ class RealScoreIntakeBinding:
             "engine": self.engine,
             "candidateId": self.candidate_id,
             "candidateSha256": self.candidate_sha256,
+            "handoffSha256": self.handoff_sha256,
             "musicxmlArtifactId": self.musicxml_artifact_id,
+            "musicxmlArtifactRef": self.musicxml_artifact_ref,
             "musicxmlSha256": self.musicxml_sha256,
             "canonicalSha256": self.canonical_sha256,
             "reviewBindingCount": self.review_binding_count,
@@ -260,12 +315,14 @@ def validate_real_score_intake(
     *,
     musicxml: bytes,
 ) -> RealScoreIntakeBinding:
-    """Validate immutable candidate/canonical/review identity bindings only.
+    """Validate an already-verified Stage 7 candidate/canonical/review binding.
 
-    The function performs no file, network, persistence, approval, publication,
-    correction, rendering, or source mutation operation. ``musicxml`` is used
-    only to prove that the bound MusicXML hash matches the exact bytes supplied
-    to the caller by an already-authenticated candidate boundary.
+    This validator deliberately performs no external authentication, file I/O,
+    network access, persistence, correction, rendering, approval, publication,
+    or source mutation. The caller must supply metadata from the existing trusted
+    Stage 7 handoff boundary. This function independently rechecks its closed
+    shape, deterministic handoff hash, exact MusicXML byte/hash identity,
+    Canonical source identity, and Teacher Review -> Core event identity.
     """
 
     body = _require_closed_dict(payload, _TOP_KEYS, "INTAKE_SCHEMA_CLOSED")
@@ -309,23 +366,11 @@ def validate_real_score_intake(
         _CANDIDATE_KEYS,
         "INTAKE_CANDIDATE_INVALID",
     )
-    engine = candidate.get("engine")
-    if type(engine) is not str or engine not in _ENGINE_NAMES:
+    if candidate.get("version") != VERIFIED_CANDIDATE_HANDOFF_VERSION:
         _fail("INTAKE_CANDIDATE_INVALID")
-    candidate_id = _require_match(
-        candidate.get("candidateId"),
-        _CANDIDATE_ID_RE,
-        "INTAKE_CANDIDATE_INVALID",
-    )
-    _require_match(
-        candidate.get("candidateNamespace"),
-        _SAFE_REF_RE,
-        "INTAKE_CANDIDATE_INVALID",
-    )
-    candidate_sha = _require_hash(
-        candidate.get("candidateSha256"),
-        "INTAKE_CANDIDATE_INVALID",
-    )
+    job_id = _require_match(candidate.get("jobId"), _JOB_ID_RE, "INTAKE_CANDIDATE_INVALID")
+    plan_id = _require_match(candidate.get("planId"), _PLAN_ID_RE, "INTAKE_CANDIDATE_INVALID")
+    plan_sha = _require_hash(candidate.get("planSha256"), "INTAKE_CANDIDATE_INVALID")
     candidate_source_artifact_id = _require_match(
         candidate.get("sourceArtifactId"),
         _ARTIFACT_ID_RE,
@@ -335,17 +380,49 @@ def validate_real_score_intake(
         candidate.get("sourceSha256"),
         "INTAKE_CANDIDATE_INVALID",
     )
+    engine = candidate.get("engine")
+    if type(engine) is not str or engine not in _ENGINE_NAMES:
+        _fail("INTAKE_CANDIDATE_INVALID")
+    run_id = _require_match(candidate.get("runId"), _RUN_ID_RE, "INTAKE_CANDIDATE_INVALID")
+    candidate_id = _require_match(
+        candidate.get("candidateId"),
+        _CANDIDATE_ID_RE,
+        "INTAKE_CANDIDATE_INVALID",
+    )
+    candidate_sha = _require_hash(
+        candidate.get("candidateSha256"),
+        "INTAKE_CANDIDATE_INVALID",
+    )
+    persistence_record_sha = _require_hash(
+        candidate.get("persistenceRecordSha256"),
+        "INTAKE_CANDIDATE_INVALID",
+    )
     musicxml_artifact_id = _require_match(
         candidate.get("musicxmlArtifactId"),
         _ARTIFACT_ID_RE,
+        "INTAKE_CANDIDATE_INVALID",
+    )
+    musicxml_artifact_ref = _require_safe_ref(
+        candidate.get("musicxmlArtifactRef"),
         "INTAKE_CANDIDATE_INVALID",
     )
     musicxml_sha = _require_hash(
         candidate.get("musicxmlSha256"),
         "INTAKE_CANDIDATE_INVALID",
     )
-    _require_version(candidate.get("engineVersion"), "INTAKE_CANDIDATE_INVALID")
-    _require_version(candidate.get("modelVersion"), "INTAKE_CANDIDATE_INVALID")
+    musicxml_bytes = candidate.get("musicxmlBytes")
+    if type(musicxml_bytes) is not int or musicxml_bytes != len(musicxml):
+        _fail("INTAKE_MUSICXML_SIZE_MISMATCH")
+    handoff_sha = _require_hash(candidate.get("handoffSha256"), "INTAKE_CANDIDATE_INVALID")
+    engine_version = _require_version(candidate.get("engineVersion"), "INTAKE_CANDIDATE_INVALID")
+    model_version = _require_version(candidate.get("modelVersion"), "INTAKE_CANDIDATE_INVALID")
+    if (
+        candidate.get("provenanceAuthenticated") is not True
+        or candidate.get("persistedArtifactVerified") is not True
+        or candidate.get("candidateOnly") is not True
+        or candidate.get("authoritativeScore") is not False
+    ):
+        _fail("INTAKE_CANDIDATE_TRUST_STATE_INVALID")
 
     if (
         candidate_source_artifact_id != source_artifact_id
@@ -354,6 +431,9 @@ def validate_real_score_intake(
         _fail("INTAKE_SOURCE_BINDING_MISMATCH")
     if sha256(musicxml).hexdigest() != musicxml_sha:
         _fail("INTAKE_MUSICXML_HASH_MISMATCH")
+    expected_handoff_sha = sha256(_canonical_json(_candidate_handoff_core(candidate))).hexdigest()
+    if handoff_sha != expected_handoff_sha:
+        _fail("INTAKE_CANDIDATE_HANDOFF_MISMATCH")
 
     canonical = _require_closed_dict(
         body.get("canonical"),
@@ -367,9 +447,8 @@ def validate_real_score_intake(
     canonical_source_engine = canonical.get("sourceEngine")
     if type(canonical_source_engine) is not str or canonical_source_engine not in _ENGINE_NAMES:
         _fail("INTAKE_CANONICAL_INVALID")
-    canonical_source_ref = _require_match(
+    canonical_source_ref = _require_safe_ref(
         canonical.get("sourceArtifactRef"),
-        _SAFE_REF_RE,
         "INTAKE_CANONICAL_INVALID",
     )
     canonical_source_sha = _require_hash(
@@ -378,7 +457,7 @@ def validate_real_score_intake(
     )
     if (
         canonical_source_engine != engine
-        or canonical_source_ref != musicxml_artifact_id
+        or canonical_source_ref != musicxml_artifact_ref
         or canonical_source_sha != musicxml_sha
     ):
         _fail("INTAKE_CANONICAL_BINDING_MISMATCH")
@@ -409,23 +488,36 @@ def validate_real_score_intake(
         seen_issue_ids.add(issue_id)
         normalized_bindings.append(normalized)
 
+    normalized_candidate = {
+        "version": VERIFIED_CANDIDATE_HANDOFF_VERSION,
+        "jobId": job_id,
+        "planId": plan_id,
+        "planSha256": plan_sha,
+        "sourceArtifactId": candidate_source_artifact_id,
+        "sourceSha256": candidate_source_sha,
+        "engine": engine,
+        "runId": run_id,
+        "candidateId": candidate_id,
+        "candidateSha256": candidate_sha,
+        "persistenceRecordSha256": persistence_record_sha,
+        "musicxmlArtifactId": musicxml_artifact_id,
+        "musicxmlArtifactRef": musicxml_artifact_ref,
+        "musicxmlSha256": musicxml_sha,
+        "musicxmlBytes": musicxml_bytes,
+        "handoffSha256": handoff_sha,
+        "engineVersion": engine_version,
+        "modelVersion": model_version,
+        "provenanceAuthenticated": True,
+        "persistedArtifactVerified": True,
+        "candidateOnly": True,
+        "authoritativeScore": False,
+    }
     normalized_payload = {
         "schemaVersion": REAL_SCORE_INTAKE_VERSION,
         "bindingType": REAL_SCORE_INTAKE_BINDING_TYPE,
         "document": {"documentId": document_id, "revision": revision},
         "source": {"sourceArtifactId": source_artifact_id, "sourceSha256": source_sha},
-        "candidate": {
-            "engine": engine,
-            "candidateId": candidate_id,
-            "candidateNamespace": candidate["candidateNamespace"],
-            "candidateSha256": candidate_sha,
-            "sourceArtifactId": candidate_source_artifact_id,
-            "sourceSha256": candidate_source_sha,
-            "musicxmlArtifactId": musicxml_artifact_id,
-            "musicxmlSha256": musicxml_sha,
-            "engineVersion": candidate["engineVersion"],
-            "modelVersion": candidate["modelVersion"],
-        },
+        "candidate": normalized_candidate,
         "canonical": {
             "canonicalSha256": canonical_sha,
             "sourceEngine": canonical_source_engine,
@@ -446,7 +538,9 @@ def validate_real_score_intake(
         engine=engine,
         candidate_id=candidate_id,
         candidate_sha256=candidate_sha,
+        handoff_sha256=handoff_sha,
         musicxml_artifact_id=musicxml_artifact_id,
+        musicxml_artifact_ref=musicxml_artifact_ref,
         musicxml_sha256=musicxml_sha,
         canonical_sha256=canonical_sha,
         review_binding_count=len(normalized_bindings),
