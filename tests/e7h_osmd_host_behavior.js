@@ -32,14 +32,29 @@ const makeBridge = (snapshotRef) => Object.freeze({
   getSessionSnapshot:() => snapshotRef.current
 });
 
-const run = ({bridge, profile=exactProfile, failLoad=false}={}) => {
-  const host = {hidden:true,dataset:{},removeAttribute(name){if(name==='data-rendered-revision')delete this.dataset.renderedRevision;}};
+const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={}) => {
+  let hasSvg = false;
+  const host = {
+    hidden:true,
+    dataset:{},
+    textContent:'',
+    removeAttribute(name){if(name==='data-rendered-revision')delete this.dataset.renderedRevision;},
+    querySelector(selector){return selector==='svg' && hasSvg ? {} : null;}
+  };
   const fallback = {hidden:false};
   const calls = [];
   class FakeOsmd {
-    constructor(target, options) { calls.push(['constructor',target,options]); }
-    async load(xml) { calls.push(['load',xml]); if(failLoad)throw new Error('load failed'); }
-    render() { calls.push(['render']); }
+    constructor(target, options) {
+      calls.push(['constructor',target,options,target.hidden]);
+    }
+    async load(xml) {
+      calls.push(['load',xml,host.hidden]);
+      if(failLoad)throw new Error('load failed');
+    }
+    render() {
+      calls.push(['render',host.hidden]);
+      if(!emptyRender)hasSvg=true;
+    }
   }
   const window = {
     ScoreMosaicScoreEditorCoreBridge:bridge,
@@ -68,9 +83,12 @@ const run = ({bridge, profile=exactProfile, failLoad=false}={}) => {
   await api.renderCurrentSession();
   assert.equal(result.host.hidden,false);
   assert.equal(result.fallback.hidden,true);
+  assert.equal(result.host.dataset.renderState,'rendered');
   assert.equal(result.host.dataset.renderedRevision,'fixture-r1');
+  assert.equal(api.getLastRenderError(),null);
   assert.ok(result.calls.some((call)=>call[0]==='load' && call[1].includes('<score-partwise')));
   assert.ok(result.calls.some((call)=>call[0]==='render'));
+  assert.ok(result.calls.filter((call)=>['constructor','load','render'].includes(call[0])).every((call)=>call.at(-1)===false), 'OSMD must never layout inside a hidden host');
 
   snapshotRef.current={revisionId:'fixture-e7h-r0001',rendererFamily:'osmd',musicXml:'<score-partwise version="4.0"><part-list/></score-partwise>'};
   await api.renderCurrentSession();
@@ -81,21 +99,33 @@ const run = ({bridge, profile=exactProfile, failLoad=false}={}) => {
   assert.equal(badProfile.window.ScoreMosaicScoreEditorOsmdHost.available,false);
   assert.equal(badProfile.window.ScoreMosaicScoreEditorOsmdHost.reason,'RENDERER_PROFILE_MISMATCH');
   assert.equal(badProfile.fallback.hidden,false);
+  assert.equal(badProfile.host.hidden,false);
+  assert.equal(badProfile.host.dataset.renderError,'RENDERER_PROFILE_MISMATCH');
 
   const noBridge = run({bridge:null});
   assert.equal(noBridge.window.ScoreMosaicScoreEditorOsmdHost.available,false);
   assert.equal(noBridge.window.ScoreMosaicScoreEditorOsmdHost.reason,'CORE_BRIDGE_UNAVAILABLE');
+  assert.equal(noBridge.host.dataset.renderError,'CORE_BRIDGE_UNAVAILABLE');
 
   const failing = run({bridge:makeBridge(snapshotRef),failLoad:true});
   await failing.window.ScoreMosaicScoreEditorOsmdHost.renderCurrentSession().catch(()=>{});
-  assert.equal(failing.host.hidden,true);
+  assert.equal(failing.host.hidden,false);
   assert.equal(failing.fallback.hidden,false);
+  assert.equal(failing.host.dataset.renderState,'error');
+  assert.equal(failing.host.dataset.renderError,'OSMD_RENDER_FAILED');
+  assert.match(failing.host.textContent,/Score renderer unavailable/);
+
+  const empty = run({bridge:makeBridge(snapshotRef),emptyRender:true});
+  await empty.window.ScoreMosaicScoreEditorOsmdHost.renderCurrentSession().catch(()=>{});
+  assert.equal(empty.fallback.hidden,false);
+  assert.equal(empty.host.dataset.renderError,'OSMD_RENDER_FAILED');
 
   const urlSnapshot={current:{revisionId:'x',rendererFamily:'osmd',musicXml:'https://example.invalid/score.musicxml'}};
   const urlCase=run({bridge:makeBridge(urlSnapshot)});
   await urlCase.window.ScoreMosaicScoreEditorOsmdHost.renderCurrentSession().catch(()=>{});
-  assert.equal(urlCase.host.hidden,true);
+  assert.equal(urlCase.host.hidden,false);
   assert.equal(urlCase.fallback.hidden,false);
+  assert.equal(urlCase.host.dataset.renderError,'MUSICXML_INVALID');
 
   console.log('E7-H OSMD host behavior: PASS');
 })().catch((error)=>{console.error(error);process.exitCode=1;});
