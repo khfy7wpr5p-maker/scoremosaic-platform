@@ -99,7 +99,8 @@ class STScoreEditorCoreIntegrationV1Tests(unittest.TestCase):
         self.assertIn("coreBridge.publicationAuthority === false", EDIT_INTENT)
         self.assertIn("coreBridge.commitOperation", EDIT_INTENT)
         self.assertIn("application.prepareEditIntent", EDIT_INTENT)
-        self.assertIn("const maximum = coreAvailable ? 3 : 8", EDIT_INTENT)
+        self.assertIn("dots < 0 || dots > 8", EDIT_INTENT)
+        self.assertIn("coreAvailable && dots > 3", EDIT_INTENT)
 
     def test_public_fixture_preview_copies_bridge_but_not_core_runtime(self) -> None:
         self.assertIn('"score-editor-core-bridge.js"', BUILDER)
