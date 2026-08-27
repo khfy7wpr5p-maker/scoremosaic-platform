@@ -58,6 +58,10 @@ Expected evidence:
 - top suggestion: `violin-1`
 - result SHA-256: `2ee992b14ce19a0a4d326b05b6ad7c737dcf69a973626e207f1ca8fb33f109af`
 
+## Parallel Teacher Review Core work
+
+H7-C is intentionally separated from the open Real Score Intake / Teacher Review Core work. It does not modify the Core bridge, intake schemas, Teacher Review service, canonical projection, or semantic-address files changed by PR #185. The preview panel remains downstream evidence and cannot become a Core edit command or revision mutation path.
+
 ## Still closed
 
 Network transport, authenticated staging, production credentials, production inference, Canonical/TeacherRevision mutation, approval/publication, ST-OMR integration, H4 rerun, post-H4 retuning, automatic learning and broader/full orchestration claims remain closed.
