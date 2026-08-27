@@ -1,0 +1,46 @@
+name: Real Score Intake v1 CI
+
+on:
+  push:
+    branches:
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-score-intake-v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-real-score-intake-v1:
+    name: Validate Real Score Intake v1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate Real Score Intake v1 JSON contract
+        run: python -m json.tool contracts/real-score-intake-v1.schema.json > /dev/null
+
+      - name: Run Real Score Intake v1 contract regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_real_score_intake_contract_v1.py' -v
+
+      - name: Check repository diff formatting
+        run: git diff --check

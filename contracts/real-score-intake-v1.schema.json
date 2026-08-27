@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/real-score-intake-v1.schema.json",
+  "title": "ScoreMosaic Real Score Intake Binding v1",
+  "description": "Fail-closed binding from one verified Stage 7 OMR candidate handoff and its Canonical Score derivative into Teacher Review/Core semantic targets. This contract grants no network, persistence, correction, approval, publication, renderer, or final-truth authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "bindingType",
+    "document",
+    "source",
+    "candidate",
+    "canonical",
+    "mappingPolicy",
+    "reviewBindings",
+    "authority"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-real-score-intake-v1"},
+    "bindingType": {"const": "scoremosaic.real-score-intake-binding"},
+    "document": {"$ref": "#/$defs/document"},
+    "source": {"$ref": "#/$defs/source"},
+    "candidate": {"$ref": "#/$defs/candidate"},
+    "canonical": {"$ref": "#/$defs/canonical"},
+    "mappingPolicy": {"$ref": "#/$defs/mappingPolicy"},
+    "reviewBindings": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/reviewBinding"}
+    },
+    "authority": {"$ref": "#/$defs/authority"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "genericId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "jobId": {
+      "type": "string",
+      "pattern": "^job_[A-Za-z0-9_-]{8,80}$"
+    },
+    "planId": {
+      "type": "string",
+      "pattern": "^plan_[0-9a-f]{24}$"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{24}$"
+    },
+    "artifactId": {
+      "type": "string",
+      "pattern": "^artifact_[0-9a-f]{24}$"
+    },
+    "candidateId": {
+      "type": "string",
+      "pattern": "^candidate_[0-9a-f]{24}$"
+    },
+    "safeArtifactRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
+    },
+    "safeVersion": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+        {"type": "null"}
+      ]
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "revision"],
+      "properties": {
+        "documentId": {"$ref": "#/$defs/genericId"},
+        "revision": {"$ref": "#/$defs/genericId"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceArtifactId", "sourceSha256"],
+      "properties": {
+        "sourceArtifactId": {"$ref": "#/$defs/artifactId"},
+        "sourceSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "jobId",
+        "planId",
+        "planSha256",
+        "sourceArtifactId",
+        "sourceSha256",
+        "engine",
+        "runId",
+        "candidateId",
+        "candidateSha256",
+        "persistenceRecordSha256",
+        "musicxmlArtifactId",
+        "musicxmlArtifactRef",
+        "musicxmlSha256",
+        "musicxmlBytes",
+        "handoffSha256",
+        "engineVersion",
+        "modelVersion",
+        "provenanceAuthenticated",
+        "persistedArtifactVerified",
+        "candidateOnly",
+        "authoritativeScore"
+      ],
+      "properties": {
+        "version": {"const": "scoremosaic-candidate-convergence-handoff-v1"},
+        "jobId": {"$ref": "#/$defs/jobId"},
+        "planId": {"$ref": "#/$defs/planId"},
+        "planSha256": {"$ref": "#/$defs/sha256"},
+        "sourceArtifactId": {"$ref": "#/$defs/artifactId"},
+        "sourceSha256": {"$ref": "#/$defs/sha256"},
+        "engine": {"enum": ["homr", "clarity", "audiveris"]},
+        "runId": {"$ref": "#/$defs/runId"},
+        "candidateId": {"$ref": "#/$defs/candidateId"},
+        "candidateSha256": {"$ref": "#/$defs/sha256"},
+        "persistenceRecordSha256": {"$ref": "#/$defs/sha256"},
+        "musicxmlArtifactId": {"$ref": "#/$defs/artifactId"},
+        "musicxmlArtifactRef": {"$ref": "#/$defs/safeArtifactRef"},
+        "musicxmlSha256": {"$ref": "#/$defs/sha256"},
+        "musicxmlBytes": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "handoffSha256": {"$ref": "#/$defs/sha256"},
+        "engineVersion": {"$ref": "#/$defs/safeVersion"},
+        "modelVersion": {"$ref": "#/$defs/safeVersion"},
+        "provenanceAuthenticated": {"const": true},
+        "persistedArtifactVerified": {"const": true},
+        "candidateOnly": {"const": true},
+        "authoritativeScore": {"const": false}
+      }
+    },
+    "canonical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalSha256",
+        "sourceEngine",
+        "sourceArtifactRef",
+        "sourceArtifactSha256"
+      ],
+      "properties": {
+        "canonicalSha256": {"$ref": "#/$defs/sha256"},
+        "sourceEngine": {"enum": ["homr", "clarity", "audiveris"]},
+        "sourceArtifactRef": {"$ref": "#/$defs/safeArtifactRef"},
+        "sourceArtifactSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "mappingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scoreSource",
+        "eventIdentity",
+        "musicXmlRole",
+        "syntheticScoreAllowed",
+        "rendererAuthority"
+      ],
+      "properties": {
+        "scoreSource": {"const": "canonical"},
+        "eventIdentity": {"const": "preserve-canonical-event-id"},
+        "musicXmlRole": {"const": "immutable-candidate-evidence"},
+        "syntheticScoreAllowed": {"const": false},
+        "rendererAuthority": {"const": false}
+      }
+    },
+    "reviewBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issueId",
+        "sourceRegion",
+        "candidateId",
+        "candidateSha256",
+        "canonicalSha256",
+        "canonicalEventId",
+        "coreEventId",
+        "provenance"
+      ],
+      "properties": {
+        "issueId": {"$ref": "#/$defs/genericId"},
+        "sourceRegion": {"type": "string", "minLength": 1, "maxLength": 240},
+        "candidateId": {"$ref": "#/$defs/candidateId"},
+        "candidateSha256": {"$ref": "#/$defs/sha256"},
+        "canonicalSha256": {"$ref": "#/$defs/sha256"},
+        "canonicalEventId": {"$ref": "#/$defs/genericId"},
+        "coreEventId": {"$ref": "#/$defs/genericId"},
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["xmlPath", "sourceEventIndex"],
+          "properties": {
+            "xmlPath": {"type": "string", "minLength": 1, "maxLength": 1000},
+            "sourceEventIndex": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingOnly",
+        "networkCapable",
+        "persistent",
+        "finalTruthAuthority",
+        "writeAuthority",
+        "approvalAuthority",
+        "publicationAuthority",
+        "automaticCorrectionAuthority"
+      ],
+      "properties": {
+        "bindingOnly": {"const": true},
+        "networkCapable": {"const": false},
+        "persistent": {"const": false},
+        "finalTruthAuthority": {"const": false},
+        "writeAuthority": {"const": false},
+        "approvalAuthority": {"const": false},
+        "publicationAuthority": {"const": false},
+        "automaticCorrectionAuthority": {"const": false}
+      }
+    }
+  }
+}
