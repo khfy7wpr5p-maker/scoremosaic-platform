@@ -31,7 +31,7 @@ browser-safe evidence object
 Teacher Review Orchestration Preview
 ```
 
-The browser has no staging endpoint, authentication key, direct engine call, or network transport capability.
+The browser has no staging endpoint, authentication key, allowed-origin configuration, direct engine call, or network transport capability.
 
 ## Exact target
 
@@ -64,13 +64,15 @@ The ST side enforces a 300-second clock window and process-local nonce replay re
 
 ## Endpoint policy
 
-Production-like staging calls require HTTPS. Plain HTTP is accepted by the ScoreMosaic adapter only when the caller explicitly enables the loopback test harness and the host is loopback. Redirects are rejected rather than followed. URL credentials, endpoint paths, query strings, and fragments are rejected. Requests and responses are size-bounded and timed out.
+Production-like staging calls require HTTPS. In addition, every **non-loopback** staging endpoint is fail-closed unless `ST_ORCHESTRATION_STAGING_ALLOWED_ORIGIN` is provided at runtime and its normalized HTTPS origin exactly matches `ST_ORCHESTRATION_STAGING_ENDPOINT`. Wildcards, alternate hosts, paths, query strings, fragments, URL credentials, and HTTP allowed-origin pins are not accepted. This pin is server-side configuration and is never copied into browser evidence.
 
-The repository does not provision an external staging hostname, DNS record, TLS certificate, persistent secret, or production credential. CI uses real loopback HTTP plus a visibly synthetic test-only key to verify the protocol end to end.
+Plain HTTP is accepted by the ScoreMosaic adapter only when the caller explicitly enables the loopback test harness and the host is loopback. The loopback CI harness does not require an allowed-origin pin. Redirects are rejected rather than followed. Requests and responses are size-bounded and timed out.
+
+The repository does not provision an external staging hostname, DNS record, TLS certificate, persistent secret, allowed-origin value, or production credential. CI uses real loopback HTTP plus a visibly synthetic test-only key to verify the protocol end to end.
 
 ## Teacher Review boundary
 
-The server-side adapter converts an authenticated and independently validated H7-D response into a browser-safe evidence object. The object intentionally contains no endpoint or secret and advertises:
+The server-side adapter converts an authenticated and independently validated H7-D response into a browser-safe evidence object. The object intentionally contains no endpoint, allowed origin, or secret and advertises:
 
 ```text
 productionArtifact = false
@@ -87,7 +89,7 @@ The browser presentation adapter accepts H7-C and H7-D only as separate exact sc
 
 ## Fail-closed cases
 
-H7-D rejects malformed endpoints, weak secrets, identity or source-hash drift, wrong model/capability/threshold, invalid status, deterministic-vetoed proposals, threshold/status contradictions, malformed alternatives, result-hash drift, redirects, unexpected content type/encoding, oversized responses, timeouts, and authentication failures.
+H7-D rejects malformed endpoints, missing or mismatched non-loopback origin pins, weak secrets, identity or source-hash drift, wrong model/capability/threshold, invalid status, deterministic-vetoed proposals, threshold/status contradictions, malformed alternatives, result-hash drift, redirects, unexpected content type/encoding, oversized responses, timeouts, and authentication failures.
 
 ## Authority still closed
 
