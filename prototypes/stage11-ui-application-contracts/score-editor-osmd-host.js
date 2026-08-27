@@ -9,6 +9,7 @@
   const fallback = document.getElementById('score-fixture-fallback');
   let renderer = null;
   let lastRenderedRevision = null;
+  let lastRenderError = null;
   let renderQueue = Promise.resolve();
 
   const freeze = (value) => Object.freeze(value);
@@ -27,6 +28,25 @@
     approvalAuthority: false,
     publicationAuthority: false
   });
+
+  const knownRenderError = (error) => {
+    const message = error instanceof Error ? error.message : '';
+    if (['RENDERER_FAMILY_MISMATCH', 'REVISION_INVALID', 'MUSICXML_INVALID'].includes(message)) return message;
+    return 'OSMD_RENDER_FAILED';
+  };
+
+  const presentFailure = (code) => {
+    lastRenderError = code;
+    lastRenderedRevision = null;
+    if (host) {
+      host.hidden = false;
+      host.dataset.renderState = 'error';
+      host.dataset.renderError = code;
+      host.removeAttribute('data-rendered-revision');
+      host.textContent = `Score renderer unavailable (${code}). Fixture fallback remains visible.`;
+    }
+    if (fallback) fallback.hidden = false;
+  };
 
   const safeBridge = bridge?.available === true
     && bridge.authoritative === false
@@ -51,14 +71,17 @@
     && profile.persistent === false;
 
   if (!safeBridge) {
+    presentFailure('CORE_BRIDGE_UNAVAILABLE');
     window.ScoreMosaicScoreEditorOsmdHost = unavailable('CORE_BRIDGE_UNAVAILABLE');
     return;
   }
   if (!safeProfile) {
+    presentFailure('RENDERER_PROFILE_MISMATCH');
     window.ScoreMosaicScoreEditorOsmdHost = unavailable('RENDERER_PROFILE_MISMATCH');
     return;
   }
   if (typeof Osmd !== 'function' || !host || !fallback) {
+    presentFailure('OSMD_HOST_UNAVAILABLE');
     window.ScoreMosaicScoreEditorOsmdHost = unavailable('OSMD_HOST_UNAVAILABLE');
     return;
   }
@@ -75,18 +98,31 @@
   const renderOnce = async () => {
     const snapshot = bridge.getSessionSnapshot();
     const musicXml = assertMusicXml(snapshot);
+
+    // OSMD must receive a measurable container. Rendering into `hidden`
+    // can produce a zero-width/blank SVG while still calling render().
+    host.hidden = false;
+    host.dataset.renderState = 'loading';
+    delete host.dataset.renderError;
     if (renderer === null) {
+      host.textContent = '';
       renderer = new Osmd(host, {
         autoResize: true,
         drawTitle: false,
         followCursor: false
       });
     }
+
     await renderer.load(musicXml);
     renderer.render();
-    host.hidden = false;
+
+    const svg = host.querySelector?.('svg') ?? null;
+    if (!svg) throw new Error('OSMD_RENDER_EMPTY');
+
     fallback.hidden = true;
+    lastRenderError = null;
     lastRenderedRevision = snapshot.revisionId;
+    host.dataset.renderState = 'rendered';
     host.dataset.renderedRevision = snapshot.revisionId;
     return freeze({
       revisionId: snapshot.revisionId,
@@ -98,9 +134,8 @@
 
   const renderCurrentSession = () => {
     renderQueue = renderQueue.then(renderOnce, renderOnce).catch((error) => {
-      host.hidden = true;
-      fallback.hidden = false;
-      host.removeAttribute('data-rendered-revision');
+      renderer = null;
+      presentFailure(knownRenderError(error));
       throw error;
     });
     return renderQueue;
@@ -123,10 +158,11 @@
     rendererPackage: 'opensheetmusicdisplay',
     rendererVersion: '2.1.1',
     getLastRenderedRevision: () => lastRenderedRevision,
+    getLastRenderError: () => lastRenderError,
     renderCurrentSession
   });
 
   renderCurrentSession().catch(() => {
-    // The fixture fallback remains visible. Rendering never creates authority.
+    // Failure remains presentation-only and visibly falls back to fixture evidence.
   });
 })();
