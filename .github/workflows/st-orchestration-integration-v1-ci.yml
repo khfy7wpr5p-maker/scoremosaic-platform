@@ -1,0 +1,40 @@
+name: Validate ST-Orchestration integration v1
+
+on:
+  pull_request:
+    paths:
+      - "contracts/st-orchestration-integration-v1.json"
+      - "contracts/downstream-music-application-integration-v1.json"
+      - "docs/st-orchestration-integration-boundary.md"
+      - "docs/downstream-music-application-integration-boundary.md"
+      - "tests/test_st_orchestration_integration_architecture.py"
+      - "tests/test_ui_architecture_phase1.py"
+      - ".github/workflows/st-orchestration-integration-v1-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "contracts/st-orchestration-integration-v1.json"
+      - "contracts/downstream-music-application-integration-v1.json"
+      - "docs/st-orchestration-integration-boundary.md"
+      - "docs/downstream-music-application-integration-boundary.md"
+      - "tests/test_st_orchestration_integration_architecture.py"
+      - "tests/test_ui_architecture_phase1.py"
+      - ".github/workflows/st-orchestration-integration-v1-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  disconnected-compatibility:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate ST-Orchestration architecture contract
+        run: python -m unittest tests.test_st_orchestration_integration_architecture -v
+      - name: Re-run shared downstream UI architecture boundary tests
+        run: python -m unittest tests.test_ui_architecture_phase1 -v
