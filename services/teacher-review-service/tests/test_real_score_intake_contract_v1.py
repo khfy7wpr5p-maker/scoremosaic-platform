@@ -15,6 +15,7 @@ sys.path.insert(0, str(TEACHER_SRC))
 from scoremosaic_teacher_review.real_score_intake import (  # noqa: E402
     REAL_SCORE_INTAKE_BINDING_TYPE,
     REAL_SCORE_INTAKE_VERSION,
+    VERIFIED_CANDIDATE_HANDOFF_VERSION,
     RealScoreIntakeError,
     validate_real_score_intake,
 )
@@ -25,7 +26,68 @@ MUSICXML = b'<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"
 MUSICXML_SHA = sha256(MUSICXML).hexdigest()
 
 
+def canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=True,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+
+
+def handoff_core(candidate: dict) -> dict:
+    return {
+        "version": candidate["version"],
+        "jobId": candidate["jobId"],
+        "planId": candidate["planId"],
+        "planSha256": candidate["planSha256"],
+        "sourceArtifactId": candidate["sourceArtifactId"],
+        "sourceSha256": candidate["sourceSha256"],
+        "engine": candidate["engine"],
+        "runId": candidate["runId"],
+        "candidateId": candidate["candidateId"],
+        "candidateSha256": candidate["candidateSha256"],
+        "persistenceRecordSha256": candidate["persistenceRecordSha256"],
+        "musicxmlArtifactId": candidate["musicxmlArtifactId"],
+        "musicxmlArtifactRef": candidate["musicxmlArtifactRef"],
+        "musicxmlSha256": candidate["musicxmlSha256"],
+        "musicxmlBytes": candidate["musicxmlBytes"],
+        "engineVersion": candidate["engineVersion"],
+        "modelVersion": candidate["modelVersion"],
+        "provenanceAuthenticated": candidate["provenanceAuthenticated"],
+        "persistedArtifactVerified": candidate["persistedArtifactVerified"],
+        "candidateOnly": candidate["candidateOnly"],
+        "authoritativeScore": candidate["authoritativeScore"],
+    }
+
+
 def valid_payload() -> dict:
+    candidate = {
+        "version": VERIFIED_CANDIDATE_HANDOFF_VERSION,
+        "jobId": "job_abcdefgh",
+        "planId": "plan_555555555555555555555555",
+        "planSha256": "5" * 64,
+        "sourceArtifactId": "artifact_111111111111111111111111",
+        "sourceSha256": "1" * 64,
+        "engine": "audiveris",
+        "runId": "run_666666666666666666666666",
+        "candidateId": "candidate_222222222222222222222222",
+        "candidateSha256": "2" * 64,
+        "persistenceRecordSha256": "6" * 64,
+        "musicxmlArtifactId": "artifact_333333333333333333333333",
+        "musicxmlArtifactRef": "candidates/audiveris/musicxml.xml",
+        "musicxmlSha256": MUSICXML_SHA,
+        "musicxmlBytes": len(MUSICXML),
+        "handoffSha256": "0" * 64,
+        "engineVersion": "5.8.1",
+        "modelVersion": None,
+        "provenanceAuthenticated": True,
+        "persistedArtifactVerified": True,
+        "candidateOnly": True,
+        "authoritativeScore": False,
+    }
+    candidate["handoffSha256"] = sha256(canonical_json(handoff_core(candidate))).hexdigest()
     return {
         "schemaVersion": REAL_SCORE_INTAKE_VERSION,
         "bindingType": REAL_SCORE_INTAKE_BINDING_TYPE,
@@ -37,22 +99,11 @@ def valid_payload() -> dict:
             "sourceArtifactId": "artifact_111111111111111111111111",
             "sourceSha256": "1" * 64,
         },
-        "candidate": {
-            "engine": "audiveris",
-            "candidateId": "candidate_222222222222222222222222",
-            "candidateNamespace": "candidate/audiveris/v1",
-            "candidateSha256": "2" * 64,
-            "sourceArtifactId": "artifact_111111111111111111111111",
-            "sourceSha256": "1" * 64,
-            "musicxmlArtifactId": "artifact_333333333333333333333333",
-            "musicxmlSha256": MUSICXML_SHA,
-            "engineVersion": "5.8.1",
-            "modelVersion": None,
-        },
+        "candidate": candidate,
         "canonical": {
             "canonicalSha256": "4" * 64,
             "sourceEngine": "audiveris",
-            "sourceArtifactRef": "artifact_333333333333333333333333",
+            "sourceArtifactRef": "candidates/audiveris/musicxml.xml",
             "sourceArtifactSha256": MUSICXML_SHA,
         },
         "mappingPolicy": {
@@ -129,6 +180,40 @@ class RealScoreIntakeContractV1Tests(unittest.TestCase):
         ):
             self.assertIs(authority[key]["const"], False, key)
 
+    def test_candidate_contract_matches_verified_stage7_handoff_shape(self) -> None:
+        candidate = self.schema["$defs"]["candidate"]
+        required = set(candidate["required"])
+        self.assertTrue(
+            {
+                "version",
+                "jobId",
+                "planId",
+                "planSha256",
+                "sourceArtifactId",
+                "sourceSha256",
+                "engine",
+                "runId",
+                "candidateId",
+                "candidateSha256",
+                "persistenceRecordSha256",
+                "musicxmlArtifactId",
+                "musicxmlArtifactRef",
+                "musicxmlSha256",
+                "musicxmlBytes",
+                "handoffSha256",
+                "provenanceAuthenticated",
+                "persistedArtifactVerified",
+                "candidateOnly",
+                "authoritativeScore",
+            }.issubset(required)
+        )
+        properties = candidate["properties"]
+        self.assertEqual(properties["version"]["const"], VERIFIED_CANDIDATE_HANDOFF_VERSION)
+        self.assertIs(properties["provenanceAuthenticated"]["const"], True)
+        self.assertIs(properties["persistedArtifactVerified"]["const"], True)
+        self.assertIs(properties["candidateOnly"]["const"], True)
+        self.assertIs(properties["authoritativeScore"]["const"], False)
+
     def test_mapping_policy_forbids_synthetic_score_and_renderer_authority(self) -> None:
         policy = self.schema["$defs"]["mappingPolicy"]["properties"]
         self.assertEqual(policy["scoreSource"]["const"], "canonical")
@@ -149,6 +234,7 @@ class RealScoreIntakeContractV1Tests(unittest.TestCase):
         self.assertEqual(first.binding_sha256, second.binding_sha256)
         self.assertEqual(first.review_binding_count, 1)
         self.assertEqual(first.musicxml_sha256, MUSICXML_SHA)
+        self.assertEqual(first.musicxml_artifact_ref, "candidates/audiveris/musicxml.xml")
         safe = first.as_safe_dict()
         self.assertNotIn("musicxml", safe)
         self.assertIs(safe["authoritative"], False)
@@ -161,30 +247,54 @@ class RealScoreIntakeContractV1Tests(unittest.TestCase):
         result = validate_real_score_intake(payload, musicxml=MUSICXML)
         self.assertEqual(result.review_binding_count, 0)
 
-    def test_exact_musicxml_bytes_are_hash_bound(self) -> None:
+    def test_exact_musicxml_bytes_and_size_are_bound(self) -> None:
         self.assert_error(
             valid_payload(),
             "INTAKE_MUSICXML_HASH_MISMATCH",
-            musicxml=MUSICXML + b" ",
+            musicxml=MUSICXML[:-1] + b"X",
         )
+
+        payload = valid_payload()
+        payload["candidate"]["musicxmlBytes"] += 1
+        self.assert_error(payload, "INTAKE_MUSICXML_SIZE_MISMATCH")
+
+    def test_verified_handoff_hash_and_trust_state_are_rechecked(self) -> None:
+        payload = valid_payload()
+        payload["candidate"]["planSha256"] = "7" * 64
+        self.assert_error(payload, "INTAKE_CANDIDATE_HANDOFF_MISMATCH")
+
+        payload = valid_payload()
+        payload["candidate"]["provenanceAuthenticated"] = False
+        payload["candidate"]["handoffSha256"] = sha256(
+            canonical_json(handoff_core(payload["candidate"]))
+        ).hexdigest()
+        self.assert_error(payload, "INTAKE_CANDIDATE_TRUST_STATE_INVALID")
 
     def test_candidate_must_bind_to_same_immutable_source(self) -> None:
         payload = valid_payload()
-        payload["candidate"]["sourceSha256"] = "9" * 64
+        payload["source"]["sourceSha256"] = "9" * 64
         self.assert_error(payload, "INTAKE_SOURCE_BINDING_MISMATCH")
 
-    def test_canonical_must_bind_to_exact_candidate_musicxml(self) -> None:
+    def test_canonical_must_bind_to_exact_candidate_musicxml_ref_and_hash(self) -> None:
         payload = valid_payload()
         payload["canonical"]["sourceEngine"] = "homr"
         self.assert_error(payload, "INTAKE_CANONICAL_BINDING_MISMATCH")
 
         payload = valid_payload()
-        payload["canonical"]["sourceArtifactRef"] = "artifact_aaaaaaaaaaaaaaaaaaaaaaaa"
+        payload["canonical"]["sourceArtifactRef"] = "candidates/audiveris/other.xml"
         self.assert_error(payload, "INTAKE_CANONICAL_BINDING_MISMATCH")
 
         payload = valid_payload()
         payload["canonical"]["sourceArtifactSha256"] = "a" * 64
         self.assert_error(payload, "INTAKE_CANONICAL_BINDING_MISMATCH")
+
+    def test_unsafe_candidate_artifact_ref_fails_closed(self) -> None:
+        payload = valid_payload()
+        payload["candidate"]["musicxmlArtifactRef"] = "candidates/../musicxml.xml"
+        payload["candidate"]["handoffSha256"] = sha256(
+            canonical_json(handoff_core(payload["candidate"]))
+        ).hexdigest()
+        self.assert_error(payload, "INTAKE_CANDIDATE_INVALID")
 
     def test_review_issue_must_bind_to_candidate_canonical_and_same_event_id(self) -> None:
         payload = valid_payload()
