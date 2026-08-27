@@ -120,6 +120,7 @@ class WebPreviewV1Tests(unittest.TestCase):
                 "application/edit-intent-adapter.js",
                 "application/application-state.js",
                 "application/local-application.js",
+                "application/score-editor-core-bridge.js",
             }
             self.assertEqual(expected, set(tree_digest(first)))
             self.assertEqual(tree_digest(first), tree_digest(second))
@@ -131,6 +132,12 @@ class WebPreviewV1Tests(unittest.TestCase):
             self.assertIn("Fixture data only", index)
             self.assertNotIn("../stage11-ui-application-contracts/", index)
             self.assertIn('src="application/read-adapter.js"', index)
+            self.assertIn('src="application/score-editor-core-bridge.js"', index)
+            self.assertLess(index.index('application/local-application.js'), index.index('application/score-editor-core-bridge.js'))
+            self.assertLess(index.index('application/score-editor-core-bridge.js'), index.index('src="app.js"'))
+
+            notice = (first / "PREVIEW-NOTICE.txt").read_text(encoding="utf-8")
+            self.assertIn("core runtime is intentionally not bundled", notice)
 
     def test_builder_never_overwrites_or_deletes_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
