@@ -1,0 +1,45 @@
+{
+  "version": "scoremosaic-st-score-editor-core-integration-v1",
+  "repositoryIntegrationOnly": true,
+  "productionActivation": false,
+  "core": {
+    "repository": "khfy7wpr5p-maker/st-score-editor-core",
+    "commit": "70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b",
+    "runtimeVersion": "1.0.0",
+    "packagePrivate": true,
+    "hostInjected": true,
+    "remoteBrowserFetchAllowed": false,
+    "copiedCoreSourceAllowed": false,
+    "runtimeBundledInPublicPreview": false
+  },
+  "target": {
+    "workspace": "ScoreMosaic Teacher Review Stage 10/11",
+    "rendererFamily": "osmd",
+    "rendererPackage": "opensheetmusicdisplay",
+    "rendererVersion": "2.1.1",
+    "rendererAuthority": false,
+    "rendererRuntimeActivated": false
+  },
+  "operationMapping": {
+    "set_pitch": "SET_PITCH",
+    "set_effective_duration": "SET_DURATION",
+    "set_dots": "SET_DOTS",
+    "remove_event": null
+  },
+  "failClosedOperations": ["remove_event"],
+  "authority": {
+    "browserAuthoritative": false,
+    "networkAllowed": false,
+    "persistenceAllowed": false,
+    "serverRevisionAuthority": false,
+    "approvalAuthority": false,
+    "publicationAuthority": false,
+    "liveApiActivated": false,
+    "productionWriteActivated": false
+  },
+  "fallback": {
+    "runtimeUnavailableKeepsExistingLocalIntentPreview": true,
+    "automaticRetargetingAllowed": false,
+    "unknownOperationAllowed": false
+  }
+}

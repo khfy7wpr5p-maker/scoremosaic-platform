@@ -1,0 +1,124 @@
+name: ST Score Editor Core Integration CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/e7g-score-editor-core-integration-v1"
+    paths:
+      - ".github/workflows/st-score-editor-core-integration-ci.yml"
+      - "contracts/st-score-editor-core-integration-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/teacher-review-score-editor-architecture-contract.md"
+      - "prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js"
+      - "prototypes/stage10-ui-application-experience/edit-intent.js"
+      - "scripts/build_web_preview.py"
+      - "tests/e7g_score_editor_core_bridge_behavior.js"
+      - "tests/test_st_score_editor_core_integration_v1.py"
+      - "tests/test_web_preview_v1.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/st-score-editor-core-integration-ci.yml"
+      - "contracts/st-score-editor-core-integration-v1.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/teacher-review-score-editor-architecture-contract.md"
+      - "prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js"
+      - "prototypes/stage10-ui-application-experience/edit-intent.js"
+      - "scripts/build_web_preview.py"
+      - "tests/e7g_score_editor_core_bridge_behavior.js"
+      - "tests/test_st_score_editor_core_integration_v1.py"
+      - "tests/test_web_preview_v1.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-editor-core-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out ScoreMosaic
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Check out exact ST Score Editor Core
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: khfy7wpr5p-maker/st-score-editor-core
+          ref: 70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b
+          path: .integration/st-score-editor-core
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Verify exact core commit and integration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b"
+          observed="$(git -C .integration/st-score-editor-core rev-parse HEAD)"
+          test "$observed" = "$expected"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          expected = "70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b"
+          scoremosaic = json.loads(Path("contracts/st-score-editor-core-integration-v1.json").read_text())
+          core = json.loads(Path(".integration/st-score-editor-core/contracts/editor-core-v1.json").read_text())
+          assert scoremosaic["core"]["commit"] == expected
+          assert scoremosaic["core"]["runtimeVersion"] == "1.0.0"
+          assert scoremosaic["productionActivation"] is False
+          assert core["currentStage"] == "E7-G"
+          assert core["ui"]["browserRuntime"]["version"] == "1.0.0"
+          assert core["ui"]["browserRuntime"]["scoreMosaicRepositoryIntegrationAuthorized"] is True
+          assert core["ui"]["browserRuntime"]["networkCapable"] is False
+          assert core["ui"]["browserRuntime"]["persistenceCapable"] is False
+          assert core["ui"]["browserRuntime"]["serverRevisionAuthority"] is False
+          assert core["ui"]["browserRuntime"]["approvalAuthority"] is False
+          assert core["ui"]["browserRuntime"]["publicationAuthority"] is False
+          assert core["humanGates"]["productionActivation"]["authorized"] is False
+          assert core["humanGates"]["publicWriteApi"]["authorized"] is False
+          PY
+
+      - name: Validate bridge JavaScript
+        run: |
+          node --check prototypes/stage11-ui-application-contracts/score-editor-core-bridge.js
+          node --check prototypes/stage10-ui-application-experience/edit-intent.js
+          node tests/e7g_score_editor_core_bridge_behavior.js
+
+      - name: Run ScoreMosaic integration regressions
+        run: |
+          python -m unittest tests/test_st_score_editor_core_integration_v1.py -v
+          python -m unittest tests/test_web_preview_v1.py -v
+
+      - name: Run exact ST Score Editor Core CI
+        working-directory: .integration/st-score-editor-core
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          npm run ci
+
+      - name: Run Stage 10 and Stage 11 regression suites
+        run: |
+          python -m unittest discover -s tests -p 'test_stage10*.py' -v
+          python -m unittest discover -s tests -p 'test_stage11*.py' -v
+          node tests/stage11b_read_adapter_behavior.js
+          node tests/stage11c_edit_intent_adapter_behavior.js
+          node tests/stage11d_application_state_behavior.js
+          node tests/stage11e_local_application_integration.js
+
+      - name: Check repository diff formatting
+        run: git diff --check

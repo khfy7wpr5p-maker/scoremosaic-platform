@@ -24,6 +24,7 @@ APP_FILES = (
     "edit-intent-adapter.js",
     "application-state.js",
     "local-application.js",
+    "score-editor-core-bridge.js",
 )
 
 REQUIRED_CSP_DIRECTIVES = (
@@ -98,6 +99,8 @@ def _validate_generated_tree(output: Path) -> None:
         raise ValueError("generated preview still escapes its artifact root")
     if "Non-production preview" not in index or "Fixture data only" not in index:
         raise ValueError("generated preview is missing visible safety markers")
+    if 'application/score-editor-core-bridge.js' not in index:
+        raise ValueError("generated preview is missing the fail-closed Score Editor Core bridge")
 
     for path in sorted(output.rglob("*")):
         if not path.is_file() or path.suffix not in {".html", ".js", ".css"}:
@@ -136,6 +139,11 @@ def _populate(output: Path) -> None:
         "../stage11-ui-application-contracts/",
         "application/",
     )
+    bridge_script = '  <script src="application/score-editor-core-bridge.js" defer></script>\n'
+    local_script = '  <script src="application/local-application.js" defer></script>\n'
+    if local_script not in html:
+        raise ValueError("local application script marker missing from preview source")
+    html = html.replace(local_script, local_script + bridge_script, 1)
     html = html.replace(
         '<link rel="stylesheet" href="accessibility.css">',
         '<link rel="stylesheet" href="accessibility.css">\n  <link rel="stylesheet" href="preview.css">',
@@ -148,7 +156,8 @@ def _populate(output: Path) -> None:
     (output / "PREVIEW-NOTICE.txt").write_text(
         "ScoreMosaic Web Preview v1\n"
         "NON-PRODUCTION / FIXTURE DATA ONLY\n"
-        "No network, authentication, persistence, upload, approval, publication, or production authority.\n",
+        "No network, authentication, persistence, upload, approval, publication, or production authority.\n"
+        "ST Score Editor Core bridge is present but the core runtime is intentionally not bundled.\n",
         encoding="utf-8",
     )
 

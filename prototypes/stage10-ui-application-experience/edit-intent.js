@@ -3,6 +3,7 @@
 
   const fixture = window.ScoreMosaicFixture;
   const application = window.ScoreMosaicLocalApplication;
+  const coreBridge = window.ScoreMosaicScoreEditorCoreBridge;
   if (
     !fixture
     || fixture.productionArtifact !== false
@@ -15,6 +16,14 @@
   ) {
     return;
   }
+
+  const coreAvailable = coreBridge?.available === true
+    && coreBridge.authoritative === false
+    && coreBridge.networkCapable === false
+    && coreBridge.persistent === false
+    && coreBridge.serverRevisionAuthority === false
+    && coreBridge.approvalAuthority === false
+    && coreBridge.publicationAuthority === false;
 
   const issuesState = application.read('issues.read');
   const issues = issuesState?.phase === 'ready' && issuesState.authority?.authoritative === false
@@ -97,14 +106,15 @@
       proposedValue.placeholder = 'Example: 1/8';
       proposedValue.maxLength = 16;
     } else if (type === 'set_dots') {
-      proposedValue.placeholder = '0–8';
+      proposedValue.placeholder = coreAvailable ? '0–3' : '0–8';
       proposedValue.maxLength = 1;
     } else {
-      proposedValue.placeholder = 'No value for remove_event';
+      proposedValue.placeholder = coreAvailable ? 'Not mapped in editor core' : 'No value for remove_event';
     }
     prepareButton.disabled = selectedIssue() === null;
-    setStatus('Local draft only', 'neutral');
-    clearIntent('Operation changed. Prepare a new local intent.');
+    prepareButton.textContent = coreAvailable ? 'Apply local core edit' : 'Prepare local intent';
+    setStatus(coreAvailable ? 'Core-backed local session · not submitted' : 'Local draft only', coreAvailable ? 'safe' : 'neutral');
+    clearIntent(coreAvailable ? 'Operation changed. Apply a new local core edit.' : 'Operation changed. Prepare a new local intent.');
   };
 
   const parsePitch = (value) => {
@@ -138,6 +148,7 @@
     if (type === 'set_dots') {
       const dots = Number(proposedValue.value.trim());
       if (!Number.isSafeInteger(dots) || dots < 0 || dots > 8) throw new Error('DOTS_INVALID');
+      if (coreAvailable && dots > 3) throw new Error('DOTS_INVALID');
       return {type, value: dots};
     }
     return {type, value: null};
@@ -146,12 +157,7 @@
   const authorityMatches = (authority) => Object.entries(EXPECTED_LOCAL_AUTHORITY)
     .every(([key, expected]) => authority?.[key] === expected);
 
-  const prepareIntent = () => {
-    const issue = selectedIssue();
-    if (!issue) throw new Error('TARGET_INVALID');
-    const note = reason.value.trim();
-    if (note.length > 300) throw new Error('REASON_TOO_LONG');
-
+  const prepareFixtureIntent = (issue, payload, note) => {
     const result = application.prepareEditIntent({
       issueId: issue.id,
       target: Object.freeze({
@@ -161,7 +167,7 @@
         voice: issue.location.voice,
         event: issue.location.event
       }),
-      operation: Object.freeze(operationPayload()),
+      operation: Object.freeze(payload),
       reason: note.length === 0 ? null : note,
       authority: REQUEST_AUTHORITY
     });
@@ -170,8 +176,33 @@
       const code = result?.error?.code ?? 'INTENT_APPLICATION_REJECTED';
       throw new Error(code);
     }
+    return result.data;
+  };
 
-    const intent = result.data;
+  const prepareIntent = () => {
+    const issue = selectedIssue();
+    if (!issue) throw new Error('TARGET_INVALID');
+    const note = reason.value.trim();
+    if (note.length > 300) throw new Error('REASON_TOO_LONG');
+    const payload = operationPayload();
+
+    if (coreAvailable) {
+      const snapshot = coreBridge.commitOperation(issue.id, Object.freeze(payload));
+      preview.textContent = JSON.stringify({
+        mode: 'st-score-editor-core-local-session',
+        coreCommit: coreBridge.coreCommit,
+        revisionId: snapshot.revisionId,
+        rendererFamily: snapshot.rendererFamily,
+        authoritative: false,
+        persistent: false,
+        reviewerNote: note.length === 0 ? null : note
+      }, null, 2);
+      clearButton.disabled = false;
+      setStatus('Core-backed local revision · not submitted', 'safe');
+      return;
+    }
+
+    const intent = prepareFixtureIntent(issue, payload, note);
     preview.textContent = JSON.stringify(intent, null, 2);
     clearButton.disabled = false;
     setStatus('Prepared locally · typed contract · not submitted', 'safe');
@@ -180,8 +211,13 @@
   const syncSelection = () => {
     const issue = selectedIssue();
     prepareButton.disabled = issue === null;
-    clearIntent(issue ? 'Selected fixture target changed. Prepare a new local intent.' : 'No local target selected.');
-    setStatus(issue ? 'Local draft only' : 'No target', issue ? 'neutral' : 'locked');
+    clearIntent(issue
+      ? (coreAvailable ? 'Selected fixture target changed. Apply a new local core edit.' : 'Selected fixture target changed. Prepare a new local intent.')
+      : 'No local target selected.');
+    setStatus(
+      issue ? (coreAvailable ? 'Core-backed local session · not submitted' : 'Local draft only') : 'No target',
+      issue ? (coreAvailable ? 'safe' : 'neutral') : 'locked'
+    );
   };
 
   operation.addEventListener('change', configureValueField);
@@ -198,7 +234,7 @@
   clearButton.addEventListener('click', () => {
     reason.value = '';
     clearIntent();
-    setStatus('Local draft only', 'neutral');
+    setStatus(coreAvailable ? 'Core-backed local session · not submitted' : 'Local draft only', coreAvailable ? 'safe' : 'neutral');
   });
   issueList.addEventListener('click', syncSelection);
 
