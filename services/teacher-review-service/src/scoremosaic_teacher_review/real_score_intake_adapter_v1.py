@@ -25,6 +25,7 @@ REAL_SCORE_RUNTIME_VERSION = "scoremosaic-real-score-runtime-v1"
 CORE_COMMIT = "b317abef915d1e16b37572221a38feb3e504450d"
 CORE_SCHEMA_VERSION = "1.0.0"
 _CORE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_CANONICAL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$")
 _JS_SAFE = 2**53 - 1
 
 
@@ -569,7 +570,11 @@ def _stream(
 def _assert_diagnostic_coverage(score: Mapping[str, Any]) -> None:
     for raw in _array(score.get("diagnostics"), "ADAPTER_V1_CANONICAL_SCORE_INVALID"):
         diagnostic = _record(raw, "ADAPTER_V1_CANONICAL_SCORE_INVALID")
-        if diagnostic.get("code") in {"ignored-attribute", "ignored-measure-element"}:
+        if diagnostic.get("code") in {
+            "ignored-attribute",
+            "ignored-measure-element",
+            "diagnostics-truncated",
+        }:
             _fail("ADAPTER_V1_NOTATION_COVERAGE_UNSUPPORTED")
 
 
@@ -623,8 +628,13 @@ def build_real_score_runtime_projection(
 
     for raw_part in sorted(parts_raw, key=lambda value: value["ordinal"]):
         part = _record(raw_part, "ADAPTER_V1_CANONICAL_SCORE_INVALID")
+        canonical_part_id = part.get("partId")
+        if type(canonical_part_id) is not str or _CANONICAL_ID_RE.fullmatch(canonical_part_id) is None:
+            _fail("ADAPTER_V1_PART_ID_INVALID")
         name = part.get("name")
-        if type(name) is not str or not name:
+        if name is None:
+            name = canonical_part_id
+        elif type(name) is not str or not name:
             _fail("ADAPTER_V1_PART_NAME_REQUIRED")
         measures = _array(part.get("measures"), "ADAPTER_V1_CANONICAL_SCORE_INVALID")
         if not measures:
@@ -637,7 +647,7 @@ def build_real_score_runtime_projection(
         ):
             _fail("ADAPTER_V1_MEASURE_ORDINAL_INVALID")
         measures = sorted(measures, key=lambda value: value["ordinal"])
-        part_identity = [part.get("ordinal"), part.get("partId")]
+        part_identity = [part.get("ordinal"), canonical_part_id]
         part_id = ids.generated("part", part_identity)
 
         staff_ordinals: set[int] = set()
