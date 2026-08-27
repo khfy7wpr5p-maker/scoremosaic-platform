@@ -85,12 +85,12 @@ assert.deepEqual(calls.find((call) => call[0] === 'select'), ['select','stse-r1-
 
 bridge.commitOperation('issue-1', {type:'set_pitch',value:{step:'F',alter:{numerator:1,denominator:1},octave:4}});
 const scoreCall = calls.find((call) => call[0] === 'score');
-assert.deepEqual(scoreCall[1], {version:'1.0.0',type:'SET_PITCH',pitch:{step:'F',alter:1,octave:4}});
+assert.equal(JSON.stringify(scoreCall[1]), JSON.stringify({version:'1.0.0',type:'SET_PITCH',pitch:{step:'F',alter:1,octave:4}}));
 assert.match(scoreCall[2].nextRevisionId, /^fixture-e7g-r\d{4}$/);
 
 bridge.commitOperation('issue-1', {type:'set_dots',value:2});
 const notationCall = calls.find((call) => call[0] === 'notation');
-assert.deepEqual(notationCall[1], {version:'1.0.0',type:'SET_DOTS',value:2});
+assert.equal(JSON.stringify(notationCall[1]), JSON.stringify({version:'1.0.0',type:'SET_DOTS',value:2}));
 
 assert.throws(() => bridge.commitOperation('issue-1', {type:'set_dots',value:4}), /DOTS_INVALID/);
 assert.throws(() => bridge.commitOperation('issue-1', {type:'remove_event',value:null}), /OPERATION_NOT_MAPPED/);
