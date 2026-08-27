@@ -3,10 +3,12 @@
   "workstream": "Web Preview v1",
   "stageNumberAssigned": false,
   "status": "PUBLIC_GITHUB_PAGES_FIXTURE_PREVIEW_DEPLOYED_VERIFIED",
-  "scope": "fixture_only_static_preview_with_explicit_public_github_pages_authority",
+  "scope": "fixture_only_static_preview_with_local_verified_score_renderer_and_explicit_public_github_pages_authority",
   "sources": {
     "ui": "prototypes/stage10-ui-application-experience",
-    "typedApplication": "prototypes/stage11-ui-application-contracts"
+    "typedApplication": "prototypes/stage11-ui-application-contracts",
+    "scoreEditorCore": "khfy7wpr5p-maker/st-score-editor-core@b317abef915d1e16b37572221a38feb3e504450d",
+    "scoreRenderer": "opensheetmusicdisplay@2.1.1"
   },
   "build": {
     "script": "scripts/build_web_preview.py",
@@ -14,7 +16,12 @@
     "entrypoint": "index.html",
     "generatedDirectoryCommitted": false,
     "deterministicBuildRequired": true,
-    "dependencyFree": true
+    "dependencyFree": false,
+    "exactLocalBuildInputsRequired": true,
+    "remoteRuntimeDependencyAllowed": false,
+    "coreArtifactIntegrityVerificationRequired": true,
+    "osmdPackageIdentityVerificationRequired": true,
+    "thirdPartyLicenseArtifactRequired": true
   },
   "previewContent": {
     "fixtureOnly": true,
@@ -23,7 +30,13 @@
     "visibleNonProductionMarkerRequired": true,
     "visibleFixtureMarkerRequired": true,
     "scoreViewPrimary": true,
-    "structuredEditIsLocalIntentOnly": true
+    "localCoreRuntimeBundled": true,
+    "localOsmdRendererBundled": true,
+    "realMusicNotationRenderedFromFixtureCoreSession": true,
+    "structuredEditIsLocalIntentOnly": false,
+    "structuredEditCreatesLocalCoreRevision": true,
+    "serverScoreEditCommandCreated": false,
+    "fixtureFallbackRetained": true
   },
   "security": {
     "connectSrcNoneRequired": true,
@@ -33,6 +46,7 @@
     "baseUriNoneRequired": true,
     "externalScriptAllowed": false,
     "externalStyleAllowed": false,
+    "localVerifiedThirdPartyScriptAllowed": true,
     "networkApiAllowed": false,
     "browserPersistenceAllowed": false,
     "cookieUseAllowed": false,
@@ -42,7 +56,21 @@
     "approvalExecutionAllowed": false,
     "publicationExecutionAllowed": false,
     "productionCredentialsAllowed": false,
-    "realUserDataAllowed": false
+    "realUserDataAllowed": false,
+    "rendererCoordinatesAuthoritative": false,
+    "rendererDomIdsAuthoritative": false,
+    "rendererObjectsAuthoritative": false,
+    "rendererUrlInputAllowedByHost": false
+  },
+  "thirdPartyRuntime": {
+    "opensheetmusicdisplay": {
+      "version": "2.1.1",
+      "license": "BSD-3-Clause",
+      "localArtifactOnly": true,
+      "licenseFileCarried": true,
+      "presentationOnly": true,
+      "networkUseAllowed": false
+    }
   },
   "ci": {
     "buildAndValidateArtifact": true,
@@ -50,7 +78,9 @@
     "pagesDeployActionAllowed": true,
     "pagesWritePermissionAllowed": true,
     "idTokenWritePermissionAllowed": true,
-    "immutableActionPinsRequired": true
+    "immutableActionPinsRequired": true,
+    "exactCoreCheckoutRequired": true,
+    "exactOsmdInstallRequired": true
   },
   "publicPreviewDeployment": {
     "authorized": true,
@@ -75,9 +105,12 @@
     "githubPagesEnabled": true,
     "publicPreviewDeployed": true,
     "publicUrlAssigned": true,
+    "fixtureCoreRuntimeActivated": true,
+    "fixtureOsmdPresentationActivated": true,
     "browserNetworkActivated": false,
     "liveApiActivated": false,
     "productionPersistenceActivated": false,
+    "productionRendererActivated": false,
     "publicTrafficActivated": true
   }
 }
