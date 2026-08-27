@@ -6,6 +6,7 @@
     "repository": "khfy7wpr5p-maker/ST-Orchestration",
     "mainCommit": "6c7f74fdbf13dd3acc2e0daa93cab7037d6a0a90",
     "contractPath": "contracts/H7_SCOREMOSAIC_INTEGRATION_V0.json",
+    "contractGitBlobSha": "2583f54ef6b0a9f0985edd91c82fadf3681e88f4",
     "contractSchemaVersion": "st-orchestration.h7-scoremosaic-integration/v0",
     "modelId": "o5c-ossq-anonymous-context-v0",
     "modelFingerprint": "15cd94722a0ba2724ceea6f450f16a87ef455fa8bc21d4b619f0bda6d880ca14",
