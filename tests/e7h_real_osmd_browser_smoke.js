@@ -54,25 +54,51 @@
     return maximum;
   };
 
-  const renderedSystemCount = (svg) => {
-    const staves = [...svg.querySelectorAll('g.vf-stave')]
-      .map((node) => {
-        try {
-          return node.getBoundingClientRect();
-        } catch {
-          return null;
-        }
-      })
-      .filter((rect) => rect && rect.width > 20 && rect.height > 0)
-      .map((rect) => rect.top)
-      .sort((left, right) => left - right);
-    if (staves.length === 0) return 0;
-    const clusters = [];
-    for (const top of staves) {
-      const existing = clusters.find((value) => Math.abs(value - top) <= 8);
-      if (existing === undefined) clusters.push(top);
+  const renderedSystemGeometry = (svg) => {
+    const svgRect = svg.getBoundingClientRect();
+    const minimumSegmentWidth = Math.max(24, svgRect.width * 0.08);
+    const rawLineYs = [];
+
+    for (const graphic of svg.querySelectorAll('path,line,polyline')) {
+      try {
+        const rect = graphic.getBoundingClientRect();
+        if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height)) continue;
+        if (rect.width < minimumSegmentWidth || rect.height > 3.5) continue;
+        rawLineYs.push(rect.top + (rect.height / 2));
+      } catch {
+        // Geometry probing is test-only; other staff-line segments still count.
+      }
     }
-    return clusters.length;
+
+    rawLineYs.sort((left, right) => left - right);
+    const clusters = [];
+    for (const y of rawLineYs) {
+      const current = clusters.at(-1);
+      if (current && Math.abs(current.y - y) <= 2.5) {
+        current.y = ((current.y * current.count) + y) / (current.count + 1);
+        current.count += 1;
+      } else {
+        clusters.push({y, count: 1});
+      }
+    }
+
+    const lineYs = clusters.map((cluster) => cluster.y);
+    let systems = 0;
+    let index = 0;
+    while (index <= lineYs.length - 5) {
+      const five = lineYs.slice(index, index + 5);
+      const gaps = five.slice(1).map((value, gapIndex) => value - five[gapIndex]);
+      const looksLikeFiveLineStaff = gaps.every((gap) => gap >= 3 && gap <= 18)
+        && (five[4] - five[0]) <= 70;
+      if (looksLikeFiveLineStaff) {
+        systems += 1;
+        index += 5;
+      } else {
+        index += 1;
+      }
+    }
+
+    return {systems, staffLineClusters: lineYs.length, rawSegments: rawLineYs.length};
   };
 
   const assertRendered = (expectedRevision, {fitWidth = false, minimumSystems = 0} = {}) => {
@@ -99,9 +125,11 @@
       const ratio = graphicsSpanRatio(svg);
       if (!(ratio >= 0.6)) fail('FIT_WIDTH_SPAN_TOO_SMALL', ratio.toFixed(3));
     }
-    const systems = renderedSystemCount(svg);
-    if (minimumSystems > 0 && systems < minimumSystems) fail('SCORE_SYSTEM_COUNT_TOO_SMALL', String(systems));
-    return {svg, rect, graphicHeight, systems};
+    const geometry = renderedSystemGeometry(svg);
+    if (minimumSystems > 0 && geometry.systems < minimumSystems) {
+      fail('SCORE_SYSTEM_COUNT_TOO_SMALL', `${geometry.systems}/staff-lines=${geometry.staffLineClusters}/segments=${geometry.rawSegments}`);
+    }
+    return {svg, rect, graphicHeight, systems: geometry.systems, staffLineClusters: geometry.staffLineClusters};
   };
 
   window.addEventListener('load', async () => {
