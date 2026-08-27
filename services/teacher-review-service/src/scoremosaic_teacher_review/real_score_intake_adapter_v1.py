@@ -1,8 +1,8 @@
 """Bounded Real Score Intake Adapter v1.
 
-This is a pure projection boundary. It revalidates Real Score Intake v1.1, then
-projects the complete Canonical Score into the pinned ST Score Editor Core
-ScoreDocument/NotationDocument runtime shapes. It performs no I/O, networking,
+This pure projection boundary revalidates Real Score Intake v1.1 and projects
+the complete Canonical Score into the pinned ST Score Editor Core ScoreDocument
+and NotationDocument runtime shapes. It performs no I/O, networking,
 persistence, rendering, correction, approval, or publication.
 """
 
@@ -23,6 +23,7 @@ from .real_score_intake_v1_1 import (
 
 REAL_SCORE_RUNTIME_VERSION = "scoremosaic-real-score-runtime-v1"
 CORE_COMMIT = "b317abef915d1e16b37572221a38feb3e504450d"
+CORE_SCHEMA_VERSION = "1.0.0"
 _CORE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _JS_SAFE = 2**53 - 1
 
@@ -57,7 +58,13 @@ def _core_id(value: Any, code: str) -> str:
 
 def _digest(value: Any) -> str:
     try:
-        raw = json.dumps(value, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")).encode("ascii")
+        raw = json.dumps(
+            value,
+            ensure_ascii=True,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("ascii")
     except (TypeError, ValueError, UnicodeError):
         _fail("ADAPTER_V1_INPUT_INVALID")
     return sha256(raw).hexdigest()
@@ -91,7 +98,11 @@ def _pitch(value: Any) -> dict[str, Any]:
         _fail("ADAPTER_V1_PITCH_UNSUPPORTED")
     step = item.get("step")
     octave = item.get("octave")
-    alter = _fraction(item.get("alter"), positive=False, code="ADAPTER_V1_PITCH_UNSUPPORTED")
+    alter = _fraction(
+        item.get("alter"),
+        positive=False,
+        code="ADAPTER_V1_PITCH_UNSUPPORTED",
+    )
     if step not in {"A", "B", "C", "D", "E", "F", "G"}:
         _fail("ADAPTER_V1_PITCH_UNSUPPORTED")
     if alter.denominator != 1 or not -2 <= alter.numerator <= 2:
@@ -130,7 +141,11 @@ class _IdSpace:
     def generated(self, kind: str, identity: Any) -> str:
         seed = _digest([kind, identity])
         for attempt in range(64):
-            suffix = seed[:24] if attempt == 0 else sha256(f"{seed}:{attempt}".encode("ascii")).hexdigest()[:24]
+            suffix = (
+                seed[:24]
+                if attempt == 0
+                else sha256(f"{seed}:{attempt}".encode("ascii")).hexdigest()[:24]
+            )
             candidate = f"sm-{kind}-{suffix}"
             if candidate not in self.used and candidate not in self.reserved:
                 self.used.add(candidate)
@@ -163,7 +178,10 @@ def _targets(payload: Mapping[str, Any]) -> dict[str, dict[str, str]]:
 
 
 def _reserve_targets(ids: _IdSpace, targets: Mapping[str, Mapping[str, str]]) -> None:
-    event_ids = {_core_id(target.get("eventId"), "ADAPTER_V1_CORE_TARGET_INVALID") for target in targets.values()}
+    event_ids = {
+        _core_id(target.get("eventId"), "ADAPTER_V1_CORE_TARGET_INVALID")
+        for target in targets.values()
+    }
     note_ids = [
         _core_id(target.get("noteId"), "ADAPTER_V1_CORE_TARGET_INVALID")
         for target in targets.values()
@@ -195,11 +213,18 @@ def _time_signature(value: Any) -> dict[str, int] | None:
 
 def _measure_time(measure: Mapping[str, Any]) -> dict[str, int] | None:
     initial = _time_signature(measure.get("timeSignatureAtStart"))
-    changes = _array(measure.get("timeSignatureChanges"), "ADAPTER_V1_TIME_SIGNATURE_UNSUPPORTED")
+    changes = _array(
+        measure.get("timeSignatureChanges"),
+        "ADAPTER_V1_TIME_SIGNATURE_UNSUPPORTED",
+    )
     last_at_zero = None
     for raw in changes:
         change = _record(raw, "ADAPTER_V1_TIME_SIGNATURE_UNSUPPORTED")
-        onset = _fraction(change.get("onset"), positive=False, code="ADAPTER_V1_TIME_SIGNATURE_UNSUPPORTED")
+        onset = _fraction(
+            change.get("onset"),
+            positive=False,
+            code="ADAPTER_V1_TIME_SIGNATURE_UNSUPPORTED",
+        )
         if onset != 0:
             _fail("ADAPTER_V1_TIME_SIGNATURE_UNSUPPORTED")
         last_at_zero = _time_signature(change.get("timeSignature"))
@@ -219,7 +244,11 @@ def _event_capability(event: Mapping[str, Any]) -> None:
     if event.get("tab") is not None:
         _fail("ADAPTER_V1_TAB_UNSUPPORTED")
     _fraction(event.get("onset"), positive=False, code="ADAPTER_V1_ONSET_INVALID")
-    _fraction(event.get("effectiveDuration"), positive=True, code="ADAPTER_V1_DURATION_INVALID")
+    _fraction(
+        event.get("effectiveDuration"),
+        positive=True,
+        code="ADAPTER_V1_DURATION_INVALID",
+    )
     dots = event.get("dots")
     if type(dots) is not int or not 0 <= dots <= 3:
         _fail("ADAPTER_V1_DOTS_UNSUPPORTED")
@@ -229,7 +258,12 @@ def _event_capability(event: Mapping[str, Any]) -> None:
         if set(item) != {"actualNotes", "normalNotes"}:
             _fail("ADAPTER_V1_TUPLET_UNSUPPORTED")
         actual, normal = item.get("actualNotes"), item.get("normalNotes")
-        if type(actual) is not int or type(normal) is not int or not 1 <= actual <= 32 or not 1 <= normal <= 32:
+        if (
+            type(actual) is not int
+            or type(normal) is not int
+            or not 1 <= actual <= 32
+            or not 1 <= normal <= 32
+        ):
             _fail("ADAPTER_V1_TUPLET_UNSUPPORTED")
     if kind == "note":
         if event.get("pitch") is None:
@@ -242,23 +276,69 @@ def _event_capability(event: Mapping[str, Any]) -> None:
         _fail("ADAPTER_V1_TIES_UNSUPPORTED")
 
 
-def _event_notation(event: Mapping[str, Any], event_id: str) -> dict[str, Any] | None:
+def _measure_address(path: Mapping[str, str]) -> dict[str, str]:
+    return {
+        "contractVersion": CORE_SCHEMA_VERSION,
+        "kind": "measure",
+        "documentId": path["documentId"],
+        "revisionId": path["revisionId"],
+        "partId": path["partId"],
+        "staffId": path["staffId"],
+        "measureId": path["measureId"],
+    }
+
+
+def _event_address(path: Mapping[str, str], event_id: str) -> dict[str, str]:
+    return {
+        "contractVersion": CORE_SCHEMA_VERSION,
+        "kind": "event",
+        "documentId": path["documentId"],
+        "revisionId": path["revisionId"],
+        "partId": path["partId"],
+        "staffId": path["staffId"],
+        "measureId": path["measureId"],
+        "voiceId": path["voiceId"],
+        "eventId": event_id,
+    }
+
+
+def _note_address(path: Mapping[str, str], event_id: str, note_id: str) -> dict[str, str]:
+    result = _event_address(path, event_id)
+    result["kind"] = "note"
+    result["noteId"] = note_id
+    return result
+
+
+def _event_notation(
+    event: Mapping[str, Any],
+    path: Mapping[str, str],
+    event_id: str,
+) -> dict[str, Any] | None:
     dots = event["dots"]
     raw_tuplet = event.get("tuplet")
-    tuplet = None if raw_tuplet is None else {
-        "actualNotes": raw_tuplet["actualNotes"],
-        "normalNotes": raw_tuplet["normalNotes"],
-        "marks": [],
-    }
+    tuplet = (
+        None
+        if raw_tuplet is None
+        else {
+            "actualNotes": raw_tuplet["actualNotes"],
+            "normalNotes": raw_tuplet["normalNotes"],
+            "marks": [],
+        }
+    )
     if dots == 0 and tuplet is None:
         return None
     return {
-        "target": {"kind": "event", "eventId": event_id},
+        "target": _event_address(path, event_id),
         "notation": {"dots": dots, "beams": [], "tuplet": tuplet},
     }
 
 
-def _note_notation(event: Mapping[str, Any], event_id: str, note_id: str) -> dict[str, Any] | None:
+def _note_notation(
+    event: Mapping[str, Any],
+    path: Mapping[str, str],
+    event_id: str,
+    note_id: str,
+) -> dict[str, Any] | None:
     marks: list[dict[str, Any]] = []
     for tie in event["ties"]:
         if tie == "start":
@@ -266,13 +346,15 @@ def _note_notation(event: Mapping[str, Any], event_id: str, note_id: str) -> dic
         elif tie == "stop":
             marks.append({"number": 1, "type": "stop"})
         else:
-            marks.extend(({"number": 1, "type": "stop"}, {"number": 1, "type": "start"}))
+            marks.extend(
+                ({"number": 1, "type": "stop"}, {"number": 1, "type": "start"})
+            )
     if len({(mark["number"], mark["type"]) for mark in marks}) != len(marks):
         _fail("ADAPTER_V1_TIES_UNSUPPORTED")
     if not marks:
         return None
     return {
-        "target": {"kind": "note", "eventId": event_id, "noteId": note_id},
+        "target": _note_address(path, event_id, note_id),
         "notation": {"accidental": None, "ties": marks, "slurs": []},
     }
 
@@ -284,7 +366,13 @@ def _voice_key(value: str) -> tuple[int, int | str]:
 
 
 def _group_events(events: list[Mapping[str, Any]]) -> list[list[Mapping[str, Any]]]:
-    ordered = sorted(events, key=lambda event: (_fraction(event["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID"), event.get("xmlOrder", 0)))
+    ordered = sorted(
+        events,
+        key=lambda event: (
+            _fraction(event["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID"),
+            event.get("xmlOrder", 0),
+        ),
+    )
     groups: list[list[Mapping[str, Any]]] = []
     consumed: set[str] = set()
     for event in ordered:
@@ -301,22 +389,48 @@ def _group_events(events: list[Mapping[str, Any]]) -> list[list[Mapping[str, Any
             consumed.add(canonical_id)
             groups.append([event])
             continue
-        if event.get("kind") != "note" or type(chord_group) is not str or not chord_group or type(chord_index) is not int or chord_index < 0:
+        if (
+            event.get("kind") != "note"
+            or type(chord_group) is not str
+            or not chord_group
+            or type(chord_index) is not int
+            or chord_index < 0
+        ):
             _fail("ADAPTER_V1_CHORD_INVALID")
         members = [candidate for candidate in ordered if candidate.get("chordGroup") == chord_group]
         if len(members) < 2:
             _fail("ADAPTER_V1_CHORD_INVALID")
         indices = [member.get("chordIndex") for member in members]
-        if any(type(index) is not int or index < 0 for index in indices) or len(set(indices)) != len(indices):
+        if (
+            any(type(index) is not int or index < 0 for index in indices)
+            or len(set(indices)) != len(indices)
+        ):
             _fail("ADAPTER_V1_CHORD_INVALID")
         members.sort(key=lambda member: member["chordIndex"])
-        onset = _fraction(members[0]["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID")
-        duration = _fraction(members[0]["effectiveDuration"], positive=True, code="ADAPTER_V1_DURATION_INVALID")
+        onset = _fraction(
+            members[0]["onset"],
+            positive=False,
+            code="ADAPTER_V1_ONSET_INVALID",
+        )
+        duration = _fraction(
+            members[0]["effectiveDuration"],
+            positive=True,
+            code="ADAPTER_V1_DURATION_INVALID",
+        )
         for member in members:
             member_id = member.get("eventId")
             if type(member_id) is not str:
                 _fail("ADAPTER_V1_CANONICAL_EVENT_ID_INVALID")
-            if _fraction(member["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID") != onset or _fraction(member["effectiveDuration"], positive=True, code="ADAPTER_V1_DURATION_INVALID") != duration:
+            if (
+                _fraction(member["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID")
+                != onset
+                or _fraction(
+                    member["effectiveDuration"],
+                    positive=True,
+                    code="ADAPTER_V1_DURATION_INVALID",
+                )
+                != duration
+            ):
                 _fail("ADAPTER_V1_CHORD_TIMING_MISMATCH")
             consumed.add(member_id)
         groups.append(members)
@@ -326,6 +440,7 @@ def _group_events(events: list[Mapping[str, Any]]) -> list[list[Mapping[str, Any
 def _stream(
     *,
     identity: Any,
+    path: Mapping[str, str],
     events: list[Mapping[str, Any]],
     ids: _IdSpace,
     targets: Mapping[str, dict[str, str]],
@@ -336,15 +451,28 @@ def _stream(
     for group in _group_events(events):
         first = group[0]
         onset = _fraction(first["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID")
-        duration = _fraction(first["effectiveDuration"], positive=True, code="ADAPTER_V1_DURATION_INVALID")
+        duration = _fraction(
+            first["effectiveDuration"],
+            positive=True,
+            code="ADAPTER_V1_DURATION_INVALID",
+        )
         if len(group) == 1:
             canonical_id = first["eventId"]
             target = targets.get(canonical_id)
             if first["kind"] == "rest":
                 if target is not None and target.get("kind") != "event":
                     _fail("ADAPTER_V1_TARGET_KIND_MISMATCH")
-                event_id = ids.consume(target["eventId"]) if target is not None else ids.generated("event", [identity, canonical_id])
-                item = {"id": event_id, "kind": "rest", "onset": _rat(onset), "duration": _rat(duration)}
+                event_id = (
+                    ids.consume(target["eventId"])
+                    if target is not None
+                    else ids.generated("event", [identity, canonical_id])
+                )
+                item = {
+                    "id": event_id,
+                    "kind": "rest",
+                    "onset": _rat(onset),
+                    "duration": _rat(duration),
+                }
             else:
                 if target is not None and target.get("kind") != "note":
                     _fail("ADAPTER_V1_TARGET_KIND_MISMATCH")
@@ -361,19 +489,27 @@ def _stream(
                     "duration": _rat(duration),
                     "note": {"id": note_id, "pitch": _pitch(first["pitch"])},
                 }
-                note_entry = _note_notation(first, event_id, note_id)
+                note_entry = _note_notation(first, path, event_id, note_id)
                 if note_entry is not None:
                     note_notation.append(note_entry)
-            event_entry = _event_notation(first, event_id)
+            event_entry = _event_notation(first, path, event_id)
             if event_entry is not None:
                 event_notation.append(event_entry)
             projected.append(item)
             continue
 
-        bound_event_ids = {targets[member["eventId"]]["eventId"] for member in group if member["eventId"] in targets}
+        bound_event_ids = {
+            targets[member["eventId"]]["eventId"]
+            for member in group
+            if member["eventId"] in targets
+        }
         if len(bound_event_ids) > 1:
             _fail("ADAPTER_V1_CHORD_TARGET_MISMATCH")
-        event_id = ids.consume(next(iter(bound_event_ids))) if bound_event_ids else ids.generated("chord", [identity, first["chordGroup"]])
+        event_id = (
+            ids.consume(next(iter(bound_event_ids)))
+            if bound_event_ids
+            else ids.generated("chord", [identity, first["chordGroup"]])
+        )
         notes: list[dict[str, Any]] = []
         notation_signature = None
         for member in group:
@@ -386,24 +522,44 @@ def _stream(
             else:
                 note_id = ids.generated("note", [identity, canonical_id])
             notes.append({"id": note_id, "pitch": _pitch(member["pitch"])})
-            note_entry = _note_notation(member, event_id, note_id)
+            note_entry = _note_notation(member, path, event_id, note_id)
             if note_entry is not None:
                 note_notation.append(note_entry)
-            signature = (member["dots"], json.dumps(member.get("tuplet"), sort_keys=True, separators=(",", ":")))
+            signature = (
+                member["dots"],
+                json.dumps(member.get("tuplet"), sort_keys=True, separators=(",", ":")),
+            )
             if notation_signature is None:
                 notation_signature = signature
             elif notation_signature != signature:
                 _fail("ADAPTER_V1_CHORD_NOTATION_MISMATCH")
-        event_entry = _event_notation(first, event_id)
+        event_entry = _event_notation(first, path, event_id)
         if event_entry is not None:
             event_notation.append(event_entry)
-        projected.append({"id": event_id, "kind": "chord", "onset": _rat(onset), "duration": _rat(duration), "notes": notes})
+        projected.append(
+            {
+                "id": event_id,
+                "kind": "chord",
+                "onset": _rat(onset),
+                "duration": _rat(duration),
+                "notes": notes,
+            }
+        )
 
-    projected.sort(key=lambda event: (_fraction(event["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID"), event["id"]))
+    projected.sort(
+        key=lambda event: (
+            _fraction(event["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID"),
+            event["id"],
+        )
+    )
     cursor = Fraction(0)
     for event in projected:
         onset = _fraction(event["onset"], positive=False, code="ADAPTER_V1_ONSET_INVALID")
-        duration = _fraction(event["duration"], positive=True, code="ADAPTER_V1_DURATION_INVALID")
+        duration = _fraction(
+            event["duration"],
+            positive=True,
+            code="ADAPTER_V1_DURATION_INVALID",
+        )
         if onset < cursor:
             _fail("ADAPTER_V1_OVERLAPPING_EVENTS")
         cursor = onset + duration
@@ -423,13 +579,23 @@ def build_real_score_runtime_projection(
     musicxml: bytes,
     canonical_score: Mapping[str, Any],
 ) -> RealScoreRuntimeProjection:
-    receipt = validate_real_score_intake_v1_1(payload, musicxml=musicxml, canonical_score=canonical_score)
+    receipt = validate_real_score_intake_v1_1(
+        payload,
+        musicxml=musicxml,
+        canonical_score=canonical_score,
+    )
     body = _record(payload, "ADAPTER_V1_INPUT_INVALID")
     if body.get("schemaVersion") != REAL_SCORE_INTAKE_VERSION_V1_1:
         _fail("ADAPTER_V1_INPUT_INVALID")
     document = _record(body.get("document"), "ADAPTER_V1_INPUT_INVALID")
-    document_id = _core_id(document.get("documentId"), "ADAPTER_V1_DOCUMENT_ID_UNSUPPORTED")
-    revision_id = _core_id(document.get("revision"), "ADAPTER_V1_REVISION_ID_UNSUPPORTED")
+    document_id = _core_id(
+        document.get("documentId"),
+        "ADAPTER_V1_DOCUMENT_ID_UNSUPPORTED",
+    )
+    revision_id = _core_id(
+        document.get("revision"),
+        "ADAPTER_V1_REVISION_ID_UNSUPPORTED",
+    )
     score = _record(canonical_score, "ADAPTER_V1_CANONICAL_SCORE_INVALID")
     _assert_diagnostic_coverage(score)
     targets = _targets(body)
@@ -443,7 +609,11 @@ def build_real_score_runtime_projection(
     if not parts_raw:
         _fail("ADAPTER_V1_CANONICAL_SCORE_INVALID")
     part_ordinals = [part.get("ordinal") for part in parts_raw if type(part) is dict]
-    if len(part_ordinals) != len(parts_raw) or any(type(value) is not int or value < 1 for value in part_ordinals) or len(set(part_ordinals)) != len(part_ordinals):
+    if (
+        len(part_ordinals) != len(parts_raw)
+        or any(type(value) is not int or value < 1 for value in part_ordinals)
+        or len(set(part_ordinals)) != len(part_ordinals)
+    ):
         _fail("ADAPTER_V1_PART_ORDINAL_INVALID")
 
     core_parts: list[dict[str, Any]] = []
@@ -451,8 +621,8 @@ def build_real_score_runtime_projection(
     event_notation: list[dict[str, Any]] = []
     note_notation: list[dict[str, Any]] = []
 
-    for part in sorted(parts_raw, key=lambda value: value["ordinal"]):
-        part = _record(part, "ADAPTER_V1_CANONICAL_SCORE_INVALID")
+    for raw_part in sorted(parts_raw, key=lambda value: value["ordinal"]):
+        part = _record(raw_part, "ADAPTER_V1_CANONICAL_SCORE_INVALID")
         name = part.get("name")
         if type(name) is not str or not name:
             _fail("ADAPTER_V1_PART_NAME_REQUIRED")
@@ -460,7 +630,11 @@ def build_real_score_runtime_projection(
         if not measures:
             _fail("ADAPTER_V1_CANONICAL_SCORE_INVALID")
         ordinals = [measure.get("ordinal") for measure in measures if type(measure) is dict]
-        if len(ordinals) != len(measures) or any(type(value) is not int or value < 1 for value in ordinals) or len(set(ordinals)) != len(ordinals):
+        if (
+            len(ordinals) != len(measures)
+            or any(type(value) is not int or value < 1 for value in ordinals)
+            or len(set(ordinals)) != len(ordinals)
+        ):
             _fail("ADAPTER_V1_MEASURE_ORDINAL_INVALID")
         measures = sorted(measures, key=lambda value: value["ordinal"])
         part_identity = [part.get("ordinal"), part.get("partId")]
@@ -468,7 +642,10 @@ def build_real_score_runtime_projection(
 
         staff_ordinals: set[int] = set()
         for measure in measures:
-            for raw_event in _array(measure.get("events"), "ADAPTER_V1_CANONICAL_SCORE_INVALID"):
+            for raw_event in _array(
+                measure.get("events"),
+                "ADAPTER_V1_CANONICAL_SCORE_INVALID",
+            ):
                 event = _record(raw_event, "ADAPTER_V1_CANONICAL_SCORE_INVALID")
                 _event_capability(event)
                 staff = event.get("staff")
@@ -486,13 +663,30 @@ def build_real_score_runtime_projection(
                 number = measure.get("number")
                 if type(number) is not str or not number:
                     _fail("ADAPTER_V1_MEASURE_NUMBER_INVALID")
-                measure_id = ids.generated("measure", [part_identity, staff_ordinal, measure.get("measureId"), measure["ordinal"]])
+                measure_id = ids.generated(
+                    "measure",
+                    [part_identity, staff_ordinal, measure.get("measureId"), measure["ordinal"]],
+                )
+                measure_path = {
+                    "documentId": document_id,
+                    "revisionId": revision_id,
+                    "partId": part_id,
+                    "staffId": staff_id,
+                    "measureId": measure_id,
+                }
                 time = _measure_time(measure)
                 if time is not None:
-                    measure_notation.append({
-                        "target": {"kind": "measure", "measureId": measure_id},
-                        "notation": {"timeSignature": time, "keySignature": None, "clef": None, "barlines": []},
-                    })
+                    measure_notation.append(
+                        {
+                            "target": _measure_address(measure_path),
+                            "notation": {
+                                "timeSignature": time,
+                                "keySignature": None,
+                                "clef": None,
+                                "barlines": [],
+                            },
+                        }
+                    )
 
                 by_voice: dict[str, list[Mapping[str, Any]]] = {}
                 for event in measure["events"]:
@@ -504,42 +698,74 @@ def build_real_score_runtime_projection(
                     by_voice.setdefault(voice, []).append(event)
                 core_voices: list[dict[str, Any]] = []
                 if not by_voice:
-                    core_voices.append({
-                        "id": ids.generated("voice", [part_identity, staff_ordinal, measure.get("measureId"), "empty"]),
-                        "ordinal": 1,
-                        "events": [],
-                    })
-                else:
-                    for voice_ordinal, voice_label in enumerate(sorted(by_voice, key=_voice_key), start=1):
-                        identity = [part_identity, staff_ordinal, measure.get("measureId"), voice_label]
-                        core_voices.append({
-                            "id": ids.generated("voice", identity),
-                            "ordinal": voice_ordinal,
-                            "events": _stream(
-                                identity=identity,
-                                events=by_voice[voice_label],
-                                ids=ids,
-                                targets=targets,
-                                event_notation=event_notation,
-                                note_notation=note_notation,
+                    core_voices.append(
+                        {
+                            "id": ids.generated(
+                                "voice",
+                                [part_identity, staff_ordinal, measure.get("measureId"), "empty"],
                             ),
-                        })
-                core_measures.append({"id": measure_id, "ordinal": measure["ordinal"], "displayNumber": number, "voices": core_voices})
-            core_staves.append({"id": staff_id, "ordinal": staff_ordinal, "measures": core_measures})
+                            "ordinal": 1,
+                            "events": [],
+                        }
+                    )
+                else:
+                    for voice_ordinal, voice_label in enumerate(
+                        sorted(by_voice, key=_voice_key),
+                        start=1,
+                    ):
+                        identity = [
+                            part_identity,
+                            staff_ordinal,
+                            measure.get("measureId"),
+                            voice_label,
+                        ]
+                        voice_id = ids.generated("voice", identity)
+                        stream_path = dict(measure_path)
+                        stream_path["voiceId"] = voice_id
+                        core_voices.append(
+                            {
+                                "id": voice_id,
+                                "ordinal": voice_ordinal,
+                                "events": _stream(
+                                    identity=identity,
+                                    path=stream_path,
+                                    events=by_voice[voice_label],
+                                    ids=ids,
+                                    targets=targets,
+                                    event_notation=event_notation,
+                                    note_notation=note_notation,
+                                ),
+                            }
+                        )
+                core_measures.append(
+                    {
+                        "id": measure_id,
+                        "ordinal": measure["ordinal"],
+                        "displayNumber": number,
+                        "voices": core_voices,
+                    }
+                )
+            core_staves.append(
+                {"id": staff_id, "ordinal": staff_ordinal, "measures": core_measures}
+            )
         core_parts.append({"id": part_id, "name": name, "staves": core_staves})
 
     if ids.reserved:
         _fail("ADAPTER_V1_PROJECTED_TARGET_NOT_FOUND")
 
     core_score = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": CORE_SCHEMA_VERSION,
         "id": document_id,
         "revision": {"id": revision_id, "parentId": None},
-        "source": {"sha256": receipt.canonical_sha256, "format": "canonical", "byteLength": None},
+        "source": {
+            "sha256": receipt.canonical_sha256,
+            "format": "canonical",
+            "byteLength": None,
+        },
         "parts": core_parts,
     }
     notation = {
-        "contractVersion": "1.0.0",
+        "contractVersion": CORE_SCHEMA_VERSION,
         "documentId": document_id,
         "revisionId": revision_id,
         "measures": measure_notation,
@@ -547,7 +773,11 @@ def build_real_score_runtime_projection(
         "notes": note_notation,
     }
     issue_targets = [
-        {"issueId": item["issueId"], "canonicalEventId": item["canonicalEventId"], "coreTarget": deepcopy(item["coreTarget"])}
+        {
+            "issueId": item["issueId"],
+            "canonicalEventId": item["canonicalEventId"],
+            "coreTarget": deepcopy(item["coreTarget"]),
+        }
         for item in body["reviewBindings"]
     ]
     runtime = {
