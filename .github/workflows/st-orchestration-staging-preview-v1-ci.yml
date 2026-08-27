@@ -1,0 +1,114 @@
+name: Validate ST-Orchestration H7-D authenticated staging preview
+
+on:
+  pull_request:
+    paths:
+      - "contracts/st-orchestration-staging-preview-v1.json"
+      - "tools/st-orchestration-staging-preview-adapter.cjs"
+      - "tools/generate-st-orchestration-staging-preview-data.cjs"
+      - "tests/st-orchestration-staging-preview.test.cjs"
+      - "docs/h7-d-st-orchestration-authenticated-staging.md"
+      - "prototypes/stage11-ui-application-contracts/orchestration-preview-adapter.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview-ui.js"
+      - ".github/workflows/st-orchestration-staging-preview-v1-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "contracts/st-orchestration-staging-preview-v1.json"
+      - "tools/st-orchestration-staging-preview-adapter.cjs"
+      - "tools/generate-st-orchestration-staging-preview-data.cjs"
+      - "tests/st-orchestration-staging-preview.test.cjs"
+      - "docs/h7-d-st-orchestration-authenticated-staging.md"
+      - "prototypes/stage11-ui-application-contracts/orchestration-preview-adapter.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview-ui.js"
+      - ".github/workflows/st-orchestration-staging-preview-v1-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  h7d-authenticated-staging-preview:
+    runs-on: ubuntu-24.04
+    env:
+      ST_COMMIT: 80b1e925804616d36c2b46c8074e6a608aa7bff4
+      ST_ORCHESTRATION_STAGING_HMAC_SECRET: scoremosaic-h7d-ci-noncredential-key-material-32-bytes-minimum
+      ST_ORCHESTRATION_STAGING_ENDPOINT: http://127.0.0.1:18081/
+      ST_ORCHESTRATION_ALLOW_LOOPBACK_HTTP_TEST: "1"
+    steps:
+      - name: Checkout ScoreMosaic
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact ST-Orchestration H7-D main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: khfy7wpr5p-maker/ST-Orchestration
+          ref: 80b1e925804616d36c2b46c8074e6a608aa7bff4
+          path: .tmp/st-orchestration
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+
+      - name: Verify exact ST-Orchestration lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .tmp/st-orchestration rev-parse HEAD)" = "$ST_COMMIT"
+          test "$(git -C .tmp/st-orchestration rev-parse HEAD:contracts/H7D_AUTHENTICATED_STAGING_V0.json)" = "4f519d5ec978b305db4b670ea64c333460aa4a79"
+          test "$(git -C .tmp/st-orchestration rev-parse HEAD:st_orchestration/staging_transport.py)" = "27204251ccd37b96a004e3eba1602959b94caaf6"
+          test "$(git -C .tmp/st-orchestration rev-parse HEAD:tools/run_h7d_staging_server.py)" = "083936a44136d5edc8b5c07931af0606bfc2bf29"
+          test "$(git -C .tmp/st-orchestration rev-parse HEAD:contracts/H7C_LOCAL_PREVIEW_V0.json)" = "1392bb3cb929620dc8645af4b2a808e99c338e91"
+          test "$(git -C .tmp/st-orchestration rev-parse HEAD:st_orchestration/local_preview.py)" = "e51c5ed970afcafa2318a2da6177595120a04203"
+
+      - name: Start exact authenticated staging server on loopback
+        shell: bash
+        run: |
+          set -euo pipefail
+          ST_ROOT="$GITHUB_WORKSPACE/.tmp/st-orchestration"
+          (
+            cd "$ST_ROOT"
+            PYTHONPATH="$ST_ROOT" \
+            ST_ORCHESTRATION_STAGING_HMAC_SECRET="$ST_ORCHESTRATION_STAGING_HMAC_SECRET" \
+            python -P -m tools.run_h7d_staging_server --host 127.0.0.1 --port 18081
+          ) > "$RUNNER_TEMP/st-orchestration-h7d.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/st-orchestration-h7d.pid"
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --show-error http://127.0.0.1:18081/healthz > "$RUNNER_TEMP/h7d-health.json"; then
+              break
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/st-orchestration-h7d.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/st-orchestration-h7d.log"
+              exit 1
+            fi
+            sleep 0.25
+          done
+          python - <<'PY'
+          import json, pathlib
+          p=json.loads(pathlib.Path("${RUNNER_TEMP}/h7d-health.json").read_text())
+          assert p == {"mutation": False, "production": False, "status": "staging-transport-ready"}, p
+          PY
+
+      - name: Run H7-D ScoreMosaic staging and inherited H7-C presentation tests
+        run: node --test tests/st-orchestration-staging-preview.test.cjs tests/st-orchestration-local-preview.test.cjs
+
+      - name: Syntax-check bounded runtime and browser presentation files
+        run: |
+          node --check tools/st-orchestration-staging-preview-adapter.cjs
+          node --check tools/generate-st-orchestration-staging-preview-data.cjs
+          node --check prototypes/stage11-ui-application-contracts/orchestration-preview-adapter.js
+          node --check prototypes/stage10-ui-application-experience/orchestration-preview-ui.js
+
+      - name: Stop staging server
+        if: always()
+        shell: bash
+        run: |
+          if test -f "$RUNNER_TEMP/st-orchestration-h7d.pid"; then
+            kill "$(cat "$RUNNER_TEMP/st-orchestration-h7d.pid")" 2>/dev/null || true
+          fi
+          if test -f "$RUNNER_TEMP/st-orchestration-h7d.log"; then
+            cat "$RUNNER_TEMP/st-orchestration-h7d.log"
+          fi
