@@ -13,6 +13,9 @@
     return node;
   };
 
+  const state = adapter.read();
+  const isStaging = state.state === 'ready' && state.data?.transportMode === 'authenticated-staging';
+
   const panel = make('section', 'panel orchestration-preview-panel');
   panel.id = 'orchestration-preview';
   panel.setAttribute('aria-labelledby', 'orchestration-preview-title');
@@ -24,20 +27,19 @@
   const title = make('h2', '', 'Orchestration Preview');
   title.id = 'orchestration-preview-title';
   heading.append(title);
-  const badge = make('span', 'badge badge--neutral', 'Local model preview · non-authoritative');
+  const badge = make('span', 'badge badge--neutral', isStaging ? 'Authenticated staging preview · non-authoritative' : 'Local model preview · non-authoritative');
   header.append(heading, badge);
   panel.append(header);
 
-  const authority = make('p', 'security-note', 'Suggestion only · score unchanged. H7-C has no Apply action and cannot create or overwrite Canonical Score, TeacherScoreRevision, approval, or publication state.');
+  const authority = make('p', 'security-note', `Suggestion only · score unchanged. ${isStaging ? 'H7-D' : 'H7-C'} has no Apply action and cannot create or overwrite Canonical Score, TeacherScoreRevision, approval, or publication state.`);
   authority.id = 'orchestration-preview-authority';
   panel.append(authority);
 
-  const state = adapter.read();
   if (state.state !== 'ready' || !state.data) {
     const unavailable = make('div', 'orchestration-preview-unavailable');
     unavailable.setAttribute('role', 'status');
     unavailable.setAttribute('aria-live', 'polite');
-    unavailable.append(make('strong', '', 'Preview unavailable'), make('p', '', state.error?.message || 'Local orchestration evidence failed closed.'));
+    unavailable.append(make('strong', '', 'Preview unavailable'), make('p', '', state.error?.message || 'Orchestration evidence failed closed.'));
     panel.append(unavailable);
     scorePanel.insertAdjacentElement('afterend', panel);
     return;
@@ -78,6 +80,7 @@
     row.append(make('dt', '', label), make('dd', '', value));
     lineage.append(row);
   };
+  add('Transport', isStaging ? 'authenticated staging' : 'local process');
   add('Capability', data.target.capability);
   add('Model', data.target.modelId);
   add('Model fingerprint', data.target.modelFingerprint);
@@ -86,6 +89,8 @@
   add('Result SHA-256', result.result_sha256);
   panel.append(lineage);
 
-  panel.append(make('p', 'orchestration-preview-footnote', 'Real local-process model inference was executed outside the browser against the pinned ST-Orchestration commit. The browser only presents the generated, validated preview evidence.'));
+  panel.append(make('p', 'orchestration-preview-footnote', isStaging
+    ? 'Authenticated staging model inference was executed server-side against the pinned ST-Orchestration commit. The browser receives neither the staging endpoint nor its authentication secret and only presents validated preview evidence.'
+    : 'Real local-process model inference was executed outside the browser against the pinned ST-Orchestration commit. The browser only presents the generated, validated preview evidence.'));
   scorePanel.insertAdjacentElement('afterend', panel);
 })();
