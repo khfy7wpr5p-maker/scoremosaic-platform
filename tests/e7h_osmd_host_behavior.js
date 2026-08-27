@@ -141,7 +141,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   assert.ok(result.calls.filter((call)=>call[0]==='load').every((call)=>call[2]===false), 'OSMD load must never receive a hidden host');
   assert.ok(result.calls.filter((call)=>call[0]==='render').every((call)=>call[1]===false), 'OSMD render must never receive a hidden host');
   const fitConstructor = result.calls.find((call)=>call[0]==='constructor');
-  assert.equal(fitConstructor[2].autoResize,true);
+  assert.equal(fitConstructor[2].autoResize,false);
   assert.equal(fitConstructor[2].stretchLastSystemLine,true);
 
   await api.setViewMode('100');
@@ -162,7 +162,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   assert.ok(api.getPresentationZoom() > 1.0);
   const constructorsAfterFit = result.calls.filter((call)=>call[0]==='constructor');
   const finalFitConstructor = constructorsAfterFit.at(-1);
-  assert.equal(finalFitConstructor[2].autoResize,true);
+  assert.equal(finalFitConstructor[2].autoResize,false);
   assert.equal(finalFitConstructor[2].stretchLastSystemLine,true);
   await assert.rejects(api.setViewMode('150'), /VIEW_MODE_INVALID/);
 
@@ -176,9 +176,13 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, h
   assert.equal(stable.rerendered,false);
 
   snapshotRef.current={revisionId:'fixture-e7h-r0001',rendererFamily:'osmd',musicXml:'<score-partwise version="4.0"><part-list/></score-partwise>'};
+  const clearsBeforeSessionRerender = result.calls.filter((call)=>call[0]==='clear').length;
+  const constructorsBeforeSessionRerender = result.calls.filter((call)=>call[0]==='constructor').length;
   await api.renderCurrentSession();
   assert.equal(api.getLastRenderedRevision(),'fixture-e7h-r0001');
   assert.equal(result.host.dataset.renderedRevision,'fixture-e7h-r0001');
+  assert.equal(result.calls.filter((call)=>call[0]==='clear').length,clearsBeforeSessionRerender+1);
+  assert.equal(result.calls.filter((call)=>call[0]==='constructor').length,constructorsBeforeSessionRerender+1);
 
   const badProfile = run({bridge:makeBridge(snapshotRef),profile:{...exactProfile,networkUseAllowed:true}});
   assert.equal(badProfile.window.ScoreMosaicScoreEditorOsmdHost.available,false);
