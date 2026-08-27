@@ -204,9 +204,11 @@ class WebPreviewV1Tests(unittest.TestCase):
             ordered = [
                 "vendor/opensheetmusicdisplay-2.1.1.min.js",
                 "vendor/st-score-editor-core.runtime.js",
-                "application/read-adapter.js",
-                "application/local-application.js",
                 "fixture.js",
+                "application/read-adapter.js",
+                "application/edit-intent-adapter.js",
+                "application/application-state.js",
+                "application/local-application.js",
                 "application/score-editor-core-bridge.js",
                 "vendor/renderer-profile.js",
                 "application/score-editor-osmd-host.js",
@@ -215,6 +217,7 @@ class WebPreviewV1Tests(unittest.TestCase):
             ]
             positions = [index.index(marker) for marker in ordered]
             self.assertEqual(positions, sorted(positions))
+            self.assertLess(index.index("fixture.js"), index.index("application/local-application.js"))
 
             profile = (first / "vendor" / "renderer-profile.js").read_text(encoding="utf-8")
             self.assertIn('"packageVersion":"2.1.1"', profile)
