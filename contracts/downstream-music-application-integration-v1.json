@@ -50,6 +50,23 @@
     "mayRewriteSourceMusic": false,
     "mayBeAddedToUiAsSeparateWorkspace": true
   },
+  "stOrchestration": {
+    "integrationName": "ST-Orchestration",
+    "role": "downstream_bounded_symbolic_orchestration_proposal_service",
+    "repository": "khfy7wpr5p-maker/ST-Orchestration",
+    "pinnedCompatibilityCommit": "6c7f74fdbf13dd3acc2e0daa93cab7037d6a0a90",
+    "specificContract": "contracts/st-orchestration-integration-v1.json",
+    "input": "validated_or_approved_musicxml_with_exact_revision_lineage",
+    "output": "non_authoritative_orchestration_proposals_alternatives_or_abstention",
+    "supportedCapabilities": ["string-seat-ranking-v0"],
+    "generalPianoToOrchestraSupported": false,
+    "fullScoreOrchestrationSupported": false,
+    "mayRewriteSourceMusic": false,
+    "mayCreateTeacherRevision": false,
+    "mayApprove": false,
+    "mayPublish": false,
+    "liveIntegrationActivated": false
+  },
   "futureUiExtension": {
     "recommendedWorkspace": "guitar_tab_workspace",
     "mayAddNavigationWithoutChangingCoreTeacherReviewAuthority": true,
@@ -57,8 +74,11 @@
   },
   "activationLocks": {
     "guitarTabLiveIntegrationActivated": false,
+    "stOrchestrationLiveIntegrationActivated": false,
     "networkTransportActivated": false,
     "productionCredentialsActivated": false,
-    "productionDerivedTabPublicationActivated": false
+    "productionDerivedTabPublicationActivated": false,
+    "productionOrchestrationInferenceActivated": false,
+    "productionOrchestrationPublicationActivated": false
   }
 }

@@ -1,0 +1,111 @@
+{
+  "version": "scoremosaic-st-orchestration-integration-v1",
+  "status": "DISCONNECTED_COMPATIBILITY_READY_LIVE_DISABLED",
+  "purpose": "Bind ScoreMosaic's existing downstream music-application boundary to the exact ST-Orchestration H7 v0 architecture without granting live transport, production inference, score mutation, approval or publication authority.",
+  "target": {
+    "repository": "khfy7wpr5p-maker/ST-Orchestration",
+    "mainCommit": "6c7f74fdbf13dd3acc2e0daa93cab7037d6a0a90",
+    "contractPath": "contracts/H7_SCOREMOSAIC_INTEGRATION_V0.json",
+    "contractGitBlobSha": "2583f54ef6b0a9f0985edd91c82fadf3681e88f4",
+    "contractSchemaVersion": "st-orchestration.h7-scoremosaic-integration/v0",
+    "modelId": "o5c-ossq-anonymous-context-v0",
+    "modelFingerprint": "15cd94722a0ba2724ceea6f450f16a87ef455fa8bc21d4b619f0bda6d880ca14",
+    "h4ResultFingerprint": "462f492ace58ecf0c4d1125966057c869177cad99367f1364d89c17710081225",
+    "abstentionThreshold": 0.55,
+    "promotionScope": "bounded-research-evaluation-only"
+  },
+  "capability": {
+    "supported": [
+      "string-seat-ranking-v0"
+    ],
+    "unsupported": [
+      "full-score-orchestration",
+      "piano-to-orchestra",
+      "full-symphonic-orchestration",
+      "automatic-arrangement",
+      "source-music-rewrite",
+      "automatic-publication"
+    ],
+    "unsupportedRequestsFailClosed": true,
+    "currentModelIsGeneralOrchestrator": false
+  },
+  "sourcePolicy": {
+    "rawOmrCandidateAllowed": false,
+    "rawEngineOutputAllowed": false,
+    "browserEditedAdHocXmlAllowed": false,
+    "staleRevisionAllowed": false,
+    "validatedTeacherRevisionPreviewAllowed": true,
+    "productionRequestRequiresApprovedTeacherRevision": true,
+    "correctedMusicXmlSha256Required": true,
+    "revisionIdentityRequired": true
+  },
+  "requestLineage": {
+    "requiredFields": [
+      "integration_request_id",
+      "document_id",
+      "canonical_score_id",
+      "teacher_revision_id",
+      "corrected_musicxml_sha256",
+      "source_state",
+      "capability"
+    ],
+    "sourceStateValues": [
+      "validated-preview",
+      "approved"
+    ]
+  },
+  "resultBoundary": {
+    "requiredFields": [
+      "integration_request_id",
+      "corrected_musicxml_sha256",
+      "capability",
+      "candidate_id",
+      "model_fingerprint",
+      "abstention_threshold",
+      "status",
+      "alternatives",
+      "deterministic_validation",
+      "result_sha256"
+    ],
+    "statusValues": [
+      "proposal",
+      "abstain",
+      "unsupported"
+    ],
+    "deterministicValidationRequired": true,
+    "downstreamOutputIsAuthoritativeMusicalTruth": false,
+    "sourceMutationAllowed": false
+  },
+  "authority": {
+    "browserMayCallEngineDirectly": false,
+    "engineMayMutateCanonicalScore": false,
+    "engineMayCreateOrOverwriteTeacherRevision": false,
+    "engineMayApprove": false,
+    "engineMayPublish": false,
+    "engineMayTrainFromTeacherCorrectionsAutomatically": false,
+    "staleDerivedResultMayRemainCurrent": false
+  },
+  "applicationBoundary": {
+    "uiCallsTypedApplicationContract": true,
+    "applicationUsesDedicatedAdapter": true,
+    "adapterOwnsTransport": true,
+    "failureMustNotMutateScoreMosaicState": true
+  },
+  "activationLocks": {
+    "disconnectedCompatibilityHarnessReady": true,
+    "adapterRuntimeActivated": false,
+    "runtimeModelCallActivated": false,
+    "networkTransportActivated": false,
+    "productionCredentialsActivated": false,
+    "productionInferenceActivated": false,
+    "canonicalMutationActivated": false,
+    "teacherRevisionMutationActivated": false,
+    "approvalActivated": false,
+    "publicationActivated": false,
+    "stOmrIntegrationActivated": false,
+    "postH4RetuningAuthorized": false,
+    "h4RerunAuthorized": false,
+    "automaticLearningActivated": false
+  },
+  "nextGate": "H7-C_NON_AUTHORITATIVE_LOCAL_PREVIEW_ADAPTER_HUMAN_DECISION"
+}
