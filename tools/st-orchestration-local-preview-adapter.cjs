@@ -109,7 +109,12 @@ const runLocalPreview = ({stRoot, inputPath, pythonBin = process.env.PYTHON_BIN 
     cwd: stRoot,
     timeout: contract.localProcessBoundary.timeoutMs,
     maxBuffer: contract.localProcessBoundary.stdoutLimitBytes,
-    env: {PATH: process.env.PATH || '', PYTHONPATH: stRoot, PYTHONNOUSERSITE: '1'},
+    env: {
+      PATH: process.env.PATH || '',
+      PYTHONPATH: stRoot,
+      PYTHONNOUSERSITE: '1',
+      PYTHONDONTWRITEBYTECODE: '1',
+    },
   });
   let wrapper;
   try { wrapper = JSON.parse(stdout); } catch (error) { throw new LocalPreviewAdapterError(`invalid JSON from ST-Orchestration: ${error.message}`); }
