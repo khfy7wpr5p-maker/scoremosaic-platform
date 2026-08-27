@@ -147,8 +147,8 @@
     if (type === 'set_effective_duration') return {type, value: parseDuration(proposedValue.value)};
     if (type === 'set_dots') {
       const dots = Number(proposedValue.value.trim());
-      const maximum = coreAvailable ? 3 : 8;
-      if (!Number.isSafeInteger(dots) || dots < 0 || dots > maximum) throw new Error('DOTS_INVALID');
+      if (!Number.isSafeInteger(dots) || dots < 0 || dots > 8) throw new Error('DOTS_INVALID');
+      if (coreAvailable && dots > 3) throw new Error('DOTS_INVALID');
       return {type, value: dots};
     }
     return {type, value: null};
