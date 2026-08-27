@@ -1,0 +1,38 @@
+{
+  "request": {
+    "integration_request_id": "scoremosaic-h7c-local-001",
+    "document_id": "fixture-score-001",
+    "canonical_score_id": "fixture-canonical-001",
+    "teacher_revision_id": "fixture-r3",
+    "corrected_musicxml_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "source_state": "validated-preview",
+    "capability": "string-seat-ranking-v0"
+  },
+  "line_events": [
+    {"onset_quarters": "0", "duration_quarters": "1", "sounding_midi": 76, "rest": false, "chord": false},
+    {"onset_quarters": "1", "duration_quarters": "1", "sounding_midi": 77, "rest": false, "chord": false},
+    {"onset_quarters": "2", "duration_quarters": "1", "sounding_midi": 79, "rest": false, "chord": false},
+    {"onset_quarters": "3", "duration_quarters": "1", "sounding_midi": 81, "rest": false, "chord": false}
+  ],
+  "context_lines": [
+    [
+      {"onset_quarters": "0", "duration_quarters": "1", "sounding_midi": 67, "rest": false, "chord": false},
+      {"onset_quarters": "1", "duration_quarters": "1", "sounding_midi": 69, "rest": false, "chord": false},
+      {"onset_quarters": "2", "duration_quarters": "1", "sounding_midi": 71, "rest": false, "chord": false},
+      {"onset_quarters": "3", "duration_quarters": "1", "sounding_midi": 72, "rest": false, "chord": false}
+    ],
+    [
+      {"onset_quarters": "0", "duration_quarters": "1", "sounding_midi": 60, "rest": false, "chord": false},
+      {"onset_quarters": "1", "duration_quarters": "1", "sounding_midi": 62, "rest": false, "chord": false},
+      {"onset_quarters": "2", "duration_quarters": "1", "sounding_midi": 64, "rest": false, "chord": false},
+      {"onset_quarters": "3", "duration_quarters": "1", "sounding_midi": 65, "rest": false, "chord": false}
+    ],
+    [
+      {"onset_quarters": "0", "duration_quarters": "1", "sounding_midi": 48, "rest": false, "chord": false},
+      {"onset_quarters": "1", "duration_quarters": "1", "sounding_midi": 50, "rest": false, "chord": false},
+      {"onset_quarters": "2", "duration_quarters": "1", "sounding_midi": 52, "rest": false, "chord": false},
+      {"onset_quarters": "3", "duration_quarters": "1", "sounding_midi": 53, "rest": false, "chord": false}
+    ]
+  ],
+  "preview_input_sha256": "232896f7af0b1fde5261c6a8a2359ff2e4082574b9b4559d97050d2359c63fdf"
+}
