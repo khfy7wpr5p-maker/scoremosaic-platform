@@ -1,0 +1,76 @@
+{
+  "version": "scoremosaic-st-orchestration-local-preview-v1",
+  "status": "H7C_LOCAL_PREVIEW_ACTIVE_PRODUCTION_DISABLED",
+  "purpose": "Allow ScoreMosaic to invoke the exact ST-Orchestration H7-C runtime through a bounded local process adapter and show the result in Teacher Review as non-authoritative preview evidence only.",
+  "humanApproval": {
+    "date": "2026-08-27",
+    "decision": "H7-C non-authoritative local / preview adapter approved",
+    "productionAuthorityGranted": false,
+    "scoreMutationAuthorityGranted": false
+  },
+  "parentEvidence": {
+    "contract": "contracts/st-orchestration-integration-v1.json",
+    "status": "DISCONNECTED_COMPATIBILITY_READY_LIVE_DISABLED",
+    "immutableHistoricalH7B": true
+  },
+  "target": {
+    "repository": "khfy7wpr5p-maker/ST-Orchestration",
+    "mainCommit": "f5ee0e605e62c41af86255712941305b2a8c7afb",
+    "contractPath": "contracts/H7C_LOCAL_PREVIEW_V0.json",
+    "contractGitBlobSha": "1392bb3cb929620dc8645af4b2a808e99c338e91",
+    "runtimePath": "st_orchestration/local_preview.py",
+    "runtimeGitBlobSha": "e51c5ed970afcafa2318a2da6177595120a04203",
+    "cliPath": "tools/run_h7c_local_preview.py",
+    "cliGitBlobSha": "5262c196a3a31577fc063567dd733b9fa25eb947",
+    "modelId": "o5c-ossq-anonymous-context-v0",
+    "modelFingerprint": "15cd94722a0ba2724ceea6f450f16a87ef455fa8bc21d4b619f0bda6d880ca14",
+    "abstentionThreshold": 0.55,
+    "capability": "string-seat-ranking-v0"
+  },
+  "localProcessBoundary": {
+    "adapterOwnsProcessExecution": true,
+    "shellExecutionAllowed": false,
+    "exactTargetCommitRequired": true,
+    "inputSizeLimitBytes": 131072,
+    "timeoutMs": 15000,
+    "stdoutLimitBytes": 262144,
+    "networkTransportAllowed": false,
+    "productionCredentialsAllowed": false
+  },
+  "browserBoundary": {
+    "browserDirectEngineCallAllowed": false,
+    "browserNetworkAllowed": false,
+    "browserReadsGeneratedPreviewEvidenceOnly": true,
+    "previewIsAuthoritativeMusicalTruth": false,
+    "previewMayMutateCanonicalScore": false,
+    "previewMayCreateOrOverwriteTeacherRevision": false,
+    "previewMayApprove": false,
+    "previewMayPublish": false,
+    "previewMayAutomaticallyTrain": false,
+    "applyActionExists": false
+  },
+  "activationLocks": {
+    "localProcessAdapterActivated": true,
+    "localModelInferenceActivated": true,
+    "teacherReviewPreviewActivated": true,
+    "networkTransportActivated": false,
+    "productionCredentialsActivated": false,
+    "productionInferenceActivated": false,
+    "canonicalMutationActivated": false,
+    "teacherRevisionMutationActivated": false,
+    "approvalActivated": false,
+    "publicationActivated": false,
+    "stOmrIntegrationActivated": false,
+    "postH4RetuningAuthorized": false,
+    "h4RerunAuthorized": false,
+    "automaticLearningActivated": false
+  },
+  "fixtureEvidence": {
+    "inputPath": "fixtures/h7c/st-orchestration-local-preview-input-v1.json",
+    "previewInputSha256": "232896f7af0b1fde5261c6a8a2359ff2e4082574b9b4559d97050d2359c63fdf",
+    "expectedStatus": "proposal",
+    "expectedTopSuggestion": "violin-1",
+    "expectedResultSha256": "2ee992b14ce19a0a4d326b05b6ad7c737dcf69a973626e207f1ca8fb33f109af"
+  },
+  "nextGate": "H7-D_AUTHENTICATED_STAGING_TRANSPORT_SEPARATE_HUMAN_DECISION"
+}

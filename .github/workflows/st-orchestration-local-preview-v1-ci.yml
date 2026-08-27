@@ -1,0 +1,70 @@
+name: Validate ST-Orchestration H7-C local preview
+
+on:
+  pull_request:
+    paths:
+      - "contracts/st-orchestration-local-preview-v1.json"
+      - "fixtures/h7c/**"
+      - "tools/st-orchestration-local-preview-adapter.cjs"
+      - "tools/generate-st-orchestration-preview-data.cjs"
+      - "prototypes/stage10-ui-application-experience/fixture.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview-data.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview-ui.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview.css"
+      - "prototypes/stage11-ui-application-contracts/orchestration-preview-adapter.js"
+      - "tests/st-orchestration-local-preview.test.cjs"
+      - "docs/h7-c-st-orchestration-local-preview.md"
+      - ".github/workflows/st-orchestration-local-preview-v1-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "contracts/st-orchestration-local-preview-v1.json"
+      - "fixtures/h7c/**"
+      - "tools/st-orchestration-local-preview-adapter.cjs"
+      - "tools/generate-st-orchestration-preview-data.cjs"
+      - "prototypes/stage10-ui-application-experience/fixture.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview-data.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview-ui.js"
+      - "prototypes/stage10-ui-application-experience/orchestration-preview.css"
+      - "prototypes/stage11-ui-application-contracts/orchestration-preview-adapter.js"
+      - "tests/st-orchestration-local-preview.test.cjs"
+      - "docs/h7-c-st-orchestration-local-preview.md"
+      - ".github/workflows/st-orchestration-local-preview-v1-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  local-preview-integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout ScoreMosaic
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Checkout exact ST-Orchestration H7-C runtime
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: khfy7wpr5p-maker/ST-Orchestration
+          ref: f5ee0e605e62c41af86255712941305b2a8c7afb
+          path: .h7c/ST-Orchestration
+          persist-credentials: false
+      - name: Set up Python 3.13
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+      - name: Run H7-C real local-process integration tests
+        env:
+          ST_ORCHESTRATION_ROOT: ${{ github.workspace }}/.h7c/ST-Orchestration
+        run: node --test tests/st-orchestration-local-preview.test.cjs
+      - name: Compile browser and adapter JavaScript
+        run: |
+          node --check tools/st-orchestration-local-preview-adapter.cjs
+          node --check tools/generate-st-orchestration-preview-data.cjs
+          node --check prototypes/stage10-ui-application-experience/orchestration-preview-data.js
+          node --check prototypes/stage10-ui-application-experience/orchestration-preview-ui.js
+          node --check prototypes/stage11-ui-application-contracts/orchestration-preview-adapter.js
+      - name: Preserve historical H7-B architecture evidence
+        run: python -m unittest tests.test_st_orchestration_integration_architecture -v
+      - name: Re-run Stage 10 disconnected browser guardrails
+        run: python -m unittest tests.test_stage10c_fixture_readonly_review tests.test_stage10f_ui_experience_eligibility -v

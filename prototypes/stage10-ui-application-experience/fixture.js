@@ -62,3 +62,35 @@
 
   window.ScoreMosaicFixture = freezeDeep(fixture);
 })();
+
+(() => {
+  'use strict';
+
+  if (!window.ScoreMosaicFixture || window.ScoreMosaicFixture.productionArtifact !== false || window.ScoreMosaicFixture.authoritativeTruth !== false) return;
+  if (typeof document !== 'object' || !document || !document.head || typeof document.createElement !== 'function') return;
+
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = 'orchestration-preview.css';
+  document.head.append(stylesheet);
+
+  const scripts = [
+    'orchestration-preview-data.js',
+    '../stage11-ui-application-contracts/orchestration-preview-adapter.js',
+    'orchestration-preview-ui.js',
+  ];
+
+  const loadNext = (index) => {
+    if (index >= scripts.length) return;
+    const script = document.createElement('script');
+    script.src = scripts[index];
+    script.async = false;
+    script.onload = () => loadNext(index + 1);
+    script.onerror = () => {
+      if (index === 0) loadNext(index + 1);
+    };
+    document.head.append(script);
+  };
+
+  loadNext(0);
+})();
