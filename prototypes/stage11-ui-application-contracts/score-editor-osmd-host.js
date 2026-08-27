@@ -47,7 +47,7 @@
     && profile.coordinatesAuthoritative === false
     && profile.domIdsAuthoritative === false
     && profile.rendererObjectsAuthoritative === false
-    && profile.networkCapable === false
+    && profile.networkUseAllowed === false
     && profile.persistent === false;
 
   if (!safeBridge) {
