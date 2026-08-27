@@ -24,7 +24,7 @@ PDF / image
   -> DOWNSTREAM MUSIC APPLICATION BOUNDARY
        -> GuitarTab Engine
        -> playback/workstation
-       -> orchestration
+       -> ST-Orchestration
        -> other bounded derivatives
 ```
 
@@ -102,7 +102,40 @@ Expected evidence may include:
 - position/playability evidence;
 - abstention or `NO_SCORE`-style outcome where no safe realization should be asserted.
 
-## 7. Future Guitar TAB workspace
+## 7. ST-Orchestration — H7-B disconnected compatibility
+
+The specific ScoreMosaic contract is `contracts/st-orchestration-integration-v1.json` and the detailed boundary is `docs/st-orchestration-integration-boundary.md`.
+
+The pinned counterpart is:
+
+- repository: `khfy7wpr5p-maker/ST-Orchestration`
+- main commit: `6c7f74fdbf13dd3acc2e0daa93cab7037d6a0a90`
+- counterpart contract: `contracts/H7_SCOREMOSAIC_INTEGRATION_V0.json`
+
+The current promoted ST-Orchestration model supports only:
+
+`string-seat-ranking-v0`
+
+It is not a general piano-to-orchestra/full-score orchestrator. Unsupported broader orchestration requests must fail closed.
+
+The intended future boundary is:
+
+```text
+validated/approved MusicXML + exact Teacher Revision lineage
+  -> typed orchestration application contract
+  -> dedicated ScoreMosaic orchestration adapter
+  -> future transport — disabled
+  -> ST-Orchestration bounded capability
+  -> deterministic validation
+  -> non-authoritative proposal / alternatives / abstention
+  -> Teacher Review
+```
+
+ST-Orchestration must not mutate Canonical Score, create/overwrite TeacherScoreRevision, approve, publish, or automatically learn from teacher/user corrections.
+
+H7-B is disconnected compatibility evidence only. Adapter runtime, model runtime calls, network transport, credentials and production inference remain disabled.
+
+## 8. Future Guitar TAB workspace
 
 UI Architecture Phase 1 does not implement Guitar TAB, but it deliberately leaves a safe extension point.
 
@@ -120,9 +153,9 @@ A later product workspace may contain:
 
 This workspace can be added to navigation or document actions without changing Teacher Review's authority model.
 
-## 8. Failure isolation
+## 9. Failure isolation
 
-A GuitarTab/downstream integration failure must never:
+A GuitarTab/ST-Orchestration/downstream integration failure must never:
 
 - corrupt the ScoreMosaic document;
 - mutate Canonical Score;
@@ -133,13 +166,16 @@ A GuitarTab/downstream integration failure must never:
 
 Failure produces bounded downstream status/evidence only.
 
-## 9. Current locks
+## 10. Current locks
 
 ```text
 guitarTabLiveIntegrationActivated=false
+stOrchestrationLiveIntegrationActivated=false
 networkTransportActivated=false
 productionCredentialsActivated=false
 productionDerivedTabPublicationActivated=false
+productionOrchestrationInferenceActivated=false
+productionOrchestrationPublicationActivated=false
 ```
 
-This document reserves a safe architectural seam only. It does not connect repositories or services.
+This document reserves safe architectural seams only. It does not connect repositories or services at runtime.
