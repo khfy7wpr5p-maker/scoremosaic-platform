@@ -84,13 +84,13 @@
   add('Capability', data.target.capability);
   add('Model', data.target.modelId);
   add('Model fingerprint', data.target.modelFingerprint);
-  add('ST main', data.target.mainCommit);
+  add(isStaging ? 'Expected ST contract commit' : 'ST main', data.target.mainCommit);
   add('Input SHA-256', data.previewInputSha256);
   add('Result SHA-256', result.result_sha256);
   panel.append(lineage);
 
   panel.append(make('p', 'orchestration-preview-footnote', isStaging
-    ? 'Authenticated staging model inference was executed server-side against the pinned ST-Orchestration commit. The browser receives neither the staging endpoint nor its authentication secret and only presents validated preview evidence.'
+    ? 'Authenticated staging model inference was executed server-side through the H7-D transport. Non-loopback staging is exact-origin pinned. The response validates model, source and result identity but does not itself attest the deployed Git commit. The browser receives neither the staging endpoint nor its authentication secret.'
     : 'Real local-process model inference was executed outside the browser against the pinned ST-Orchestration commit. The browser only presents the generated, validated preview evidence.'));
   scorePanel.insertAdjacentElement('afterend', panel);
 })();
