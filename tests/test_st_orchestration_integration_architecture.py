@@ -49,7 +49,7 @@ class StOrchestrationIntegrationArchitectureTests(unittest.TestCase):
         self.assertIn("piano-to-orchestra", capability["unsupported"])
         self.assertIn("full-score-orchestration", capability["unsupported"])
         self.assertIn("full-symphonic-orchestration", capability["unsupported"])
-        self.assertIn("not a general piano-to-orchestra", DOC.lower())
+        self.assertIn("this is **not** a general piano-to-orchestra", DOC.lower())
 
     def test_source_lineage_matches_scoremosaic_downstream_truth_boundary(self) -> None:
         source = SPECIFIC["sourcePolicy"]
