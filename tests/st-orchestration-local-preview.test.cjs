@@ -58,6 +58,36 @@ test('committed browser preview data is non-authoritative exact-runtime evidence
   assert.equal(data.result.alternatives[0].instrument, 'violin-1');
 });
 
+test('browser adapter accepts exact generated evidence as read-only preview', () => {
+  const sandbox = {
+    window: {
+      ScoreMosaicFixture: {
+        document: {id: 'fixture-score-001', revision: 'fixture-r3'},
+      },
+    },
+    Object,
+    JSON,
+    Number,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(GENERATED, 'utf8'), sandbox, {filename: GENERATED});
+  vm.runInContext(fs.readFileSync(BROWSER_ADAPTER, 'utf8'), sandbox, {filename: BROWSER_ADAPTER});
+  const adapter = sandbox.window.ScoreMosaicOrchestrationPreviewAdapter;
+  assert.equal(adapter.productionAdapter, false);
+  assert.equal(adapter.authoritative, false);
+  assert.equal(adapter.networkCapable, false);
+  assert.equal(adapter.mutationCapable, false);
+  assert.equal(adapter.persistent, false);
+  const state = adapter.read();
+  assert.equal(state.state, 'ready');
+  assert.equal(state.error, null);
+  assert.equal(state.data.authoritative, false);
+  assert.equal(state.data.sourceMutationAllowed, false);
+  assert.equal(state.data.teacherRevisionMutationAllowed, false);
+  assert.equal(state.data.result.status, 'proposal');
+  assert.equal(state.data.result.alternatives[0].instrument, 'violin-1');
+});
+
 test('browser preview boundary contains no network, persistence or apply mutation path', () => {
   const source = [BROWSER_ADAPTER, UI, FIXTURE].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
   for (const pattern of [/\bfetch\s*\(/, /XMLHttpRequest/, /WebSocket/, /EventSource/, /localStorage/, /sessionStorage/, /indexedDB/, /document\.cookie/, /\bwindow\.location\b/, /\binnerHTML\b/, /insertAdjacentHTML/, /\beval\s*\(/, /new\s+Function/]) {
