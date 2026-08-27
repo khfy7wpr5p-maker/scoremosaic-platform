@@ -84,6 +84,21 @@
       "productionPersistenceActivated": false,
       "productionIdentityActivated": false
     },
+    "stScoreEditorCoreIntegration": {
+      "stageNumberAssigned": false,
+      "status": "REPOSITORY_TEACHER_REVIEW_EDITOR_CORE_BRIDGE_READY_RUNTIME_HOST_DEFERRED",
+      "contract": "contracts/st-score-editor-core-integration-v1.json",
+      "coreRepository": "khfy7wpr5p-maker/st-score-editor-core",
+      "coreCommit": "70c884fcc0f4c51f3baecf0bf057c78e1ca87f9b",
+      "coreRuntimeVersion": "1.0.0",
+      "browserBridgeReady": true,
+      "crossRepoCompatibilityCiReady": true,
+      "runtimeBundledInPreview": false,
+      "osmdHostRuntimeActivated": false,
+      "liveReadApiActivated": false,
+      "liveWriteApiActivated": false,
+      "productionPersistenceActivated": false
+    },
     "coolifyConnectionPreflight": {
       "stageNumberAssigned": false,
       "status": "REPOSITORY_COOLIFY_PRIVATE_STAGING_PREFLIGHT_READY_NOT_CONNECTED",
@@ -121,6 +136,8 @@
     "repositoryRevisionApprovalPublicationPreparationComplete": true,
     "disconnectedProductUiComplete": true,
     "typedLocalUiApplicationIntegrationComplete": true,
+    "stScoreEditorCoreRepositoryIntegrationReady": true,
+    "stScoreEditorCoreRuntimeActivated": false,
     "repositoryApiContractReady": true,
     "repositoryApiHarnessReady": true,
     "liveTeacherReviewApiActivated": false,
@@ -150,6 +167,8 @@
   "browser": {
     "localFixtureUiAvailable": true,
     "typedLocalApplicationAvailable": true,
+    "scoreEditorCoreBridgeAvailable": true,
+    "scoreEditorCoreRuntimeBundled": false,
     "networkAllowed": false,
     "browserPersistenceAllowed": false,
     "productionArtifactReadsAllowed": false,
