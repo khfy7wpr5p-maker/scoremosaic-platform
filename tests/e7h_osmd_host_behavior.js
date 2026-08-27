@@ -46,23 +46,31 @@ const makeButton = (label) => {
   };
 };
 
-const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={}) => {
+const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false, hostWidth=640}={}) => {
   let hasSvg = false;
+  let currentHostWidth = hostWidth;
   const host = {
     hidden:true,
     dataset:{},
     textContent:'',
+    get clientWidth(){return currentHostWidth;},
+    getBoundingClientRect(){return {width:currentHostWidth};},
     removeAttribute(name){if(name==='data-rendered-revision')delete this.dataset.renderedRevision;},
     querySelector(selector){return selector==='svg' && hasSvg ? {} : null;}
   };
   const fallback = {hidden:false};
   const fitWidthButton = makeButton('Fit width');
   const zoom100Button = makeButton('100%');
-  const scorePanel = {querySelectorAll(selector){return selector==='.panel-actions button' ? [fitWidthButton,zoom100Button] : [];}};
+  const scorePanel = {
+    get clientWidth(){return currentHostWidth;},
+    getBoundingClientRect(){return {width:currentHostWidth};},
+    querySelectorAll(selector){return selector==='.panel-actions button' ? [fitWidthButton,zoom100Button] : [];}
+  };
   const calls = [];
   class FakeOsmd {
     constructor(target, options) {
       this.options = options;
+      this.zoom = 1.0;
       calls.push(['constructor',target,options,target.hidden]);
     }
     async load(xml) {
@@ -70,7 +78,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={
       if(failLoad)throw new Error('load failed');
     }
     render() {
-      calls.push(['render',host.hidden]);
+      calls.push(['render',host.hidden,this.zoom]);
       if(!emptyRender)hasSvg=true;
     }
     clear() {
@@ -87,14 +95,17 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={
     getElementById(id){return id==='score-render-host'?host:id==='score-fixture-fallback'?fallback:null;},
     querySelector(selector){return selector==='.score-panel'?scorePanel:null;}
   };
-  const context = vm.createContext({window,document,Object,Promise,Error,RegExp,Array});
+  const context = vm.createContext({window,document,Object,Promise,Error,RegExp,Array,Number,Math});
   vm.runInContext(source, context, {filename:'score-editor-osmd-host.js'});
-  return {window,host,fallback,calls,fitWidthButton,zoom100Button};
+  return {
+    window,host,fallback,calls,fitWidthButton,zoom100Button,
+    setHostWidth(width){currentHostWidth=width;}
+  };
 };
 
 (async () => {
   const snapshotRef = {current:{revisionId:'fixture-r1',rendererFamily:'osmd',musicXml:'<score-partwise version="4.0"></score-partwise>'}};
-  const result = run({bridge:makeBridge(snapshotRef)});
+  const result = run({bridge:makeBridge(snapshotRef),hostWidth:640});
   const api = result.window.ScoreMosaicScoreEditorOsmdHost;
   assert.equal(api.available,true);
   assert.equal(api.authoritative,false);
@@ -105,6 +116,7 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={
   assert.equal(api.networkCapable,false);
   assert.equal(api.serverRevisionAuthority,false);
   assert.equal(api.presentationControls,true);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.fitWidthPolicy)),{minZoom:1.45,maxZoom:1.9,referenceWidth:380,rerenderWidthDelta:32});
   assert.equal(api.getViewMode(),'fit-width');
   assert.equal(result.fitWidthButton.disabled,false);
   assert.equal(result.zoom100Button.disabled,false);
@@ -118,15 +130,24 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={
   assert.equal(result.host.dataset.renderedRevision,'fixture-r1');
   assert.equal(result.host.dataset.viewMode,'fit-width');
   assert.equal(api.getLastRenderError(),null);
+  const initialZoom = api.getPresentationZoom();
+  assert.ok(initialZoom >= 1.45 && initialZoom <= 1.9);
+  assert.ok(initialZoom > 1.0);
+  assert.equal(Number(result.host.dataset.presentationZoom),Number(initialZoom.toFixed(2)));
+  assert.match(result.fitWidthButton.getAttribute('aria-label'),/current scale 168 percent|current scale 169 percent/);
   assert.ok(result.calls.some((call)=>call[0]==='load' && call[1].includes('<score-partwise')));
-  assert.ok(result.calls.some((call)=>call[0]==='render'));
-  assert.ok(result.calls.filter((call)=>['constructor','load','render'].includes(call[0])).every((call)=>call.at(-1)===false), 'OSMD must never layout inside a hidden host');
+  assert.ok(result.calls.some((call)=>call[0]==='render' && call[2]===initialZoom));
+  assert.ok(result.calls.filter((call)=>call[0]==='constructor').every((call)=>call[3]===false), 'OSMD constructor must never receive a hidden host');
+  assert.ok(result.calls.filter((call)=>call[0]==='load').every((call)=>call[2]===false), 'OSMD load must never receive a hidden host');
+  assert.ok(result.calls.filter((call)=>call[0]==='render').every((call)=>call[1]===false), 'OSMD render must never receive a hidden host');
   const fitConstructor = result.calls.find((call)=>call[0]==='constructor');
   assert.equal(fitConstructor[2].autoResize,true);
   assert.equal(fitConstructor[2].stretchLastSystemLine,true);
 
   await api.setViewMode('100');
   assert.equal(api.getViewMode(),'100');
+  assert.equal(api.getPresentationZoom(),1.0);
+  assert.equal(Number(result.host.dataset.presentationZoom),1.0);
   assert.equal(result.host.dataset.viewMode,'100');
   assert.equal(result.fitWidthButton.getAttribute('aria-pressed'),'false');
   assert.equal(result.zoom100Button.getAttribute('aria-pressed'),'true');
@@ -134,14 +155,25 @@ const run = ({bridge, profile=exactProfile, failLoad=false, emptyRender=false}={
   const nativeConstructor = constructorsAfter100.at(-1);
   assert.equal(nativeConstructor[2].autoResize,false);
   assert.equal(nativeConstructor[2].stretchLastSystemLine,false);
+  assert.equal(result.calls.filter((call)=>call[0]==='render').at(-1)[2],1.0);
 
   await api.setViewMode('fit-width');
   assert.equal(api.getViewMode(),'fit-width');
+  assert.ok(api.getPresentationZoom() > 1.0);
   const constructorsAfterFit = result.calls.filter((call)=>call[0]==='constructor');
   const finalFitConstructor = constructorsAfterFit.at(-1);
   assert.equal(finalFitConstructor[2].autoResize,true);
   assert.equal(finalFitConstructor[2].stretchLastSystemLine,true);
   await assert.rejects(api.setViewMode('150'), /VIEW_MODE_INVALID/);
+
+  const beforeResponsiveZoom = api.getPresentationZoom();
+  result.setHostWidth(800);
+  const responsive = await api.refreshResponsiveLayout();
+  assert.equal(responsive.rerendered,true);
+  assert.equal(api.getPresentationZoom(),1.9);
+  assert.ok(api.getPresentationZoom() > beforeResponsiveZoom);
+  const stable = await api.refreshResponsiveLayout();
+  assert.equal(stable.rerendered,false);
 
   snapshotRef.current={revisionId:'fixture-e7h-r0001',rendererFamily:'osmd',musicXml:'<score-partwise version="4.0"><part-list/></score-partwise>'};
   await api.renderCurrentSession();
