@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://scoremosaic.local/contracts/real-score-intake-v1.schema.json",
   "title": "ScoreMosaic Real Score Intake Binding v1",
-  "description": "Fail-closed metadata binding from one immutable OMR candidate and its Canonical Score derivative into Teacher Review/Core semantic targets. This contract grants no network, persistence, correction, approval, publication, or final-truth authority.",
+  "description": "Fail-closed binding from one verified Stage 7 OMR candidate handoff and its Canonical Score derivative into Teacher Review/Core semantic targets. This contract grants no network, persistence, correction, approval, publication, renderer, or final-truth authority.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -40,6 +40,18 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
     },
+    "jobId": {
+      "type": "string",
+      "pattern": "^job_[A-Za-z0-9_-]{8,80}$"
+    },
+    "planId": {
+      "type": "string",
+      "pattern": "^plan_[0-9a-f]{24}$"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{24}$"
+    },
     "artifactId": {
       "type": "string",
       "pattern": "^artifact_[0-9a-f]{24}$"
@@ -48,9 +60,11 @@
       "type": "string",
       "pattern": "^candidate_[0-9a-f]{24}$"
     },
-    "safeRef": {
+    "safeArtifactRef": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$"
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
     },
     "safeVersion": {
       "oneOf": [
@@ -80,28 +94,52 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "engine",
-        "candidateId",
-        "candidateNamespace",
-        "candidateSha256",
+        "version",
+        "jobId",
+        "planId",
+        "planSha256",
         "sourceArtifactId",
         "sourceSha256",
+        "engine",
+        "runId",
+        "candidateId",
+        "candidateSha256",
+        "persistenceRecordSha256",
         "musicxmlArtifactId",
+        "musicxmlArtifactRef",
         "musicxmlSha256",
+        "musicxmlBytes",
+        "handoffSha256",
         "engineVersion",
-        "modelVersion"
+        "modelVersion",
+        "provenanceAuthenticated",
+        "persistedArtifactVerified",
+        "candidateOnly",
+        "authoritativeScore"
       ],
       "properties": {
-        "engine": {"enum": ["homr", "clarity", "audiveris"]},
-        "candidateId": {"$ref": "#/$defs/candidateId"},
-        "candidateNamespace": {"$ref": "#/$defs/safeRef"},
-        "candidateSha256": {"$ref": "#/$defs/sha256"},
+        "version": {"const": "scoremosaic-candidate-convergence-handoff-v1"},
+        "jobId": {"$ref": "#/$defs/jobId"},
+        "planId": {"$ref": "#/$defs/planId"},
+        "planSha256": {"$ref": "#/$defs/sha256"},
         "sourceArtifactId": {"$ref": "#/$defs/artifactId"},
         "sourceSha256": {"$ref": "#/$defs/sha256"},
+        "engine": {"enum": ["homr", "clarity", "audiveris"]},
+        "runId": {"$ref": "#/$defs/runId"},
+        "candidateId": {"$ref": "#/$defs/candidateId"},
+        "candidateSha256": {"$ref": "#/$defs/sha256"},
+        "persistenceRecordSha256": {"$ref": "#/$defs/sha256"},
         "musicxmlArtifactId": {"$ref": "#/$defs/artifactId"},
+        "musicxmlArtifactRef": {"$ref": "#/$defs/safeArtifactRef"},
         "musicxmlSha256": {"$ref": "#/$defs/sha256"},
+        "musicxmlBytes": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "handoffSha256": {"$ref": "#/$defs/sha256"},
         "engineVersion": {"$ref": "#/$defs/safeVersion"},
-        "modelVersion": {"$ref": "#/$defs/safeVersion"}
+        "modelVersion": {"$ref": "#/$defs/safeVersion"},
+        "provenanceAuthenticated": {"const": true},
+        "persistedArtifactVerified": {"const": true},
+        "candidateOnly": {"const": true},
+        "authoritativeScore": {"const": false}
       }
     },
     "canonical": {
@@ -116,7 +154,7 @@
       "properties": {
         "canonicalSha256": {"$ref": "#/$defs/sha256"},
         "sourceEngine": {"enum": ["homr", "clarity", "audiveris"]},
-        "sourceArtifactRef": {"$ref": "#/$defs/safeRef"},
+        "sourceArtifactRef": {"$ref": "#/$defs/safeArtifactRef"},
         "sourceArtifactSha256": {"$ref": "#/$defs/sha256"}
       }
     },
