@@ -3,6 +3,12 @@
 
   const HOST_VERSION = 'scoremosaic-osmd-host-v1';
   const VIEW_MODES = Object.freeze(['fit-width', '100']);
+  const FIT_WIDTH_POLICY = Object.freeze({
+    minZoom: 1.45,
+    maxZoom: 1.9,
+    referenceWidth: 380,
+    rerenderWidthDelta: 32
+  });
   const bridge = window.ScoreMosaicScoreEditorCoreBridge;
   const profile = window.ScoreMosaicRendererProfile;
   const Osmd = window.opensheetmusicdisplay?.OpenSheetMusicDisplay;
@@ -17,8 +23,12 @@
   let lastRenderError = null;
   let renderQueue = Promise.resolve();
   let viewMode = 'fit-width';
+  let presentationZoom = 1.0;
+  let lastFitWidthWidth = null;
+  let resizeObserver = null;
 
   const freeze = (value) => Object.freeze(value);
+  const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
   const unavailable = (reason) => freeze({
     hostVersion: HOST_VERSION,
     available: false,
@@ -101,6 +111,22 @@
     return xml;
   };
 
+  const measuredWidth = () => {
+    const candidates = [
+      Number(host.clientWidth),
+      Number(scorePanel?.clientWidth),
+      Number(host.getBoundingClientRect?.().width),
+      Number(scorePanel?.getBoundingClientRect?.().width)
+    ];
+    const width = candidates.find((candidate) => Number.isFinite(candidate) && candidate > 0);
+    return width ?? FIT_WIDTH_POLICY.referenceWidth;
+  };
+
+  const computeFitWidthZoom = (width = measuredWidth()) => {
+    const raw = width / FIT_WIDTH_POLICY.referenceWidth;
+    return clamp(raw, FIT_WIDTH_POLICY.minZoom, FIT_WIDTH_POLICY.maxZoom);
+  };
+
   const rendererOptions = () => freeze({
     autoResize: viewMode === 'fit-width',
     drawTitle: false,
@@ -116,8 +142,8 @@
     zoom100Button.disabled = false;
     fitWidthButton.setAttribute('aria-pressed', String(viewMode === 'fit-width'));
     zoom100Button.setAttribute('aria-pressed', String(viewMode === '100'));
-    fitWidthButton.setAttribute('aria-label', 'Fit rendered score to the available score-view width');
-    zoom100Button.setAttribute('aria-label', 'Show rendered score at normal engraving scale');
+    fitWidthButton.setAttribute('aria-label', `Fit rendered score to the available score-view width with bounded automatic zoom; current scale ${Math.round(presentationZoom * 100)} percent`);
+    zoom100Button.setAttribute('aria-label', 'Show rendered score at normal 100 percent engraving scale');
   };
 
   const resetRenderer = () => {
@@ -146,6 +172,8 @@
     }
 
     await renderer.load(musicXml);
+    presentationZoom = viewMode === 'fit-width' ? computeFitWidthZoom() : 1.0;
+    renderer.zoom = presentationZoom;
     renderer.render();
 
     const svg = host.querySelector?.('svg') ?? null;
@@ -154,14 +182,17 @@
     fallback.hidden = true;
     lastRenderError = null;
     lastRenderedRevision = snapshot.revisionId;
+    if (viewMode === 'fit-width') lastFitWidthWidth = measuredWidth();
     host.dataset.renderState = 'rendered';
     host.dataset.renderedRevision = snapshot.revisionId;
     host.dataset.viewMode = viewMode;
+    host.dataset.presentationZoom = presentationZoom.toFixed(2);
     updatePresentationControls();
     return freeze({
       revisionId: snapshot.revisionId,
       rendererFamily: 'osmd',
       viewMode,
+      presentationZoom,
       authoritative: false,
       presentationOnly: true
     });
@@ -183,9 +214,25 @@
     if (!VIEW_MODES.includes(nextMode)) return Promise.reject(new Error('VIEW_MODE_INVALID'));
     return enqueueRender(async () => {
       viewMode = nextMode;
+      presentationZoom = nextMode === '100' ? 1.0 : presentationZoom;
       updatePresentationControls();
       resetRenderer();
       return renderOnce();
+    });
+  };
+
+  const refreshResponsiveLayout = () => {
+    if (viewMode !== 'fit-width' || lastRenderedRevision === null) {
+      return Promise.resolve(freeze({rerendered: false, viewMode, presentationZoom}));
+    }
+    const width = measuredWidth();
+    if (lastFitWidthWidth !== null && Math.abs(width - lastFitWidthWidth) < FIT_WIDTH_POLICY.rerenderWidthDelta) {
+      return Promise.resolve(freeze({rerendered: false, viewMode, presentationZoom}));
+    }
+    return enqueueRender(async () => {
+      resetRenderer();
+      const rendered = await renderOnce();
+      return freeze({...rendered, rerendered: true});
     });
   };
 
@@ -200,6 +247,15 @@
       // Presentation failure is already visible through the host fallback state.
     });
   });
+
+  if (typeof window.ResizeObserver === 'function' && scorePanel) {
+    resizeObserver = new window.ResizeObserver(() => {
+      refreshResponsiveLayout().catch(() => {
+        // Resize failures remain bounded to presentation and preserve the fallback.
+      });
+    });
+    resizeObserver.observe(scorePanel);
+  }
 
   window.ScoreMosaicScoreEditorOsmdHost = freeze({
     hostVersion: HOST_VERSION,
@@ -218,8 +274,11 @@
     rendererPackage: 'opensheetmusicdisplay',
     rendererVersion: '2.1.1',
     presentationControls: true,
+    fitWidthPolicy: FIT_WIDTH_POLICY,
     getViewMode: () => viewMode,
+    getPresentationZoom: () => presentationZoom,
     setViewMode,
+    refreshResponsiveLayout,
     getLastRenderedRevision: () => lastRenderedRevision,
     getLastRenderError: () => lastRenderError,
     renderCurrentSession
