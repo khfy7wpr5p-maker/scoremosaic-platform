@@ -123,7 +123,10 @@
   };
 
   const rendererOptions = () => freeze({
-    autoResize: viewMode === 'fit-width',
+    // ScoreMosaic owns responsive rerendering through the single ResizeObserver
+    // below. OSMD autoResize is intentionally disabled to prevent a second,
+    // competing render lifecycle from appending another presentation surface.
+    autoResize: false,
     drawTitle: false,
     followCursor: false,
     stretchLastSystemLine: viewMode === 'fit-width'
@@ -203,7 +206,12 @@
     });
   };
 
-  const renderCurrentSession = () => enqueueRender(renderOnce);
+  const renderCurrentSession = () => enqueueRender(async () => {
+    // Every real session rerender gets a fresh OSMD surface. This prevents
+    // edit-driven rerenders from retaining an older SVG alongside the new one.
+    resetRenderer();
+    return renderOnce();
+  });
 
   const setViewMode = (nextMode) => {
     if (!VIEW_MODES.includes(nextMode)) return Promise.reject(new Error('VIEW_MODE_INVALID'));
