@@ -48,5 +48,8 @@ jobs:
       - name: Run Real Score Intake v1.1 semantic target regressions
         run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_real_score_intake_contract_v1_1.py' -v
 
+      - name: Run Real Score Intake Adapter v1 regressions
+        run: python -m unittest discover -s services/teacher-review-service/tests -p 'test_real_score_intake_adapter_v1.py' -v
+
       - name: Check repository diff formatting
         run: git diff --check
