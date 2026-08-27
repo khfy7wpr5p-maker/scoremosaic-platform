@@ -122,8 +122,22 @@ jobs:
       - name: Validate preview contract
         run: python -m json.tool contracts/web-preview-v1.json > /dev/null
 
-      - name: Run preview security regressions
-        run: python -m unittest discover -s tests -p 'test_web_preview_v1.py' -v
+      - name: Run preview contract and authority regressions
+        run: |
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_contract_is_fixture_only_with_local_verified_renderer -v
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_security_contract_forbids_network_persistence_and_authority -v
+
+      - name: Run preview deterministic builder regressions
+        run: |
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_builder_produces_standalone_deterministic_renderer_preview -v
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_builder_rejects_corrupt_core_integrity -v
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_builder_rejects_wrong_osmd_identity -v
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_builder_never_overwrites_or_deletes_existing_output -v
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_builder_refuses_output_inside_repository -v
+          python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_generated_first_party_preview_contains_no_network_or_persistence_calls -v
+
+      - name: Run preview CI policy regression
+        run: python -m unittest tests.test_web_preview_v1.WebPreviewV1Tests.test_artifact_ci_remains_non_deploying_and_builds_exact_local_inputs -v
 
       - name: Run Pages deployment-policy regressions
         run: python -m unittest discover -s tests -p 'test_web_preview_pages_deploy.py' -v
