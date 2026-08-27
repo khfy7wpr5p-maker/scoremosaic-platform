@@ -20,6 +20,7 @@
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "genericId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "coreId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
     "jobId": {"type": "string", "pattern": "^job_[A-Za-z0-9_-]{8,80}$"},
     "planId": {"type": "string", "pattern": "^plan_[0-9a-f]{24}$"},
     "runId": {"type": "string", "pattern": "^run_[0-9a-f]{24}$"},
@@ -112,8 +113,8 @@
           "required": ["kind", "eventId", "noteId"],
           "properties": {
             "kind": {"const": "note"},
-            "eventId": {"$ref": "#/$defs/genericId"},
-            "noteId": {"$ref": "#/$defs/genericId"}
+            "eventId": {"$ref": "#/$defs/coreId"},
+            "noteId": {"$ref": "#/$defs/coreId"}
           }
         },
         {
@@ -122,7 +123,7 @@
           "required": ["kind", "eventId"],
           "properties": {
             "kind": {"const": "event"},
-            "eventId": {"$ref": "#/$defs/genericId"}
+            "eventId": {"$ref": "#/$defs/coreId"}
           }
         }
       ]
