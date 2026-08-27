@@ -45,12 +45,12 @@
 
   const data = state.data;
   const result = data.result;
-  const primary = result.alternatives[0] || null;
+  const primary = result.status === 'proposal' ? (result.alternatives[0] || null) : null;
   const summary = make('div', 'orchestration-preview-summary');
   const statusCard = make('div', 'orchestration-preview-card');
   statusCard.append(make('span', 'eyebrow', 'Result status'), make('strong', '', result.status));
   const suggestionCard = make('div', 'orchestration-preview-card');
-  suggestionCard.append(make('span', 'eyebrow', 'Top suggestion'));
+  suggestionCard.append(make('span', 'eyebrow', 'Recommendation'));
   if (primary) {
     suggestionCard.append(make('strong', '', primary.instrument), make('span', 'orchestration-confidence', `${(primary.confidence * 100).toFixed(1)}% confidence`));
   } else {
@@ -62,7 +62,7 @@
   panel.append(summary);
 
   const alternativesSection = make('section', 'orchestration-alternatives');
-  alternativesSection.append(make('h3', '', 'Ranked alternatives'));
+  alternativesSection.append(make('h3', '', result.status === 'proposal' ? 'Ranked alternatives' : 'Ranked alternatives · evidence only'));
   const list = make('ol', 'orchestration-alternative-list');
   result.alternatives.forEach((item) => {
     const row = make('li', 'orchestration-alternative');
