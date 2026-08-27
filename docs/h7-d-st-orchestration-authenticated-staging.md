@@ -14,15 +14,13 @@ ScoreMosaic server-side H7-D adapter
         ↓
 HMAC-SHA256 authenticated staging request
         ↓
-exact ST-Orchestration main 80b1e925…
-        ↓
-H7-D transport boundary
+ST-Orchestration H7-D staging transport
         ↓
 unchanged H7-C model runtime
         ↓
 deterministic feasibility veto
         ↓
-exact O5-C string-seat model
+exact O5-C string-seat model identity
         ↓
 validated H7-D result
         ↓
@@ -33,7 +31,7 @@ Teacher Review Orchestration Preview
 
 The browser has no staging endpoint, authentication key, allowed-origin configuration, direct engine call, or network transport capability.
 
-## Exact target
+## Exact compatibility target
 
 - ST-Orchestration main: `80b1e925804616d36c2b46c8074e6a608aa7bff4`
 - H7-D contract blob: `4f519d5ec978b305db4b670ea64c333460aa4a79`
@@ -45,6 +43,8 @@ The browser has no staging endpoint, authentication key, allowed-origin configur
 - model fingerprint: `15cd94722a0ba2724ceea6f450f16a87ef455fa8bc21d4b619f0bda6d880ca14`
 - threshold: `0.55`
 - capability: `string-seat-ranking-v0`
+
+CI checks out this exact ST commit and independently verifies the listed Git blob SHAs before starting the loopback H7-D server. A live external H7-D response is **not** a cryptographic Git-commit attestation. It proves successful request authentication and is validated against the pinned model, source and result contract; deployment provenance remains a separate deployment concern.
 
 ## Authentication
 
@@ -85,7 +85,7 @@ publicationCapable = false
 automaticLearningCapable = false
 ```
 
-The browser presentation adapter accepts H7-C and H7-D only as separate exact schemas pinned to their exact ST commits. H7-D is labeled `Authenticated staging preview · non-authoritative` in Teacher Review. There is no Apply action.
+The browser presentation adapter accepts H7-C and H7-D only as separate exact schemas pinned to their expected ST compatibility commits. H7-D is labeled `Authenticated staging preview · non-authoritative` in Teacher Review. Its lineage field says `Expected ST contract commit`; the remote response is not presented as proof of the deployed Git revision. There is no Apply action.
 
 ## Fail-closed cases
 
