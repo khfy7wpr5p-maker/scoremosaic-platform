@@ -67,6 +67,7 @@
   'use strict';
 
   if (!window.ScoreMosaicFixture || window.ScoreMosaicFixture.productionArtifact !== false || window.ScoreMosaicFixture.authoritativeTruth !== false) return;
+  if (typeof document !== 'object' || !document || !document.head || typeof document.createElement !== 'function') return;
 
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
@@ -85,7 +86,9 @@
     script.src = scripts[index];
     script.async = false;
     script.onload = () => loadNext(index + 1);
-    script.onerror = () => {};
+    script.onerror = () => {
+      if (index === 0) loadNext(index + 1);
+    };
     document.head.append(script);
   };
 
