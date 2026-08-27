@@ -103,6 +103,8 @@ const boot = (input, fixture) => {
   return window.ScoreMosaicScoreEditorCoreBridge;
 };
 
+const inspectorField = (inspector, key) => inspector?.fields?.find((field) => field.key === key)?.value ?? null;
+
 const bridge = boot(runtimeInput());
 assert.equal(bridge.available, true);
 assert.equal(bridge.syntheticFixtureMapping, false);
@@ -124,8 +126,11 @@ assert.match(initial.musicXml, /<step>E<\/step>/);
 
 const selected = bridge.selectIssue('issue-e');
 assert.equal(selected.selectedKind, 'note');
-assert.equal(selected.inspector.kind, 'note');
-assert.equal(selected.inspector.note.id, 'core-note-e');
+assert.equal(selected.inspector.targetKind, 'note');
+assert.equal(selected.inspector.targetId, 'core-note-e');
+assert.equal(inspectorField(selected.inspector, 'pitch'), 'E4');
+assert.equal(inspectorField(selected.inspector, 'eventKind'), 'chord');
+assert.equal(inspectorField(selected.inspector, 'duration'), '1/4');
 
 const edited = bridge.commitOperation('issue-e', {
   type: 'set_pitch',
@@ -133,24 +138,26 @@ const edited = bridge.commitOperation('issue-e', {
 });
 assert.match(edited.revisionId, /^stse-local-r0001/);
 assert.equal(edited.selectedKind, 'note');
-assert.equal(edited.inspector.kind, 'note');
-assert.equal(edited.inspector.note.id, 'core-note-e');
-assert.equal(edited.inspector.note.pitch.step, 'F');
-assert.equal(edited.inspector.note.pitch.alter, 1);
+assert.equal(edited.inspector.targetKind, 'note');
+assert.equal(edited.inspector.targetId, 'core-note-e');
+assert.equal(inspectorField(edited.inspector, 'pitch'), 'F+14');
 assert.match(edited.musicXml, /<step>F<\/step>/);
 assert.match(edited.musicXml, /<alter>1<\/alter>/);
 
 const rest = bridge.selectIssue('issue-rest');
 assert.equal(rest.selectedKind, 'event');
-assert.equal(rest.inspector.kind, 'event');
-assert.equal(rest.inspector.event.id, 'core-rest-001');
+assert.equal(rest.inspector.targetKind, 'event');
+assert.equal(rest.inspector.targetId, 'core-rest-001');
+assert.equal(inspectorField(rest.inspector, 'eventKind'), 'rest');
+assert.equal(inspectorField(rest.inspector, 'duration'), '3/4');
 const durationEdited = bridge.commitOperation('issue-rest', {
   type: 'set_effective_duration',
   value: {numerator: 1, denominator: 2}
 });
 assert.equal(durationEdited.selectedKind, 'event');
-assert.equal(durationEdited.inspector.event.duration.numerator, 1);
-assert.equal(durationEdited.inspector.event.duration.denominator, 2);
+assert.equal(durationEdited.inspector.targetKind, 'event');
+assert.equal(durationEdited.inspector.targetId, 'core-rest-001');
+assert.equal(inspectorField(durationEdited.inspector, 'duration'), '1/2');
 
 const fixtureThatMustNotBeUsed = {productionArtifact: false, authoritativeTruth: false, document: {}, issues: []};
 const malformed = runtimeInput();
