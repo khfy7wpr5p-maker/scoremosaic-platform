@@ -9,6 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "web-preview-pages-deploy.yml"
 CONTRACT = json.loads((ROOT / "contracts" / "web-preview-v1.json").read_text(encoding="utf-8"))
+CORE_COMMIT = "b317abef915d1e16b37572221a38feb3e504450d"
 
 
 class WebPreviewPagesDeployTests(unittest.TestCase):
@@ -29,6 +30,8 @@ class WebPreviewPagesDeployTests(unittest.TestCase):
         self.assertIs(security["networkApiAllowed"], False)
         self.assertIs(security["browserPersistenceAllowed"], False)
         self.assertIs(security["serverWriteAllowed"], False)
+        self.assertIs(security["rendererCoordinatesAuthoritative"], False)
+        self.assertIs(security["rendererUrlInputAllowedByHost"], False)
 
     def test_verified_preview_state_does_not_unlock_production_capabilities(self) -> None:
         for key in (
@@ -36,12 +39,15 @@ class WebPreviewPagesDeployTests(unittest.TestCase):
             "publicPreviewDeployed",
             "publicUrlAssigned",
             "publicTrafficActivated",
+            "fixtureCoreRuntimeActivated",
+            "fixtureOsmdPresentationActivated",
         ):
             self.assertIs(CONTRACT["activationLocks"][key], True, key)
         for key in (
             "browserNetworkActivated",
             "liveApiActivated",
             "productionPersistenceActivated",
+            "productionRendererActivated",
         ):
             self.assertIs(CONTRACT["activationLocks"][key], False, key)
 
@@ -68,11 +74,12 @@ class WebPreviewPagesDeployTests(unittest.TestCase):
         self.assertNotIn("secrets.", text)
         self.assertNotIn("github.token", text)
 
-    def test_only_immutable_official_pages_actions_are_used(self) -> None:
+    def test_only_immutable_official_actions_are_used(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         expected = {
             "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
             "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
             "actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9",
             "actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128",
         }
@@ -81,12 +88,24 @@ class WebPreviewPagesDeployTests(unittest.TestCase):
         self.assertNotIn("actions/configure-pages@", text)
         self.assertNotIn("enablement:", text)
 
-    def test_workflow_builds_the_hardened_fixture_preview_before_upload(self) -> None:
+    def test_workflow_builds_exact_local_renderer_preview_before_upload(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("python scripts/validate_github_actions_pins.py", text)
+        self.assertIn(CORE_COMMIT, text)
+        self.assertIn("repository: khfy7wpr5p-maker/st-score-editor-core", text)
+        self.assertIn("npm run ci", text)
+        self.assertIn("opensheetmusicdisplay@$OSMD_VERSION", text)
+        self.assertIn("pkg.version!=='2.1.1'", text)
+        self.assertIn("pkg.license!=='BSD-3-Clause'", text)
         self.assertIn("test_web_preview_v1.py", text)
         self.assertIn("test_web_preview_pages_deploy.py", text)
-        self.assertIn("python scripts/build_web_preview.py --output", text)
+        self.assertIn("e7h_osmd_host_behavior.js", text)
+        self.assertIn("python scripts/build_web_preview.py", text)
+        self.assertIn("--core-bundle", text)
+        self.assertIn("--core-manifest", text)
+        self.assertIn("--osmd-bundle", text)
+        self.assertIn("--osmd-package-json", text)
+        self.assertIn("--osmd-license", text)
         self.assertIn("connect-src 'none'", text)
         self.assertIn("Non-production preview", text)
         self.assertIn("Fixture data only", text)
