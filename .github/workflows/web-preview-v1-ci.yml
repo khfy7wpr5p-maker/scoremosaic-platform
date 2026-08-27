@@ -6,10 +6,12 @@ on:
       - main
       - "feature/web-preview-v1"
       - "feature/web-preview-pages-deploy"
+      - "feature/e7h-browser-runtime-osmd-host-v1"
     paths:
       - ".github/workflows/web-preview-v1-ci.yml"
       - ".github/workflows/web-preview-pages-deploy.yml"
       - "contracts/web-preview-v1.json"
+      - "contracts/st-score-editor-core-integration-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/web-preview-v1.md"
       - "docs/architecture.md"
@@ -17,7 +19,9 @@ on:
       - "scripts/build_web_preview.py"
       - "tests/test_web_preview_v1.py"
       - "tests/test_web_preview_pages_deploy.py"
+      - "tests/test_st_score_editor_core_integration_v1.py"
       - "tests/test_architecture_consistency.py"
+      - "tests/e7h_osmd_host_behavior.js"
       - "prototypes/stage10-ui-application-experience/**"
       - "prototypes/stage11-ui-application-contracts/**"
   pull_request:
@@ -27,6 +31,7 @@ on:
       - ".github/workflows/web-preview-v1-ci.yml"
       - ".github/workflows/web-preview-pages-deploy.yml"
       - "contracts/web-preview-v1.json"
+      - "contracts/st-score-editor-core-integration-v1.json"
       - "contracts/architecture-current-state-v1.json"
       - "docs/web-preview-v1.md"
       - "docs/architecture.md"
@@ -34,7 +39,9 @@ on:
       - "scripts/build_web_preview.py"
       - "tests/test_web_preview_v1.py"
       - "tests/test_web_preview_pages_deploy.py"
+      - "tests/test_st_score_editor_core_integration_v1.py"
       - "tests/test_architecture_consistency.py"
+      - "tests/e7h_osmd_host_behavior.js"
       - "prototypes/stage10-ui-application-experience/**"
       - "prototypes/stage11-ui-application-contracts/**"
   workflow_dispatch:
@@ -46,11 +53,15 @@ concurrency:
   group: web-preview-v1-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CORE_COMMIT: b317abef915d1e16b37572221a38feb3e504450d
+  OSMD_VERSION: 2.1.1
+
 jobs:
   web-preview-v1:
     name: Build disconnected Web Preview v1 artifact
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -58,13 +69,55 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check out exact ST Score Editor Core
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: khfy7wpr5p-maker/st-score-editor-core
+          ref: ${{ env.CORE_COMMIT }}
+          path: .deps/st-score-editor-core
+          persist-credentials: false
+
       - name: Set up Python 3.12
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
 
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
       - name: Validate immutable action pins
         run: python scripts/validate_github_actions_pins.py
+
+      - name: Build exact ST Score Editor Core browser artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .deps/st-score-editor-core rev-parse HEAD)" = "$CORE_COMMIT"
+          pushd .deps/st-score-editor-core >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          npm run ci
+          popd >/dev/null
+          test -s .deps/st-score-editor-core/dist/browser/st-score-editor-core.runtime.js
+          test -s .deps/st-score-editor-core/dist/browser/st-score-editor-core.runtime.manifest.json
+
+      - name: Install exact local OSMD renderer package
+        shell: bash
+        run: |
+          set -euo pipefail
+          osmd_root="$RUNNER_TEMP/osmd"
+          mkdir -p "$osmd_root"
+          npm install --prefix "$osmd_root" --ignore-scripts --no-audit --no-fund --no-package-lock --no-save "opensheetmusicdisplay@$OSMD_VERSION"
+          node - "$osmd_root/node_modules/opensheetmusicdisplay/package.json" <<'NODE'
+          const fs=require('node:fs');
+          const path=process.argv[2];
+          const pkg=JSON.parse(fs.readFileSync(path,'utf8'));
+          if(pkg.name!=='opensheetmusicdisplay'||pkg.version!=='2.1.1'||pkg.license!=='BSD-3-Clause'||pkg.main!=='build/opensheetmusicdisplay.min.js')process.exit(1);
+          NODE
+          test -s "$osmd_root/node_modules/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"
+          test -s "$osmd_root/node_modules/opensheetmusicdisplay/LICENSE"
+          echo "OSMD_ROOT=$osmd_root" >> "$GITHUB_ENV"
 
       - name: Validate preview contract
         run: python -m json.tool contracts/web-preview-v1.json > /dev/null
@@ -74,6 +127,14 @@ jobs:
 
       - name: Run Pages deployment-policy regressions
         run: python -m unittest discover -s tests -p 'test_web_preview_pages_deploy.py' -v
+
+      - name: Run editor-core and OSMD host regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_st_score_editor_core_integration_v1.py' -v
+          node tests/e7g_score_editor_core_bridge_behavior.js
+          node tests/e7h_osmd_host_behavior.js
 
       - name: Run Stage 10 experience regression
         run: python -m unittest discover -s tests -p 'test_stage10f_ui_experience_eligibility.py' -v
@@ -85,7 +146,16 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
 
       - name: Build static preview artifact
-        run: python scripts/build_web_preview.py --output /tmp/scoremosaic-web-preview-v1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_web_preview.py \
+            --output /tmp/scoremosaic-web-preview-v1 \
+            --core-bundle .deps/st-score-editor-core/dist/browser/st-score-editor-core.runtime.js \
+            --core-manifest .deps/st-score-editor-core/dist/browser/st-score-editor-core.runtime.manifest.json \
+            --osmd-bundle "$OSMD_ROOT/node_modules/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js" \
+            --osmd-package-json "$OSMD_ROOT/node_modules/opensheetmusicdisplay/package.json" \
+            --osmd-license "$OSMD_ROOT/node_modules/opensheetmusicdisplay/LICENSE"
 
       - name: Verify preview entrypoint and safety marker
         shell: bash
@@ -95,6 +165,9 @@ jobs:
           grep -F "connect-src 'none'" /tmp/scoremosaic-web-preview-v1/index.html
           grep -F "Non-production preview" /tmp/scoremosaic-web-preview-v1/index.html
           grep -F "Fixture data only" /tmp/scoremosaic-web-preview-v1/index.html
+          grep -F 'src="vendor/opensheetmusicdisplay-2.1.1.min.js"' /tmp/scoremosaic-web-preview-v1/index.html
+          grep -F 'src="vendor/st-score-editor-core.runtime.js"' /tmp/scoremosaic-web-preview-v1/index.html
+          test -s /tmp/scoremosaic-web-preview-v1/vendor/OSMD-LICENSE.txt
           test -s /tmp/scoremosaic-web-preview-v1/PREVIEW-NOTICE.txt
 
       - name: Upload non-production preview artifact
