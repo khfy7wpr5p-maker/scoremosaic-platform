@@ -1,0 +1,134 @@
+name: SM-POLY-07 Polyphony Complexity CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-07-polyphony-complexity-profile"
+    paths:
+      - ".github/workflows/sm-poly-07-polyphony-complexity-ci.yml"
+      - "contracts/polyphonic-complexity-profile-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphony_complexity.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/canonical.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/tests/test_polyphony_complexity.py"
+      - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
+      - "services/ensemble-service/tests/test_source_quality.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "docs/sm-poly-07-polyphony-complexity.md"
+      - "contracts/architecture-current-state-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-07-polyphony-complexity-ci.yml"
+      - "contracts/polyphonic-complexity-profile-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphony_complexity.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/canonical.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/tests/test_polyphony_complexity.py"
+      - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
+      - "services/ensemble-service/tests/test_source_quality.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "docs/sm-poly-07-polyphony-complexity.md"
+      - "contracts/architecture-current-state-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-07-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-polyphony-complexity:
+    name: Validate SM-POLY-07 polyphony complexity
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run SM-POLY-07 regressions
+        run: python -m unittest services/ensemble-service/tests/test_polyphony_complexity.py -v
+
+      - name: Re-run SM-POLY-06 source-quality regressions
+        run: python -m unittest services/ensemble-service/tests/test_source_quality.py -v
+
+      - name: Re-run SM-POLY-05 visual-evidence regressions
+        run: python -m unittest services/ensemble-service/tests/test_visual_evidence.py -v
+
+      - name: Re-run Stage 7 convergence regressions
+        run: python -m unittest services/ensemble-service/tests/test_stage7_convergence_integration.py -v
+
+      - name: Validate repository foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Verify Stage 7 authority and quorum are unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          import json
+          from pathlib import Path
+          import scoremosaic_ensemble.polyphony_complexity as module
+
+          architecture = json.loads(
+              Path("contracts/architecture-current-state-v1.json").read_text(encoding="utf-8")
+          )
+          current = architecture["currentOmr"]
+
+          assert current["productionCandidateEngines"] == ["audiveris", "homr", "clarity"]
+          assert current["stage7MinimumCanonicalCandidates"] == 2
+          assert current["stOmrIntegratedIntoGateway"] is False
+          assert current["automaticWinnerAuthority"] is False
+          assert architecture["teacherReview"]["productionWriteActivated"] is False
+
+          boundary = module._BOUNDARIES
+          assert boundary["productionDecisionAuthority"] is False
+          assert boundary["winnerSelection"] is False
+          assert boundary["automaticMerge"] is False
+          assert boundary["automaticCorrection"] is False
+          assert boundary["teacherAuthorityOverride"] is False
+          assert boundary["stage7EvidenceMutation"] is False
+          assert boundary["stage7QuorumChange"] is False
+          assert boundary["stOmrQuorumChange"] is False
+          assert boundary["engineConfidenceIndependent"] is True
+          assert boundary["sourceQualityIndependent"] is True
+          assert boundary["visualEvidenceIndependent"] is True
+          PY
+
+      - name: Verify Stage 7 does not consume complexity evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path(
+              "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+          ).read_text(encoding="utf-8")
+          assert "polyphony_complexity" not in source
+          assert "polyphonic-complexity-profile" not in source
+          assert '"winnerSelection": False' in source
+          assert '"automaticMerge": False' in source
+          assert '"automaticCorrection": False' in source
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
