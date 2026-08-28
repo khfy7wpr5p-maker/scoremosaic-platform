@@ -11,8 +11,7 @@
     "observationId": {"type": "string", "pattern": "^reliability_obs_[0-9a-f]{24}$"},
     "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
     "target": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["category", "targetUnitId", "correct", "method"],
       "properties": {
         "category": {"enum": ["parse", "structuralValidity", "pitch", "duration", "onset", "voice", "staff", "tie", "tuplet", "measureConsistency", "relationCorrectness"]},
@@ -22,8 +21,7 @@
       }
     },
     "engine": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["name", "engineVersion", "modelVersion"],
       "properties": {
         "name": {"enum": ["audiveris", "homr", "clarity"]},
@@ -34,8 +32,7 @@
     "confidence": {
       "oneOf": [
         {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["available", "basisPoints", "evidenceSource", "methodVersion", "scale", "scope", "calibratedInput"],
           "properties": {
             "available": {"const": true},
@@ -48,8 +45,7 @@
           }
         },
         {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["available", "basisPoints", "evidenceSource", "methodVersion", "scale", "scope", "calibratedInput"],
           "properties": {
             "available": {"const": false},
@@ -64,8 +60,7 @@
       ]
     },
     "context": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["complexity", "sourceQuality"],
       "properties": {
         "complexity": {"$ref": "#/$defs/complexityContext"},
@@ -73,8 +68,7 @@
       }
     },
     "provenance": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["teacherGoldReferenceSha256", "semanticEvidenceSha256", "contextBindingMethodVersion"],
       "properties": {
         "teacherGoldReferenceSha256": {"$ref": "#/$defs/sha256"},
@@ -92,8 +86,7 @@
     "complexityContext": {
       "oneOf": [
         {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["available", "profileId", "profileSha256", "voiceCount", "maxSimultaneousVoiceCount", "multiStaffPresent", "tupletPresent", "overlapDensityBasisPoints"],
           "properties": {
             "available": {"const": true},
@@ -101,23 +94,18 @@
             "profileSha256": {"$ref": "#/$defs/sha256"},
             "voiceCount": {"type": "integer", "minimum": 0, "maximum": 512},
             "maxSimultaneousVoiceCount": {"type": ["integer", "null"], "minimum": 0, "maximum": 512},
-            "multiStaffPresent": {"type": "boolean"},
+            "multiStaffPresent": {"type": ["boolean", "null"]},
             "tupletPresent": {"type": "boolean"},
             "overlapDensityBasisPoints": {"type": "integer", "minimum": 0, "maximum": 10000}
           }
         },
         {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["available", "profileId", "profileSha256", "voiceCount", "maxSimultaneousVoiceCount", "multiStaffPresent", "tupletPresent", "overlapDensityBasisPoints"],
           "properties": {
             "available": {"const": false},
-            "profileId": {"type": "null"},
-            "profileSha256": {"type": "null"},
-            "voiceCount": {"type": "null"},
-            "maxSimultaneousVoiceCount": {"type": "null"},
-            "multiStaffPresent": {"type": "null"},
-            "tupletPresent": {"type": "null"},
+            "profileId": {"type": "null"}, "profileSha256": {"type": "null"}, "voiceCount": {"type": "null"},
+            "maxSimultaneousVoiceCount": {"type": "null"}, "multiStaffPresent": {"type": "null"}, "tupletPresent": {"type": "null"},
             "overlapDensityBasisPoints": {"type": "null"}
           }
         }
@@ -126,8 +114,7 @@
     "sourceQualityContext": {
       "oneOf": [
         {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["available", "profileId", "profileSha256", "severity", "maxDegradationRiskBasisPoints"],
           "properties": {
             "available": {"const": true},
@@ -138,39 +125,24 @@
           }
         },
         {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["available", "profileId", "profileSha256", "severity", "maxDegradationRiskBasisPoints"],
           "properties": {
-            "available": {"const": false},
-            "profileId": {"type": "null"},
-            "profileSha256": {"type": "null"},
-            "severity": {"type": "null"},
-            "maxDegradationRiskBasisPoints": {"type": "null"}
+            "available": {"const": false}, "profileId": {"type": "null"}, "profileSha256": {"type": "null"},
+            "severity": {"type": "null"}, "maxDegradationRiskBasisPoints": {"type": "null"}
           }
         }
       ]
     },
     "boundaries": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["researchOnly", "readOnly", "confidenceRewriting", "recalibratedProbabilityOutput", "engineRanking", "winnerSelection", "selectivePrediction", "productionThreshold", "productionDecisionAuthority", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "stage7EvidenceMutation", "stage7QuorumChange", "stOmrIntegration"],
       "properties": {
-        "researchOnly": {"const": true},
-        "readOnly": {"const": true},
-        "confidenceRewriting": {"const": false},
-        "recalibratedProbabilityOutput": {"const": false},
-        "engineRanking": {"const": false},
-        "winnerSelection": {"const": false},
-        "selectivePrediction": {"const": false},
-        "productionThreshold": {"const": false},
-        "productionDecisionAuthority": {"const": false},
-        "automaticMerge": {"const": false},
-        "automaticCorrection": {"const": false},
-        "teacherAuthorityOverride": {"const": false},
-        "stage7EvidenceMutation": {"const": false},
-        "stage7QuorumChange": {"const": false},
-        "stOmrIntegration": {"const": false}
+        "researchOnly": {"const": true}, "readOnly": {"const": true}, "confidenceRewriting": {"const": false},
+        "recalibratedProbabilityOutput": {"const": false}, "engineRanking": {"const": false}, "winnerSelection": {"const": false},
+        "selectivePrediction": {"const": false}, "productionThreshold": {"const": false}, "productionDecisionAuthority": {"const": false},
+        "automaticMerge": {"const": false}, "automaticCorrection": {"const": false}, "teacherAuthorityOverride": {"const": false},
+        "stage7EvidenceMutation": {"const": false}, "stage7QuorumChange": {"const": false}, "stOmrIntegration": {"const": false}
       }
     }
   }
