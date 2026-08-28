@@ -129,6 +129,16 @@ class SmPoly06SourceQualityTests(unittest.TestCase):
         self.assertIsNone(state["maxDegradationRiskBasisPoints"])
         self.assertEqual([], state["dominantDimensions"])
 
+    def test_method_evidence_source_rejects_unhashable_values_cleanly(self) -> None:
+        for malformed in ([], {}, ["DETERMINISTIC_HEURISTIC"]):
+            with self.subTest(malformed=malformed):
+                core = _core()
+                core["method"]["evidenceSource"] = malformed
+                with self.assertRaisesRegex(
+                    SourceQualityError, "source_quality_method_invalid"
+                ):
+                    validate_source_quality_core(core)
+
     def test_severity_is_worst_observed_not_average_and_ties_are_deterministic(self) -> None:
         state = derive_source_quality_state(
             _core(
