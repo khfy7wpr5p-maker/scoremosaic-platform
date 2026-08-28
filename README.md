@@ -21,8 +21,9 @@ Stage 11  ✅ typed local UI/application integration
 Approved unnumbered workstreams now sit after Stage 11 without consuming Stage 12 numbering:
 
 ```text
-UI Architecture Phase 1                 ✅ repository baseline; Figma next
-Web Preview v1                          ✅ public fixture-only GitHub Pages preview
+UI Architecture Phase 1                  ✅ repository baseline; Figma next
+Web Preview v1                           ✅ public fixture-only GitHub Pages preview
+Score Discovery Gateway Integration v1   ✅ repository-only disconnected consumer baseline
 Downstream Music Application Integration 🟡 architecture-only seam
 ```
 
@@ -39,6 +40,7 @@ The following remain locked:
 - production approval persistence;
 - actual publication execution;
 - production playback;
+- live Score Discovery Gateway networking/import;
 - ST-OMR Gateway/Stage 7 integration;
 - live MusicXML-to-GuitarTab-Engine integration.
 
@@ -111,6 +113,25 @@ Product navigation
 
 It is an approved unnumbered workstream, not Stage 12.
 
+## Upstream score discovery
+
+ScoreMosaic now has a repository-only, disconnected consumer boundary for the independent `st-score-discovery-gateway`.
+
+```text
+bounded classical search intent
+  -> provider-neutral discovery request
+  -> [live Gateway network currently locked]
+  -> sanitized discovery response
+  -> source navigation OR server-side intake handoff eligibility
+  -> existing Safe Intake validation
+```
+
+The consumer adapter forces classical repertoire scope, bounds queries/results, strips remote asset URLs from browser-facing state, keeps `web`/`external-open`/source locators outside intake, and permits a server-side handoff object only for `direct-import + public access + HTTPS PDF/MusicXML/MXL` evidence.
+
+Even an eligible handoff has only `discovery-handoff-only` authority and must re-enter the existing Safe Intake boundary. Discovery cannot mutate Canonical Score, create TeacherScoreRevision, approve, publish, alter the Stage 7 engine quorum or promote ST-OMR. Live Gateway networking and production import remain separately gated.
+
+See `docs/score-discovery-gateway-integration-v1.md` and `contracts/score-discovery-consumer-v1.json`.
+
 ## Downstream music applications
 
 ScoreMosaic reserves a safe downstream seam for future music applications after validated Teacher Review artifacts.
@@ -141,7 +162,7 @@ No real provider resource or production credential is activated by those contrac
 7. Publication is a separate side effect from approval.
 8. Browser/local application state is not server authority.
 9. UI modernization preserves Design System → UI → Contract → Adapter → Server layering.
-10. Downstream music applications do not mutate upstream ScoreMosaic musical authority.
+10. Discovery and downstream music applications do not mutate upstream ScoreMosaic musical authority.
 11. Production activation requires a separate security gate and concrete operational facts.
 
 ## Architecture documents
@@ -153,6 +174,7 @@ Current architecture:
 - `docs/architecture-stage8-current.md`
 - `docs/architecture-stage9-11-current.md`
 - `docs/ui-architecture-phase1.md`
+- `docs/score-discovery-gateway-integration-v1.md`
 - `docs/downstream-music-application-integration-boundary.md`
 - `docs/licensing-governance.md`
 - `docs/st-omr-architecture-contract-v1.md`

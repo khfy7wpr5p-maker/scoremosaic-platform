@@ -1,0 +1,52 @@
+name: Validate Score Discovery Consumer v1
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/score-discovery-consumer-v1.json'
+      - 'tools/score-discovery-consumer-v1.cjs'
+      - 'tests/score-discovery-consumer-v1.test.cjs'
+      - 'docs/score-discovery-gateway-integration-v1.md'
+      - 'contracts/architecture-current-state-v1.json'
+      - 'docs/architecture.md'
+      - 'docs/roadmap.md'
+      - 'README.md'
+      - '.github/workflows/score-discovery-consumer-v1-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'contracts/score-discovery-consumer-v1.json'
+      - 'tools/score-discovery-consumer-v1.cjs'
+      - 'tests/score-discovery-consumer-v1.test.cjs'
+      - 'docs/score-discovery-gateway-integration-v1.md'
+      - 'contracts/architecture-current-state-v1.json'
+      - 'docs/architecture.md'
+      - 'docs/roadmap.md'
+      - 'README.md'
+      - '.github/workflows/score-discovery-consumer-v1-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-score-discovery-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+      - name: Validate contract JSON
+        run: node -e "const fs=require('node:fs'); const c=JSON.parse(fs.readFileSync('contracts/score-discovery-consumer-v1.json','utf8')); if(c.version!=='score-discovery-consumer-v1'||c.activation.liveGatewayNetworkActivated!==false||c.authorityLocks.mayMutateCanonicalScore!==false) process.exit(1);"
+      - name: Run discovery consumer regressions
+        run: node --test tests/score-discovery-consumer-v1.test.cjs
+      - name: Preserve architecture production locks
+        run: python -m unittest tests.test_architecture_consistency
