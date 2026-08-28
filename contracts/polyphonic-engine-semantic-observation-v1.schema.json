@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-engine-semantic-observation-v1.schema.json",
+  "title": "ScoreMosaic Polyphonic Engine Semantic Observation v1",
+  "description": "Research-only per-engine semantic metric evidence. Engine output remains separate from teacher-gold metadata and carries no score authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "observationId",
+    "fixtureId",
+    "reference",
+    "engine",
+    "parse",
+    "structuralValidity",
+    "semanticMetrics",
+    "measureConsistency",
+    "relationCorrectness",
+    "structuralDistance",
+    "teacherEdits",
+    "sourceEvaluationResultSha256",
+    "boundaries"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-polyphonic-engine-semantic-observation-v1"},
+    "observationId": {"type": "string", "pattern": "^poly_metric_obs_[0-9a-f]{24}$"},
+    "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
+    "reference": {"$ref": "#/$defs/reference"},
+    "engine": {"$ref": "#/$defs/engine"},
+    "parse": {"$ref": "#/$defs/parse"},
+    "structuralValidity": {"$ref": "#/$defs/validity"},
+    "semanticMetrics": {"$ref": "#/$defs/semanticMetrics"},
+    "measureConsistency": {"$ref": "#/$defs/measureMetric"},
+    "relationCorrectness": {"$ref": "#/$defs/relationMetric"},
+    "structuralDistance": {"$ref": "#/$defs/distance"},
+    "teacherEdits": {"$ref": "#/$defs/teacherEdits"},
+    "sourceEvaluationResultSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "boundaries": {"$ref": "#/$defs/boundaries"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "artifactSha256", "verified"],
+      "properties": {
+        "kind": {"enum": ["TEACHER_GOLD", "MANUALLY_REVIEWED_FIXED_BASELINE"]},
+        "artifactSha256": {"$ref": "#/$defs/sha256"},
+        "verified": {"const": true}
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "engineVersion", "modelVersion", "candidateArtifactSha256", "canonicalSha256"],
+      "properties": {
+        "name": {"enum": ["audiveris", "homr", "clarity"]},
+        "engineVersion": {"$ref": "#/$defs/version"},
+        "modelVersion": {"$ref": "#/$defs/version"},
+        "candidateArtifactSha256": {"$ref": "#/$defs/sha256"},
+        "canonicalSha256": {"$ref": "#/$defs/nullableSha256"}
+      }
+    },
+    "parse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "success"],
+      "properties": {
+        "attempted": {"const": true},
+        "success": {"type": "boolean"}
+      }
+    },
+    "validity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "valid"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "valid": {"type": ["boolean", "null"]}
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "correct", "total"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "correct": {"type": ["integer", "null"], "minimum": 0},
+        "total": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "semanticMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pitch", "duration", "onset", "voice", "staff", "tie", "tuplet"],
+      "properties": {
+        "pitch": {"$ref": "#/$defs/metric"},
+        "duration": {"$ref": "#/$defs/metric"},
+        "onset": {"$ref": "#/$defs/metric"},
+        "voice": {"$ref": "#/$defs/metric"},
+        "staff": {"$ref": "#/$defs/metric"},
+        "tie": {"$ref": "#/$defs/metric"},
+        "tuplet": {"$ref": "#/$defs/metric"}
+      }
+    },
+    "measureMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "method", "correct", "total"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "method": {"enum": ["EXACT_MEASURE_COUNT_V1", "UNAVAILABLE"]},
+        "correct": {"type": ["integer", "null"], "minimum": 0},
+        "total": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "relationMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "method", "correct", "total"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "method": {"enum": ["TIE_TUPLET_CHORD_EXACT_V1", "UNAVAILABLE"]},
+        "correct": {"type": ["integer", "null"], "minimum": 0},
+        "total": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "distance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "method", "numerator", "denominator", "lowerIsBetter"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "method": {"enum": ["CANONICAL_STRUCTURE_DISTANCE_V1", "UNAVAILABLE"]},
+        "numerator": {"type": ["integer", "null"], "minimum": 0},
+        "denominator": {"type": ["integer", "null"], "minimum": 1},
+        "lowerIsBetter": {"const": true}
+      }
+    },
+    "teacherEdits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "method", "editCount", "measureCount", "pageCount"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "method": {"enum": ["TEACHER_REVISION_COMMAND_COUNT_V1", "UNAVAILABLE"]},
+        "editCount": {"type": ["integer", "null"], "minimum": 0},
+        "measureCount": {"type": ["integer", "null"], "minimum": 1},
+        "pageCount": {"type": ["integer", "null"], "minimum": 1}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "researchEvaluationOnly",
+        "readOnly",
+        "singleAggregateAccuracyScore",
+        "engineRanking",
+        "winnerSelection",
+        "automaticMerge",
+        "automaticCorrection",
+        "teacherApproval",
+        "productionDecisionAuthority",
+        "stOmrIntegration"
+      ],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "readOnly": {"const": true},
+        "singleAggregateAccuracyScore": {"const": false},
+        "engineRanking": {"const": false},
+        "winnerSelection": {"const": false},
+        "automaticMerge": {"const": false},
+        "automaticCorrection": {"const": false},
+        "teacherApproval": {"const": false},
+        "productionDecisionAuthority": {"const": false},
+        "stOmrIntegration": {"const": false}
+      }
+    }
+  }
+}
