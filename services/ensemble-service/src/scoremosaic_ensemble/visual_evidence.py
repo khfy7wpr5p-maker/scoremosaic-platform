@@ -334,7 +334,7 @@ def validate_visual_evidence_core(payload: Mapping[str, Any]) -> None:
         )
         or type(localization["staffId"]) is not int
         or not 1 <= localization["staffId"] <= 128
-        or not 1 <= len(localization["symbolRegions"]) <= MAX_SYMBOL_REGIONS
+        or not 0 <= len(localization["symbolRegions"]) <= MAX_SYMBOL_REGIONS
     ):
         raise VisualEvidenceError("localization_invalid")
 
