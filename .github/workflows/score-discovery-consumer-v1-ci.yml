@@ -34,10 +34,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
       - name: Validate contract JSON
         run: node -e "const fs=require('node:fs'); const c=JSON.parse(fs.readFileSync('contracts/score-discovery-consumer-v1.json','utf8')); if(c.version!=='score-discovery-consumer-v1'||c.activation.liveGatewayNetworkActivated!==false||c.authorityLocks.mayMutateCanonicalScore!==false) process.exit(1);"
       - name: Run discovery consumer regressions
