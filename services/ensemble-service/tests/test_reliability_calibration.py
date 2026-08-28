@@ -183,6 +183,56 @@ class ReliabilityCalibrationTests(unittest.TestCase):
         with self.assertRaisesRegex(rc.ReliabilityCalibrationError, "authority_boundary_invalid"):
             rc.validate_reliability_observation(tampered)
 
+    def test_rehashed_observation_content_requires_derived_id(self):
+        item = obs()
+        tampered = copy.deepcopy(item)
+        tampered["confidence"]["basisPoints"] = 7000
+        body = copy.deepcopy(tampered)
+        body.pop("observationSha256")
+        tampered["observationSha256"] = hashlib.sha256(rc._canonical_json(body)).hexdigest()
+        with self.assertRaisesRegex(rc.ReliabilityCalibrationError, "reliability_observation_id_mismatch"):
+            rc.validate_reliability_observation(tampered)
+
+    def test_unavailable_confidence_rejects_smuggled_method_arguments(self):
+        with self.assertRaisesRegex(rc.ReliabilityCalibrationError, "confidence_evidence_invalid"):
+            rc.build_reliability_observation(
+                fixture_id="poly_fixture_fixture001",
+                target_category="pitch",
+                target_unit_id="event",
+                correct=True,
+                engine="audiveris",
+                engine_version="1.0",
+                model_version="model-1",
+                confidence_basis_points=None,
+                confidence_evidence_source="ENGINE_NATIVE_REPORTED",
+                confidence_method_version="native-v1",
+                teacher_gold_reference_sha256=SHA_A,
+                semantic_evidence_sha256=SHA_B,
+                context_binding_method_version="v1",
+            )
+
+    def test_same_target_and_confidence_method_cannot_be_double_counted(self):
+        one = obs(confidence=7000)
+        two = rc.build_reliability_observation(
+            fixture_id="poly_fixture_fixture001",
+            target_category="pitch",
+            target_unit_id="event-1",
+            correct=True,
+            engine="audiveris",
+            engine_version="1.0",
+            model_version="model-1",
+            confidence_basis_points=8000,
+            confidence_evidence_source="REPOSITORY_RESEARCH_FIXTURE",
+            confidence_method_version="native-confidence-v1",
+            teacher_gold_reference_sha256=SHA_A,
+            semantic_evidence_sha256=SHA_C,
+            context_binding_method_version="benchmark-binding-v1",
+            complexity=complexity(),
+            source_quality=quality(),
+        )
+        with self.assertRaisesRegex(rc.ReliabilityCalibrationError, "duplicate_reliability_target_unit"):
+            rc.build_reliability_report([one, two])
+
     def test_report_tamper_fails_closed(self):
         report = rc.build_reliability_report([obs()])
         tampered = copy.deepcopy(report)
@@ -195,6 +245,10 @@ class ReliabilityCalibrationTests(unittest.TestCase):
         report = rc.build_reliability_report(items)
         tampered = copy.deepcopy(report)
         tampered["groups"][0]["brierScore"] = {"numerator": 1, "denominator": 2}
+        identity = copy.deepcopy(tampered)
+        identity.pop("reportId")
+        identity.pop("reportSha256")
+        tampered["reportId"] = "reliability_report_" + hashlib.sha256(rc._canonical_json(identity)).hexdigest()[:24]
         body = copy.deepcopy(tampered)
         body.pop("reportSha256")
         tampered["reportSha256"] = hashlib.sha256(rc._canonical_json(body)).hexdigest()
