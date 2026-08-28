@@ -1,0 +1,91 @@
+name: SM-POLY-04 Per-Engine Semantic Metrics CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-04-per-engine-semantic-metrics"
+    paths:
+      - ".github/workflows/sm-poly-04-per-engine-semantic-metrics-ci.yml"
+      - "contracts/polyphonic-engine-semantic-observation-v1.schema.json"
+      - "contracts/polyphonic-engine-semantic-report-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphonic_metrics.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/evaluation.py"
+      - "services/ensemble-service/tests/test_polyphonic_metrics.py"
+      - "docs/sm-poly-04-per-engine-semantic-metrics.md"
+      - "contracts/architecture-current-state-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-04-per-engine-semantic-metrics-ci.yml"
+      - "contracts/polyphonic-engine-semantic-observation-v1.schema.json"
+      - "contracts/polyphonic-engine-semantic-report-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphonic_metrics.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/evaluation.py"
+      - "services/ensemble-service/tests/test_polyphonic_metrics.py"
+      - "docs/sm-poly-04-per-engine-semantic-metrics.md"
+      - "contracts/architecture-current-state-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-04-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-per-engine-semantic-metrics:
+    name: Validate SM-POLY-04 metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run SM-POLY-04 regressions
+        run: python -m unittest services/ensemble-service/tests/test_polyphonic_metrics.py -v
+
+      - name: Re-run fixed evaluator regression
+        run: python -m unittest services/ensemble-service/tests/test_evaluation.py -v
+
+      - name: Re-run SM-POLY-03 benchmark harness regression
+        run: python -m unittest tests.test_sm_poly_03_teacher_gold_harness -v
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Verify no aggregate score or ST-OMR authority entered v1
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          from scoremosaic_ensemble.polyphonic_metrics import (
+              CURRENT_ENGINES,
+              aggregate_engine_semantic_metrics,
+          )
+
+          assert CURRENT_ENGINES == ("audiveris", "homr", "clarity")
+          report = aggregate_engine_semantic_metrics([])
+          assert report["metricPolicy"]["singleAggregateAccuracyScore"] is None
+          assert report["metricPolicy"]["engineRanking"] is False
+          assert report["metricPolicy"]["winnerSelection"] is False
+          assert report["metricPolicy"]["tednClaimed"] is False
+          assert report["boundaries"]["stOmrIntegration"] is False
+          assert report["boundaries"]["productionDecisionAuthority"] is False
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
