@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-teacher-gold-registry-v1.schema.json",
+  "title": "ScoreMosaic Polyphonic Teacher-Gold Registry v1",
+  "description": "Research-only registry of teacher-gold fixture metadata references. Private source/gold assets remain outside the public repository.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registryVersion",
+    "benchmarkId",
+    "fixtureSchemaVersion",
+    "minimumVerifiedFixtures",
+    "targetVerifiedFixtures",
+    "fixtureRecords",
+    "boundaries"
+  ],
+  "properties": {
+    "registryVersion": {"const": "scoremosaic-polyphonic-teacher-gold-registry-v1"},
+    "benchmarkId": {"const": "scoremosaic-polyphonic-teacher-gold-v1"},
+    "fixtureSchemaVersion": {"const": "scoremosaic-polyphonic-benchmark-fixture-v1"},
+    "minimumVerifiedFixtures": {"const": 500},
+    "targetVerifiedFixtures": {"const": 1000},
+    "fixtureRecords": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/fixtureRecord"}
+    },
+    "boundaries": {"$ref": "#/$defs/boundaries"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "safeRef": {"type": "string", "minLength": 1, "maxLength": 500},
+    "fixtureRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixtureId", "metadataRef", "metadataSha256"],
+      "properties": {
+        "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
+        "metadataRef": {"$ref": "#/$defs/safeRef"},
+        "metadataSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "researchEvaluationOnly",
+        "privateAssetsRemainExternal",
+        "teacherGoldSeparateFromEngineOutputs",
+        "teacherCorrectionAutomaticallyTrainingData",
+        "automaticWinnerSelection",
+        "automaticMusicXmlMerge",
+        "automaticSemanticRepair",
+        "teacherAuthority",
+        "productionDecisionAuthority"
+      ],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "privateAssetsRemainExternal": {"const": true},
+        "teacherGoldSeparateFromEngineOutputs": {"const": true},
+        "teacherCorrectionAutomaticallyTrainingData": {"const": false},
+        "automaticWinnerSelection": {"const": false},
+        "automaticMusicXmlMerge": {"const": false},
+        "automaticSemanticRepair": {"const": false},
+        "teacherAuthority": {"const": true},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  }
+}
