@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-complexity-profile-v1.schema.json",
+  "title": "ScoreMosaic Polyphonic Complexity Profile v1",
+  "description": "Research-only measure-scoped polyphony complexity evidence derived from Canonical Score v1. Metrics stay componentized; unavailable states are explicit; no aggregate complexity score, engine confidence, source-quality score, or production authority is created.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileId",
+    "canonicalReference",
+    "scope",
+    "method",
+    "dimensions",
+    "derivedState",
+    "boundaries",
+    "profileSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "scoremosaic-polyphonic-complexity-profile-v1"
+    },
+    "profileId": {
+      "type": "string",
+      "pattern": "^complexity_[0-9a-f]{24}$"
+    },
+    "canonicalReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "canonicalScoreSha256": {"$ref": "#/$defs/sha256"},
+        "partId": {"$ref": "#/$defs/safeId"},
+        "measureId": {"$ref": "#/$defs/safeId"}
+      },
+      "required": ["canonicalScoreSha256", "partId", "measureId"]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "MEASURE"},
+        "pageRef": {"type": "null"},
+        "systemRef": {"type": "null"},
+        "partId": {"$ref": "#/$defs/safeId"},
+        "measureId": {"$ref": "#/$defs/safeId"}
+      },
+      "required": ["type", "pageRef", "systemRef", "partId", "measureId"]
+    },
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "calculationMethodVersion": {"const": "polyphony-complexity-measure-v1"},
+        "canonicalSchemaVersion": {"const": "1.0"},
+        "pageScopeSupported": {"const": false},
+        "systemScopeSupported": {"const": false},
+        "measureScopeSupported": {"const": true}
+      },
+      "required": [
+        "calculationMethodVersion",
+        "canonicalSchemaVersion",
+        "pageScopeSupported",
+        "systemScopeSupported",
+        "measureScopeSupported"
+      ]
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "voiceComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "voiceCount": {"$ref": "#/$defs/metric"},
+            "independentVoiceCount": {"$ref": "#/$defs/metric"},
+            "maxSimultaneousVoiceCount": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["voiceCount", "independentVoiceCount", "maxSimultaneousVoiceCount"]
+        },
+        "simultaneousNoteDensity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "simultaneousNoteDensity": {"$ref": "#/$defs/metric"},
+            "chordDensity": {"$ref": "#/$defs/metric"},
+            "independentVoiceOnsetDensity": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["simultaneousNoteDensity", "chordDensity", "independentVoiceOnsetDensity"]
+        },
+        "staffComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "staffCount": {"$ref": "#/$defs/metric"},
+            "multiStaffPresent": {"$ref": "#/$defs/metric"},
+            "crossStaffPresent": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["staffCount", "multiStaffPresent", "crossStaffPresent"]
+        },
+        "tupletComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tupletPresent": {"$ref": "#/$defs/metric"},
+            "tupletEventCount": {"$ref": "#/$defs/metric"},
+            "nestedTupletAvailable": {"$ref": "#/$defs/metric"},
+            "nestedTupletPresent": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["tupletPresent", "tupletEventCount", "nestedTupletAvailable", "nestedTupletPresent"]
+        },
+        "tieComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tieCount": {"$ref": "#/$defs/metric"},
+            "tieDensity": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["tieCount", "tieDensity"]
+        },
+        "graceComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gracePresent": {"$ref": "#/$defs/metric"},
+            "graceEventCount": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["gracePresent", "graceEventCount"]
+        },
+        "overlapComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "overlapDensity": {"$ref": "#/$defs/metric"},
+            "overlapPairCount": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["overlapDensity", "overlapPairCount"]
+        },
+        "rhythmicComplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "distinctDurationCount": {"$ref": "#/$defs/metric"},
+            "dottedEventDensity": {"$ref": "#/$defs/metric"},
+            "onsetSubdivisionDiversity": {"$ref": "#/$defs/metric"},
+            "overlappingRhythmPresent": {"$ref": "#/$defs/metric"},
+            "tupletPresent": {"$ref": "#/$defs/metric"}
+          },
+          "required": ["distinctDurationCount", "dottedEventDensity", "onsetSubdivisionDiversity", "overlappingRhythmPresent", "tupletPresent"]
+        }
+      },
+      "required": [
+        "voiceComplexity",
+        "simultaneousNoteDensity",
+        "staffComplexity",
+        "tupletComplexity",
+        "tieComplexity",
+        "graceComplexity",
+        "overlapComplexity",
+        "rhythmicComplexity"
+      ]
+    },
+    "derivedState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "calculationMethodVersion": {"const": "polyphony-complexity-measure-v1"},
+        "descriptiveComponentsOnly": {"const": true},
+        "aggregateComplexityScore": {"type": "null"},
+        "complexityClass": {"type": "null"},
+        "authoritative": {"const": false}
+      },
+      "required": ["calculationMethodVersion", "descriptiveComponentsOnly", "aggregateComplexityScore", "complexityClass", "authoritative"]
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "researchOnly": {"const": true},
+        "readOnly": {"const": true},
+        "sourceMutation": {"const": false},
+        "productionDecisionAuthority": {"const": false},
+        "engineConfidenceIndependent": {"const": true},
+        "sourceQualityIndependent": {"const": true},
+        "visualEvidenceIndependent": {"const": true},
+        "aggregateComplexityScoreAuthority": {"const": false},
+        "winnerSelection": {"const": false},
+        "automaticMerge": {"const": false},
+        "automaticCorrection": {"const": false},
+        "teacherAuthorityOverride": {"const": false},
+        "stage7EvidenceMutation": {"const": false},
+        "stage7QuorumChange": {"const": false},
+        "stOmrQuorumChange": {"const": false}
+      },
+      "required": [
+        "researchOnly",
+        "readOnly",
+        "sourceMutation",
+        "productionDecisionAuthority",
+        "engineConfidenceIndependent",
+        "sourceQualityIndependent",
+        "visualEvidenceIndependent",
+        "aggregateComplexityScoreAuthority",
+        "winnerSelection",
+        "automaticMerge",
+        "automaticCorrection",
+        "teacherAuthorityOverride",
+        "stage7EvidenceMutation",
+        "stage7QuorumChange",
+        "stOmrQuorumChange"
+      ]
+    },
+    "profileSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "x-scoremosaic-runtime-validation": [
+    "measure scope only until Canonical Score exposes deterministic page/system topology",
+    "cross-staff remains unavailable because Canonical Score v1 has no cross-staff attachment relation",
+    "nested tuplet presence remains unavailable because Canonical Score v1 carries only one tuplet ratio",
+    "basis-point density metrics require explicit numerator and denominator",
+    "missing evidence never collapses to zero or false",
+    "event and voice-stream bounds fail closed before overlap analysis",
+    "derived state contains no aggregate complexity score or class",
+    "profile SHA-256 is deterministic",
+    "against-score validation recomputes the full profile"
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "safeVersion": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": {"type": "boolean"},
+        "value": {
+          "anyOf": [
+            {"type": "integer", "minimum": 0},
+            {"type": "boolean"},
+            {"type": "null"}
+          ]
+        },
+        "numerator": {
+          "anyOf": [
+            {"type": "integer", "minimum": 0},
+            {"type": "null"}
+          ]
+        },
+        "denominator": {
+          "anyOf": [
+            {"type": "integer", "minimum": 0},
+            {"type": "null"}
+          ]
+        },
+        "unit": {
+          "anyOf": [
+            {"type": "string", "minLength": 1, "maxLength": 80},
+            {"type": "null"}
+          ]
+        },
+        "method": {
+          "anyOf": [
+            {"$ref": "#/$defs/safeVersion"},
+            {"type": "null"}
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {"type": "string", "minLength": 1, "maxLength": 160},
+            {"type": "null"}
+          ]
+        }
+      },
+      "required": ["available", "value", "numerator", "denominator", "unit", "method", "reason"]
+    }
+  }
+}
