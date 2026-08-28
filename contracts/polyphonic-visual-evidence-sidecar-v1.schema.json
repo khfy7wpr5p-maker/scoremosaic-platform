@@ -1,0 +1,550 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-visual-evidence-sidecar-v1.schema.json",
+  "title": "ScoreMosaic Polyphonic Visual Evidence Sidecar v1",
+  "description": "Research-only, read-only visual localization evidence sidecar. Runtime validator enforces unavailable/available state coupling, page bounds, bbox containment, safe refs, and deterministic sidecar hash.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceId",
+    "candidate",
+    "sourcePage",
+    "canonicalIdentity",
+    "localization",
+    "engineConfidence",
+    "visualConfidence",
+    "sourceQuality",
+    "boundaries",
+    "sidecarSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "scoremosaic-polyphonic-visual-evidence-sidecar-v1"
+    },
+    "evidenceId": {
+      "type": "string",
+      "pattern": "^visual_evidence_[0-9a-f]{24}$"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "engine": {
+          "enum": [
+            "audiveris",
+            "homr",
+            "clarity"
+          ]
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^run_[0-9a-f]{24}$"
+        },
+        "candidateId": {
+          "type": "string",
+          "pattern": "^candidate_[0-9a-f]{24}$"
+        },
+        "candidateSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "musicxmlSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "canonicalScoreSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "engine",
+        "runId",
+        "candidateId",
+        "candidateSha256",
+        "musicxmlSha256",
+        "canonicalScoreSha256"
+      ]
+    },
+    "sourcePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceArtifactId": {
+          "type": "string",
+          "pattern": "^artifact_[0-9a-f]{24}$"
+        },
+        "sourceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "pageArtifactRef": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
+        },
+        "pageSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "pageIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        },
+        "widthPx": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50000
+        },
+        "heightPx": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50000
+        }
+      },
+      "required": [
+        "sourceArtifactId",
+        "sourceSha256",
+        "pageArtifactRef",
+        "pageSha256",
+        "pageIndex",
+        "widthPx",
+        "heightPx"
+      ]
+    },
+    "canonicalIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "partId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "measureId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "eventId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+        },
+        "sourceEventIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xmlPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "partId",
+        "measureId",
+        "eventId",
+        "sourceEventIndex",
+        "xmlPath"
+      ]
+    },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "evidenceSource": {
+          "enum": [
+            "UNAVAILABLE",
+            "ENGINE_NATIVE_BBOX",
+            "ENGINE_AUXILIARY_VISUAL_OUTPUT",
+            "DETERMINISTIC_GEOMETRY",
+            "TEACHER_ANNOTATION",
+            "IMPORTED_DATASET_ANNOTATION"
+          ]
+        },
+        "methodVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "systemId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measureRegionId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "staffId": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "x": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "width",
+                "height"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "symbolRegions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "regionId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+              },
+              "kind": {
+                "enum": [
+                  "NOTEHEAD",
+                  "REST",
+                  "ACCIDENTAL",
+                  "STEM",
+                  "BEAM",
+                  "FLAG",
+                  "DOT",
+                  "TUPLET",
+                  "ORNAMENT",
+                  "CLEF",
+                  "OTHER"
+                ]
+              },
+              "bbox": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ]
+              }
+            },
+            "required": [
+              "regionId",
+              "kind",
+              "bbox"
+            ]
+          }
+        },
+        "crop": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "artifactRef": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "available",
+            "artifactRef",
+            "sha256"
+          ]
+        }
+      },
+      "required": [
+        "available",
+        "evidenceSource",
+        "methodVersion",
+        "systemId",
+        "measureRegionId",
+        "staffId",
+        "bbox",
+        "symbolRegions",
+        "crop"
+      ]
+    },
+    "engineConfidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "rawValue": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calibratedProbability": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "available",
+        "rawValue",
+        "scale",
+        "calibratedProbability"
+      ]
+    },
+    "visualConfidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "rawValue": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calibratedProbability": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "available",
+        "rawValue",
+        "scale",
+        "calibratedProbability"
+      ]
+    },
+    "sourceQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "profileRef": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,499}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "profileSha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "authoritative": {
+          "const": false
+        }
+      },
+      "required": [
+        "available",
+        "profileRef",
+        "profileSha256",
+        "authoritative"
+      ]
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "researchOnly": {
+          "const": true
+        },
+        "readOnly": {
+          "const": true
+        },
+        "sourceMutation": {
+          "const": false
+        },
+        "productionDecisionAuthority": {
+          "const": false
+        },
+        "engineRanking": {
+          "const": false
+        },
+        "winnerSelection": {
+          "const": false
+        },
+        "automaticMerge": {
+          "const": false
+        },
+        "automaticCorrection": {
+          "const": false
+        },
+        "teacherAuthorityOverride": {
+          "const": false
+        },
+        "stage7EvidenceMutation": {
+          "const": false
+        },
+        "stOmrQuorumChange": {
+          "const": false
+        }
+      },
+      "required": [
+        "researchOnly",
+        "readOnly",
+        "sourceMutation",
+        "productionDecisionAuthority",
+        "engineRanking",
+        "winnerSelection",
+        "automaticMerge",
+        "automaticCorrection",
+        "teacherAuthorityOverride",
+        "stage7EvidenceMutation",
+        "stOmrQuorumChange"
+      ]
+    },
+    "sidecarSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "x-scoremosaic-runtime-validation": [
+    "safe-reference traversal rejection",
+    "page pixel-area bound",
+    "available/unavailable evidence-state coupling",
+    "bbox inside page",
+    "symbol region inside event bbox",
+    "crop ref/hash state coupling",
+    "confidence state coupling",
+    "source-quality reference state coupling",
+    "deterministic sidecar SHA-256"
+  ]
+}
