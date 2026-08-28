@@ -207,7 +207,8 @@ def validate_source_quality_core(payload: Mapping[str, Any]) -> None:
         "source_quality_method_invalid",
     )
     if (
-        method["evidenceSource"] not in _EVIDENCE_SOURCES
+        type(method["evidenceSource"]) is not str
+        or method["evidenceSource"] not in _EVIDENCE_SOURCES
         or not _matches(_SAFE_VERSION_RE, method["methodVersion"])
         or method["measurementPolicy"] != MEASUREMENT_POLICY
         or method["calibrated"] is not False
