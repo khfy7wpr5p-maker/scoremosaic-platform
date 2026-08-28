@@ -1,0 +1,68 @@
+name: SM-POLY-03 Teacher-Gold Harness CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-03-teacher-gold-harness"
+    paths:
+      - ".github/workflows/sm-poly-03-teacher-gold-harness-ci.yml"
+      - "contracts/polyphonic-benchmark-fixture-v1.schema.json"
+      - "contracts/polyphonic-teacher-gold-registry-v1.schema.json"
+      - "evaluation/polyphonic-teacher-gold-v1/**"
+      - "scripts/polyphonic_teacher_gold_harness.py"
+      - "docs/sm-poly-03-teacher-gold-benchmark-harness.md"
+      - "tests/test_sm_poly_03_teacher_gold_harness.py"
+      - "contracts/architecture-current-state-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-03-teacher-gold-harness-ci.yml"
+      - "contracts/polyphonic-benchmark-fixture-v1.schema.json"
+      - "contracts/polyphonic-teacher-gold-registry-v1.schema.json"
+      - "evaluation/polyphonic-teacher-gold-v1/**"
+      - "scripts/polyphonic_teacher_gold_harness.py"
+      - "docs/sm-poly-03-teacher-gold-benchmark-harness.md"
+      - "tests/test_sm_poly_03_teacher_gold_harness.py"
+      - "contracts/architecture-current-state-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-03-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-teacher-gold-harness:
+    name: Validate SM-POLY-03 harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate truthful empty public registry
+        run: python scripts/polyphonic_teacher_gold_harness.py
+
+      - name: Run SM-POLY-03 regressions
+        run: python -m unittest tests.test_sm_poly_03_teacher_gold_harness -v
+
+      - name: Re-run SM-POLY-02 contract regressions
+        run: python -m unittest tests.test_sm_poly_02_taxonomy_benchmark_schema -v
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Check repository diff formatting
+        run: git diff --check

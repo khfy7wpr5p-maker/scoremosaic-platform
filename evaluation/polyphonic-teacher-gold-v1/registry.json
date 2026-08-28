@@ -1,0 +1,19 @@
+{
+  "registryVersion": "scoremosaic-polyphonic-teacher-gold-registry-v1",
+  "benchmarkId": "scoremosaic-polyphonic-teacher-gold-v1",
+  "fixtureSchemaVersion": "scoremosaic-polyphonic-benchmark-fixture-v1",
+  "minimumVerifiedFixtures": 500,
+  "targetVerifiedFixtures": 1000,
+  "fixtureRecords": [],
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "privateAssetsRemainExternal": true,
+    "teacherGoldSeparateFromEngineOutputs": true,
+    "teacherCorrectionAutomaticallyTrainingData": false,
+    "automaticWinnerSelection": false,
+    "automaticMusicXmlMerge": false,
+    "automaticSemanticRepair": false,
+    "teacherAuthority": true,
+    "productionDecisionAuthority": false
+  }
+}
