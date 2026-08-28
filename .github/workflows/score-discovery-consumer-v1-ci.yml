@@ -1,0 +1,46 @@
+name: Validate Score Discovery Consumer v1
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/score-discovery-consumer-v1.json'
+      - 'tools/score-discovery-consumer-v1.cjs'
+      - 'tests/score-discovery-consumer-v1.test.cjs'
+      - 'docs/score-discovery-gateway-integration-v1.md'
+      - 'contracts/architecture-current-state-v1.json'
+      - 'docs/architecture.md'
+      - 'docs/roadmap.md'
+      - 'README.md'
+      - '.github/workflows/score-discovery-consumer-v1-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'contracts/score-discovery-consumer-v1.json'
+      - 'tools/score-discovery-consumer-v1.cjs'
+      - 'tests/score-discovery-consumer-v1.test.cjs'
+      - 'docs/score-discovery-gateway-integration-v1.md'
+      - 'contracts/architecture-current-state-v1.json'
+      - 'docs/architecture.md'
+      - 'docs/roadmap.md'
+      - 'README.md'
+      - '.github/workflows/score-discovery-consumer-v1-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-score-discovery-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate contract JSON
+        run: node -e "const fs=require('node:fs'); const c=JSON.parse(fs.readFileSync('contracts/score-discovery-consumer-v1.json','utf8')); if(c.version!=='score-discovery-consumer-v1'||c.activation.liveGatewayNetworkActivated!==false||c.authorityLocks.mayMutateCanonicalScore!==false) process.exit(1);"
+      - name: Run discovery consumer regressions
+        run: node --test tests/score-discovery-consumer-v1.test.cjs
+      - name: Preserve architecture production locks
+        run: python -m unittest tests.test_architecture_consistency
