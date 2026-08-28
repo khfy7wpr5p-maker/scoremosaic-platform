@@ -1,0 +1,113 @@
+name: SM-POLY-06 Source Quality Evidence CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-06-source-quality-evidence"
+    paths:
+      - ".github/workflows/sm-poly-06-source-quality-evidence-ci.yml"
+      - "contracts/polyphonic-source-quality-profile-v1.schema.json"
+      - "contracts/polyphonic-visual-evidence-sidecar-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/source_quality.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/visual_evidence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/tests/test_source_quality.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "docs/sm-poly-06-source-quality-evidence.md"
+      - "contracts/architecture-current-state-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-06-source-quality-evidence-ci.yml"
+      - "contracts/polyphonic-source-quality-profile-v1.schema.json"
+      - "contracts/polyphonic-visual-evidence-sidecar-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/source_quality.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/visual_evidence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/tests/test_source_quality.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "docs/sm-poly-06-source-quality-evidence.md"
+      - "contracts/architecture-current-state-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-06-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-source-quality-evidence:
+    name: Validate SM-POLY-06 source quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run SM-POLY-06 regressions
+        run: python -m unittest services/ensemble-service/tests/test_source_quality.py -v
+
+      - name: Re-run SM-POLY-05 visual evidence regressions
+        run: python -m unittest services/ensemble-service/tests/test_visual_evidence.py -v
+
+      - name: Validate repository foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Verify Stage 7 still reports source quality unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path(
+              "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+          ).read_text(encoding="utf-8")
+          assert '"sourceQuality": {' in source
+          assert '"available": False' in source
+          assert '"reason": "not_in_stage6_candidate_contract"' in source
+          assert "source_quality" not in source
+          PY
+
+      - name: Verify source-quality authority remains locked
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          import scoremosaic_ensemble.source_quality as module
+
+          boundary = module._BOUNDARIES
+          assert boundary["researchOnly"] is True
+          assert boundary["readOnly"] is True
+          assert boundary["sourceMutation"] is False
+          assert boundary["productionDecisionAuthority"] is False
+          assert boundary["engineConfidenceIndependent"] is True
+          assert boundary["singleQualityScoreAuthority"] is False
+          assert boundary["winnerSelection"] is False
+          assert boundary["automaticMerge"] is False
+          assert boundary["automaticCorrection"] is False
+          assert boundary["teacherAuthorityOverride"] is False
+          assert boundary["stage7EvidenceMutation"] is False
+          assert boundary["stOmrQuorumChange"] is False
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
