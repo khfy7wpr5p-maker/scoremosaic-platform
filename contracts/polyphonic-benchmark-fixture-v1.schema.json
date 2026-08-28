@@ -34,11 +34,32 @@
   "allOf": [
     {
       "if": {"properties": {"granularity": {"const": "system"}}},
-      "then": {"properties": {"location": {"required": ["pageIndex", "systemId"]}}}
+      "then": {
+        "properties": {
+          "location": {
+            "required": ["pageIndex", "systemId"],
+            "properties": {
+              "pageIndex": {},
+              "systemId": {}
+            }
+          }
+        }
+      }
     },
     {
       "if": {"properties": {"granularity": {"const": "measure"}}},
-      "then": {"properties": {"location": {"required": ["pageIndex", "systemId", "measureId"]}}}
+      "then": {
+        "properties": {
+          "location": {
+            "required": ["pageIndex", "systemId", "measureId"],
+            "properties": {
+              "pageIndex": {},
+              "systemId": {},
+              "measureId": {}
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
