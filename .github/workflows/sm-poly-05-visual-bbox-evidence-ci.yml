@@ -1,0 +1,102 @@
+name: SM-POLY-05 Visual BBox Evidence CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-05-visual-bbox-evidence"
+    paths:
+      - ".github/workflows/sm-poly-05-visual-bbox-evidence-ci.yml"
+      - "contracts/polyphonic-visual-evidence-sidecar-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/visual_evidence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
+      - "docs/sm-poly-05-visual-bbox-evidence.md"
+      - "contracts/architecture-current-state-v1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-05-visual-bbox-evidence-ci.yml"
+      - "contracts/polyphonic-visual-evidence-sidecar-v1.schema.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/visual_evidence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
+      - "docs/sm-poly-05-visual-bbox-evidence.md"
+      - "contracts/architecture-current-state-v1.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-05-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-visual-bbox-evidence:
+    name: Validate SM-POLY-05 visual evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run SM-POLY-05 regressions
+        run: python -m unittest services/ensemble-service/tests/test_visual_evidence.py -v
+
+      - name: Re-run Stage 7 convergence regression
+        run: python -m unittest services/ensemble-service/tests/test_stage7_convergence_integration.py -v
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Verify Stage 7 still reports bbox evidence unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path(
+              "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+          ).read_text(encoding="utf-8")
+          assert '"bboxEvidenceAvailable": False' in source
+          assert '"reason": "not_in_stage6_candidate_contract"' in source
+          assert "visual_evidence" not in source
+          PY
+
+      - name: Verify sidecar has no production or winner authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          import scoremosaic_ensemble.visual_evidence as module
+
+          boundary = module._BOUNDARIES
+          assert boundary["researchOnly"] is True
+          assert boundary["readOnly"] is True
+          assert boundary["productionDecisionAuthority"] is False
+          assert boundary["winnerSelection"] is False
+          assert boundary["automaticMerge"] is False
+          assert boundary["automaticCorrection"] is False
+          assert boundary["teacherAuthorityOverride"] is False
+          assert boundary["stage7EvidenceMutation"] is False
+          assert boundary["stOmrQuorumChange"] is False
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
