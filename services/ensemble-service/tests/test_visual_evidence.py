@@ -153,6 +153,17 @@ class SmPoly05VisualEvidenceTests(unittest.TestCase):
         ).hexdigest()
         self.assertEqual(expected, actual)
 
+    def test_localized_bbox_can_exist_without_symbol_regions(self) -> None:
+        core = _core()
+        core["localization"]["symbolRegions"] = []
+        sidecar = build_visual_evidence_sidecar(core)
+        self.assertIs(sidecar["localization"]["available"], True)
+        self.assertEqual([], sidecar["localization"]["symbolRegions"])
+        self.assertEqual(
+            {"x": 100, "y": 200, "width": 120, "height": 80},
+            sidecar["localization"]["bbox"],
+        )
+
     def test_unavailable_localization_is_explicit_and_contains_no_geometry(self) -> None:
         sidecar = build_visual_evidence_sidecar(_core(localized=False))
         localization = sidecar["localization"]
