@@ -1,0 +1,53 @@
+{
+  "version": "score-discovery-consumer-v1",
+  "stageNumberAssigned": false,
+  "status": "REPOSITORY_DISCONNECTED_CONSUMER_BASELINE",
+  "gatewayRepository": "khfy7wpr5p-maker/st-score-discovery-gateway",
+  "gatewayContract": {
+    "method": "POST",
+    "path": "/v1/search",
+    "originSource": "server_configuration_only",
+    "browserSelectableOrigin": false,
+    "providerSpecificCodeAllowed": false,
+    "repertoireFamily": "classical",
+    "maxQueryCharacters": 256,
+    "defaultResultLimit": 25,
+    "maxResultLimit": 50,
+    "maxSourceLocators": 10
+  },
+  "browserBoundary": {
+    "networkActivated": false,
+    "assetUrlExposed": false,
+    "providerCredentialsExposed": false,
+    "arbitraryGatewayOriginAccepted": false,
+    "discoveryMetadataAuthoritative": false
+  },
+  "handoff": {
+    "externalOpenMayEnterIntake": false,
+    "webMayEnterIntake": false,
+    "sourceLocatorMayEnterIntake": false,
+    "blockedMayEnterIntake": false,
+    "directImportRequiresPublicAccess": true,
+    "directImportRequiresHttpsAsset": true,
+    "directImportFormats": ["pdf", "musicxml", "mxl"],
+    "authority": "discovery-handoff-only",
+    "existingIntakeValidationStillRequired": true
+  },
+  "authorityLocks": {
+    "mayMutateCanonicalScore": false,
+    "mayCreateTeacherScoreRevision": false,
+    "mayApprove": false,
+    "mayPublish": false,
+    "mayChangeStage7EngineQuorum": false,
+    "mayPromoteStOmr": false,
+    "mayBypassCandidateSafety": false
+  },
+  "activation": {
+    "liveGatewayNetworkActivated": false,
+    "publicApiActivated": false,
+    "productionPersistenceActivated": false,
+    "productionImportActivated": false
+  },
+  "implementation": "tools/score-discovery-consumer-v1.cjs",
+  "tests": "tests/score-discovery-consumer-v1.test.cjs"
+}
