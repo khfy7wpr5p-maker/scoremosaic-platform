@@ -374,6 +374,13 @@ def validate_reliability_observation(payload: Mapping[str, Any]) -> dict[str, An
     expected = sha256(_canonical_json(without_hash)).hexdigest()
     if item["observationSha256"] != expected:
         raise ReliabilityCalibrationError("reliability_observation_hash_invalid")
+
+    identity = deepcopy(dict(item))
+    identity.pop("observationId")
+    identity.pop("observationSha256")
+    expected_id = "reliability_obs_" + sha256(_canonical_json(identity)).hexdigest()[:24]
+    if item["observationId"] != expected_id:
+        raise ReliabilityCalibrationError("reliability_observation_id_mismatch")
     return deepcopy(dict(item))
 
 
@@ -446,6 +453,10 @@ def build_reliability_observation(
     confidence or modify the confidence value.
     """
     confidence_available = confidence_basis_points is not None
+    if not confidence_available and (
+        confidence_evidence_source is not None or confidence_method_version is not None
+    ):
+        raise ReliabilityCalibrationError("confidence_evidence_invalid")
     confidence = (
         {
             "available": True,
@@ -504,9 +515,7 @@ def build_reliability_observation(
     }
     identity = deepcopy(core)
     identity.pop("observationId")
-    core["observationId"] = (
-        "reliability_obs_" + sha256(_canonical_json(identity)).hexdigest()[:24]
-    )
+    core["observationId"] = "reliability_obs_" + sha256(_canonical_json(identity)).hexdigest()[:24]
     core["observationSha256"] = sha256(_canonical_json(core)).hexdigest()
     return validate_reliability_observation(core)
 
@@ -647,10 +656,25 @@ def build_reliability_report(
     if len(items) > MAX_OBSERVATIONS:
         raise ReliabilityCalibrationError("observation_limit_exceeded")
     seen: set[str] = set()
+    seen_units: set[tuple[Any, ...]] = set()
     for item in items:
         if item["observationId"] in seen:
             raise ReliabilityCalibrationError("duplicate_reliability_observation")
         seen.add(item["observationId"])
+        confidence = item["confidence"]
+        unit_key = (
+            item["fixtureId"],
+            item["engine"]["name"],
+            item["engine"]["engineVersion"],
+            item["engine"]["modelVersion"],
+            item["target"]["category"],
+            item["target"]["targetUnitId"],
+            confidence["evidenceSource"],
+            confidence["methodVersion"],
+        )
+        if unit_key in seen_units:
+            raise ReliabilityCalibrationError("duplicate_reliability_target_unit")
+        seen_units.add(unit_key)
 
     eligible = [item for item in items if item["confidence"]["available"]]
     grouped: dict[tuple[str, str, str], list[Mapping[str, Any]]] = {}
@@ -927,6 +951,7 @@ def validate_reliability_report(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
     if any(boundaries[key] is not expected for key, expected in _BOUNDARIES.items()):
         raise ReliabilityCalibrationError("authority_boundary_invalid")
+
     if not _matches(_SHA_RE, item["reportSha256"]):
         raise ReliabilityCalibrationError("reliability_report_hash_invalid")
     without_hash = deepcopy(dict(item))
@@ -934,6 +959,13 @@ def validate_reliability_report(payload: Mapping[str, Any]) -> dict[str, Any]:
     expected = sha256(_canonical_json(without_hash)).hexdigest()
     if item["reportSha256"] != expected:
         raise ReliabilityCalibrationError("reliability_report_hash_invalid")
+
+    identity = deepcopy(dict(item))
+    identity.pop("reportId")
+    identity.pop("reportSha256")
+    expected_id = "reliability_report_" + sha256(_canonical_json(identity)).hexdigest()[:24]
+    if item["reportId"] != expected_id:
+        raise ReliabilityCalibrationError("reliability_report_id_mismatch")
     return deepcopy(dict(item))
 
 
