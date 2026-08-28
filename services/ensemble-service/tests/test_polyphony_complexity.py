@@ -128,6 +128,21 @@ def _profile(events: list[CanonicalEvent]) -> dict:
     )
 
 
+def _schema_property_names(value: object) -> set[str]:
+    """Collect JSON object property names, not descriptive text substrings."""
+    names: set[str] = set()
+    if isinstance(value, dict):
+        properties = value.get("properties")
+        if isinstance(properties, dict):
+            names.update(properties)
+        for child in value.values():
+            names.update(_schema_property_names(child))
+    elif isinstance(value, list):
+        for child in value:
+            names.update(_schema_property_names(child))
+    return names
+
+
 class SmPoly07PolyphonyComplexityTests(unittest.TestCase):
     def test_schema_and_method_are_versioned_and_engine_independent(self) -> None:
         self.assertEqual(SCHEMA_VERSION, SCHEMA["properties"]["schemaVersion"]["const"])
@@ -135,10 +150,10 @@ class SmPoly07PolyphonyComplexityTests(unittest.TestCase):
             CALCULATION_METHOD_VERSION,
             SCHEMA["properties"]["method"]["properties"]["calculationMethodVersion"]["const"],
         )
-        encoded = json.dumps(SCHEMA, sort_keys=True)
-        self.assertNotIn("engineConfidence", encoded)
-        self.assertNotIn("sourceQualityScore", encoded)
-        self.assertNotIn("winnerProbability", encoded)
+        property_names = _schema_property_names(SCHEMA)
+        self.assertNotIn("engineConfidence", property_names)
+        self.assertNotIn("sourceQualityScore", property_names)
+        self.assertNotIn("winnerProbability", property_names)
 
     def test_monophonic_measure_reports_one_voice_without_aggregate_score(self) -> None:
         profile = _profile(
