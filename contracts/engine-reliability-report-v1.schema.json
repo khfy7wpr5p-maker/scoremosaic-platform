@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/engine-reliability-report-v1.schema.json",
+  "title": "ScoreMosaic Engine Reliability Calibration Report v1",
+  "description": "Deterministic research-only Brier/ECE reliability evidence grouped by engine, target category and confidence method. No fitted calibration model, recalibrated probability, ranking or production decision is emitted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "reportId", "method", "observationCount", "eligibleObservationCount", "observationSetSha256", "groups", "contextSlices", "boundaries", "reportSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-engine-reliability-report-v1"},
+    "reportId": {"type": "string", "pattern": "^reliability_report_[0-9a-f]{24}$"},
+    "method": {
+      "type": "object", "additionalProperties": false,
+      "required": ["binning", "brier", "expectedCalibrationError", "fittedCalibrationModel", "recalibratedProbability"],
+      "properties": {
+        "binning": {"const": "FIXED_10_BIN_BASIS_POINTS_V1"},
+        "brier": {"const": "BINARY_BRIER_EXACT_RATIONAL_V1"},
+        "expectedCalibrationError": {"const": "FIXED_BIN_ECE_EXACT_RATIONAL_V1"},
+        "fittedCalibrationModel": {"type": "null"},
+        "recalibratedProbability": {"type": "null"}
+      }
+    },
+    "observationCount": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "eligibleObservationCount": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "observationSetSha256": {"$ref": "#/$defs/sha256"},
+    "groups": {"type": "array", "maxItems": 2048, "items": {"$ref": "#/$defs/group"}},
+    "contextSlices": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/slice"}},
+    "boundaries": {"$ref": "engine-reliability-observation-v1.schema.json#/$defs/boundaries"},
+    "reportSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+    "safeId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "fraction": {
+      "type": "object", "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {"numerator": {"type": "integer"}, "denominator": {"type": "integer", "minimum": 1}}
+    },
+    "bin": {
+      "type": "object", "additionalProperties": false,
+      "required": ["index", "lowerInclusiveBasisPoints", "upperInclusiveBasisPoints", "observationCount", "correctCount", "empiricalAccuracy", "meanReportedConfidenceBasisPoints", "absoluteCalibrationGap"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 9},
+        "lowerInclusiveBasisPoints": {"type": "integer", "minimum": 0, "maximum": 9000},
+        "upperInclusiveBasisPoints": {"type": "integer", "minimum": 999, "maximum": 10000},
+        "observationCount": {"type": "integer", "minimum": 0},
+        "correctCount": {"type": "integer", "minimum": 0},
+        "empiricalAccuracy": {"oneOf": [{"$ref": "#/$defs/fraction"}, {"type": "null"}]},
+        "meanReportedConfidenceBasisPoints": {"oneOf": [{"$ref": "#/$defs/fraction"}, {"type": "null"}]},
+        "absoluteCalibrationGap": {"oneOf": [{"$ref": "#/$defs/fraction"}, {"type": "null"}]}
+      }
+    },
+    "group": {
+      "type": "object", "additionalProperties": false,
+      "required": ["engine", "category", "confidenceMethodVersion", "observationCount", "correctCount", "empiricalAccuracy", "meanReportedConfidenceBasisPoints", "brierScore", "expectedCalibrationError", "reliabilityBins", "contextCoverage"],
+      "properties": {
+        "engine": {"enum": ["audiveris", "homr", "clarity"]},
+        "category": {"enum": ["parse", "structuralValidity", "pitch", "duration", "onset", "voice", "staff", "tie", "tuplet", "measureConsistency", "relationCorrectness"]},
+        "confidenceMethodVersion": {"$ref": "#/$defs/version"},
+        "observationCount": {"type": "integer", "minimum": 1}, "correctCount": {"type": "integer", "minimum": 0},
+        "empiricalAccuracy": {"$ref": "#/$defs/fraction"}, "meanReportedConfidenceBasisPoints": {"$ref": "#/$defs/fraction"},
+        "brierScore": {"$ref": "#/$defs/fraction"}, "expectedCalibrationError": {"$ref": "#/$defs/fraction"},
+        "reliabilityBins": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/bin"}},
+        "contextCoverage": {
+          "type": "object", "additionalProperties": false,
+          "required": ["complexityObservationCount", "sourceQualityObservationCount"],
+          "properties": {"complexityObservationCount": {"type": "integer", "minimum": 0}, "sourceQualityObservationCount": {"type": "integer", "minimum": 0}}
+        }
+      }
+    },
+    "slice": {
+      "type": "object", "additionalProperties": false,
+      "required": ["engine", "category", "confidenceMethodVersion", "dimension", "value", "observationCount", "correctCount", "empiricalAccuracy", "meanReportedConfidenceBasisPoints", "brierScore", "expectedCalibrationError"],
+      "properties": {
+        "engine": {"enum": ["audiveris", "homr", "clarity"]},
+        "category": {"enum": ["parse", "structuralValidity", "pitch", "duration", "onset", "voice", "staff", "tie", "tuplet", "measureConsistency", "relationCorrectness"]},
+        "confidenceMethodVersion": {"$ref": "#/$defs/version"}, "dimension": {"$ref": "#/$defs/safeId"}, "value": {"$ref": "#/$defs/safeId"},
+        "observationCount": {"type": "integer", "minimum": 1}, "correctCount": {"type": "integer", "minimum": 0},
+        "empiricalAccuracy": {"$ref": "#/$defs/fraction"}, "meanReportedConfidenceBasisPoints": {"$ref": "#/$defs/fraction"},
+        "brierScore": {"$ref": "#/$defs/fraction"}, "expectedCalibrationError": {"$ref": "#/$defs/fraction"}
+      }
+    }
+  }
+}

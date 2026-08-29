@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/engine-reliability-observation-v1.schema.json",
+  "title": "ScoreMosaic Engine Reliability Observation v1",
+  "description": "Research-only binary teacher-gold correctness observation paired with explicitly provenance-bound engine-reported confidence and optional SM-POLY-06/07 context. No ranking, winner, confidence rewriting, recalibrated probability, or production authority is granted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "observationId", "fixtureId", "target", "engine", "confidence", "context", "provenance", "boundaries", "observationSha256"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-engine-reliability-observation-v1"},
+    "observationId": {"type": "string", "pattern": "^reliability_obs_[0-9a-f]{24}$"},
+    "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["category", "targetUnitId", "correct", "method"],
+      "properties": {
+        "category": {"enum": ["parse", "structuralValidity", "pitch", "duration", "onset", "voice", "staff", "tie", "tuplet", "measureConsistency", "relationCorrectness"]},
+        "targetUnitId": {"$ref": "#/$defs/safeId"},
+        "correct": {"type": "boolean"},
+        "method": {"const": "TEACHER_GOLD_BINARY_CORRECTNESS_V1"}
+      }
+    },
+    "engine": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "engineVersion", "modelVersion"],
+      "properties": {
+        "name": {"enum": ["audiveris", "homr", "clarity"]},
+        "engineVersion": {"$ref": "#/$defs/version"},
+        "modelVersion": {"$ref": "#/$defs/version"}
+      }
+    },
+    "confidence": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["available", "basisPoints", "evidenceSource", "methodVersion", "scale", "scope", "calibratedInput"],
+          "properties": {
+            "available": {"const": true},
+            "basisPoints": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "evidenceSource": {"enum": ["ENGINE_NATIVE_REPORTED", "IMPORTED_BENCHMARK_TELEMETRY", "REPOSITORY_RESEARCH_FIXTURE"]},
+            "methodVersion": {"$ref": "#/$defs/version"},
+            "scale": {"const": "CORRECTNESS_CONFIDENCE_BASIS_POINTS_V1"},
+            "scope": {"const": "TARGET_UNIT_CORRECTNESS"},
+            "calibratedInput": {"const": false}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["available", "basisPoints", "evidenceSource", "methodVersion", "scale", "scope", "calibratedInput"],
+          "properties": {
+            "available": {"const": false},
+            "basisPoints": {"type": "null"},
+            "evidenceSource": {"type": "null"},
+            "methodVersion": {"type": "null"},
+            "scale": {"type": "null"},
+            "scope": {"type": "null"},
+            "calibratedInput": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "context": {
+      "type": "object", "additionalProperties": false,
+      "required": ["complexity", "sourceQuality"],
+      "properties": {
+        "complexity": {"$ref": "#/$defs/complexityContext"},
+        "sourceQuality": {"$ref": "#/$defs/sourceQualityContext"}
+      }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["teacherGoldReferenceSha256", "semanticEvidenceSha256", "contextBindingMethodVersion"],
+      "properties": {
+        "teacherGoldReferenceSha256": {"$ref": "#/$defs/sha256"},
+        "semanticEvidenceSha256": {"$ref": "#/$defs/sha256"},
+        "contextBindingMethodVersion": {"$ref": "#/$defs/version"}
+      }
+    },
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "observationSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "safeId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+    "complexityContext": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["available", "profileId", "profileSha256", "voiceCount", "maxSimultaneousVoiceCount", "multiStaffPresent", "tupletPresent", "overlapDensityBasisPoints"],
+          "properties": {
+            "available": {"const": true},
+            "profileId": {"type": "string", "pattern": "^complexity_[0-9a-f]{24}$"},
+            "profileSha256": {"$ref": "#/$defs/sha256"},
+            "voiceCount": {"type": "integer", "minimum": 0, "maximum": 512},
+            "maxSimultaneousVoiceCount": {"type": ["integer", "null"], "minimum": 0, "maximum": 512},
+            "multiStaffPresent": {"type": ["boolean", "null"]},
+            "tupletPresent": {"type": "boolean"},
+            "overlapDensityBasisPoints": {"type": "integer", "minimum": 0, "maximum": 10000}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["available", "profileId", "profileSha256", "voiceCount", "maxSimultaneousVoiceCount", "multiStaffPresent", "tupletPresent", "overlapDensityBasisPoints"],
+          "properties": {
+            "available": {"const": false},
+            "profileId": {"type": "null"}, "profileSha256": {"type": "null"}, "voiceCount": {"type": "null"},
+            "maxSimultaneousVoiceCount": {"type": "null"}, "multiStaffPresent": {"type": "null"}, "tupletPresent": {"type": "null"},
+            "overlapDensityBasisPoints": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "sourceQualityContext": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["available", "profileId", "profileSha256", "severity", "maxDegradationRiskBasisPoints"],
+          "properties": {
+            "available": {"const": true},
+            "profileId": {"type": "string", "pattern": "^source_quality_[0-9a-f]{24}$"},
+            "profileSha256": {"$ref": "#/$defs/sha256"},
+            "severity": {"enum": ["LOW", "MODERATE", "HIGH", "SEVERE", "UNAVAILABLE"]},
+            "maxDegradationRiskBasisPoints": {"type": ["integer", "null"], "minimum": 0, "maximum": 10000}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["available", "profileId", "profileSha256", "severity", "maxDegradationRiskBasisPoints"],
+          "properties": {
+            "available": {"const": false}, "profileId": {"type": "null"}, "profileSha256": {"type": "null"},
+            "severity": {"type": "null"}, "maxDegradationRiskBasisPoints": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "boundaries": {
+      "type": "object", "additionalProperties": false,
+      "required": ["researchOnly", "readOnly", "confidenceRewriting", "recalibratedProbabilityOutput", "engineRanking", "winnerSelection", "selectivePrediction", "productionThreshold", "productionDecisionAuthority", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "stage7EvidenceMutation", "stage7QuorumChange", "stOmrIntegration"],
+      "properties": {
+        "researchOnly": {"const": true}, "readOnly": {"const": true}, "confidenceRewriting": {"const": false},
+        "recalibratedProbabilityOutput": {"const": false}, "engineRanking": {"const": false}, "winnerSelection": {"const": false},
+        "selectivePrediction": {"const": false}, "productionThreshold": {"const": false}, "productionDecisionAuthority": {"const": false},
+        "automaticMerge": {"const": false}, "automaticCorrection": {"const": false}, "teacherAuthorityOverride": {"const": false},
+        "stage7EvidenceMutation": {"const": false}, "stage7QuorumChange": {"const": false}, "stOmrIntegration": {"const": false}
+      }
+    }
+  }
+}
