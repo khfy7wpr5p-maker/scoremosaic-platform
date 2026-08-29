@@ -14,7 +14,7 @@
       "properties": {
         "formatVersion": {"const": "scoremosaic-stage7-convergence-v1"},
         "resultSha256": {"$ref": "#/$defs/sha256"},
-        "bindingMethodVersion": {"$ref": "#/$defs/version"},
+        "bindingMethodVersion": {"const": "STAGE7_RESULT_SHA256_REFERENCE_V1"},
         "authoritative": {"const": false}
       },
       "required": ["formatVersion", "resultSha256", "bindingMethodVersion", "authoritative"]
@@ -66,14 +66,14 @@
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+    "schemaVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
     "slotBase": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "available": {"type": "boolean"},
-        "schemaVersion": {"anyOf": [{"$ref": "#/$defs/version"}, {"type": "null"}]},
-        "bindingMethodVersion": {"anyOf": [{"$ref": "#/$defs/version"}, {"type": "null"}]},
+        "schemaVersion": {"anyOf": [{"$ref": "#/$defs/schemaVersion"}, {"type": "null"}]},
+        "bindingMethodVersion": {"anyOf": [{"const": "SHA256_ARTIFACT_SET_REFERENCE_V1"}, {"type": "null"}]},
         "artifactSha256Set": {
           "type": "array",
           "maxItems": 10000,
@@ -88,8 +88,8 @@
           "if": {"properties": {"available": {"const": true}}},
           "then": {
             "properties": {
-              "schemaVersion": {"$ref": "#/$defs/version"},
-              "bindingMethodVersion": {"$ref": "#/$defs/version"},
+              "schemaVersion": {"$ref": "#/$defs/schemaVersion"},
+              "bindingMethodVersion": {"const": "SHA256_ARTIFACT_SET_REFERENCE_V1"},
               "artifactSha256Set": {"minItems": 1},
               "artifactSetSha256": {"$ref": "#/$defs/sha256"}
             }
