@@ -2,22 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://scoremosaic.local/contracts/convergence-evidence-vector-v2.schema.json",
   "title": "ScoreMosaic Convergence Evidence Vector v2",
-  "description": "Research-only immutable evidence-reference vector that binds Stage 7 output and upstream SM-POLY evidence without reinterpreting artifact-internal engine/category identity or granting decision authority.",
+  "description": "Research-only immutable evidence-context vector that binds a Stage 7 result to opaque upstream SM-POLY artifact sets without claiming cross-artifact identity equivalence or granting decision authority.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {"const": "scoremosaic-convergence-evidence-vector-v2"},
     "vectorId": {"type": "string", "pattern": "^convergence_evidence_v2_[0-9a-f]{24}$"},
-    "scope": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
-        "teacherGoldReferenceSha256": {"$ref": "#/$defs/sha256"},
-        "sourceDocumentSha256": {"$ref": "#/$defs/sha256"}
-      },
-      "required": ["fixtureId", "teacherGoldReferenceSha256", "sourceDocumentSha256"]
-    },
     "stage7Convergence": {
       "type": "object",
       "additionalProperties": false,
@@ -28,6 +18,16 @@
         "authoritative": {"const": false}
       },
       "required": ["formatVersion", "resultSha256", "bindingMethodVersion", "authoritative"]
+    },
+    "evidenceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "methodVersion": {"const": "OPAQUE_UPSTREAM_ARTIFACT_SET_CONTEXT_V1"},
+        "directFixtureBindingClaimed": {"const": false},
+        "crossArtifactIdentityMatchClaimed": {"const": false}
+      },
+      "required": ["methodVersion", "directFixtureBindingClaimed", "crossArtifactIdentityMatchClaimed"]
     },
     "evidence": {
       "type": "object",
@@ -152,6 +152,7 @@
         "readOnly": {"const": true},
         "descriptiveEvidenceOnly": {"const": true},
         "upstreamEvidenceReinterpreted": {"const": false},
+        "crossArtifactIdentityMatchClaimed": {"const": false},
         "stage7EvidenceMutation": {"const": false},
         "stage7QuorumContribution": {"const": false},
         "stage7QuorumChange": {"const": false},
@@ -166,8 +167,8 @@
         "stOmrProductionPromotion": {"const": false},
         "gatewayIntegration": {"const": false}
       },
-      "required": ["researchOnly", "readOnly", "descriptiveEvidenceOnly", "upstreamEvidenceReinterpreted", "stage7EvidenceMutation", "stage7QuorumContribution", "stage7QuorumChange", "productionDecisionAuthority", "engineRanking", "winnerSelection", "singleAggregateScore", "confidenceUsedAsAuthority", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "stOmrProductionPromotion", "gatewayIntegration"]
+      "required": ["researchOnly", "readOnly", "descriptiveEvidenceOnly", "upstreamEvidenceReinterpreted", "crossArtifactIdentityMatchClaimed", "stage7EvidenceMutation", "stage7QuorumContribution", "stage7QuorumChange", "productionDecisionAuthority", "engineRanking", "winnerSelection", "singleAggregateScore", "confidenceUsedAsAuthority", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "stOmrProductionPromotion", "gatewayIntegration"]
     }
   },
-  "required": ["schemaVersion", "vectorId", "scope", "stage7Convergence", "evidence", "derivedState", "boundaries", "vectorSha256"]
+  "required": ["schemaVersion", "vectorId", "stage7Convergence", "evidenceContext", "evidence", "derivedState", "boundaries", "vectorSha256"]
 }
