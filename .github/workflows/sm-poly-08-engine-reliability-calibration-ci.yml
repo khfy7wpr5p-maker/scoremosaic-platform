@@ -14,6 +14,7 @@ on:
       - "services/ensemble-service/src/scoremosaic_ensemble/source_quality.py"
       - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
       - "services/ensemble-service/tests/test_reliability_calibration.py"
+      - "services/ensemble-service/tests/test_reliability_calibration_sm_poly07_empty_context.py"
       - "services/ensemble-service/tests/test_polyphony_complexity.py"
       - "services/ensemble-service/tests/test_source_quality.py"
       - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
@@ -31,6 +32,7 @@ on:
       - "services/ensemble-service/src/scoremosaic_ensemble/source_quality.py"
       - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
       - "services/ensemble-service/tests/test_reliability_calibration.py"
+      - "services/ensemble-service/tests/test_reliability_calibration_sm_poly07_empty_context.py"
       - "services/ensemble-service/tests/test_polyphony_complexity.py"
       - "services/ensemble-service/tests/test_source_quality.py"
       - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
@@ -66,7 +68,11 @@ jobs:
         run: python -m compileall -q services/ensemble-service/src
 
       - name: Run SM-POLY-08 regressions
-        run: python -m unittest services/ensemble-service/tests/test_reliability_calibration.py -v
+        run: >-
+          python -m unittest
+          services/ensemble-service/tests/test_reliability_calibration.py
+          services/ensemble-service/tests/test_reliability_calibration_sm_poly07_empty_context.py
+          -v
 
       - name: Re-run SM-POLY-07 complexity regressions
         run: python -m unittest services/ensemble-service/tests/test_polyphony_complexity.py -v
