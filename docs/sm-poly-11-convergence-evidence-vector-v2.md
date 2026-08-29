@@ -7,20 +7,22 @@ Production behavior change: **none**
 
 SM-POLY-11 introduces a deterministic, SHA-pinned Convergence Evidence Vector v2 that can bind an existing Stage 7 convergence result to the research evidence produced by SM-POLY-04 through SM-POLY-09 without changing production convergence authority.
 
-The vector answers one bounded question: **which immutable evidence artifacts are available for this fixture and Stage 7 result?** It does not answer which engine is best, which candidate should win, or whether MusicXML should be merged or corrected.
+The vector answers one bounded question: **which immutable upstream evidence artifacts are bound to this fixture and Stage 7 result?** It does not answer which engine is best, which candidate should win, or whether MusicXML should be merged or corrected.
 
 ## Evidence families
 
-The v2 vector has closed slots for:
+The v2 vector has one opaque artifact-set slot for each upstream evidence family:
 
-- SM-POLY-04 per-engine semantic metric reports;
-- SM-POLY-05 per-engine visual/BBox sidecars;
+- SM-POLY-04 semantic metric reports;
+- SM-POLY-05 visual/BBox evidence sidecars;
 - SM-POLY-06 source-quality profiles;
 - SM-POLY-07 polyphony-complexity profiles;
-- SM-POLY-08 per-engine reliability-calibration reports;
+- SM-POLY-08 reliability-calibration reports;
 - SM-POLY-09 ST-OMR shadow reports.
 
-The current production-engine maps remain exactly:
+The vector does **not** relabel those artifacts by engine or category. Upstream engine/category identity remains defined and validated inside the upstream artifact itself. This matters because SM-POLY-04 and SM-POLY-08 reports can contain multiple engine groups, while SM-POLY-05 sidecars carry their own candidate engine identity.
+
+The current production-engine set remains exactly:
 
 ```text
 audiveris
@@ -28,11 +30,11 @@ homr
 clarity
 ```
 
-ST-OMR is represented only in the separate `stOmrShadow` slot and is not added to the production candidate set.
+ST-OMR remains a separately identified shadow engine and is not added to the production candidate set.
 
 ## Reference-only integration
 
-SM-POLY-11 does not copy or reinterpret upstream metric values. Each evidence slot binds:
+SM-POLY-11 does not copy or reinterpret upstream metric values. Each evidence-family slot binds:
 
 - explicit availability;
 - exact upstream schema version;
@@ -49,7 +51,7 @@ The vector also binds the exact existing Stage 7 `resultSha256` under `scoremosa
 The vector uses canonical JSON, a content-derived `vectorId`, and `vectorSha256`. Validation recomputes:
 
 - evidence-set hashes;
-- available evidence count;
+- available evidence-family count;
 - vector identity;
 - vector SHA-256;
 - fixed authority boundaries.
@@ -66,7 +68,7 @@ engineRanking = null
 winner = null
 ```
 
-Reliability evidence, source quality, visual localization, semantic metrics, complexity, and ST-OMR shadow evidence remain separate evidence families. V2 does not invent a weighting formula or selective-prediction threshold.
+Reliability evidence, source quality, visual localization, semantic metrics, complexity, and ST-OMR shadow evidence remain separate evidence families. V2 does not invent a weighting formula, engine-specific attribution outside upstream artifacts, or selective-prediction threshold.
 
 ## Authority boundaries
 
@@ -76,6 +78,7 @@ Every vector fixes:
 researchOnly=true
 readOnly=true
 descriptiveEvidenceOnly=true
+upstreamEvidenceReinterpreted=false
 stage7EvidenceMutation=false
 stage7QuorumContribution=false
 stage7QuorumChange=false
@@ -97,6 +100,7 @@ Therefore SM-POLY-11 does **not**:
 - change the current `>=2` Canonical-candidate rule;
 - add ST-OMR to Gateway or Stage 7 quorum;
 - rank Audiveris/HOMR/Clarity/ST-OMR;
+- relabel upstream evidence by engine/category;
 - choose a winning candidate;
 - generate an overall confidence score;
 - merge or repair MusicXML;
