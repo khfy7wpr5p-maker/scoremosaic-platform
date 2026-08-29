@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/st-omr-shadow-report-v1.schema.json",
+  "title": "ScoreMosaic ST-OMR Shadow Report v1",
+  "description": "Deterministic research report for ST-OMR Teacher-Gold shadow evidence, pinned to current-engine benchmark report identities.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-st-omr-shadow-report-v1"},
+    "reportId": {"type": "string", "pattern": "^st_omr_shadow_report_[0-9a-f]{24}$"},
+    "shadowEngine": {"const": "st-omr"},
+    "observationCount": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "observationSetSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "teacherGoldReferenceSha256Set": {"type": "array", "minItems": 1, "maxItems": 10000, "uniqueItems": true, "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "modelManifestSha256Set": {"type": "array", "minItems": 1, "maxItems": 10000, "uniqueItems": true, "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "categoryEvidence": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "prefixItems": [
+        {"$ref": "#/$defs/categoryParse"},
+        {"$ref": "#/$defs/categoryStructuralValidity"},
+        {"$ref": "#/$defs/categoryPitch"},
+        {"$ref": "#/$defs/categoryDuration"},
+        {"$ref": "#/$defs/categoryOnset"},
+        {"$ref": "#/$defs/categoryVoice"},
+        {"$ref": "#/$defs/categoryStaff"},
+        {"$ref": "#/$defs/categoryTie"},
+        {"$ref": "#/$defs/categoryTuplet"},
+        {"$ref": "#/$defs/categoryMeasureConsistency"},
+        {"$ref": "#/$defs/categoryRelationCorrectness"}
+      ],
+      "items": false
+    },
+    "currentEngineBaseline": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "methodVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+        "reportSha256ByEngine": {
+          "type": "object", "additionalProperties": false,
+          "properties": {"audiveris": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "homr": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "clarity": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+          "required": ["audiveris", "homr", "clarity"]
+        },
+        "completeCurrentEngineSet": {"const": true}
+      },
+      "required": ["methodVersion", "reportSha256ByEngine", "completeCurrentEngineSet"]
+    },
+    "boundaries": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "researchOnly": {"const": true}, "shadowOnly": {"const": true}, "readOnly": {"const": true}, "productionEligible": {"const": false}, "gatewayIntegration": {"const": false}, "stage7QuorumContribution": {"const": false}, "stage7EvidenceMutation": {"const": false}, "engineRanking": {"const": false}, "winnerSelection": {"const": false}, "automaticMerge": {"const": false}, "automaticCorrection": {"const": false}, "teacherAuthorityOverride": {"const": false}, "productionDecisionAuthority": {"const": false}
+      },
+      "required": ["researchOnly", "shadowOnly", "readOnly", "productionEligible", "gatewayIntegration", "stage7QuorumContribution", "stage7EvidenceMutation", "engineRanking", "winnerSelection", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "productionDecisionAuthority"]
+    },
+    "reportSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "exactRational": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 1}
+      },
+      "required": ["numerator", "denominator"]
+    },
+    "categoryMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "availableObservationCount": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "correct": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 0},
+        "accuracy": {"anyOf": [{"$ref": "#/$defs/exactRational"}, {"type": "null"}]}
+      },
+      "required": ["availableObservationCount", "correct", "total", "accuracy"]
+    },
+    "categoryParse": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "parse"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryStructuralValidity": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "structuralValidity"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryPitch": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "pitch"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryDuration": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "duration"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryOnset": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "onset"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryVoice": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "voice"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryStaff": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "staff"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryTie": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "tie"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryTuplet": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "tuplet"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryMeasureConsistency": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "measureConsistency"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]},
+    "categoryRelationCorrectness": {"type": "object", "additionalProperties": false, "properties": {"category": {"const": "relationCorrectness"}, "metric": {"$ref": "#/$defs/categoryMetric"}}, "required": ["category", "metric"]}
+  },
+  "required": ["schemaVersion", "reportId", "shadowEngine", "observationCount", "observationSetSha256", "teacherGoldReferenceSha256Set", "modelManifestSha256Set", "categoryEvidence", "currentEngineBaseline", "boundaries", "reportSha256"]
+}

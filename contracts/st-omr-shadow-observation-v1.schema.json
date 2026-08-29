@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/st-omr-shadow-observation-v1.schema.json",
+  "title": "ScoreMosaic ST-OMR Shadow Observation v1",
+  "description": "Research-only Teacher-Gold observation for ST-OMR. It grants no Gateway, Stage 7, winner, merge, correction, or teacher authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-st-omr-shadow-observation-v1"},
+    "observationId": {"type": "string", "pattern": "^st_omr_shadow_obs_[0-9a-f]{24}$"},
+    "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
+    "reference": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"kind": {"const": "TEACHER_GOLD"}, "artifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "verified": {"const": true}},
+      "required": ["kind", "artifactSha256", "verified"]
+    },
+    "engine": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "name": {"const": "st-omr"},
+        "engineVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+        "modelVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+        "modelManifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "modelArtifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "trainingCodeRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "candidateArtifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "canonicalSha256": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{64}$"}, {"type": "null"}]}
+      },
+      "required": ["name", "engineVersion", "modelVersion", "modelManifestSha256", "modelArtifactSha256", "trainingCodeRevision", "candidateArtifactSha256", "canonicalSha256"]
+    },
+    "runBinding": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "sourceDocumentSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "preparedPageSetSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "jobId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "bindingMethodVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"}
+      },
+      "required": ["sourceDocumentSha256", "preparedPageSetSha256", "jobId", "runId", "bindingMethodVersion"]
+    },
+    "parse": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"attempted": {"const": true}, "success": {"type": "boolean"}},
+      "required": ["attempted", "success"]
+    },
+    "structuralValidity": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"available": {"type": "boolean"}, "valid": {"type": ["boolean", "null"]}},
+      "required": ["available", "valid"]
+    },
+    "semanticMetrics": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "pitch": {"$ref": "#/$defs/metric"}, "duration": {"$ref": "#/$defs/metric"}, "onset": {"$ref": "#/$defs/metric"}, "voice": {"$ref": "#/$defs/metric"}, "staff": {"$ref": "#/$defs/metric"}, "tie": {"$ref": "#/$defs/metric"}, "tuplet": {"$ref": "#/$defs/metric"}
+      },
+      "required": ["pitch", "duration", "onset", "voice", "staff", "tie", "tuplet"]
+    },
+    "measureConsistency": {"$ref": "#/$defs/metric"},
+    "relationCorrectness": {"$ref": "#/$defs/metric"},
+    "context": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "complexityProfileId": {"anyOf": [{"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, {"type": "null"}]},
+        "complexityProfileSha256": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{64}$"}, {"type": "null"}]},
+        "sourceQualityProfileId": {"anyOf": [{"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, {"type": "null"}]},
+        "sourceQualityProfileSha256": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{64}$"}, {"type": "null"}]}
+      },
+      "required": ["complexityProfileId", "complexityProfileSha256", "sourceQualityProfileId", "sourceQualityProfileSha256"]
+    },
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "observationSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "metric": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"available": {"type": "boolean"}, "correct": {"type": ["integer", "null"], "minimum": 0}, "total": {"type": ["integer", "null"], "minimum": 0}},
+      "required": ["available", "correct", "total"]
+    },
+    "boundaries": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "researchOnly": {"const": true}, "shadowOnly": {"const": true}, "readOnly": {"const": true}, "productionEligible": {"const": false}, "gatewayIntegration": {"const": false}, "stage7QuorumContribution": {"const": false}, "stage7EvidenceMutation": {"const": false}, "engineRanking": {"const": false}, "winnerSelection": {"const": false}, "automaticMerge": {"const": false}, "automaticCorrection": {"const": false}, "teacherAuthorityOverride": {"const": false}, "productionDecisionAuthority": {"const": false}
+      },
+      "required": ["researchOnly", "shadowOnly", "readOnly", "productionEligible", "gatewayIntegration", "stage7QuorumContribution", "stage7EvidenceMutation", "engineRanking", "winnerSelection", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "productionDecisionAuthority"]
+    }
+  },
+  "required": ["schemaVersion", "observationId", "fixtureId", "reference", "engine", "runBinding", "parse", "structuralValidity", "semanticMetrics", "measureConsistency", "relationCorrectness", "context", "boundaries", "observationSha256"]
+}
