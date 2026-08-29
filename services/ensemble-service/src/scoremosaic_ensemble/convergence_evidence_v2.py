@@ -1,8 +1,11 @@
 """SM-POLY-11 research-only Convergence Evidence Vector v2.
 
 The vector binds immutable evidence produced by earlier ScoreMosaic research
-stages beside an existing Stage 7 convergence result. It is descriptive only:
-it does not mutate Stage 7 evidence, rank engines, choose a winner, merge or
+stages beside an existing Stage 7 convergence result. It deliberately treats
+upstream artifacts as opaque, SHA-pinned evidence sets: engine/category identity
+remains authoritative only inside the validated upstream artifact itself.
+
+This package does not mutate Stage 7, rank engines, choose a winner, merge or
 correct MusicXML, promote ST-OMR, or override Teacher Review authority.
 """
 from __future__ import annotations
@@ -18,6 +21,14 @@ STAGE7_FORMAT_VERSION = "scoremosaic-stage7-convergence-v1"
 PRODUCTION_ENGINES = ("audiveris", "homr", "clarity")
 SHADOW_ENGINE = "st-omr"
 MAX_ARTIFACTS_PER_SLOT = 10_000
+EVIDENCE_FAMILIES = (
+    "semanticMetrics",
+    "visualEvidence",
+    "sourceQuality",
+    "polyphonyComplexity",
+    "reliabilityCalibration",
+    "stOmrShadow",
+)
 
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _VECTOR_RE = re.compile(r"convergence_evidence_v2_[0-9a-f]{24}\Z")
@@ -28,6 +39,7 @@ _BOUNDARIES = {
     "researchOnly": True,
     "readOnly": True,
     "descriptiveEvidenceOnly": True,
+    "upstreamEvidenceReinterpreted": False,
     "stage7EvidenceMutation": False,
     "stage7QuorumContribution": False,
     "stage7QuorumChange": False,
@@ -102,7 +114,7 @@ def unavailable_evidence_slot() -> dict[str, Any]:
 def evidence_slot(
     *, schema_version: str, binding_method_version: str, artifact_sha256s: list[str]
 ) -> dict[str, Any]:
-    """Build an immutable evidence-set reference without interpreting its score."""
+    """Build an immutable evidence-set reference without interpreting its contents."""
     if type(artifact_sha256s) is not list:
         raise ConvergenceEvidenceV2Error("evidence_slot_invalid")
     values = sorted(artifact_sha256s)
@@ -159,13 +171,6 @@ def _validate_slot(
     return slot
 
 
-def _validate_engine_slots(value: object, *, family: str) -> None:
-    slots = _exact(value, set(PRODUCTION_ENGINES), f"{family}_engine_set_invalid")
-    allowed = _FAMILY_SCHEMA_VERSIONS[family]
-    for engine in PRODUCTION_ENGINES:
-        _validate_slot(slots[engine], allowed_schema_versions=allowed)
-
-
 def _vector_identity(payload: Mapping[str, Any]) -> dict[str, Any]:
     value = deepcopy(dict(payload))
     value.pop("vectorId", None)
@@ -218,34 +223,12 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
         raise ConvergenceEvidenceV2Error("stage7_reference_invalid")
 
     evidence = _exact(
-        vector["evidence"],
-        {
-            "semanticMetrics",
-            "visualEvidence",
-            "sourceQuality",
-            "polyphonyComplexity",
-            "reliabilityCalibration",
-            "stOmrShadow",
-        },
-        "convergence_evidence_family_set_invalid",
+        vector["evidence"], set(EVIDENCE_FAMILIES), "convergence_evidence_family_set_invalid"
     )
-    _validate_engine_slots(evidence["semanticMetrics"], family="semanticMetrics")
-    _validate_engine_slots(evidence["visualEvidence"], family="visualEvidence")
-    _validate_slot(
-        evidence["sourceQuality"],
-        allowed_schema_versions=_FAMILY_SCHEMA_VERSIONS["sourceQuality"],
-    )
-    _validate_slot(
-        evidence["polyphonyComplexity"],
-        allowed_schema_versions=_FAMILY_SCHEMA_VERSIONS["polyphonyComplexity"],
-    )
-    _validate_engine_slots(
-        evidence["reliabilityCalibration"], family="reliabilityCalibration"
-    )
-    _validate_slot(
-        evidence["stOmrShadow"],
-        allowed_schema_versions=_FAMILY_SCHEMA_VERSIONS["stOmrShadow"],
-    )
+    for family in EVIDENCE_FAMILIES:
+        _validate_slot(
+            evidence[family], allowed_schema_versions=_FAMILY_SCHEMA_VERSIONS[family]
+        )
 
     derived = _exact(
         vector["derivedState"],
@@ -259,18 +242,7 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
         },
         "convergence_evidence_derived_state_invalid",
     )
-    expected_available = sum(
-        1
-        for slot in (
-            *(evidence["semanticMetrics"][engine] for engine in PRODUCTION_ENGINES),
-            *(evidence["visualEvidence"][engine] for engine in PRODUCTION_ENGINES),
-            evidence["sourceQuality"],
-            evidence["polyphonyComplexity"],
-            *(evidence["reliabilityCalibration"][engine] for engine in PRODUCTION_ENGINES),
-            evidence["stOmrShadow"],
-        )
-        if slot["available"]
-    )
+    expected_available = sum(1 for family in EVIDENCE_FAMILIES if evidence[family]["available"])
     if (
         derived["productionCandidateEngines"] != list(PRODUCTION_ENGINES)
         or derived["shadowEngine"] != SHADOW_ENGINE
@@ -310,41 +282,20 @@ def build_convergence_evidence_vector(
     source_document_sha256: str,
     stage7_result_sha256: str,
     stage7_binding_method_version: str,
-    semantic_metrics_by_engine: Mapping[str, Mapping[str, Any]],
-    visual_evidence_by_engine: Mapping[str, Mapping[str, Any]],
+    semantic_metrics: Mapping[str, Any],
+    visual_evidence: Mapping[str, Any],
     source_quality: Mapping[str, Any],
     polyphony_complexity: Mapping[str, Any],
-    reliability_calibration_by_engine: Mapping[str, Mapping[str, Any]],
+    reliability_calibration: Mapping[str, Any],
     st_omr_shadow: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Build a deterministic v2 evidence vector without deriving decision authority."""
-    semantic = _exact(
-        semantic_metrics_by_engine,
-        set(PRODUCTION_ENGINES),
-        "semanticMetrics_engine_set_invalid",
-    )
-    visual = _exact(
-        visual_evidence_by_engine,
-        set(PRODUCTION_ENGINES),
-        "visualEvidence_engine_set_invalid",
-    )
-    reliability = _exact(
-        reliability_calibration_by_engine,
-        set(PRODUCTION_ENGINES),
-        "reliabilityCalibration_engine_set_invalid",
-    )
     evidence = {
-        "semanticMetrics": {
-            engine: deepcopy(dict(semantic[engine])) for engine in PRODUCTION_ENGINES
-        },
-        "visualEvidence": {
-            engine: deepcopy(dict(visual[engine])) for engine in PRODUCTION_ENGINES
-        },
+        "semanticMetrics": deepcopy(dict(semantic_metrics)),
+        "visualEvidence": deepcopy(dict(visual_evidence)),
         "sourceQuality": deepcopy(dict(source_quality)),
         "polyphonyComplexity": deepcopy(dict(polyphony_complexity)),
-        "reliabilityCalibration": {
-            engine: deepcopy(dict(reliability[engine])) for engine in PRODUCTION_ENGINES
-        },
+        "reliabilityCalibration": deepcopy(dict(reliability_calibration)),
         "stOmrShadow": deepcopy(dict(st_omr_shadow)),
     }
     vector: dict[str, Any] = {
@@ -365,26 +316,15 @@ def build_convergence_evidence_vector(
         "derivedState": {
             "productionCandidateEngines": list(PRODUCTION_ENGINES),
             "shadowEngine": SHADOW_ENGINE,
-            "availableEvidenceFamilyCount": 0,
+            "availableEvidenceFamilyCount": sum(
+                1 for family in EVIDENCE_FAMILIES if evidence[family].get("available") is True
+            ),
             "aggregateConfidenceScore": None,
             "engineRanking": None,
             "winner": None,
         },
         "boundaries": deepcopy(_BOUNDARIES),
     }
-    available = 0
-    for family in ("semanticMetrics", "visualEvidence", "reliabilityCalibration"):
-        available += sum(
-            1
-            for engine in PRODUCTION_ENGINES
-            if evidence[family][engine].get("available") is True
-        )
-    available += sum(
-        1
-        for family in ("sourceQuality", "polyphonyComplexity", "stOmrShadow")
-        if evidence[family].get("available") is True
-    )
-    vector["derivedState"]["availableEvidenceFamilyCount"] = available
     vector["vectorId"] = "convergence_evidence_v2_" + sha256(
         _canonical_json(_vector_identity(vector))
     ).hexdigest()[:24]
