@@ -19,6 +19,8 @@ from typing import Any, Mapping
 
 SCHEMA_VERSION = "scoremosaic-convergence-evidence-vector-v2"
 STAGE7_FORMAT_VERSION = "scoremosaic-stage7-convergence-v1"
+STAGE7_BINDING_METHOD_VERSION = "STAGE7_RESULT_SHA256_REFERENCE_V1"
+EVIDENCE_BINDING_METHOD_VERSION = "SHA256_ARTIFACT_SET_REFERENCE_V1"
 CONTEXT_METHOD_VERSION = "OPAQUE_UPSTREAM_ARTIFACT_SET_CONTEXT_V1"
 PRODUCTION_ENGINES = ("audiveris", "homr", "clarity")
 SHADOW_ENGINE = "st-omr"
@@ -34,7 +36,6 @@ EVIDENCE_FAMILIES = (
 
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _VECTOR_RE = re.compile(r"convergence_evidence_v2_[0-9a-f]{24}\Z")
-_VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}\Z")
 
 _BOUNDARIES = {
     "researchOnly": True,
@@ -113,9 +114,7 @@ def unavailable_evidence_slot() -> dict[str, Any]:
     }
 
 
-def evidence_slot(
-    *, schema_version: str, binding_method_version: str, artifact_sha256s: list[str]
-) -> dict[str, Any]:
+def evidence_slot(*, schema_version: str, artifact_sha256s: list[str]) -> dict[str, Any]:
     """Build an immutable evidence-set reference without interpreting its contents."""
     if type(artifact_sha256s) is not list:
         raise ConvergenceEvidenceV2Error("evidence_slot_invalid")
@@ -123,7 +122,7 @@ def evidence_slot(
     slot = {
         "available": True,
         "schemaVersion": schema_version,
-        "bindingMethodVersion": binding_method_version,
+        "bindingMethodVersion": EVIDENCE_BINDING_METHOD_VERSION,
         "artifactSha256Set": values,
         "artifactSetSha256": _artifact_set_sha256(values),
     }
@@ -151,8 +150,8 @@ def _validate_slot(
     values = slot["artifactSha256Set"]
     if slot["available"]:
         if (
-            not _matches(_VERSION_RE, slot["schemaVersion"])
-            or not _matches(_VERSION_RE, slot["bindingMethodVersion"])
+            type(slot["schemaVersion"]) is not str
+            or slot["bindingMethodVersion"] != EVIDENCE_BINDING_METHOD_VERSION
             or not 1 <= len(values) <= MAX_ARTIFACTS_PER_SLOT
             or any(not _matches(_SHA_RE, item) for item in values)
             or values != sorted(values)
@@ -207,7 +206,7 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
     if (
         stage7["formatVersion"] != STAGE7_FORMAT_VERSION
         or not _matches(_SHA_RE, stage7["resultSha256"])
-        or not _matches(_VERSION_RE, stage7["bindingMethodVersion"])
+        or stage7["bindingMethodVersion"] != STAGE7_BINDING_METHOD_VERSION
         or stage7["authoritative"] is not False
     ):
         raise ConvergenceEvidenceV2Error("stage7_reference_invalid")
@@ -280,7 +279,6 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
 def build_convergence_evidence_vector(
     *,
     stage7_result_sha256: str,
-    stage7_binding_method_version: str,
     semantic_metrics: Mapping[str, Any],
     visual_evidence: Mapping[str, Any],
     source_quality: Mapping[str, Any],
@@ -303,7 +301,7 @@ def build_convergence_evidence_vector(
         "stage7Convergence": {
             "formatVersion": STAGE7_FORMAT_VERSION,
             "resultSha256": stage7_result_sha256,
-            "bindingMethodVersion": stage7_binding_method_version,
+            "bindingMethodVersion": STAGE7_BINDING_METHOD_VERSION,
             "authoritative": False,
         },
         "evidenceContext": {
