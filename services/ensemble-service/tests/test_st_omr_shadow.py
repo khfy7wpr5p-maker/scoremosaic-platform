@@ -70,6 +70,18 @@ class StOmrShadowTests(unittest.TestCase):
         self.assertFalse(boundary_schema["properties"]["productionEligible"]["const"])
         self.assertFalse(boundary_schema["properties"]["stage7QuorumContribution"]["const"])
 
+    def test_report_schema_category_sequence_matches_validator(self):
+        category_schema = REPORT_SCHEMA["properties"]["categoryEvidence"]
+        self.assertFalse(category_schema["items"])
+        refs = category_schema["prefixItems"]
+        categories = [
+            REPORT_SCHEMA["$defs"][item["$ref"].rsplit("/", 1)[-1]]["properties"]["category"]["const"]
+            for item in refs
+        ]
+        self.assertEqual(categories, list(sm.CATEGORY_NAMES))
+        self.assertEqual(category_schema["minItems"], len(sm.CATEGORY_NAMES))
+        self.assertEqual(category_schema["maxItems"], len(sm.CATEGORY_NAMES))
+
     def test_authority_regression_matches_current_architecture(self):
         current = ARCHITECTURE["currentOmr"]
         self.assertEqual(current["productionCandidateEngines"], ["audiveris", "homr", "clarity"])
