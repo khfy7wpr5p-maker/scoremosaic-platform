@@ -43,9 +43,6 @@ def unavailable():
 
 def vector(**overrides):
     args = dict(
-        fixture_id="poly_fixture_fixture001",
-        teacher_gold_reference_sha256=SHA_A,
-        source_document_sha256=SHA_B,
         stage7_result_sha256=SHA_C,
         stage7_binding_method_version="stage7-result-reference-v1",
         semantic_metrics=slot(
@@ -75,6 +72,7 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
         self.assertTrue(SCHEMA["$defs"])
         boundaries = SCHEMA["$defs"]["boundaries"]["properties"]
         self.assertFalse(boundaries["upstreamEvidenceReinterpreted"]["const"])
+        self.assertFalse(boundaries["crossArtifactIdentityMatchClaimed"]["const"])
         self.assertFalse(boundaries["stage7EvidenceMutation"]["const"])
         self.assertFalse(boundaries["stage7QuorumContribution"]["const"])
         self.assertFalse(boundaries["winnerSelection"]["const"])
@@ -105,14 +103,34 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
         self.assertIsNone(one["derivedState"]["engineRanking"])
         self.assertIsNone(one["derivedState"]["winner"])
 
+    def test_context_does_not_claim_unverified_fixture_or_cross_artifact_identity(self):
+        item = vector()
+        self.assertEqual(
+            item["evidenceContext"]["methodVersion"],
+            "OPAQUE_UPSTREAM_ARTIFACT_SET_CONTEXT_V1",
+        )
+        self.assertFalse(item["evidenceContext"]["directFixtureBindingClaimed"])
+        self.assertFalse(item["evidenceContext"]["crossArtifactIdentityMatchClaimed"])
+        self.assertFalse(item["boundaries"]["crossArtifactIdentityMatchClaimed"])
+        self.assertNotIn("fixtureId", item)
+        self.assertNotIn("teacherGoldReferenceSha256", item)
+        self.assertNotIn("sourceDocumentSha256", item)
+
     def test_upstream_artifacts_are_bound_as_opaque_family_sets(self):
         item = vector()
         semantic = item["evidence"]["semanticMetrics"]
         reliability = item["evidence"]["reliabilityCalibration"]
         visual = item["evidence"]["visualEvidence"]
-        self.assertEqual(set(semantic), {"available", "schemaVersion", "bindingMethodVersion", "artifactSha256Set", "artifactSetSha256"})
-        self.assertEqual(set(reliability), set(semantic))
-        self.assertEqual(set(visual), set(semantic))
+        slot_keys = {
+            "available",
+            "schemaVersion",
+            "bindingMethodVersion",
+            "artifactSha256Set",
+            "artifactSetSha256",
+        }
+        self.assertEqual(set(semantic), slot_keys)
+        self.assertEqual(set(reliability), slot_keys)
+        self.assertEqual(set(visual), slot_keys)
         self.assertEqual(visual["artifactSha256Set"], [SHA_A, SHA_B, SHA_C])
         self.assertNotIn("audiveris", visual)
         self.assertFalse(item["boundaries"]["upstreamEvidenceReinterpreted"])
@@ -171,6 +189,16 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
         body.pop("vectorSha256")
         bad["vectorSha256"] = hashlib.sha256(sm._canonical_json(body)).hexdigest()
         with self.assertRaisesRegex(sm.ConvergenceEvidenceV2Error, "authority_boundary_invalid"):
+            sm.validate_convergence_evidence_vector(bad)
+
+    def test_context_claim_tamper_fails_even_if_rehashed(self):
+        item = vector()
+        bad = copy.deepcopy(item)
+        bad["evidenceContext"]["crossArtifactIdentityMatchClaimed"] = True
+        body = copy.deepcopy(bad)
+        body.pop("vectorSha256")
+        bad["vectorSha256"] = hashlib.sha256(sm._canonical_json(body)).hexdigest()
+        with self.assertRaisesRegex(sm.ConvergenceEvidenceV2Error, "evidence_context_invalid"):
             sm.validate_convergence_evidence_vector(bad)
 
     def test_shadow_evidence_never_changes_production_engine_set(self):
