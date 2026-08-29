@@ -29,24 +29,16 @@ SHA_E = "e" * 64
 SHA_F = "f" * 64
 
 
-def slot(schema_version: str, digest: str = SHA_A):
+def slot(schema_version: str, *digests: str):
     return sm.evidence_slot(
         schema_version=schema_version,
         binding_method_version="sha256-reference-v1",
-        artifact_sha256s=[digest],
+        artifact_sha256s=list(digests or (SHA_A,)),
     )
 
 
 def unavailable():
     return sm.unavailable_evidence_slot()
-
-
-def engine_slots(schema_version: str):
-    return {
-        "audiveris": slot(schema_version, SHA_A),
-        "homr": slot(schema_version, SHA_B),
-        "clarity": slot(schema_version, SHA_C),
-    }
 
 
 def vector(**overrides):
@@ -56,18 +48,20 @@ def vector(**overrides):
         source_document_sha256=SHA_B,
         stage7_result_sha256=SHA_C,
         stage7_binding_method_version="stage7-result-reference-v1",
-        semantic_metrics_by_engine=engine_slots(
-            "scoremosaic-polyphonic-engine-semantic-report-v1"
+        semantic_metrics=slot(
+            "scoremosaic-polyphonic-engine-semantic-report-v1", SHA_A
         ),
-        visual_evidence_by_engine={engine: unavailable() for engine in sm.PRODUCTION_ENGINES},
+        visual_evidence=slot(
+            "scoremosaic-polyphonic-visual-evidence-sidecar-v1", SHA_A, SHA_B, SHA_C
+        ),
         source_quality=slot(
             "scoremosaic-polyphonic-source-quality-profile-v1", SHA_D
         ),
         polyphony_complexity=slot(
             "scoremosaic-polyphonic-complexity-profile-v1", SHA_E
         ),
-        reliability_calibration_by_engine=engine_slots(
-            "scoremosaic-engine-reliability-report-v1"
+        reliability_calibration=slot(
+            "scoremosaic-engine-reliability-report-v1", SHA_B
         ),
         st_omr_shadow=slot("scoremosaic-st-omr-shadow-report-v1", SHA_F),
     )
@@ -80,6 +74,7 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
         self.assertFalse(SCHEMA["additionalProperties"])
         self.assertTrue(SCHEMA["$defs"])
         boundaries = SCHEMA["$defs"]["boundaries"]["properties"]
+        self.assertFalse(boundaries["upstreamEvidenceReinterpreted"]["const"])
         self.assertFalse(boundaries["stage7EvidenceMutation"]["const"])
         self.assertFalse(boundaries["stage7QuorumContribution"]["const"])
         self.assertFalse(boundaries["winnerSelection"]["const"])
@@ -110,20 +105,31 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
         self.assertIsNone(one["derivedState"]["engineRanking"])
         self.assertIsNone(one["derivedState"]["winner"])
 
-    def test_evidence_family_availability_is_explicit(self):
+    def test_upstream_artifacts_are_bound_as_opaque_family_sets(self):
         item = vector()
-        self.assertFalse(item["evidence"]["visualEvidence"]["audiveris"]["available"])
-        self.assertEqual(
-            item["evidence"]["visualEvidence"]["audiveris"]["artifactSha256Set"], []
-        )
+        semantic = item["evidence"]["semanticMetrics"]
+        reliability = item["evidence"]["reliabilityCalibration"]
+        visual = item["evidence"]["visualEvidence"]
+        self.assertEqual(set(semantic), {"available", "schemaVersion", "bindingMethodVersion", "artifactSha256Set", "artifactSetSha256"})
+        self.assertEqual(set(reliability), set(semantic))
+        self.assertEqual(set(visual), set(semantic))
+        self.assertEqual(visual["artifactSha256Set"], [SHA_A, SHA_B, SHA_C])
+        self.assertNotIn("audiveris", visual)
+        self.assertFalse(item["boundaries"]["upstreamEvidenceReinterpreted"])
+
+    def test_evidence_family_availability_is_explicit(self):
+        item = vector(visual_evidence=unavailable())
+        self.assertFalse(item["evidence"]["visualEvidence"]["available"])
+        self.assertEqual(item["evidence"]["visualEvidence"]["artifactSha256Set"], [])
         self.assertTrue(item["evidence"]["stOmrShadow"]["available"])
         self.assertFalse(item["boundaries"]["stOmrProductionPromotion"])
         self.assertFalse(item["boundaries"]["stage7QuorumContribution"])
+        self.assertEqual(item["derivedState"]["availableEvidenceFamilyCount"], 5)
 
     def test_unavailable_slot_rejects_hidden_evidence(self):
-        item = vector()
+        item = vector(visual_evidence=unavailable())
         bad = copy.deepcopy(item)
-        visual = bad["evidence"]["visualEvidence"]["audiveris"]
+        visual = bad["evidence"]["visualEvidence"]
         visual["artifactSha256Set"] = [SHA_A]
         visual["artifactSetSha256"] = hashlib.sha256(
             sm._canonical_json([SHA_A])
@@ -137,11 +143,11 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
             sm.validate_convergence_evidence_vector(bad)
 
     def test_wrong_family_schema_fails_closed(self):
-        semantic = engine_slots("scoremosaic-engine-reliability-report-v1")
+        wrong = slot("scoremosaic-engine-reliability-report-v1", SHA_A)
         with self.assertRaisesRegex(
             sm.ConvergenceEvidenceV2Error, "evidence_family_schema_invalid"
         ):
-            vector(semantic_metrics_by_engine=semantic)
+            vector(semantic_metrics=wrong)
 
     def test_artifact_sets_are_sorted_unique_and_content_bound(self):
         one = sm.evidence_slot(
@@ -187,8 +193,9 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
 
     def test_available_count_is_recomputed(self):
         item = vector()
+        self.assertEqual(item["derivedState"]["availableEvidenceFamilyCount"], 6)
         bad = copy.deepcopy(item)
-        bad["derivedState"]["availableEvidenceFamilyCount"] += 1
+        bad["derivedState"]["availableEvidenceFamilyCount"] = 5
         identity = copy.deepcopy(bad)
         identity.pop("vectorId")
         identity.pop("vectorSha256")
