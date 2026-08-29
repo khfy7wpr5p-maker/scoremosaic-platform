@@ -1,12 +1,13 @@
 """SM-POLY-11 research-only Convergence Evidence Vector v2.
 
 The vector binds immutable evidence produced by earlier ScoreMosaic research
-stages beside an existing Stage 7 convergence result. It deliberately treats
-upstream artifacts as opaque, SHA-pinned evidence sets: engine/category identity
-remains authoritative only inside the validated upstream artifact itself.
+stages beside an existing Stage 7 convergence result. Upstream artifacts remain
+opaque SHA-pinned evidence sets: engine/category/fixture identity remains
+authoritative only inside each validated upstream artifact.
 
-This package does not mutate Stage 7, rank engines, choose a winner, merge or
-correct MusicXML, promote ST-OMR, or override Teacher Review authority.
+This package does not claim cross-artifact identity equivalence, mutate Stage 7,
+rank engines, choose a winner, merge/correct MusicXML, promote ST-OMR, or
+override Teacher Review authority.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from typing import Any, Mapping
 
 SCHEMA_VERSION = "scoremosaic-convergence-evidence-vector-v2"
 STAGE7_FORMAT_VERSION = "scoremosaic-stage7-convergence-v1"
+CONTEXT_METHOD_VERSION = "OPAQUE_UPSTREAM_ARTIFACT_SET_CONTEXT_V1"
 PRODUCTION_ENGINES = ("audiveris", "homr", "clarity")
 SHADOW_ENGINE = "st-omr"
 MAX_ARTIFACTS_PER_SLOT = 10_000
@@ -32,7 +34,6 @@ EVIDENCE_FAMILIES = (
 
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _VECTOR_RE = re.compile(r"convergence_evidence_v2_[0-9a-f]{24}\Z")
-_FIXTURE_RE = re.compile(r"poly_fixture_[A-Za-z0-9_-]{8,96}\Z")
 _VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}\Z")
 
 _BOUNDARIES = {
@@ -40,6 +41,7 @@ _BOUNDARIES = {
     "readOnly": True,
     "descriptiveEvidenceOnly": True,
     "upstreamEvidenceReinterpreted": False,
+    "crossArtifactIdentityMatchClaimed": False,
     "stage7EvidenceMutation": False,
     "stage7QuorumContribution": False,
     "stage7QuorumChange": False,
@@ -185,8 +187,8 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
         {
             "schemaVersion",
             "vectorId",
-            "scope",
             "stage7Convergence",
+            "evidenceContext",
             "evidence",
             "derivedState",
             "boundaries",
@@ -196,18 +198,6 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
     )
     if vector["schemaVersion"] != SCHEMA_VERSION or not _matches(_VECTOR_RE, vector["vectorId"]):
         raise ConvergenceEvidenceV2Error("convergence_evidence_v2_schema_invalid")
-
-    scope = _exact(
-        vector["scope"],
-        {"fixtureId", "teacherGoldReferenceSha256", "sourceDocumentSha256"},
-        "convergence_evidence_scope_invalid",
-    )
-    if (
-        not _matches(_FIXTURE_RE, scope["fixtureId"])
-        or not _matches(_SHA_RE, scope["teacherGoldReferenceSha256"])
-        or not _matches(_SHA_RE, scope["sourceDocumentSha256"])
-    ):
-        raise ConvergenceEvidenceV2Error("convergence_evidence_scope_invalid")
 
     stage7 = _exact(
         vector["stage7Convergence"],
@@ -221,6 +211,18 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
         or stage7["authoritative"] is not False
     ):
         raise ConvergenceEvidenceV2Error("stage7_reference_invalid")
+
+    context = _exact(
+        vector["evidenceContext"],
+        {"methodVersion", "directFixtureBindingClaimed", "crossArtifactIdentityMatchClaimed"},
+        "evidence_context_invalid",
+    )
+    if (
+        context["methodVersion"] != CONTEXT_METHOD_VERSION
+        or context["directFixtureBindingClaimed"] is not False
+        or context["crossArtifactIdentityMatchClaimed"] is not False
+    ):
+        raise ConvergenceEvidenceV2Error("evidence_context_invalid")
 
     evidence = _exact(
         vector["evidence"], set(EVIDENCE_FAMILIES), "convergence_evidence_family_set_invalid"
@@ -277,9 +279,6 @@ def validate_convergence_evidence_vector(payload: Mapping[str, Any]) -> dict[str
 
 def build_convergence_evidence_vector(
     *,
-    fixture_id: str,
-    teacher_gold_reference_sha256: str,
-    source_document_sha256: str,
     stage7_result_sha256: str,
     stage7_binding_method_version: str,
     semantic_metrics: Mapping[str, Any],
@@ -289,7 +288,7 @@ def build_convergence_evidence_vector(
     reliability_calibration: Mapping[str, Any],
     st_omr_shadow: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Build a deterministic v2 evidence vector without deriving decision authority."""
+    """Build a deterministic v2 evidence context without claiming identity equivalence."""
     evidence = {
         "semanticMetrics": deepcopy(dict(semantic_metrics)),
         "visualEvidence": deepcopy(dict(visual_evidence)),
@@ -301,16 +300,16 @@ def build_convergence_evidence_vector(
     vector: dict[str, Any] = {
         "schemaVersion": SCHEMA_VERSION,
         "vectorId": "placeholder",
-        "scope": {
-            "fixtureId": fixture_id,
-            "teacherGoldReferenceSha256": teacher_gold_reference_sha256,
-            "sourceDocumentSha256": source_document_sha256,
-        },
         "stage7Convergence": {
             "formatVersion": STAGE7_FORMAT_VERSION,
             "resultSha256": stage7_result_sha256,
             "bindingMethodVersion": stage7_binding_method_version,
             "authoritative": False,
+        },
+        "evidenceContext": {
+            "methodVersion": CONTEXT_METHOD_VERSION,
+            "directFixtureBindingClaimed": False,
+            "crossArtifactIdentityMatchClaimed": False,
         },
         "evidence": evidence,
         "derivedState": {
