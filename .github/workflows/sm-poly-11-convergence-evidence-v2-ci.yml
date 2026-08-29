@@ -1,0 +1,153 @@
+name: SM-POLY-11 Convergence Evidence Vector v2 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-11-convergence-evidence-vector-v2"
+    paths:
+      - ".github/workflows/sm-poly-11-convergence-evidence-v2-ci.yml"
+      - "contracts/convergence-evidence-vector-v2.schema.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence_evidence_v2.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphonic_metrics.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/visual_evidence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/source_quality.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphony_complexity.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/reliability_calibration.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/st_omr_shadow.py"
+      - "services/ensemble-service/tests/test_convergence_evidence_v2.py"
+      - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
+      - "services/ensemble-service/tests/test_polyphonic_metrics.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "services/ensemble-service/tests/test_source_quality.py"
+      - "services/ensemble-service/tests/test_polyphony_complexity.py"
+      - "services/ensemble-service/tests/test_reliability_calibration.py"
+      - "services/ensemble-service/tests/test_reliability_calibration_context.py"
+      - "services/ensemble-service/tests/test_st_omr_shadow.py"
+      - "docs/sm-poly-11-convergence-evidence-vector-v2.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-11-convergence-evidence-v2-ci.yml"
+      - "contracts/convergence-evidence-vector-v2.schema.json"
+      - "contracts/architecture-current-state-v1.json"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence_evidence_v2.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphonic_metrics.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/visual_evidence.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/source_quality.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphony_complexity.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/reliability_calibration.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/st_omr_shadow.py"
+      - "services/ensemble-service/tests/test_convergence_evidence_v2.py"
+      - "services/ensemble-service/tests/test_stage7_convergence_integration.py"
+      - "services/ensemble-service/tests/test_polyphonic_metrics.py"
+      - "services/ensemble-service/tests/test_visual_evidence.py"
+      - "services/ensemble-service/tests/test_source_quality.py"
+      - "services/ensemble-service/tests/test_polyphony_complexity.py"
+      - "services/ensemble-service/tests/test_reliability_calibration.py"
+      - "services/ensemble-service/tests/test_reliability_calibration_context.py"
+      - "services/ensemble-service/tests/test_st_omr_shadow.py"
+      - "docs/sm-poly-11-convergence-evidence-vector-v2.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-11-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-convergence-evidence-vector-v2:
+    name: Validate SM-POLY-11 evidence vector v2
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile Ensemble source
+        run: python -m compileall -q services/ensemble-service/src
+
+      - name: Run SM-POLY-11 regressions
+        run: python -m unittest services/ensemble-service/tests/test_convergence_evidence_v2.py -v
+
+      - name: Re-run evidence-family regressions
+        run: >-
+          python -m unittest
+          services/ensemble-service/tests/test_polyphonic_metrics.py
+          services/ensemble-service/tests/test_visual_evidence.py
+          services/ensemble-service/tests/test_source_quality.py
+          services/ensemble-service/tests/test_polyphony_complexity.py
+          services/ensemble-service/tests/test_reliability_calibration.py
+          services/ensemble-service/tests/test_reliability_calibration_context.py
+          services/ensemble-service/tests/test_st_omr_shadow.py
+          -v
+
+      - name: Re-run Stage 7 convergence regressions
+        run: python -m unittest services/ensemble-service/tests/test_stage7_convergence_integration.py -v
+
+      - name: Validate repository foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Verify production authority remains unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/ensemble-service/src python - <<'PY'
+          import json
+          from pathlib import Path
+          import scoremosaic_ensemble.convergence_evidence_v2 as v2
+          import scoremosaic_ensemble.polyphonic_metrics as metrics
+          import scoremosaic_ensemble.reliability_calibration as reliability
+
+          architecture = json.loads(
+              Path("contracts/architecture-current-state-v1.json").read_text(encoding="utf-8")
+          )
+          current = architecture["currentOmr"]
+          assert current["productionCandidateEngines"] == ["audiveris", "homr", "clarity"]
+          assert current["stage7MinimumCanonicalCandidates"] == 2
+          assert current["stOmrIntegratedIntoGateway"] is False
+          assert current["automaticWinnerAuthority"] is False
+          assert architecture["teacherReview"]["productionWriteActivated"] is False
+          assert v2.PRODUCTION_ENGINES == ("audiveris", "homr", "clarity")
+          assert v2.SHADOW_ENGINE == "st-omr"
+          assert metrics.CURRENT_ENGINES == v2.PRODUCTION_ENGINES
+          assert reliability.CURRENT_ENGINES == v2.PRODUCTION_ENGINES
+          assert v2._BOUNDARIES["stage7EvidenceMutation"] is False
+          assert v2._BOUNDARIES["stage7QuorumContribution"] is False
+          assert v2._BOUNDARIES["winnerSelection"] is False
+          assert v2._BOUNDARIES["stOmrProductionPromotion"] is False
+          PY
+
+      - name: Verify Stage 7 does not consume v2 research evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          source = Path(
+              "services/ensemble-service/src/scoremosaic_ensemble/convergence.py"
+          ).read_text(encoding="utf-8")
+          assert "convergence_evidence_v2" not in source
+          assert '"winnerSelection": False' in source
+          assert '"automaticMerge": False' in source
+          assert '"automaticCorrection": False' in source
+          PY
+
+      - name: Check repository diff formatting
+        run: git diff --check
