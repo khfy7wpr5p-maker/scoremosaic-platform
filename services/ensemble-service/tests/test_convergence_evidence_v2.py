@@ -32,7 +32,6 @@ SHA_F = "f" * 64
 def slot(schema_version: str, *digests: str):
     return sm.evidence_slot(
         schema_version=schema_version,
-        binding_method_version="sha256-reference-v1",
         artifact_sha256s=list(digests or (SHA_A,)),
     )
 
@@ -44,7 +43,6 @@ def unavailable():
 def vector(**overrides):
     args = dict(
         stage7_result_sha256=SHA_C,
-        stage7_binding_method_version="stage7-result-reference-v1",
         semantic_metrics=slot(
             "scoremosaic-polyphonic-engine-semantic-report-v1", SHA_A
         ),
@@ -70,6 +68,12 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
     def test_schema_is_closed_and_has_nonempty_defs(self):
         self.assertFalse(SCHEMA["additionalProperties"])
         self.assertTrue(SCHEMA["$defs"])
+        self.assertEqual(
+            SCHEMA["properties"]["stage7Convergence"]["properties"]["bindingMethodVersion"]["const"],
+            sm.STAGE7_BINDING_METHOD_VERSION,
+        )
+        slot_binding = SCHEMA["$defs"]["slotBase"]["properties"]["bindingMethodVersion"]["anyOf"][0]["const"]
+        self.assertEqual(slot_binding, sm.EVIDENCE_BINDING_METHOD_VERSION)
         boundaries = SCHEMA["$defs"]["boundaries"]["properties"]
         self.assertFalse(boundaries["upstreamEvidenceReinterpreted"]["const"])
         self.assertFalse(boundaries["crossArtifactIdentityMatchClaimed"]["const"])
@@ -102,6 +106,25 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
         self.assertIsNone(one["derivedState"]["aggregateConfidenceScore"])
         self.assertIsNone(one["derivedState"]["engineRanking"])
         self.assertIsNone(one["derivedState"]["winner"])
+
+    def test_binding_methods_are_frozen(self):
+        item = vector()
+        self.assertEqual(
+            item["stage7Convergence"]["bindingMethodVersion"],
+            "STAGE7_RESULT_SHA256_REFERENCE_V1",
+        )
+        for family in sm.EVIDENCE_FAMILIES:
+            self.assertEqual(
+                item["evidence"][family]["bindingMethodVersion"],
+                "SHA256_ARTIFACT_SET_REFERENCE_V1",
+            )
+        bad = copy.deepcopy(item)
+        bad["evidence"]["semanticMetrics"]["bindingMethodVersion"] = "UNVERIFIED_CUSTOM_METHOD"
+        body = copy.deepcopy(bad)
+        body.pop("vectorSha256")
+        bad["vectorSha256"] = hashlib.sha256(sm._canonical_json(body)).hexdigest()
+        with self.assertRaisesRegex(sm.ConvergenceEvidenceV2Error, "evidence_slot_invalid"):
+            sm.validate_convergence_evidence_vector(bad)
 
     def test_context_does_not_claim_unverified_fixture_or_cross_artifact_identity(self):
         item = vector()
@@ -170,14 +193,12 @@ class ConvergenceEvidenceV2Tests(unittest.TestCase):
     def test_artifact_sets_are_sorted_unique_and_content_bound(self):
         one = sm.evidence_slot(
             schema_version="scoremosaic-polyphonic-visual-evidence-sidecar-v1",
-            binding_method_version="sha256-reference-v1",
             artifact_sha256s=[SHA_B, SHA_A],
         )
         self.assertEqual(one["artifactSha256Set"], [SHA_A, SHA_B])
         with self.assertRaisesRegex(sm.ConvergenceEvidenceV2Error, "evidence_slot_invalid"):
             sm.evidence_slot(
                 schema_version="scoremosaic-polyphonic-visual-evidence-sidecar-v1",
-                binding_method_version="sha256-reference-v1",
                 artifact_sha256s=[SHA_A, SHA_A],
             )
 
