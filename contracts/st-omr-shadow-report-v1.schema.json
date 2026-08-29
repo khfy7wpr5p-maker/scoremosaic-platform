@@ -25,7 +25,7 @@
               "availableObservationCount": {"type": "integer", "minimum": 0, "maximum": 10000},
               "correct": {"type": "integer", "minimum": 0},
               "total": {"type": "integer", "minimum": 0},
-              "accuracy": {"anyOf": [{"type": "object", "additionalProperties": false, "properties": {"numerator": {"type": "integer", "minimum": 0}, "denominator": {"type": "integer", "minimum": 1}}, "required": ["numerator", "denominator"]}, {"type": "null"}]}
+              "accuracy": {"anyOf": [{"$ref": "#/$defs/exactRational"}, {"type": "null"}]}
             },
             "required": ["availableObservationCount", "correct", "total", "accuracy"]
           }
@@ -54,6 +54,17 @@
       "required": ["researchOnly", "shadowOnly", "readOnly", "productionEligible", "gatewayIntegration", "stage7QuorumContribution", "stage7EvidenceMutation", "engineRanking", "winnerSelection", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "productionDecisionAuthority"]
     },
     "reportSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "exactRational": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 1}
+      },
+      "required": ["numerator", "denominator"]
+    }
   },
   "required": ["schemaVersion", "reportId", "shadowEngine", "observationCount", "observationSetSha256", "teacherGoldReferenceSha256Set", "modelManifestSha256Set", "categoryEvidence", "currentEngineBaseline", "boundaries", "reportSha256"]
 }
