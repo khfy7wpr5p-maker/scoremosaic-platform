@@ -25,7 +25,7 @@ semantic metrics, or Stage 7 differences.
 A reliability observation may use confidence only when its producer supplies an
 explicit bounded `0..10000` correctness-confidence value with provenance and a
 versioned method. Missing confidence remains `available=false`; it never becomes
-zero.
+zero, and unavailable confidence cannot carry a hidden method/source payload.
 
 Allowed v1 evidence sources are:
 
@@ -60,6 +60,10 @@ Supported v1 categories remain separate:
 
 No cross-category aggregate accuracy or reliability score is created.
 
+Observation IDs are deterministic and recomputed during validation. Reports
+also reject duplicate target-unit evidence for the same fixture, engine/version,
+semantic category, target unit, confidence source, and confidence method.
+
 ## Context from SM-POLY-06 and SM-POLY-07
 
 Complexity and source quality are **conditioning context only**. They never
@@ -69,9 +73,13 @@ The SM-POLY-07 context remains componentized:
 
 - voice count
 - maximum simultaneous voice count when available
-- multi-staff presence
+- multi-staff presence when available
 - tuplet presence
 - overlap density
+
+A valid empty/no-event measure may make SM-POLY-07 multi-staff presence
+unavailable. SM-POLY-08 preserves that state as unavailable/`null`; it does not
+rewrite it to `false` and does not reject the otherwise valid complexity profile.
 
 There is no `complexityScore` and no complexity-derived production threshold.
 
@@ -131,7 +139,7 @@ available context:
 
 - exact voice count
 - exact maximum simultaneous voice count when available
-- multi-staff presence
+- multi-staff presence when available
 - tuplet presence
 - fixed overlap-density band
 - source-quality severity
@@ -146,6 +154,10 @@ Each observation has a deterministic ID and SHA-256. Each report contains:
 - deterministic report ID
 - deterministic SHA-256 of the sorted source observation hashes
 - deterministic report SHA-256
+
+Both observation and report IDs are recomputed from their canonical content
+during validation, so a caller cannot change an ID, rehash the object, and use
+that modified identity to bypass duplicate checks.
 
 `validate_reliability_report_against_observations()` rebuilds the complete report
 from source observations. A forged metric that is rehashed still fails the
@@ -183,5 +195,6 @@ fail-closed.
 - `contracts/engine-reliability-report-v1.schema.json`
 - `services/ensemble-service/src/scoremosaic_ensemble/reliability_calibration.py`
 - `services/ensemble-service/tests/test_reliability_calibration.py`
+- `services/ensemble-service/tests/test_reliability_calibration_sm_poly07_empty_context.py`
 - `.github/workflows/sm-poly-08-engine-reliability-calibration-ci.yml`
 - `docs/sm-poly-08-engine-reliability-calibration.md`
