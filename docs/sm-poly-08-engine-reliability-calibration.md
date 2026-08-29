@@ -195,6 +195,6 @@ fail-closed.
 - `contracts/engine-reliability-report-v1.schema.json`
 - `services/ensemble-service/src/scoremosaic_ensemble/reliability_calibration.py`
 - `services/ensemble-service/tests/test_reliability_calibration.py`
-- `services/ensemble-service/tests/test_reliability_calibration_sm_poly07_empty_context.py`
+- `services/ensemble-service/tests/test_reliability_calibration_context.py`
 - `.github/workflows/sm-poly-08-engine-reliability-calibration-ci.yml`
 - `docs/sm-poly-08-engine-reliability-calibration.md`
