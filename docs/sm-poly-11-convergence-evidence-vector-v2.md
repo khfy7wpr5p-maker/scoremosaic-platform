@@ -36,6 +36,12 @@ ST-OMR remains a separately identified shadow engine and is not added to the pro
 
 The vector binds the exact existing Stage 7 `resultSha256` under `scoremosaic-stage7-convergence-v1`. The Stage 7 result already content-binds its candidate inputs, including shared job/plan/source identity. SM-POLY-11 does not duplicate or weaken those Stage 7 checks.
 
+The Stage 7 reference method is frozen to:
+
+```text
+STAGE7_RESULT_SHA256_REFERENCE_V1
+```
+
 The Stage 7 reference is explicitly non-authoritative inside this research package.
 
 ## Evidence context, not identity equivalence
@@ -57,13 +63,21 @@ This prevents a SHA reference alone from being interpreted as proof that a multi
 
 ## Reference-only integration
 
-SM-POLY-11 does not copy or reinterpret upstream metric values. Each evidence-family slot binds:
+SM-POLY-11 does not copy or reinterpret upstream metric values. Every available evidence-family slot uses the single frozen method:
+
+```text
+SHA256_ARTIFACT_SET_REFERENCE_V1
+```
+
+Each slot binds:
 
 - explicit availability;
 - exact upstream schema version;
-- binding-method version;
+- the frozen binding-method version;
 - a sorted unique set of immutable artifact SHA-256 values;
 - a deterministic SHA-256 of that artifact set.
+
+Callers cannot provide a custom provenance-method label in v2. A new method requires a new versioned contract rather than silently changing v2 semantics.
 
 Unavailable evidence is a first-class state. An unavailable slot must have null schema/method/set hash and an empty artifact set. Hidden values in an unavailable slot fail closed.
 
@@ -75,6 +89,7 @@ The vector uses canonical JSON, a content-derived `vectorId`, and `vectorSha256`
 - available evidence-family count;
 - vector identity;
 - vector SHA-256;
+- frozen binding methods;
 - evidence-context non-equivalence claims;
 - fixed authority boundaries.
 
@@ -125,6 +140,7 @@ Therefore SM-POLY-11 does **not**:
 - rank Audiveris/HOMR/Clarity/ST-OMR;
 - claim that opaque upstream artifacts refer to the same fixture/source/Teacher-Gold target;
 - relabel upstream evidence by engine/category;
+- allow caller-defined provenance method labels in v2;
 - choose a winning candidate;
 - generate an overall confidence score;
 - merge or repair MusicXML;
