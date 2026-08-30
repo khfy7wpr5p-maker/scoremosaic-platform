@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/convergence-evidence-vector-v2.schema.json",
+  "title": "ScoreMosaic Convergence Evidence Vector v2",
+  "description": "Research-only immutable evidence-context vector that binds a Stage 7 result to opaque upstream SM-POLY artifact sets without claiming cross-artifact identity equivalence or granting decision authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-convergence-evidence-vector-v2"},
+    "vectorId": {"type": "string", "pattern": "^convergence_evidence_v2_[0-9a-f]{24}$"},
+    "stage7Convergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formatVersion": {"const": "scoremosaic-stage7-convergence-v1"},
+        "resultSha256": {"$ref": "#/$defs/sha256"},
+        "bindingMethodVersion": {"const": "STAGE7_RESULT_SHA256_REFERENCE_V1"},
+        "authoritative": {"const": false}
+      },
+      "required": ["formatVersion", "resultSha256", "bindingMethodVersion", "authoritative"]
+    },
+    "evidenceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "methodVersion": {"const": "OPAQUE_UPSTREAM_ARTIFACT_SET_CONTEXT_V1"},
+        "directFixtureBindingClaimed": {"const": false},
+        "crossArtifactIdentityMatchClaimed": {"const": false}
+      },
+      "required": ["methodVersion", "directFixtureBindingClaimed", "crossArtifactIdentityMatchClaimed"]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "semanticMetrics": {"$ref": "#/$defs/semanticSlot"},
+        "visualEvidence": {"$ref": "#/$defs/visualSlot"},
+        "sourceQuality": {"$ref": "#/$defs/sourceQualitySlot"},
+        "polyphonyComplexity": {"$ref": "#/$defs/complexitySlot"},
+        "reliabilityCalibration": {"$ref": "#/$defs/reliabilitySlot"},
+        "stOmrShadow": {"$ref": "#/$defs/shadowSlot"}
+      },
+      "required": ["semanticMetrics", "visualEvidence", "sourceQuality", "polyphonyComplexity", "reliabilityCalibration", "stOmrShadow"]
+    },
+    "derivedState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "productionCandidateEngines": {
+          "type": "array",
+          "prefixItems": [{"const": "audiveris"}, {"const": "homr"}, {"const": "clarity"}],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "shadowEngine": {"const": "st-omr"},
+        "availableEvidenceFamilyCount": {"type": "integer", "minimum": 0, "maximum": 6},
+        "aggregateConfidenceScore": {"type": "null"},
+        "engineRanking": {"type": "null"},
+        "winner": {"type": "null"}
+      },
+      "required": ["productionCandidateEngines", "shadowEngine", "availableEvidenceFamilyCount", "aggregateConfidenceScore", "engineRanking", "winner"]
+    },
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "vectorSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "schemaVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$"},
+    "slotBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": {"type": "boolean"},
+        "schemaVersion": {"anyOf": [{"$ref": "#/$defs/schemaVersion"}, {"type": "null"}]},
+        "bindingMethodVersion": {"anyOf": [{"const": "SHA256_ARTIFACT_SET_REFERENCE_V1"}, {"type": "null"}]},
+        "artifactSha256Set": {
+          "type": "array",
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "artifactSetSha256": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+      },
+      "required": ["available", "schemaVersion", "bindingMethodVersion", "artifactSha256Set", "artifactSetSha256"],
+      "allOf": [
+        {
+          "if": {"properties": {"available": {"const": true}}},
+          "then": {
+            "properties": {
+              "schemaVersion": {"$ref": "#/$defs/schemaVersion"},
+              "bindingMethodVersion": {"const": "SHA256_ARTIFACT_SET_REFERENCE_V1"},
+              "artifactSha256Set": {"minItems": 1},
+              "artifactSetSha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"available": {"const": false}}},
+          "then": {
+            "properties": {
+              "schemaVersion": {"type": "null"},
+              "bindingMethodVersion": {"type": "null"},
+              "artifactSha256Set": {"maxItems": 0},
+              "artifactSetSha256": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "semanticSlot": {
+      "allOf": [
+        {"$ref": "#/$defs/slotBase"},
+        {"if": {"properties": {"available": {"const": true}}}, "then": {"properties": {"schemaVersion": {"const": "scoremosaic-polyphonic-engine-semantic-report-v1"}}}}
+      ]
+    },
+    "visualSlot": {
+      "allOf": [
+        {"$ref": "#/$defs/slotBase"},
+        {"if": {"properties": {"available": {"const": true}}}, "then": {"properties": {"schemaVersion": {"const": "scoremosaic-polyphonic-visual-evidence-sidecar-v1"}}}}
+      ]
+    },
+    "sourceQualitySlot": {
+      "allOf": [
+        {"$ref": "#/$defs/slotBase"},
+        {"if": {"properties": {"available": {"const": true}}}, "then": {"properties": {"schemaVersion": {"const": "scoremosaic-polyphonic-source-quality-profile-v1"}}}}
+      ]
+    },
+    "complexitySlot": {
+      "allOf": [
+        {"$ref": "#/$defs/slotBase"},
+        {"if": {"properties": {"available": {"const": true}}}, "then": {"properties": {"schemaVersion": {"const": "scoremosaic-polyphonic-complexity-profile-v1"}}}}
+      ]
+    },
+    "reliabilitySlot": {
+      "allOf": [
+        {"$ref": "#/$defs/slotBase"},
+        {"if": {"properties": {"available": {"const": true}}}, "then": {"properties": {"schemaVersion": {"const": "scoremosaic-engine-reliability-report-v1"}}}}
+      ]
+    },
+    "shadowSlot": {
+      "allOf": [
+        {"$ref": "#/$defs/slotBase"},
+        {"if": {"properties": {"available": {"const": true}}}, "then": {"properties": {"schemaVersion": {"const": "scoremosaic-st-omr-shadow-report-v1"}}}}
+      ]
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "researchOnly": {"const": true},
+        "readOnly": {"const": true},
+        "descriptiveEvidenceOnly": {"const": true},
+        "upstreamEvidenceReinterpreted": {"const": false},
+        "crossArtifactIdentityMatchClaimed": {"const": false},
+        "stage7EvidenceMutation": {"const": false},
+        "stage7QuorumContribution": {"const": false},
+        "stage7QuorumChange": {"const": false},
+        "productionDecisionAuthority": {"const": false},
+        "engineRanking": {"const": false},
+        "winnerSelection": {"const": false},
+        "singleAggregateScore": {"const": false},
+        "confidenceUsedAsAuthority": {"const": false},
+        "automaticMerge": {"const": false},
+        "automaticCorrection": {"const": false},
+        "teacherAuthorityOverride": {"const": false},
+        "stOmrProductionPromotion": {"const": false},
+        "gatewayIntegration": {"const": false}
+      },
+      "required": ["researchOnly", "readOnly", "descriptiveEvidenceOnly", "upstreamEvidenceReinterpreted", "crossArtifactIdentityMatchClaimed", "stage7EvidenceMutation", "stage7QuorumContribution", "stage7QuorumChange", "productionDecisionAuthority", "engineRanking", "winnerSelection", "singleAggregateScore", "confidenceUsedAsAuthority", "automaticMerge", "automaticCorrection", "teacherAuthorityOverride", "stOmrProductionPromotion", "gatewayIntegration"]
+    }
+  },
+  "required": ["schemaVersion", "vectorId", "stage7Convergence", "evidenceContext", "evidence", "derivedState", "boundaries", "vectorSha256"]
+}
