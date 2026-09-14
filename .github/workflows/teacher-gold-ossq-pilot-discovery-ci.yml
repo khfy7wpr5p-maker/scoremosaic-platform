@@ -35,7 +35,8 @@ jobs:
             libopengl0 \
             libjack-jackd2-0 \
             libxcb-xinerama0 \
-            libxkbcommon-x11-0
+            libxkbcommon-x11-0 \
+            xvfb
 
       - name: Download pinned MuseScore 3.6.2 AppImage
         shell: bash
@@ -50,7 +51,7 @@ jobs:
           cd /tmp
           ./MuseScore-3.6.2.AppImage --appimage-extract >/dev/null
           test -x /tmp/squashfs-root/AppRun
-          QT_QPA_PLATFORM=offscreen /tmp/squashfs-root/AppRun --long-version | tee /tmp/musescore-version.txt
+          xvfb-run -a /tmp/squashfs-root/AppRun --long-version | tee /tmp/musescore-version.txt
           grep -F "3.6.2" /tmp/musescore-version.txt
 
       - name: Download five pinned CC0 OSSQ MusicXML sources
@@ -87,7 +88,7 @@ jobs:
           set -euo pipefail
           for src in /tmp/ossq/source/*.musicxml; do
             id="$(basename "$src" .musicxml)"
-            QT_QPA_PLATFORM=offscreen /tmp/squashfs-root/AppRun \
+            xvfb-run -a /tmp/squashfs-root/AppRun \
               -s -m -F -r 150 \
               -o "/tmp/ossq/render/${id}.png" \
               "$src"
