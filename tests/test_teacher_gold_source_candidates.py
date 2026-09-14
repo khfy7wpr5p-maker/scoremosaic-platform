@@ -87,9 +87,12 @@ class TeacherGoldSourceCandidateTests(unittest.TestCase):
 
     def test_verified_registry_now_contains_only_separately_admitted_fixtures(self) -> None:
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(len(registry["fixtureRecords"]), 5)
+        self.assertEqual(len(registry["fixtureRecords"]), 10)
         self.assertTrue(
-            all(record["fixtureId"].startswith("poly_fixture_ossq_") for record in registry["fixtureRecords"])
+            all(
+                record["fixtureId"].startswith(("poly_fixture_ossq_", "poly_fixture_openscore_"))
+                for record in registry["fixtureRecords"]
+            )
         )
         self.assertEqual(registry["minimumVerifiedFixtures"], 500)
         self.assertEqual(registry["targetVerifiedFixtures"], 1000)
