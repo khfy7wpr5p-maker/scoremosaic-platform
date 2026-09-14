@@ -24,6 +24,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install MuseScore 3.6.2 runtime libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libegl1 \
+            libgl1 \
+            libopengl0 \
+            libjack-jackd2-0 \
+            libxcb-xinerama0 \
+            libxkbcommon-x11-0
+
       - name: Download pinned MuseScore 3.6.2 AppImage
         shell: bash
         run: |
