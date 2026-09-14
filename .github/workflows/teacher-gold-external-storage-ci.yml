@@ -1,0 +1,70 @@
+name: Teacher-Gold External Storage CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/teacher-gold-drive-storage-manifest"
+    paths:
+      - ".github/workflows/teacher-gold-external-storage-ci.yml"
+      - "contracts/polyphonic-teacher-gold-storage-manifest-v1.schema.json"
+      - "evaluation/polyphonic-teacher-gold-v1/storage-manifest.json"
+      - "evaluation/polyphonic-teacher-gold-v1/registry.json"
+      - "scripts/polyphonic_teacher_gold_storage.py"
+      - "scripts/polyphonic_teacher_gold_harness.py"
+      - "docs/teacher-gold-external-storage.md"
+      - "tests/test_teacher_gold_external_storage.py"
+      - "tests/test_sm_poly_03_teacher_gold_harness.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/teacher-gold-external-storage-ci.yml"
+      - "contracts/polyphonic-teacher-gold-storage-manifest-v1.schema.json"
+      - "evaluation/polyphonic-teacher-gold-v1/storage-manifest.json"
+      - "evaluation/polyphonic-teacher-gold-v1/registry.json"
+      - "scripts/polyphonic_teacher_gold_storage.py"
+      - "scripts/polyphonic_teacher_gold_harness.py"
+      - "docs/teacher-gold-external-storage.md"
+      - "tests/test_teacher_gold_external_storage.py"
+      - "tests/test_sm_poly_03_teacher_gold_harness.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teacher-gold-storage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-external-storage:
+    name: Validate Teacher-Gold external storage boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate logical external storage manifest
+        run: python scripts/polyphonic_teacher_gold_storage.py
+
+      - name: Run external storage regressions
+        run: python -m unittest tests.test_teacher_gold_external_storage -v
+
+      - name: Re-run Teacher-Gold harness
+        run: python scripts/polyphonic_teacher_gold_harness.py
+
+      - name: Re-run SM-POLY-03 regressions
+        run: python -m unittest tests.test_sm_poly_03_teacher_gold_harness -v
+
+      - name: Check repository diff formatting
+        run: git diff --check
