@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-teacher-gold-source-candidates-v1.schema.json",
+  "title": "ScoreMosaic Teacher-Gold Source Candidates v1",
+  "description": "Research-only catalogue of external corpus candidates. Entries are not Teacher-Gold fixtures and never count toward readiness until separately admitted by the existing fixture registry.",
+  "$defs": {
+    "url": {
+      "type": "string",
+      "minLength": 12,
+      "maxLength": 1000,
+      "pattern": "^https://"
+    },
+    "candidateId": {
+      "type": "string",
+      "pattern": "^tg_source_[a-z0-9][a-z0-9_-]{5,95}$"
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "benchmarkId", "candidates", "boundaries"],
+  "properties": {
+    "schemaVersion": {
+      "const": "scoremosaic-polyphonic-teacher-gold-source-candidates-v1"
+    },
+    "benchmarkId": {
+      "const": "scoremosaic-polyphonic-teacher-gold-v1"
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidateId",
+          "candidateType",
+          "datasetName",
+          "sourceUrl",
+          "provenanceUrl",
+          "licenseEvidenceUrl",
+          "licenseState",
+          "declaredFormats",
+          "useCase",
+          "imageEvidenceAvailable",
+          "symbolicEvidenceAvailable",
+          "scannedEvidenceConditional",
+          "teacherVerified",
+          "contentHashesVerified",
+          "countTowardTeacherGoldMinimum",
+          "status",
+          "notes"
+        ],
+        "properties": {
+          "candidateId": {"$ref": "#/$defs/candidateId"},
+          "candidateType": {"enum": ["DATASET", "SCORE"]},
+          "datasetName": {"type": "string", "minLength": 1, "maxLength": 200},
+          "sourceUrl": {"$ref": "#/$defs/url"},
+          "provenanceUrl": {"$ref": "#/$defs/url"},
+          "licenseEvidenceUrl": {"$ref": "#/$defs/url"},
+          "licenseState": {"enum": ["CLEAR_CC0", "REVIEW_REQUIRED"]},
+          "declaredFormats": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 40}
+          },
+          "useCase": {
+            "enum": [
+              "POLYPHONIC_MIXED_SCAN_AND_SYNTHETIC",
+              "CLEAN_DIGITAL_IMAGE_SYMBOLIC_PAIR",
+              "POLYPHONIC_VOICE_PIANO_RENDER_SOURCE"
+            ]
+          },
+          "imageEvidenceAvailable": {"type": "boolean"},
+          "symbolicEvidenceAvailable": {"type": "boolean"},
+          "scannedEvidenceConditional": {"type": "boolean"},
+          "teacherVerified": {"const": false},
+          "contentHashesVerified": {"const": false},
+          "countTowardTeacherGoldMinimum": {"const": false},
+          "status": {"const": "SOURCE_REVIEWED_NOT_TEACHER_GOLD"},
+          "notes": {"type": "string", "minLength": 1, "maxLength": 1000}
+        }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "researchEvaluationOnly",
+        "candidateCatalogueSeparateFromFixtureRegistry",
+        "automaticFixtureAdmission",
+        "automaticTeacherVerification",
+        "automaticDownload",
+        "automaticTrainingAuthorization",
+        "productionDecisionAuthority"
+      ],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "candidateCatalogueSeparateFromFixtureRegistry": {"const": true},
+        "automaticFixtureAdmission": {"const": false},
+        "automaticTeacherVerification": {"const": false},
+        "automaticDownload": {"const": false},
+        "automaticTrainingAuthorization": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  }
+}
