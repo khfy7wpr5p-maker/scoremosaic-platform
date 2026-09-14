@@ -1,6 +1,6 @@
 # ScoreMosaic Stage 5-7 Current Architecture
 
-Status: **authoritative current-activation addendum for Stage 5-7**, synchronized through Stage 11-F plus the merged research/evidence workstreams through SM-POLY-11  
+Status: **authoritative current-activation addendum for Stage 5-7**, synchronized through Stage 11-F plus research/evidence workstreams through SM-POLY-13  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`  
 Research/evaluation addendum: `docs/architecture-research-evidence-current.md`
 
@@ -107,6 +107,7 @@ SM-POLY-02 taxonomy + benchmark schema
   -> SM-POLY-08 reliability/calibration evidence
   -> SM-POLY-09 ST-OMR shadow evidence
   -> SM-POLY-11 Convergence Evidence Vector v2
+  -> SM-POLY-13 Teacher Review workload evidence
 ```
 
 This chain is intentionally **beside** the Stage 7 production path, not inside its authority path.
@@ -114,11 +115,12 @@ This chain is intentionally **beside** the Stage 7 production path, not inside i
 - SM-POLY-03 provides a deterministic readiness harness, but the real Teacher-Gold corpus is not sufficiently populated; `teacherGoldEvaluationComplete=false` remains correct.
 - SM-POLY-09 provides shadow-evidence contracts and provenance, but a broad real-world ST-OMR shadow benchmark is not complete.
 - SM-POLY-11 references immutable evidence artifact sets beside an exact Stage 7 result SHA. It does not assert cross-artifact fixture identity, rank engines, select a winner, create an aggregate confidence score, or mutate Stage 7 evidence.
+- SM-POLY-13 derives read-only Teacher Review workload evidence using `TEACHER_REVISION_COMMAND_COUNT_V1`. It validates exact command/revision/audit lineage and cannot mutate Teacher Review state. Page workload remains unavailable unless explicit page-denominator evidence exists.
 - `directCrossArtifactJoinValidated=false` and `selectivePredictionAuthorized=false` remain explicit current-state locks.
 
-The next explicitly planned research package is **SM-POLY-13**, which owns Teacher Review workload instrumentation using `TEACHER_REVISION_COMMAND_COUNT_V1`. This is evidence extraction only; it does not change teacher authority.
+The next research/evaluation priority is **POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE** toward the existing >=500 eligible verified fixture gate. Package numbers for later direct cross-artifact or selective-prediction work remain unassigned.
 
-See `docs/architecture-research-evidence-current.md` for the complete current research map and next sequence.
+See `docs/architecture-research-evidence-current.md` and `docs/sm-poly-13-teacher-review-workload.md` for the complete current research map and next sequence.
 
 ## Candidate Safety composition
 
@@ -165,6 +167,7 @@ The former “future Stage 8” boundary is no longer current. Repository-only w
 - **Stage 11:** typed local UI/application contracts and integration, with live API still locked;
 - **Real Score Intake v1/v1.1:** verified Stage 7/Canonical binding into the pinned Teacher Review Core runtime, without production persistence or automatic correction;
 - **H7-C/H7-D ST-Orchestration preview:** local and authenticated-staging evidence paths, non-authoritative and production-disabled;
-- **SD-4B Score Discovery consumer:** disconnected bounded discovery handoff policy; live Gateway networking and production import remain disabled.
+- **SD-4B Score Discovery consumer:** disconnected bounded discovery handoff policy; live Gateway networking and production import remain disabled;
+- **SM-POLY-13:** read-only Teacher Review workload evidence, with no Stage 7 or Teacher Review authority change.
 
 See `docs/architecture-stage8-current.md`, `docs/architecture-stage9-11-current.md`, and `docs/architecture-research-evidence-current.md`.
