@@ -1,0 +1,66 @@
+{
+  "version": "scoremosaic-musicxml-direction-system-semantic-gate-v1",
+  "status": "RESEARCH_EVALUATION_GATE_ACTIVE_NO_PRODUCTION_AUTHORITY",
+  "scope": "Renderer-independent validation and routing for MusicXML direction@system semantics",
+  "specificationBasis": {
+    "name": "MusicXML 4.0 system-relation",
+    "reference": "https://www.w3.org/2021/06/musicxml40/musicxml-reference/data-types/system-relation/",
+    "allowedValues": [
+      "also-top",
+      "none",
+      "only-top"
+    ],
+    "semantics": {
+      "only-top": "The element appears only on the top part of the current system.",
+      "also-top": "The element appears on both the current part and the top part of the current system.",
+      "none": "The element is associated only with the current part, not with the system."
+    }
+  },
+  "rendererSensitiveValues": [
+    "also-top",
+    "only-top"
+  ],
+  "routing": {
+    "knownRendererCompatibilityMismatch": {
+      "requiresValidSymbolicSemantics": true,
+      "requiresExplicitImplicatedSystemRelations": true,
+      "requiresEveryImplicatedRelationToBeRendererSensitive": true,
+      "decision": "RENDERER_COMPATIBILITY_REVIEW_REQUIRED",
+      "teacherReviewRequired": false,
+      "technicalReviewRequired": true,
+      "symbolicReferenceRejected": false
+    },
+    "unknownOrInvalidSystemRelation": {
+      "decision": "SEMANTIC_VALIDATION_REVIEW_REQUIRED",
+      "teacherReviewRequiredByThisGate": false,
+      "technicalReviewRequired": true,
+      "symbolicReferenceEligibleForFurtherEvaluation": false
+    },
+    "rendererMismatchWithoutProvenKnownSystemRelation": {
+      "decision": "TEACHER_REVIEW_REQUIRED",
+      "teacherReviewRequired": true,
+      "failClosed": true
+    }
+  },
+  "authorityBoundaries": {
+    "rendererIsFidelityOracle": false,
+    "sourceMutationAuthorized": false,
+    "automaticMusicXmlRepairAuthorized": false,
+    "teacherGoldAdmissionAuthorized": false,
+    "teacherGoldCountMutationAuthorized": false,
+    "modelTrainingAuthorized": false,
+    "stage7EngineOrQuorumMutationAuthorized": false,
+    "automaticCorrectionOrMergeAuthorized": false,
+    "productionDecisionAuthorityGranted": false
+  },
+  "evidenceBinding": {
+    "compatibilityEvidence": "evaluation/polyphonic-teacher-gold-v1/evidence/musescore-system-direction-compat-v1.json",
+    "knownAffectedReviewIds": [
+      "TG019",
+      "TG036",
+      "TG066",
+      "TG081",
+      "TG083"
+    ]
+  }
+}

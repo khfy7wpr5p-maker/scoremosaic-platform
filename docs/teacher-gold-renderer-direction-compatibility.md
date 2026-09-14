@@ -30,6 +30,14 @@ Rendered PNG and symbolic MusicXML must be treated as separate evidence layers. 
 
 This boundary reduces unnecessary teacher review: known renderer-specific incompatibilities should be detected by the automated semantic gate rather than repeatedly sent to the teacher as if they were unexplained XML errors.
 
+## Automated semantic gate
+
+The policy above is implemented by `scripts/musicxml_direction_system_semantic_gate.py` and contract `contracts/musicxml-direction-system-semantic-gate-v1.json`.
+
+The gate accepts raw MusicXML or MXL, validates `direction@system` directly from symbolic bytes, and suppresses Teacher Review only when the mismatch is explicitly proven to involve `only-top` and/or `also-top`. Unknown relations, malformed input, or renderer mismatches without explicit semantic attribution fail closed and cannot be silently reclassified.
+
+Detailed routing and safety rules are documented in `docs/musicxml-direction-system-semantic-gate-v1.md`.
+
 ## Authority boundary
 
-This evidence does not change the current Teacher-Gold minimum or target, does not admit the 100-review pack, and does not authorize model training. Production Stage 7 engines and quorum remain unchanged.
+This evidence and semantic gate do not change the current Teacher-Gold minimum or target, do not admit the 100-review pack, and do not authorize model training. Production Stage 7 engines and quorum remain unchanged.
