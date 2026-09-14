@@ -129,9 +129,11 @@ class TeacherGoldSyntheticPilotTests(unittest.TestCase):
         with self.assertRaisesRegex(TeacherGoldSyntheticPilotError, "manifest_contract_invalid"):
             validate_manifest(mutated)
 
-    def test_current_verified_registry_is_unchanged(self) -> None:
+    def test_pilot_remains_non_counting_after_separate_teacher_admission(self) -> None:
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(registry["fixtureRecords"], [])
+        self.assertEqual(len(registry["fixtureRecords"]), 5)
+        self.assertTrue(all(not record["countTowardTeacherGoldMinimum"] for record in self.manifest["records"]))
+        self.assertTrue(all(record["teacherVerificationStatus"] == "DRAFT" for record in self.manifest["records"]))
         self.assertEqual(registry["minimumVerifiedFixtures"], 500)
         self.assertEqual(registry["targetVerifiedFixtures"], 1000)
 
