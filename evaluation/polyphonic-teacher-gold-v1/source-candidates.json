@@ -19,7 +19,7 @@
       "contentHashesVerified": false,
       "countTowardTeacherGoldMinimum": false,
       "status": "SOURCE_REVIEWED_NOT_TEACHER_GOLD",
-      "notes": "The published v1 release exposes 5,218 PNG pages and 44 MusicXML scores plus MEI/MIDI/OMR metadata. The README states that only openly distributable scores are included, but an explicit dataset license grant was not established by this review; evaluation eligibility must therefore remain REVIEW_REQUIRED until a specific legal/license record is verified."
+      "notes": "The published v1 release exposes 5,218 PNG pages and 44 MusicXML scores plus MEI/MIDI/OMR metadata. The README states that only copyright-free or openly distributable scores are included, but the repository root does not expose a separate dataset LICENSE file or another explicit license grant covering the dataset compilation/annotations. Evaluation eligibility therefore remains REVIEW_REQUIRED."
     },
     {
       "candidateId": "tg_source_openscore_lieder_staendchen_d889",
@@ -47,7 +47,7 @@
       "sourceUrl": "https://github.com/MALerLab/ossq-omr",
       "provenanceUrl": "https://github.com/MALerLab/string-quartet-omr-benchmark",
       "licenseEvidenceUrl": "https://github.com/MALerLab/ossq-omr/blob/omr-dev/LICENSE.txt",
-      "licenseState": "REVIEW_REQUIRED",
+      "licenseState": "CLEAR_CC0",
       "declaredFormats": ["ABC", "KERN", "LMXE", "MSCX", "MUSICXML", "PDF", "PNG"],
       "useCase": "POLYPHONIC_MIXED_SCAN_AND_SYNTHETIC",
       "imageEvidenceAvailable": true,
@@ -57,7 +57,7 @@
       "contentHashesVerified": false,
       "countTowardTeacherGoldMinimum": false,
       "status": "SOURCE_REVIEWED_NOT_TEACHER_GOLD",
-      "notes": "OSSQ-OMR declares CC0 for annotation sources and bulk-distributed derived formats and provides MusicXML-oriented polyphonic benchmark material. Because scanned evidence can originate from per-score external scan sources, each intended scanned fixture must still pass source-specific provenance and evaluation-rights review before admission."
+      "notes": "OSSQ-OMR explicitly releases tracked annotation sources and bulk-distributed derived formats under CC0. ScoreMosaic therefore treats the corpus-level source and synthetic/rendered derivatives as CLEAR_CC0. Scanned exemplars remain conditional because optional scanned PDFs originate from per-score external sources such as IMSLP; each scanned fixture still requires exact source-level provenance and rights evidence before admission."
     }
   ],
   "boundaries": {
