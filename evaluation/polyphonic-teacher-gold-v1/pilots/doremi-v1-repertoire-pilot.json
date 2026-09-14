@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-teacher-gold-pilot-v1",
+  "dataset": "DoReMi",
+  "datasetVersion": "v1.0",
+  "releaseUrl": "https://github.com/steinbergmedia/DoReMi/releases/download/v1.0/DoReMi_v1.zip",
+  "selectionPolicy": "NAMED_REPERTOIRE_FIRST_AVAILABLE_IMAGE_V1",
+  "datasetRights": {
+    "licenseReviewStatus": "REVIEW_REQUIRED",
+    "evaluationAllowed": "REVIEW_REQUIRED",
+    "trainingAllowed": "REVIEW_REQUIRED"
+  },
+  "discoveryEvidence": {
+    "sourceCommitSha": "5b1ac88bbb527187ac8ac0c3fef7abb5bc0fa3c1",
+    "workflowRunId": 34878038346,
+    "exactUniquePairCount": 43,
+    "repertoirePairCount": 25,
+    "temporaryArchiveDeleted": true
+  },
+  "pilotCount": 5,
+  "records": [
+    {
+      "pilotId": "doremi_v1_01",
+      "scoreKey": "alkan_posement",
+      "source": {
+        "archiveMember": "DoReMi_v1/Images/Alkan - Posement-001.png",
+        "mediaType": "image/png",
+        "sha256": "2d7dcbf3daf231bfa4688f5d72059fb5987d02dd08c45588af7b78c0503ff0f5",
+        "byteSize": 17572
+      },
+      "gold": {
+        "archiveMember": "DoReMi_v1/MusicXML/Alkan - Posement - Full score - 01 Pose\u2560\u00fcment.xml",
+        "mediaType": "application/vnd.recordare.musicxml+xml",
+        "sha256": "718bdbdb729e6a485590df0080ea3b85edfafec115b44e070f3817c1f123253a",
+        "byteSize": 2153781
+      },
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "doremi_v1_02",
+      "scoreKey": "bach_goldberg_variation_16",
+      "source": {
+        "archiveMember": "DoReMi_v1/Images/Bach - Goldberg Variation 16-002.png",
+        "mediaType": "image/png",
+        "sha256": "6e6478bdde8a8f35f5adaaefdbc8974b39a3135979172c7b6303bb9ae402a875",
+        "byteSize": 10469
+      },
+      "gold": {
+        "archiveMember": "DoReMi_v1/MusicXML/Bach - Goldberg Variation 16 - 01_Harpsichord - 01 Variatio 16. Ouverture. a 1 Clav.xml",
+        "mediaType": "application/vnd.recordare.musicxml+xml",
+        "sha256": "ab900f519aae24a6ec72aec48b50910ce479f28ff2c1929bde33b46e462d526a",
+        "byteSize": 279830
+      },
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "doremi_v1_03",
+      "scoreKey": "bartok_mikrokosmos_144",
+      "source": {
+        "archiveMember": "DoReMi_v1/Images/Bartok - Mikrokosmos 144-001.png",
+        "mediaType": "image/png",
+        "sha256": "ea7613c7b08a2aa332bac98cde26b18e5581d0bb7f0f3dc77c3d5bf5b18a5a8e",
+        "byteSize": 15628
+      },
+      "gold": {
+        "archiveMember": "DoReMi_v1/MusicXML/Bartok - Mikrokosmos 144 - Full score - 01 Mikrokosmos no. 144.xml",
+        "mediaType": "application/vnd.recordare.musicxml+xml",
+        "sha256": "11d926ec8ae7fbaa91577d4bc15bed9e146e2e0add3d992457726234fc95fec2",
+        "byteSize": 391140
+      },
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "doremi_v1_04",
+      "scoreKey": "bartok_nights_music",
+      "source": {
+        "archiveMember": "DoReMi_v1/Images/Bartok - Nights Music-001.png",
+        "mediaType": "image/png",
+        "sha256": "b31dff6820a047ec71d96565ac8df16d27e97e55e8402149bf85c44055defb0c",
+        "byteSize": 15929
+      },
+      "gold": {
+        "archiveMember": "DoReMi_v1/MusicXML/Bartok - Nights Music - Full score - 01 Night's Music.xml",
+        "mediaType": "application/vnd.recordare.musicxml+xml",
+        "sha256": "5542075bcbfe83293967cbd03c33e766c6da5a9d2ee4da81862d6344218d1e7c",
+        "byteSize": 835243
+      },
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "doremi_v1_05",
+      "scoreKey": "bartok_solo_violin_sonata_mvt_4",
+      "source": {
+        "archiveMember": "DoReMi_v1/Images/Bartok - Solo Violin Sonata mvt 4-001.png",
+        "mediaType": "image/png",
+        "sha256": "6f59eecb11c910f67cce6848d0fb6503657d85a2e325d8294d233e123298046d",
+        "byteSize": 15943
+      },
+      "gold": {
+        "archiveMember": "DoReMi_v1/MusicXML/Bartok - Solo Violin Sonata mvt 4 - Full score - 01 Presto.xml",
+        "mediaType": "application/vnd.recordare.musicxml+xml",
+        "sha256": "04fe8b8f6f6ca2268a4430ade41b2ab9970b07f656db032532bbf987db14f4d6",
+        "byteSize": 1016453
+      },
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    }
+  ],
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "teacherVerified": false,
+    "automaticFixtureAdmission": false,
+    "automaticTrainingAuthorization": false,
+    "corpusBlobsCommittedToGitHub": false,
+    "corpusBlobsPersistedToDriveByThisPilot": false,
+    "productionDecisionAuthority": false
+  }
+}
