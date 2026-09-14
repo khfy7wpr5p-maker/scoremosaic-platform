@@ -14,16 +14,17 @@ STAGE_5_7 = (ROOT / "docs" / "architecture-stage5-7-current.md").read_text(encod
 RESEARCH = (ROOT / "docs" / "architecture-research-evidence-current.md").read_text(encoding="utf-8")
 ROADMAP = (ROOT / "docs" / "roadmap.md").read_text(encoding="utf-8")
 CONSISTENCY = (ROOT / "docs" / "architecture-consistency-report.md").read_text(encoding="utf-8")
+WORKLOAD = (ROOT / "docs" / "sm-poly-13-teacher-review-workload.md").read_text(encoding="utf-8")
 
 
 class ArchitectureResearchEvidenceCurrentTests(unittest.TestCase):
-    def test_repository_state_is_pinned_to_last_verified_main_before_sync(self) -> None:
+    def test_repository_state_is_pinned_to_verified_main_base_for_sm_poly_13(self) -> None:
         state = STATE["repositoryStateAsOf"]
         self.assertEqual(
-            "dfd8b8607607383fd1e250ce704e97af84a5101b",
+            "b26e6c512edc88f9215bfe1b97199d309adf9f7c",
             state["mainCommit"],
         )
-        self.assertEqual("2026-08-30", state["date"])
+        self.assertEqual("2026-09-14", state["date"])
         self.assertEqual(
             "docs/architecture-research-evidence-current.md",
             state["researchEvidenceAddendum"],
@@ -53,15 +54,21 @@ class ArchitectureResearchEvidenceCurrentTests(unittest.TestCase):
                 "SM-POLY-08",
                 "SM-POLY-09",
                 "SM-POLY-11",
+                "SM-POLY-13",
             ],
             research["implementedPackages"],
         )
         self.assertNotIn("SM-POLY-10", research["implementedPackages"])
         self.assertNotIn("SM-POLY-12", research["implementedPackages"])
-        self.assertEqual("SM-POLY-13", research["nextPlannedPackage"])
+        self.assertIsNone(research["nextPlannedPackage"])
+        self.assertEqual(
+            "POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE",
+            research["nextPlannedWork"],
+        )
+        self.assertIs(research["teacherWorkloadEvidenceReady"], True)
         self.assertEqual(
             "TEACHER_REVISION_COMMAND_COUNT_V1",
-            research["nextPlannedMethod"],
+            research["teacherWorkloadMethod"],
         )
 
     def test_evidence_readiness_is_not_overclaimed(self) -> None:
@@ -74,6 +81,7 @@ class ArchitectureResearchEvidenceCurrentTests(unittest.TestCase):
         self.assertIs(research["directCrossArtifactJoinValidated"], False)
         self.assertIs(research["selectivePredictionAuthorized"], False)
         self.assertIs(research["automaticMergeOrCorrectionEnabled"], False)
+        self.assertIs(research["teacherWorkloadPageEvidenceMayRemainUnavailable"], True)
 
     def test_real_score_intake_and_preview_integrations_remain_non_authoritative(self) -> None:
         intake = STATE["approvedWorkstreams"]["realScoreIntakeCoreIntegration"]
@@ -100,11 +108,10 @@ class ArchitectureResearchEvidenceCurrentTests(unittest.TestCase):
         self.assertIs(discovery["liveGatewayNetworkingActivated"], False)
         self.assertIs(discovery["productionImportActivated"], False)
 
-    def test_next_development_order_is_explicit(self) -> None:
+    def test_next_development_order_starts_with_real_teacher_gold_population(self) -> None:
         next_dev = STATE["nextDevelopment"]
         self.assertEqual(
             [
-                "SM-POLY-13_TEACHER_REVIEW_WORKLOAD_INSTRUMENTATION",
                 "POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE",
                 "VERSIONED_DIRECT_CROSS_ARTIFACT_JOIN",
                 "SELECTIVE_PREDICTION_ABSTENTION_RESEARCH",
@@ -112,22 +119,25 @@ class ArchitectureResearchEvidenceCurrentTests(unittest.TestCase):
             ],
             next_dev["priorityOrder"],
         )
+        self.assertIs(next_dev["smPoly13RepositoryReady"], True)
+        self.assertEqual("TEACHER_REVISION_COMMAND_COUNT_V1", next_dev["smPoly13Method"])
         self.assertIs(next_dev["crossArtifactJoinPackageNumberAssigned"], False)
         self.assertIs(next_dev["selectivePredictionPackageNumberAssigned"], False)
         self.assertIs(next_dev["h7ESeparateHumanGate"], True)
 
-    def test_current_documents_reference_research_addendum_and_next_gate(self) -> None:
+    def test_current_documents_reference_research_addendum_and_completed_workload_gate(self) -> None:
         marker = "docs/architecture-research-evidence-current.md"
         for text in (ARCHITECTURE, STAGE_5_7, ROADMAP, CONSISTENCY):
             self.assertIn(marker, text)
 
-        for text in (ARCHITECTURE, STAGE_5_7, RESEARCH, ROADMAP):
+        for text in (ARCHITECTURE, STAGE_5_7, RESEARCH, ROADMAP, WORKLOAD):
             self.assertIn("SM-POLY-13", text)
             self.assertIn("TEACHER_REVISION_COMMAND_COUNT_V1", text)
 
-        self.assertIn("SM-POLY-11", RESEARCH)
+        self.assertIn("teacherWorkloadEvidenceReady=true", RESEARCH)
         self.assertIn("directCrossArtifactJoinValidated=false", RESEARCH)
         self.assertIn("selectivePredictionAuthorized=false", RESEARCH)
+        self.assertIn("POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE", ROADMAP)
 
 
 if __name__ == "__main__":
