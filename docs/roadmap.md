@@ -27,7 +27,7 @@ Every capability is gated. Code presence, model accuracy, a green test, a succes
 | UI Architecture Phase 1 | ✅ Repository pre-Figma baseline | High-fidelity Figma still pending. |
 | Web Preview v1 | ✅ Public fixture-only Pages preview verified | No live API, persistence, real data or production authority. |
 | Live UI↔API security architecture | ✅ Repository baseline | Runtime/auth/browser network off. |
-| Teacher Review API + harness | ✅ Repository baseline | HTTP routes/live identity/production persistence off. |
+| Teacher Review API Security Harness v1 | ✅ Repository baseline | HTTP routes/live identity/production persistence off. |
 | Downstream Music Application Integration | 🟡 Architecture-only | Guitar TAB live integration off. |
 | Production infrastructure | 🔒 Not activated | No provider resources/production DB/object store/credentials/DNS/TLS/public API. |
 | Publication execution | 🔒 Not activated | Stage 8 stops at non-executing handoff. |
@@ -184,6 +184,10 @@ Required evidence:
 Promotion must be a versioned migration. Existing Audiveris/HOMR/Clarity authority cannot disappear by implication.
 
 ## Parallel but separate gates
+
+### C. Disconnected authenticated-API adapter / security test harness — ✅ complete repository baseline
+
+**Teacher Review API Security Harness v1** is complete at repository baseline and remains disconnected from live HTTP, production identity and production persistence. The next infrastructure step is D and requires external operational authority.
 
 ### H7-E — production orchestration
 
