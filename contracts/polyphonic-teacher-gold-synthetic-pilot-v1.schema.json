@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.dev/contracts/polyphonic-teacher-gold-synthetic-pilot-v1.schema.json",
+  "title": "ScoreMosaic Teacher-Gold Synthetic Pilot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license", "renderer", "discoveryEvidence", "pilotCount", "records", "boundaries"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v1"},
+    "dataset": {"const": "OSSQ-OMR"},
+    "sourceRepository": {"const": "MALerLab/ossq-omr"},
+    "sourceCommitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "license": {"const": "CC0-1.0"},
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "versionOutput", "releaseTag", "appImageSha256", "imageResolutionDpi"],
+      "properties": {
+        "name": {"const": "MuseScore"},
+        "versionOutput": {"type": "string", "minLength": 1, "maxLength": 160},
+        "releaseTag": {"const": "v3.6.2"},
+        "appImageSha256": {"$ref": "#/$defs/sha256"},
+        "imageResolutionDpi": {"const": 150}
+      }
+    },
+    "discoveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflowRunId", "workflowHeadSha", "artifactId", "artifactZipSha256", "artifactRetentionDays"],
+      "properties": {
+        "workflowRunId": {"const": 34880978800},
+        "workflowHeadSha": {"const": "e8dbcba04711e17dabdf7a158685f469d44d8f4e"},
+        "artifactId": {"const": 10362957231},
+        "artifactZipSha256": {"$ref": "#/$defs/sha256"},
+        "artifactRetentionDays": {"const": 14}
+      }
+    },
+    "pilotCount": {"const": 5},
+    "records": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pilotId", "title", "sourcePath", "symbolicGold", "renderedEvidence", "rightsStatus", "teacherVerificationStatus", "evaluationEligibility", "countTowardTeacherGoldMinimum"],
+        "properties": {
+          "pilotId": {"type": "string", "pattern": "^ossq_[0-9]{7,8}$"},
+          "title": {"type": "string", "minLength": 3, "maxLength": 200},
+          "sourcePath": {"type": "string", "pattern": "^scores/.+\\.musicxml$", "maxLength": 300},
+          "symbolicGold": {"$ref": "#/$defs/musicXmlArtifact"},
+          "renderedEvidence": {"$ref": "#/$defs/pngArtifact"},
+          "rightsStatus": {"const": "CLEAR_CC0"},
+          "teacherVerificationStatus": {"const": "DRAFT"},
+          "evaluationEligibility": {"const": "REVIEW_REQUIRED"},
+          "countTowardTeacherGoldMinimum": {"const": false}
+        }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["researchEvaluationOnly", "teacherVerified", "automaticFixtureAdmission", "automaticTrainingAuthorization", "productionDecisionAuthority"],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "teacherVerified": {"const": false},
+        "automaticFixtureAdmission": {"const": false},
+        "automaticTrainingAuthorization": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "musicXmlArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "sha256", "byteSize"],
+      "properties": {
+        "mediaType": {"const": "application/vnd.recordare.musicxml+xml"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 20000000}
+      }
+    },
+    "pngArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "page", "sha256", "byteSize"],
+      "properties": {
+        "mediaType": {"const": "image/png"},
+        "page": {"const": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 20000000}
+      }
+    }
+  }
+}
