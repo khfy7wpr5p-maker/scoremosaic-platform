@@ -1,0 +1,13 @@
+{
+  "manifestVersion": "1.0",
+  "artifactName": "synthetic-reading-order-v1.synthetic.json",
+  "artifactSha256": "fc131385c3af57842f2ef835a341a5e3e25b7fe1390d3dde9273d02644122e7a",
+  "canonicalSha256": "2229fbf124bdfbc045776e74fa064ce68498c0cbbb8f00a65ef0b5416185178d",
+  "schemaName": "synthetic-reading-order-v1.schema.json",
+  "schemaSha256": "c480a02e06ce0f07e1ea8e6addfb835eb14a92d3aa193e0dc823aced9aee35dd",
+  "sourceArtifactName": "synthetic-symbol-membership-v1.synthetic.json",
+  "sourceManifestName": "synthetic-symbol-membership-v1.manifest.json",
+  "sourceSchemaName": "synthetic-symbol-membership-v1.schema.json",
+  "sourceCanonicalSha256": "fdc9ad24a5e9997af30b1c6bfe2fcd201f3255e203c37fa8ba5083e1b0f08f1b",
+  "purpose": "static_repository_synthetic_reading_order_sample"
+}

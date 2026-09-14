@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "documentId": "synthetic-reading-order-v1",
+  "membershipArtifact": {
+    "documentId": "synthetic-symbol-membership-v1",
+    "canonicalSha256": "fdc9ad24a5e9997af30b1c6bfe2fcd201f3255e203c37fa8ba5083e1b0f08f1b"
+  },
+  "staffOrders": [
+    {
+      "staffId": "staff001",
+      "symbolIds": [
+        "s001"
+      ]
+    }
+  ],
+  "measureOrders": [
+    {
+      "measureId": "measure001",
+      "staffId": "staff001",
+      "symbolIds": [
+        "s002",
+        "s003",
+        "s004",
+        "s005",
+        "s006",
+        "s007",
+        "s008",
+        "s009"
+      ]
+    }
+  ],
+  "boundaries": {
+    "realOmr": false,
+    "userInput": false,
+    "pitch": false,
+    "duration": false,
+    "voice": false,
+    "attachments": false,
+    "beamRelations": false,
+    "chordRelations": false,
+    "notationGraph": false,
+    "musicXml": false,
+    "httpInference": false,
+    "gateway": false,
+    "ensemble": false,
+    "training": false,
+    "network": false,
+    "gpu": false,
+    "persistence": false,
+    "production": false
+  }
+}
