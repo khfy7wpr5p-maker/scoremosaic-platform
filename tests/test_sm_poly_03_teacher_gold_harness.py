@@ -131,17 +131,19 @@ def _write_registry(root: Path, fixtures: list[dict[str, object]]) -> Path:
 
 
 class SmPoly03TeacherGoldHarnessTests(unittest.TestCase):
-    def test_public_baseline_is_truthfully_not_ready(self) -> None:
+    def test_public_baseline_has_five_verified_but_is_not_ready(self) -> None:
         first = build_report(BASELINE_REGISTRY)
         second = build_report(BASELINE_REGISTRY)
         self.assertEqual(first, second)
         self.assertEqual("NOT_READY", first["readiness"])
-        self.assertEqual(0, first["fixtureCount"])
-        self.assertEqual(0, first["verifiedFixtureCount"])
-        self.assertEqual(0, first["eligibleVerifiedFixtureCount"])
+        self.assertEqual(5, first["fixtureCount"])
+        self.assertEqual(5, first["verifiedFixtureCount"])
+        self.assertEqual(5, first["eligibleVerifiedFixtureCount"])
+        self.assertEqual(0, first["separatelyTrainingAuthorizedFixtureCount"])
         self.assertGreater(sum(len(v) for v in first["missingCoverage"].values()), 0)
         self.assertIs(first["claims"]["generalAccuracyClaim"], False)
         self.assertIs(first["claims"]["productionDecisionAuthority"], False)
+        self.assertIs(first["claims"]["teacherCorrectionsAutomaticallyTrainingData"], False)
 
     def test_verified_evaluation_allowed_fixture_counts_without_accuracy_claim(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
