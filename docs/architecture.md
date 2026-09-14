@@ -1,6 +1,6 @@
 # ScoreMosaic Architecture
 
-Status: **authoritative current architecture through Stage 11-F plus merged unnumbered integration/research workstreams through SM-POLY-11**  
+Status: **authoritative current architecture through Stage 11-F plus unnumbered integration/research workstreams through SM-POLY-13**  
 Current-state contract: `contracts/architecture-current-state-v1.json`
 
 Current architecture truth is defined by this document together with:
@@ -69,7 +69,7 @@ ST-OMR is **not** in the Gateway engine set or Stage 7 quorum. Any future ST-OMR
 
 ### 3.1 Research evidence beside Stage 7
 
-The following merged packages create a research/evaluation evidence layer without changing production convergence authority:
+The following packages create a research/evaluation evidence layer without changing production convergence authority:
 
 ```text
 SM-POLY-02  taxonomy + benchmark schema
@@ -81,15 +81,18 @@ SM-POLY-02  taxonomy + benchmark schema
   -> SM-POLY-08  reliability/calibration evidence
   -> SM-POLY-09  ST-OMR shadow evidence
   -> SM-POLY-11  Convergence Evidence Vector v2
+  -> SM-POLY-13  Teacher Review workload evidence
 ```
 
 SM-POLY-11 binds immutable evidence artifact sets beside an exact Stage 7 result SHA. It intentionally does not assert cross-artifact fixture identity, compute a single confidence score, rank engines, choose a winner, merge/correct MusicXML or alter Stage 7 quorum.
 
+SM-POLY-13 implements read-only Teacher Review workload extraction using `TEACHER_REVISION_COMMAND_COUNT_V1`. It counts one validated immutable TeacherScoreRevision/ScoreEditCommand pair as one edit, validates exact revision/command/audit lineage, rejects duplicate or replayed evidence, and emits exact-rational edits/measure. Edits/page remains unavailable unless explicit page-denominator evidence is supplied; current command location data does not contain page identity and page count is never guessed.
+
 The Teacher-Gold harness is implemented, but the verified corpus is not sufficiently populated for the minimum research benchmark. Real-world ST-OMR shadow benchmarking is also incomplete. Therefore broad OMR accuracy, ST-OMR superiority and production-readiness claims remain prohibited.
 
-The next explicitly planned research package is **SM-POLY-13**, responsible for Teacher Review workload instrumentation using `TEACHER_REVISION_COMMAND_COUNT_V1`. Package numbers for a future direct cross-artifact join or selective-prediction work are intentionally unassigned.
+The next research/evaluation priority is **POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE** toward the existing >=500 eligible verified fixture gate. Package numbers for a future direct cross-artifact join or selective-prediction work are intentionally unassigned.
 
-See `docs/architecture-research-evidence-current.md`.
+See `docs/architecture-research-evidence-current.md` and `docs/sm-poly-13-teacher-review-workload.md`.
 
 ## 4. Teacher Review architecture
 
@@ -103,7 +106,8 @@ Stage 8-A through 8-O are complete at repository/preparation level. The reposito
 - server-authorized non-network mutation foundation;
 - approval-candidate evidence;
 - explicit human approval handoff/record foundations;
-- publication eligibility and publisher-bound non-executing handoff.
+- publication eligibility and publisher-bound non-executing handoff;
+- read-only SM-POLY-13 workload evidence derivation from immutable revision/command history.
 
 The external publication effect remains locked. Production write persistence, live approval/publication routes, published-artifact persistence and actual publication execution are not activated.
 
@@ -239,7 +243,8 @@ First-party code is noncommercial source-available; third-party engines/packages
 | Real Score Intake v1/v1.1 | Repository-integrated | Verified Canonical → pinned Core; no production authority. |
 | H7-C/H7-D ST-Orchestration | Local + authenticated staging evidence ready | Non-authoritative preview; H7-E locked. |
 | Score Discovery SD-4B | Disconnected consumer boundary ready | Safe Intake still mandatory; live Gateway off. |
-| SM-POLY-02→11 evidence chain | Research integration complete through v2 vector | No Stage 7 authority change. |
+| SM-POLY-02→13 evidence chain | Research integration complete through workload evidence | No Stage 7 authority change. |
+| SM-POLY-13 workload evidence | Repository-ready | Read-only lineage-derived evidence; no Teacher Review authority change. |
 | UI Architecture Phase 1 | Repository baseline; high-fidelity pending | No live activation. |
 | Web Preview v1 | Public fixture-only preview verified | No production API/data authority. |
 | Teacher Review API Security Harness v1 | Repository baseline complete | Routes/runtime/persistence locked. |
@@ -264,18 +269,16 @@ First-party code is noncommercial source-available; third-party engines/packages
 Repository regression/integration evidence is strong, but broad musical accuracy evidence remains incomplete. Current gaps include:
 
 - sufficiently populated verified Teacher-Gold corpus;
-- Teacher Review workload/edit-cost evidence;
 - real-world ST-OMR shadow benchmark coverage;
 - directly validated cross-artifact identity joins;
 - held-out selective-prediction/abstention evidence;
 - category-stratified no-regression evidence sufficient for ST-OMR promotion;
 - production provider/security/backup/restore/observability evidence.
 
-The next evidence-first development sequence is:
+SM-POLY-13 Teacher Review workload instrumentation is now repository-ready using `TEACHER_REVISION_COMMAND_COUNT_V1`. The next evidence-first development sequence is:
 
 ```text
-SM-POLY-13 Teacher Review workload instrumentation
-  -> populate/qualify real Teacher-Gold corpus (>=500 minimum gate)
+POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE (>=500 minimum gate)
   -> versioned direct cross-artifact join
   -> selective prediction / abstention research
   -> versioned ST-OMR promotion decision gate
