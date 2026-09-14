@@ -499,6 +499,13 @@ def project_teacher_workload_to_sm_poly_04(
     if type(semantic_observation) is not dict:
         _fail("semantic_observation_invalid")
     observation = json.loads(_canonical_json(semantic_observation).decode("utf-8"))
+    semantic_metrics = observation.get("semanticMetrics")
+    metric_order = ("pitch", "duration", "onset", "voice", "staff", "tie", "tuplet")
+    if type(semantic_metrics) is dict and set(semantic_metrics) == set(metric_order):
+        observation["semanticMetrics"] = {
+            name: semantic_metrics[name]
+            for name in metric_order
+        }
     if observation.get("fixtureId") != validated["fixtureId"]:
         _fail("semantic_fixture_mismatch")
     engine = observation.get("engine")
