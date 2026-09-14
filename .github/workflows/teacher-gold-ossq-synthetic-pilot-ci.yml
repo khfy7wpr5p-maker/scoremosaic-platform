@@ -1,0 +1,71 @@
+name: Teacher-Gold OSSQ Synthetic Pilot CI
+
+on:
+  push:
+    branches:
+      - "feature/teacher-gold-ossq-pilot"
+    paths:
+      - ".github/workflows/teacher-gold-ossq-synthetic-pilot-ci.yml"
+      - "contracts/polyphonic-teacher-gold-synthetic-pilot-v1.schema.json"
+      - "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v1.json"
+      - "scripts/polyphonic_teacher_gold_synthetic_pilot.py"
+      - "tests/test_teacher_gold_synthetic_pilot.py"
+      - "docs/teacher-gold-ossq-synthetic-pilot.md"
+      - "evaluation/polyphonic-teacher-gold-v1/registry.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/teacher-gold-ossq-synthetic-pilot-ci.yml"
+      - "contracts/polyphonic-teacher-gold-synthetic-pilot-v1.schema.json"
+      - "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v1.json"
+      - "scripts/polyphonic_teacher_gold_synthetic_pilot.py"
+      - "tests/test_teacher_gold_synthetic_pilot.py"
+      - "docs/teacher-gold-ossq-synthetic-pilot.md"
+      - "evaluation/polyphonic-teacher-gold-v1/registry.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teacher-gold-ossq-synthetic-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-ossq-synthetic-pilot:
+    name: Validate non-counting OSSQ synthetic Teacher-Gold pilot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable GitHub Actions pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate OSSQ synthetic pilot manifest
+        run: python scripts/polyphonic_teacher_gold_synthetic_pilot.py
+
+      - name: Run OSSQ synthetic pilot safety regressions
+        run: python -m unittest tests.test_teacher_gold_synthetic_pilot -v
+
+      - name: Re-run Teacher-Gold harness
+        run: python scripts/polyphonic_teacher_gold_harness.py
+
+      - name: Re-run SM-POLY-03 regressions
+        run: python -m unittest tests.test_sm_poly_03_teacher_gold_harness -v
+
+      - name: Validate foundation contracts
+        run: python scripts/validate_foundation.py
+
+      - name: Check repository diff formatting
+        run: git diff --check
