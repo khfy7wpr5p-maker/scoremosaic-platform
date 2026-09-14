@@ -2,8 +2,8 @@
 """Build a non-counting Teacher-Gold pilot manifest from a local DoReMi v1 ZIP.
 
 The script is intentionally read-only. It never admits Teacher-Gold fixtures and never
-marks teacher verification complete. It only pairs published PNG pages with their
-published MusicXML score artifact and computes SHA-256 digests from the archive bytes.
+marks teacher verification complete. It pairs a published PNG page with a unique
+published MusicXML score artifact and computes SHA-256 digests from archive bytes.
 """
 
 from __future__ import annotations
@@ -22,39 +22,49 @@ RELEASE_URL = "https://github.com/steinbergmedia/DoReMi/releases/download/v1.0/D
 def _clean(value: str) -> str:
     value = value.casefold()
     value = re.sub(r"[^a-z0-9]+", "_", value).strip("_")
-    value = re.sub(r"(?:_?(?:page|pg|p))?_?\d+$", "", value).strip("_")
     return value
 
 
-def _after_marker(path: str, marker: str) -> list[str]:
-    parts = list(PurePosixPath(path).parts)
-    folded = [part.casefold() for part in parts]
-    try:
-        idx = folded.index(marker.casefold())
-    except ValueError:
-        return []
-    return parts[idx + 1 :]
+def _image_score_key(path: str) -> str:
+    stem = PurePosixPath(path).stem
+    # DoReMi page images end in -001, -002, ...; remove only that page suffix.
+    stem = re.sub(r"[-_ ]\d+$", "", stem)
+    return _clean(stem)
 
 
-def _score_key(path: str, marker: str) -> str:
-    tail = _after_marker(path, marker)
-    if not tail:
-        return ""
-    if len(tail) >= 2:
-        # Prefer a score-level directory when the dataset has one directory per score.
-        directory_key = _clean(tail[0])
-        if directory_key:
-            return directory_key
-    return _clean(PurePosixPath(tail[-1]).stem)
+def _musicxml_name_key(path: str) -> str:
+    return _clean(PurePosixPath(path).stem)
 
 
-def _first_by_key(paths: list[str], marker: str) -> dict[str, str]:
+def _first_page_by_score(paths: list[str]) -> dict[str, str]:
     result: dict[str, str] = {}
     for path in sorted(paths):
-        key = _score_key(path, marker)
+        key = _image_score_key(path)
         if key and key not in result:
             result[key] = path
     return result
+
+
+def _pair_scores(pngs: list[str], musicxml: list[str]) -> tuple[list[tuple[str, str, str]], list[str], list[str]]:
+    first_pages = _first_page_by_score(pngs)
+    xml_keys = [(path, _musicxml_name_key(path)) for path in sorted(musicxml)]
+    pairs: list[tuple[str, str, str]] = []
+    unmatched: list[str] = []
+    ambiguous: list[str] = []
+
+    for score_key, png_path in sorted(first_pages.items()):
+        candidates = [
+            path
+            for path, xml_key in xml_keys
+            if xml_key == score_key or xml_key.startswith(score_key + "_")
+        ]
+        if len(candidates) == 1:
+            pairs.append((score_key, png_path, candidates[0]))
+        elif not candidates:
+            unmatched.append(score_key)
+        else:
+            ambiguous.append(score_key)
+    return pairs, unmatched, ambiguous
 
 
 def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
@@ -63,34 +73,34 @@ def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
         pngs = [
             path
             for path in members
-            if path.casefold().endswith(".png") and "image" in path.casefold()
+            if path.startswith("DoReMi_v1/Images/") and path.casefold().endswith(".png")
         ]
         musicxml = [
             path
             for path in members
-            if path.casefold().endswith(".xml") and "musicxml" in path.casefold()
+            if path.startswith("DoReMi_v1/MusicXML/") and path.casefold().endswith(".xml")
         ]
 
-        png_by_key = _first_by_key(pngs, "Images")
-        xml_by_key = _first_by_key(musicxml, "MusicXML")
-        shared = sorted(set(png_by_key) & set(xml_by_key))
+        pairs, unmatched, ambiguous = _pair_scores(pngs, musicxml)
+        first_pages = _first_page_by_score(pngs)
 
         diagnostics = {
             "memberCount": len(members),
             "pngCount": len(pngs),
             "musicXmlCount": len(musicxml),
-            "pngKeyCount": len(png_by_key),
-            "musicXmlKeyCount": len(xml_by_key),
-            "sharedKeyCount": len(shared),
-            "topLevel": sorted({PurePosixPath(path).parts[0] for path in members if PurePosixPath(path).parts}),
+            "imageScoreCount": len(first_pages),
+            "exactUniquePairCount": len(pairs),
+            "unmatchedScoreKeys": unmatched,
+            "ambiguousScoreKeys": ambiguous,
+            "topLevel": sorted(
+                {PurePosixPath(path).parts[0] for path in members if PurePosixPath(path).parts}
+            ),
             "samplePngPaths": sorted(pngs)[:10],
             "sampleMusicXmlPaths": sorted(musicxml)[:10],
         }
 
         records: list[dict[str, object]] = []
-        for key in shared[:limit]:
-            png_path = png_by_key[key]
-            xml_path = xml_by_key[key]
+        for key, png_path, xml_path in pairs[:limit]:
             png_bytes = archive.read(png_path)
             xml_bytes = archive.read(xml_path)
             records.append(
