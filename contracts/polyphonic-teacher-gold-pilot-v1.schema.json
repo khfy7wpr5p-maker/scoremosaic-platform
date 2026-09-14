@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-teacher-gold-pilot-v1.schema.json",
+  "title": "ScoreMosaic Teacher-Gold Pilot Manifest v1",
+  "description": "Research-only manifest for real-hash source/gold pairs awaiting license and teacher verification. Pilot records never count toward Teacher-Gold readiness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "dataset",
+    "datasetVersion",
+    "releaseUrl",
+    "selectionPolicy",
+    "datasetRights",
+    "discoveryEvidence",
+    "pilotCount",
+    "records",
+    "boundaries"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-polyphonic-teacher-gold-pilot-v1"},
+    "dataset": {"type": "string", "minLength": 1, "maxLength": 100},
+    "datasetVersion": {"type": "string", "minLength": 1, "maxLength": 50},
+    "releaseUrl": {"type": "string", "minLength": 1, "maxLength": 500},
+    "selectionPolicy": {"const": "NAMED_REPERTOIRE_FIRST_AVAILABLE_IMAGE_V1"},
+    "datasetRights": {"$ref": "#/$defs/datasetRights"},
+    "discoveryEvidence": {"$ref": "#/$defs/discoveryEvidence"},
+    "pilotCount": {"const": 5},
+    "records": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/record"}
+    },
+    "boundaries": {"$ref": "#/$defs/boundaries"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "datasetRights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["licenseReviewStatus", "evaluationAllowed", "trainingAllowed"],
+      "properties": {
+        "licenseReviewStatus": {"const": "REVIEW_REQUIRED"},
+        "evaluationAllowed": {"const": "REVIEW_REQUIRED"},
+        "trainingAllowed": {"const": "REVIEW_REQUIRED"}
+      }
+    },
+    "discoveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceCommitSha",
+        "workflowRunId",
+        "exactUniquePairCount",
+        "repertoirePairCount",
+        "temporaryArchiveDeleted"
+      ],
+      "properties": {
+        "sourceCommitSha": {"$ref": "#/$defs/sha256"},
+        "workflowRunId": {"const": 34878038346},
+        "exactUniquePairCount": {"const": 43},
+        "repertoirePairCount": {"const": 25},
+        "temporaryArchiveDeleted": {"const": true}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["archiveMember", "mediaType", "sha256", "byteSize"],
+      "properties": {
+        "archiveMember": {"type": "string", "minLength": 1, "maxLength": 500},
+        "mediaType": {"enum": ["image/png", "application/vnd.recordare.musicxml+xml"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 20000000}
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pilotId",
+        "scoreKey",
+        "source",
+        "gold",
+        "teacherVerificationStatus",
+        "evaluationEligibility",
+        "countTowardTeacherGoldMinimum"
+      ],
+      "properties": {
+        "pilotId": {"type": "string", "pattern": "^doremi_v1_[0-9]{2}$"},
+        "scoreKey": {"type": "string", "pattern": "^[a-z0-9_]{3,120}$"},
+        "source": {"$ref": "#/$defs/artifact"},
+        "gold": {"$ref": "#/$defs/artifact"},
+        "teacherVerificationStatus": {"const": "DRAFT"},
+        "evaluationEligibility": {"const": "REVIEW_REQUIRED"},
+        "countTowardTeacherGoldMinimum": {"const": false}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "researchEvaluationOnly",
+        "teacherVerified",
+        "automaticFixtureAdmission",
+        "automaticTrainingAuthorization",
+        "corpusBlobsCommittedToGitHub",
+        "corpusBlobsPersistedToDriveByThisPilot",
+        "productionDecisionAuthority"
+      ],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "teacherVerified": {"const": false},
+        "automaticFixtureAdmission": {"const": false},
+        "automaticTrainingAuthorization": {"const": false},
+        "corpusBlobsCommittedToGitHub": {"const": false},
+        "corpusBlobsPersistedToDriveByThisPilot": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  }
+}
