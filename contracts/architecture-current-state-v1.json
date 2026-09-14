@@ -2,6 +2,11 @@
   "version": "scoremosaic-architecture-current-state-v1",
   "asOfStage": "11-F",
   "sourceOfTruth": true,
+  "repositoryStateAsOf": {
+    "mainCommit": "dfd8b8607607383fd1e250ce704e97af84a5101b",
+    "date": "2026-08-30",
+    "researchEvidenceAddendum": "docs/architecture-research-evidence-current.md"
+  },
   "stageStatus": {
     "5": "CONTROLLED_STAGING_EXECUTION_COMPLETE",
     "6": "AUTHENTICATED_CANDIDATE_INGESTION_PERSISTENCE_COMPLETE",
@@ -105,6 +110,47 @@
       "productionPersistenceActivated": false,
       "productionRendererActivated": false
     },
+    "realScoreIntakeCoreIntegration": {
+      "stageNumberAssigned": false,
+      "status": "REPOSITORY_REAL_SCORE_INTAKE_V1_1_TO_PINNED_EDITOR_CORE_READY_PRODUCTION_DISABLED",
+      "contractV1": "contracts/real-score-intake-v1.schema.json",
+      "contractV1_1": "contracts/real-score-intake-v1.1.schema.json",
+      "verifiedStage7BindingRequired": true,
+      "canonicalProjectionReady": true,
+      "chordAwareSemanticTargetsReady": true,
+      "fullScoreCoreRuntimeProjectionReady": true,
+      "liveUploadActivated": false,
+      "productionPersistenceActivated": false,
+      "automaticCorrectionActivated": false,
+      "approvalPublicationAuthorityGranted": false
+    },
+    "stOrchestrationPreview": {
+      "stageNumberAssigned": false,
+      "status": "H7D_AUTHENTICATED_STAGING_ACTIVE_PRODUCTION_DISABLED",
+      "localPreviewContract": "contracts/st-orchestration-local-preview-v1.json",
+      "stagingPreviewContract": "contracts/st-orchestration-staging-preview-v1.json",
+      "teacherReviewEvidenceOnly": true,
+      "h7CLocalPreviewReady": true,
+      "h7DAuthenticatedStagingReady": true,
+      "browserDirectEngineCallAllowed": false,
+      "applyActionAvailable": false,
+      "canonicalMutationAllowed": false,
+      "teacherRevisionMutationAllowed": false,
+      "productionInferenceActivated": false,
+      "h7EAuthorized": false
+    },
+    "scoreDiscoveryConsumer": {
+      "stageNumberAssigned": false,
+      "status": "DISCONNECTED_SCORE_DISCOVERY_CONSUMER_BOUNDARY_READY_LIVE_GATEWAY_DISABLED",
+      "contract": "contracts/score-discovery-consumer-v1.json",
+      "architecture": "docs/score-discovery-gateway-integration-v1.md",
+      "classicalScopeBounded": true,
+      "browserRemoteAssetUrlExposed": false,
+      "eligibleServerHandoffAuthority": "discovery-handoff-only",
+      "safeIntakeStillRequired": true,
+      "liveGatewayNetworkingActivated": false,
+      "productionImportActivated": false
+    },
     "coolifyConnectionPreflight": {
       "stageNumberAssigned": false,
       "status": "REPOSITORY_COOLIFY_PRIVATE_STAGING_PREFLIGHT_READY_NOT_CONNECTED",
@@ -138,6 +184,37 @@
     "realOmrAccuracyMeasured": false,
     "generalAccuracyClaim": false
   },
+  "polyphonicResearchEvidence": {
+    "status": "SM_POLY_11_RESEARCH_EVIDENCE_CONTEXT_COMPLETE_AUTHORITY_UNCHANGED",
+    "implementedPackages": [
+      "SM-POLY-02",
+      "SM-POLY-03",
+      "SM-POLY-04",
+      "SM-POLY-05",
+      "SM-POLY-06",
+      "SM-POLY-07",
+      "SM-POLY-08",
+      "SM-POLY-09",
+      "SM-POLY-11"
+    ],
+    "teacherGoldHarnessReady": true,
+    "teacherGoldRegistrySufficientlyPopulated": false,
+    "minimumResearchBenchmarkReady": false,
+    "perEngineSemanticMetricsReady": true,
+    "visualBboxEvidenceReady": true,
+    "sourceQualityEvidenceReady": true,
+    "polyphonyComplexityEvidenceReady": true,
+    "reliabilityCalibrationEvidenceReady": true,
+    "stOmrShadowEvidenceContractReady": true,
+    "convergenceEvidenceVectorV2Ready": true,
+    "directCrossArtifactJoinValidated": false,
+    "selectivePredictionAuthorized": false,
+    "productionDecisionAuthorityGranted": false,
+    "stage7QuorumChanged": false,
+    "automaticMergeOrCorrectionEnabled": false,
+    "nextPlannedPackage": "SM-POLY-13",
+    "nextPlannedMethod": "TEACHER_REVISION_COMMAND_COUNT_V1"
+  },
   "teacherReview": {
     "repositoryRevisionApprovalPublicationPreparationComplete": true,
     "disconnectedProductUiComplete": true,
@@ -149,6 +226,10 @@
     "productionScoreRendererActivated": false,
     "repositoryApiContractReady": true,
     "repositoryApiHarnessReady": true,
+    "realScoreIntakeV1_1RepositoryReady": true,
+    "realScoreCoreProjectionReady": true,
+    "stOrchestrationLocalPreviewReady": true,
+    "stOrchestrationAuthenticatedStagingPreviewReady": true,
     "liveTeacherReviewApiActivated": false,
     "productionWriteActivated": false,
     "productionApprovalPersistenceActivated": false,
@@ -209,6 +290,20 @@
     "requiresCalibratedAbstentionAndDeterministicValidation": true,
     "mayRemoveExistingProductionEnginesNow": false,
     "existingEnginesMayRemainOfflineBenchmarksAfterMigration": true
+  },
+  "nextDevelopment": {
+    "priorityOrder": [
+      "SM-POLY-13_TEACHER_REVIEW_WORKLOAD_INSTRUMENTATION",
+      "POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE",
+      "VERSIONED_DIRECT_CROSS_ARTIFACT_JOIN",
+      "SELECTIVE_PREDICTION_ABSTENTION_RESEARCH",
+      "VERSIONED_ST_OMR_PROMOTION_DECISION_GATE"
+    ],
+    "smPoly13Method": "TEACHER_REVISION_COMMAND_COUNT_V1",
+    "crossArtifactJoinPackageNumberAssigned": false,
+    "selectivePredictionPackageNumberAssigned": false,
+    "h7ESeparateHumanGate": true,
+    "externalProductionProvisioningSeparateOperationalGate": true
   },
   "licensingGovernance": {
     "firstPartySoftwareLicense": "PolyForm-Noncommercial-1.0.0",
