@@ -1,0 +1,64 @@
+name: Teacher-Gold DoReMi Pilot Discovery CI
+
+on:
+  push:
+    branches:
+      - "feature/teacher-gold-pilot-intake"
+    paths:
+      - ".github/workflows/teacher-gold-doremi-pilot-discovery-ci.yml"
+      - "scripts/teacher_gold_doremi_pilot_discovery.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teacher-gold-doremi-pilot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover-pilot:
+    name: Discover five non-counting DoReMi pilot pairs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Download published DoReMi v1 release temporarily
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --output /tmp/DoReMi_v1.zip \
+            https://github.com/steinbergmedia/DoReMi/releases/download/v1.0/DoReMi_v1.zip
+          test -s /tmp/DoReMi_v1.zip
+          du -h /tmp/DoReMi_v1.zip
+
+      - name: Discover and hash five exact PNG to MusicXML pairs
+        run: |
+          python scripts/teacher_gold_doremi_pilot_discovery.py \
+            /tmp/DoReMi_v1.zip \
+            --limit 5 \
+            --output /tmp/doremi-pilot-discovery.json
+
+      - name: Upload manifest only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: teacher-gold-doremi-pilot-discovery-v1
+          path: /tmp/doremi-pilot-discovery.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove temporary corpus archive
+        if: always()
+        shell: bash
+        run: rm -f /tmp/DoReMi_v1.zip
