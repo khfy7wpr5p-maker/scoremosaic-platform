@@ -21,6 +21,7 @@ on:
       - "docs/roadmap.md"
       - "docs/security-boundaries.md"
       - "tests/test_architecture_consistency.py"
+      - "tests/test_architecture_research_evidence_current.py"
       - "tests/test_ui_architecture_phase1.py"
       - "contracts/stage9-production-foundation-eligibility-v1.json"
       - "contracts/stage10-ui-experience-eligibility-v1.json"
@@ -43,6 +44,7 @@ on:
       - "docs/roadmap.md"
       - "docs/security-boundaries.md"
       - "tests/test_architecture_consistency.py"
+      - "tests/test_architecture_research_evidence_current.py"
       - "tests/test_ui_architecture_phase1.py"
       - "contracts/stage9-production-foundation-eligibility-v1.json"
       - "contracts/stage10-ui-experience-eligibility-v1.json"
@@ -72,6 +74,8 @@ jobs:
           python -m json.tool contracts/downstream-music-application-integration-v1.json > /dev/null
       - name: Run architecture incompatibility and drift tests
         run: python -m unittest discover -s tests -p 'test_architecture_consistency.py' -v
+      - name: Run current research-evidence architecture guards
+        run: python -m unittest discover -s tests -p 'test_architecture_research_evidence_current.py' -v
       - name: Run UI Architecture Phase 1 contract tests
         run: python -m unittest discover -s tests -p 'test_ui_architecture_phase1.py' -v
       - name: Run Stage 7 acceptance drift guard
