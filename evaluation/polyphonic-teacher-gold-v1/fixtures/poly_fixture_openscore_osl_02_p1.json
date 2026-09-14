@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-benchmark-fixture-v1",
+  "fixtureId": "poly_fixture_openscore_osl_02_p1",
+  "granularity": "page",
+  "location": {
+    "pageIndex": 0
+  },
+  "source": {
+    "sourceId": "openscore_lieder_osl_02_render_p1",
+    "sourceSha256": "cfe8ed7e0996ab19d727e79d013cf15008ad22c6dcf61b93b71023cbccfbee06",
+    "mediaType": "image/png",
+    "originType": "SYNTHETIC",
+    "assetAvailability": "EXTERNAL_REFERENCE_ONLY",
+    "sourceReference": "OpenScore/Lieder/38c5db510224d9facdc4b08d741fc788cfb58ea8/scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl#rendered-page-1-musescore-3.6.2",
+    "licenseMetadata": {
+      "dataset": "OpenScore Lieder Corpus",
+      "version": "38c5db510224d9facdc4b08d741fc788cfb58ea8",
+      "source": "OpenScore/Lieder",
+      "license": "CC0-1.0",
+      "redistributionStatus": "ALLOWED",
+      "trainingAllowed": "YES",
+      "evaluationAllowed": "YES",
+      "commercialUseImplications": "ALLOWED"
+    }
+  },
+  "gold": {
+    "goldId": "openscore_lieder_osl_02_mxl_gold",
+    "goldArtifactSha256": "e9610dd969b6e556f42b086e3d122842f19644373aee699fe8c74262a1fcbff4",
+    "goldFormat": "MUSICXML",
+    "verificationStatus": "VERIFIED",
+    "verifiedByRole": "TEACHER",
+    "separateFromEngineOutputs": true,
+    "teacherCorrectionAutomaticallyTrainingData": false,
+    "trainingAuthorization": "NOT_AUTHORIZED"
+  },
+  "classification": {
+    "notationClasses": [
+      "PIANO_GRAND_STAFF"
+    ],
+    "notationFeatures": [
+      "TIES",
+      "SLURS",
+      "ACCIDENTALS"
+    ],
+    "scanConditions": [
+      "CLEAN_OR_HIGH_QUALITY"
+    ]
+  },
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "engineOutputsStoredSeparately": true,
+    "automaticWinnerSelection": false,
+    "automaticMusicXmlMerge": false,
+    "automaticSemanticRepair": false,
+    "teacherAuthority": true,
+    "productionDecisionAuthority": false
+  }
+}
