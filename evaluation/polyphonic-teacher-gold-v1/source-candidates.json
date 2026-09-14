@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-teacher-gold-source-candidates-v1",
+  "benchmarkId": "scoremosaic-polyphonic-teacher-gold-v1",
+  "candidates": [
+    {
+      "candidateId": "tg_source_doremi_v1",
+      "candidateType": "DATASET",
+      "datasetName": "DoReMi v1",
+      "sourceUrl": "https://github.com/steinbergmedia/DoReMi/releases/tag/v1.0",
+      "provenanceUrl": "https://github.com/steinbergmedia/DoReMi/blob/main/README.md",
+      "licenseEvidenceUrl": "https://github.com/steinbergmedia/DoReMi/blob/main/README.md",
+      "licenseState": "REVIEW_REQUIRED",
+      "declaredFormats": ["DORICO", "MEI", "MIDI", "MUSICXML", "OMR_XML", "PNG"],
+      "useCase": "CLEAN_DIGITAL_IMAGE_SYMBOLIC_PAIR",
+      "imageEvidenceAvailable": true,
+      "symbolicEvidenceAvailable": true,
+      "scannedEvidenceConditional": false,
+      "teacherVerified": false,
+      "contentHashesVerified": false,
+      "countTowardTeacherGoldMinimum": false,
+      "status": "SOURCE_REVIEWED_NOT_TEACHER_GOLD",
+      "notes": "The published v1 release exposes 5,218 PNG pages and 44 MusicXML scores plus MEI/MIDI/OMR metadata. The README states that only openly distributable scores are included, but an explicit dataset license grant was not established by this review; evaluation eligibility must therefore remain REVIEW_REQUIRED until a specific legal/license record is verified."
+    },
+    {
+      "candidateId": "tg_source_openscore_lieder_staendchen_d889",
+      "candidateType": "SCORE",
+      "datasetName": "OpenScore Lieder - Schubert Staendchen D.889",
+      "sourceUrl": "https://github.com/OpenScore/Lieder/tree/main/scores/Schubert%2C_Franz/_/St%C3%A4ndchen%2C_D.889",
+      "provenanceUrl": "https://github.com/OpenScore/Lieder",
+      "licenseEvidenceUrl": "https://github.com/OpenScore/Lieder/blob/main/LICENSE.txt",
+      "licenseState": "CLEAR_CC0",
+      "declaredFormats": ["MSCX", "MSCZ", "MXL"],
+      "useCase": "POLYPHONIC_VOICE_PIANO_RENDER_SOURCE",
+      "imageEvidenceAvailable": false,
+      "symbolicEvidenceAvailable": true,
+      "scannedEvidenceConditional": false,
+      "teacherVerified": false,
+      "contentHashesVerified": false,
+      "countTowardTeacherGoldMinimum": false,
+      "status": "SOURCE_REVIEWED_NOT_TEACHER_GOLD",
+      "notes": "The inspected score directory contains MuseScore source and compressed MusicXML. OpenScore Lieder is CC0 and professionally proofread at corpus level. A benchmark image/PDF must still be rendered or otherwise acquired, hashed and paired with an independently verified gold artifact before fixture admission. Git object SHAs are not accepted as Teacher-Gold SHA-256 evidence."
+    },
+    {
+      "candidateId": "tg_source_ossq_omr_2026",
+      "candidateType": "DATASET",
+      "datasetName": "OSSQ-OMR ISMIR 2026 benchmark corpus",
+      "sourceUrl": "https://github.com/MALerLab/ossq-omr",
+      "provenanceUrl": "https://github.com/MALerLab/string-quartet-omr-benchmark",
+      "licenseEvidenceUrl": "https://github.com/MALerLab/ossq-omr/blob/omr-dev/LICENSE.txt",
+      "licenseState": "REVIEW_REQUIRED",
+      "declaredFormats": ["ABC", "KERN", "LMXE", "MSCX", "MUSICXML", "PDF", "PNG"],
+      "useCase": "POLYPHONIC_MIXED_SCAN_AND_SYNTHETIC",
+      "imageEvidenceAvailable": true,
+      "symbolicEvidenceAvailable": true,
+      "scannedEvidenceConditional": true,
+      "teacherVerified": false,
+      "contentHashesVerified": false,
+      "countTowardTeacherGoldMinimum": false,
+      "status": "SOURCE_REVIEWED_NOT_TEACHER_GOLD",
+      "notes": "OSSQ-OMR declares CC0 for annotation sources and bulk-distributed derived formats and provides MusicXML-oriented polyphonic benchmark material. Because scanned evidence can originate from per-score external scan sources, each intended scanned fixture must still pass source-specific provenance and evaluation-rights review before admission."
+    }
+  ],
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "candidateCatalogueSeparateFromFixtureRegistry": true,
+    "automaticFixtureAdmission": false,
+    "automaticTeacherVerification": false,
+    "automaticDownload": false,
+    "automaticTrainingAuthorization": false,
+    "productionDecisionAuthority": false
+  }
+}
