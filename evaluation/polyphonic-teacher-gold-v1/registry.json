@@ -29,6 +29,31 @@
       "fixtureId": "poly_fixture_ossq_8454356_p1",
       "metadataRef": "fixtures/poly_fixture_ossq_8454356_p1.json",
       "metadataSha256": "d84f10d4832dbdaa6fbd5d2a94749984be39f09470013931599b59ce5b92a055"
+    },
+    {
+      "fixtureId": "poly_fixture_openscore_osl_01_p1",
+      "metadataRef": "fixtures/poly_fixture_openscore_osl_01_p1.json",
+      "metadataSha256": "cc4c0776f3152f9e37831d1a51e8a5293ee3b2b19d871314fcdddd24c6f30a52"
+    },
+    {
+      "fixtureId": "poly_fixture_openscore_osl_02_p1",
+      "metadataRef": "fixtures/poly_fixture_openscore_osl_02_p1.json",
+      "metadataSha256": "e80ccce54a8fdb14b00041565ab9baa2483281733cbb69b2f50ad4f81da562bf"
+    },
+    {
+      "fixtureId": "poly_fixture_openscore_osl_03_p1",
+      "metadataRef": "fixtures/poly_fixture_openscore_osl_03_p1.json",
+      "metadataSha256": "b826a6e4a2e551587b3242c75cfcd7cc95b4555cf19e659940edffc98538c80d"
+    },
+    {
+      "fixtureId": "poly_fixture_openscore_osl_04_p1",
+      "metadataRef": "fixtures/poly_fixture_openscore_osl_04_p1.json",
+      "metadataSha256": "8013e2658193d380374d9c8c735662016ec529e010b8a08dcda42c815eeac603"
+    },
+    {
+      "fixtureId": "poly_fixture_openscore_osl_05_p1",
+      "metadataRef": "fixtures/poly_fixture_openscore_osl_05_p1.json",
+      "metadataSha256": "b76c324340be5bea972817a2cc2c612f9dd10dc2af3b20b8e6fdab8fea9786d6"
     }
   ],
   "boundaries": {
