@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-benchmark-fixture-v1",
+  "fixtureId": "poly_fixture_ossq_7383977_p1",
+  "granularity": "page",
+  "location": {
+    "pageIndex": 0
+  },
+  "source": {
+    "sourceId": "ossq_7383977_render_v2",
+    "sourceSha256": "c210c4fbd0423790f0833bdc26e3e5c0f0498af0c4f46077a61155c1025f01e8",
+    "mediaType": "image/png",
+    "originType": "SYNTHETIC",
+    "assetAvailability": "EXTERNAL_REFERENCE_ONLY",
+    "sourceReference": "MALerLab/ossq-omr/7a17e45cddc0b7064fc3a179b62caeb57595e993/ossq_7383977/rendered-page-1",
+    "licenseMetadata": {
+      "dataset": "OSSQ-OMR",
+      "version": "7a17e45cddc0b7064fc3a179b62caeb57595e993",
+      "source": "MALerLab/ossq-omr",
+      "license": "CC0-1.0",
+      "redistributionStatus": "ALLOWED",
+      "trainingAllowed": "YES",
+      "evaluationAllowed": "YES",
+      "commercialUseImplications": "ALLOWED"
+    }
+  },
+  "gold": {
+    "goldId": "ossq_7383977_musicxml_gold",
+    "goldArtifactSha256": "ae821554999bfc0cb70ad4651106f50b9879e227d44daedc97c0e48e8ddf8ea2",
+    "goldFormat": "MUSICXML",
+    "verificationStatus": "VERIFIED",
+    "verifiedByRole": "TEACHER",
+    "separateFromEngineOutputs": true,
+    "teacherCorrectionAutomaticallyTrainingData": false,
+    "trainingAuthorization": "NOT_AUTHORIZED"
+  },
+  "classification": {
+    "notationClasses": [
+      "VOICE_4_PLUS"
+    ],
+    "notationFeatures": [],
+    "scanConditions": [
+      "CLEAN_OR_HIGH_QUALITY"
+    ]
+  },
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "engineOutputsStoredSeparately": true,
+    "automaticWinnerSelection": false,
+    "automaticMusicXmlMerge": false,
+    "automaticSemanticRepair": false,
+    "teacherAuthority": true,
+    "productionDecisionAuthority": false
+  }
+}
