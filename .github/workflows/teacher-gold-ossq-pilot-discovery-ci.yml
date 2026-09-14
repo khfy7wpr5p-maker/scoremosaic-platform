@@ -82,20 +82,36 @@ jobs:
               print(pilot_id, len(data), path)
           PY
 
-      - name: Render deterministic first-page PNGs
+      - name: Render and canonicalize deterministic first-page PNGs
         shell: bash
         run: |
           set -euo pipefail
           for src in /tmp/ossq/source/*.musicxml; do
             id="$(basename "$src" .musicxml)"
+            rm -f "/tmp/ossq/render/${id}"*.png
             xvfb-run -a /tmp/squashfs-root/AppRun \
               -s -m -F -r 150 \
               -o "/tmp/ossq/render/${id}.png" \
               "$src"
-            first="/tmp/ossq/render/${id}-1.png"
-            test -s "$first"
+
+            if test -s "/tmp/ossq/render/${id}-1.png"; then
+              rendered="/tmp/ossq/render/${id}-1.png"
+            elif test -s "/tmp/ossq/render/${id}.png"; then
+              rendered="/tmp/ossq/render/${id}.png"
+            else
+              mapfile -t candidates < <(
+                find /tmp/ossq/render -maxdepth 1 -type f \
+                  -name "${id}*.png" ! -name "${id}-first.png" \
+                  -printf '%p\n' | sort -V
+              )
+              test "${#candidates[@]}" -ge 1
+              rendered="${candidates[0]}"
+            fi
+
+            cp "$rendered" "/tmp/ossq/render/${id}-first.png"
+            test -s "/tmp/ossq/render/${id}-first.png"
           done
-          ls -lh /tmp/ossq/render/*-1.png
+          ls -lh /tmp/ossq/render/*-first.png
 
       - name: Build non-counting review manifest
         shell: bash
@@ -120,7 +136,7 @@ jobs:
           records = []
           for pilot_id, title, source_path in specs:
               source = Path(f"/tmp/ossq/source/{pilot_id}.musicxml")
-              image = Path(f"/tmp/ossq/render/{pilot_id}-1.png")
+              image = Path(f"/tmp/ossq/render/{pilot_id}-first.png")
               sb = source.read_bytes()
               ib = image.read_bytes()
               records.append({
@@ -178,7 +194,7 @@ jobs:
           path: |
             /tmp/ossq/ossq-synthetic-pilot-manifest.json
             /tmp/ossq/source/*.musicxml
-            /tmp/ossq/render/*-1.png
+            /tmp/ossq/render/*-first.png
           if-no-files-found: error
           retention-days: 14
 
