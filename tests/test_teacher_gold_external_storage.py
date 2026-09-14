@@ -85,11 +85,13 @@ class TeacherGoldExternalStorageTests(unittest.TestCase):
         self.assertFalse(boundaries["automaticUpload"])
         self.assertFalse(boundaries["productionDecisionAuthority"])
 
-    def test_public_registry_remains_truthfully_empty_until_real_intake(self) -> None:
+    def test_public_registry_has_five_admitted_records_without_storage_authority_change(self) -> None:
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(registry["fixtureRecords"], [])
+        self.assertEqual(len(registry["fixtureRecords"]), 5)
         self.assertEqual(registry["minimumVerifiedFixtures"], 500)
         self.assertEqual(registry["targetVerifiedFixtures"], 1000)
+        self.assertTrue(registry["boundaries"]["privateAssetsRemainExternal"])
+        self.assertFalse(registry["boundaries"]["productionDecisionAuthority"])
 
 
 if __name__ == "__main__":
