@@ -102,6 +102,15 @@ winner=null
 
 A future direct cross-artifact join must validate upstream payload identities at the relevant fixture/source/Teacher-Gold granularity and introduce a separately versioned binding method.
 
+The central current-state research locks are therefore explicit:
+
+```text
+directCrossArtifactJoinValidated=false
+selectivePredictionAuthorized=false
+automaticMergeOrCorrectionEnabled=false
+productionDecisionAuthorityGranted=false
+```
+
 ## 3. Real Score Intake → Teacher Review Core
 
 Merged E7-I/E7-K work establishes a fail-closed Real Score Intake seam from verified Stage 7/Canonical evidence into the Teacher Review editor runtime:
