@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-teacher-gold-degradation-pilot-v1.schema.json",
+  "title": "ScoreMosaic Teacher-Gold Degradation Pilot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license", "licenseSha256", "renderer", "degradationTool", "discoveryEvidence", "pilotCount", "records", "boundaries"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-polyphonic-teacher-gold-degradation-pilot-v1"},
+    "dataset": {"const": "OpenScore Lieder Corpus — deterministic degraded review derivatives"},
+    "sourceRepository": {"const": "OpenScore/Lieder"},
+    "sourceCommitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "license": {"const": "CC0-1.0"},
+    "licenseSha256": {"$ref": "#/$defs/sha256"},
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "canonicalVersion", "releaseTag", "appImageSha256", "imageResolutionDpi"],
+      "properties": {
+        "name": {"const": "MuseScore"},
+        "canonicalVersion": {"const": "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34"},
+        "releaseTag": {"const": "v3.6.2"},
+        "appImageSha256": {"$ref": "#/$defs/sha256"},
+        "imageResolutionDpi": {"const": 150}
+      }
+    },
+    "degradationTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "versionOutput", "deterministicProfiles"],
+      "properties": {
+        "name": {"const": "ImageMagick"},
+        "versionOutput": {"type": "string", "minLength": 1, "maxLength": 240},
+        "deterministicProfiles": {"const": true}
+      }
+    },
+    "discoveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflowRunId", "workflowHeadSha", "artifactId", "artifactZipSha256", "artifactSizeBytes", "artifactRetentionDays"],
+      "properties": {
+        "workflowRunId": {"type": "integer", "minimum": 1},
+        "workflowHeadSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "artifactId": {"type": "integer", "minimum": 1},
+        "artifactZipSha256": {"$ref": "#/$defs/sha256"},
+        "artifactSizeBytes": {"type": "integer", "minimum": 1, "maximum": 20000000},
+        "artifactRetentionDays": {"const": 14}
+      }
+    },
+    "pilotCount": {"const": 5},
+    "records": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/record"}
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["researchEvaluationOnly", "derivedFromAlreadyVerifiedSymbolicPairs", "teacherVerifiedDegradedImages", "automaticFixtureAdmission", "automaticTrainingAuthorization", "productionDecisionAuthority"],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "derivedFromAlreadyVerifiedSymbolicPairs": {"const": true},
+        "teacherVerifiedDegradedImages": {"const": false},
+        "automaticFixtureAdmission": {"const": false},
+        "automaticTrainingAuthorization": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "sha256", "byteSize"],
+      "properties": {
+        "mediaType": {"type": "string", "minLength": 1, "maxLength": 100},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 50000000}
+      }
+    },
+    "degradedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "sha256", "byteSize", "alphaChannel"],
+      "properties": {
+        "mediaType": {"const": "image/png"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 50000000},
+        "alphaChannel": {"const": false}
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pilotId", "title", "sourcePath", "symbolicGold", "cleanRender", "degradedRender", "scanCondition", "degradationTransform", "rightsStatus", "teacherVerificationStatus", "evaluationEligibility", "countTowardTeacherGoldMinimum"],
+      "properties": {
+        "pilotId": {"enum": ["deg_01", "deg_02", "deg_03", "deg_04", "deg_05"]},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "sourcePath": {"type": "string", "minLength": 1, "maxLength": 500},
+        "symbolicGold": {"$ref": "#/$defs/artifact"},
+        "cleanRender": {"$ref": "#/$defs/artifact"},
+        "degradedRender": {"$ref": "#/$defs/degradedArtifact"},
+        "scanCondition": {"enum": ["LOW_CONTRAST", "ROTATION", "SKEW", "PERSPECTIVE_DISTORTION", "LOW_QUALITY_SCAN"]},
+        "degradationTransform": {"type": "string", "pattern": "^[A-Z0-9_]+$", "maxLength": 96},
+        "rightsStatus": {"const": "CLEAR_CC0"},
+        "teacherVerificationStatus": {"const": "DRAFT"},
+        "evaluationEligibility": {"const": "REVIEW_REQUIRED"},
+        "countTowardTeacherGoldMinimum": {"const": false}
+      }
+    }
+  }
+}

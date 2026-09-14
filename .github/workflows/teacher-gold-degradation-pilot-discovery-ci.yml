@@ -1,0 +1,260 @@
+name: Teacher-Gold Degradation Pilot Discovery CI
+
+on:
+  push:
+    branches:
+      - "teacher-gold/degradation-pilot-01"
+    paths:
+      - ".github/workflows/teacher-gold-degradation-pilot-discovery-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-five-degraded-review-pairs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned-renderer runtime and image tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            imagemagick libegl1 libgl1 libopengl0 libjack-jackd2-0 \
+            libxcb-xinerama0 libxkbcommon-x11-0 xvfb
+          convert -version | tee /tmp/imagemagick-version.txt
+          grep -F "ImageMagick" /tmp/imagemagick-version.txt
+
+      - name: Download pinned MuseScore 3.6.2 AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --output /tmp/MuseScore-3.6.2.AppImage \
+            https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2.548021370-x86_64.AppImage
+          test -s /tmp/MuseScore-3.6.2.AppImage
+          echo "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290  /tmp/MuseScore-3.6.2.AppImage" | sha256sum --check --strict
+          chmod +x /tmp/MuseScore-3.6.2.AppImage
+          cd /tmp
+          ./MuseScore-3.6.2.AppImage --appimage-extract >/dev/null
+          test -x /tmp/squashfs-root/AppRun
+          xvfb-run -a /tmp/squashfs-root/AppRun --long-version | tee /tmp/musescore-version.txt
+          grep -F "3.6.2" /tmp/musescore-version.txt
+
+      - name: Download five pinned OpenScore Lieder MXL sources and CC0 license
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/tgdeg/source /tmp/tgdeg/clean /tmp/tgdeg/degraded
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import quote
+          from urllib.request import urlopen
+          import hashlib
+
+          commit = "38c5db510224d9facdc4b08d741fc788cfb58ea8"
+          specs = [
+              ("deg_01", "Schubert — Das Rosenband, D.280", "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl", "a6798bffeae124d256acbd21d998baa215887126676739c2c5d19e7651d64c75"),
+              ("deg_02", "Robert Schumann — Dein Angesicht, Op.127 No.2", "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl", "e9610dd969b6e556f42b086e3d122842f19644373aee699fe8c74262a1fcbff4"),
+              ("deg_03", "Brahms — Geistliches Wiegenlied, Op.91 No.2", "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl", "8ef00c7ac76c56b74c7183417bf8ea04068bb33a251dd5dbfe8e08f47797b250"),
+              ("deg_04", "Fanny Hensel — Verlust", "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl", "eeb985968e1a8398f92b0aeac65e098692a9c71a62a3f458e2e9eec8d4f90f11"),
+              ("deg_05", "Clara Schumann — Lorelei", "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl", "504dd02b4061e16d91750af5808a80abaa0cab04b955cb0b8f4b38cdd539eeac"),
+          ]
+          root = Path('/tmp/tgdeg/source')
+          for pilot_id, title, path, expected_sha in specs:
+              url = f"https://raw.githubusercontent.com/OpenScore/Lieder/{commit}/{quote(path, safe='/,_()-.')}"
+              data = urlopen(url, timeout=90).read()
+              actual = hashlib.sha256(data).hexdigest()
+              if actual != expected_sha:
+                  raise SystemExit(f"symbolic hash mismatch {pilot_id}: {actual}")
+              (root / f"{pilot_id}.mxl").write_bytes(data)
+              print(pilot_id, len(data), actual, path)
+          lic = urlopen(f"https://raw.githubusercontent.com/OpenScore/Lieder/{commit}/LICENSE.txt", timeout=60).read()
+          if b"CC0 1.0 Universal" not in lic:
+              raise SystemExit("CC0 license marker missing")
+          if hashlib.sha256(lic).hexdigest() != "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499":
+              raise SystemExit("license hash mismatch")
+          (root / "LICENSE.txt").write_bytes(lic)
+          PY
+
+      - name: Render clean opaque-white first pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for src in /tmp/tgdeg/source/*.mxl; do
+            id="$(basename "$src" .mxl)"
+            rm -f "/tmp/tgdeg/clean/${id}"*.png
+            xvfb-run -a /tmp/squashfs-root/AppRun \
+              -s -m -F -r 150 \
+              -o "/tmp/tgdeg/clean/${id}.png" \
+              "$src"
+            if test -s "/tmp/tgdeg/clean/${id}-1.png"; then
+              rendered="/tmp/tgdeg/clean/${id}-1.png"
+            elif test -s "/tmp/tgdeg/clean/${id}.png"; then
+              rendered="/tmp/tgdeg/clean/${id}.png"
+            else
+              mapfile -t candidates < <(find /tmp/tgdeg/clean -maxdepth 1 -type f -name "${id}*.png" ! -name "${id}-clean.png" -printf '%p\n' | sort -V)
+              test "${#candidates[@]}" -ge 1
+              rendered="${candidates[0]}"
+            fi
+            final="/tmp/tgdeg/clean/${id}-clean.png"
+            convert "$rendered" -background white -alpha remove -alpha off "$final"
+            test -s "$final"
+            test "$(convert "$final" -format '%[opaque]' info: | tr '[:upper:]' '[:lower:]')" = "true"
+          done
+
+      - name: Apply five deterministic degradation profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 1) Low contrast: blend the clean page toward mid-gray while preserving all notation.
+          convert /tmp/tgdeg/clean/deg_01-clean.png \
+            -colorspace Gray -fill '#A8A8A8' -colorize 42% \
+            -background white -alpha remove -alpha off \
+            /tmp/tgdeg/degraded/deg_01-low-contrast.png
+
+          # 2) Rotation: mild scanner-like clockwise page rotation.
+          convert /tmp/tgdeg/clean/deg_02-clean.png \
+            -background white -rotate 2.25 +repage \
+            -background white -alpha remove -alpha off \
+            /tmp/tgdeg/degraded/deg_02-rotation.png
+
+          # 3) Skew: horizontal shear without changing symbolic content.
+          convert /tmp/tgdeg/clean/deg_03-clean.png \
+            -background white -shear 3x0 +repage \
+            -background white -alpha remove -alpha off \
+            /tmp/tgdeg/degraded/deg_03-skew.png
+
+          # 4) Perspective distortion: deterministic four-corner mapping.
+          in=/tmp/tgdeg/clean/deg_04-clean.png
+          w=$(identify -format '%w' "$in")
+          h=$(identify -format '%h' "$in")
+          x2=$((w-1)); y2=$((h-1))
+          convert "$in" -virtual-pixel white -background white \
+            -distort Perspective "0,0 32,18 ${x2},0 $((x2-24)),8 0,${y2} 12,$((y2-20)) ${x2},${y2} $((x2-10)),$((y2-4))" \
+            -background white -alpha remove -alpha off \
+            /tmp/tgdeg/degraded/deg_04-perspective.png
+
+          # 5) Low-quality scan proxy: deterministic downsample/blur/upscale + grayscale.
+          in=/tmp/tgdeg/clean/deg_05-clean.png
+          w=$(identify -format '%w' "$in")
+          h=$(identify -format '%h' "$in")
+          convert "$in" -colorspace Gray -resize 42% -blur 0x0.65 -resize "${w}x${h}!" \
+            -background white -alpha remove -alpha off \
+            /tmp/tgdeg/degraded/deg_05-low-quality.png
+
+          for img in /tmp/tgdeg/degraded/*.png; do
+            test -s "$img"
+            opaque="$(convert "$img" -format '%[opaque]' info: | tr '[:upper:]' '[:lower:]')"
+            test "$opaque" = "true"
+            mean="$(convert "$img" -colorspace Gray -format '%[fx:mean]' info:)"
+            sd="$(convert "$img" -colorspace Gray -format '%[fx:standard_deviation]' info:)"
+            awk -v m="$mean" -v s="$sd" 'BEGIN { exit !(m > 0.15 && m < 0.9995 && s > 0.01) }'
+            identify "$img"
+            printf '%s mean=%s sd=%s opaque=%s\n' "$img" "$mean" "$sd" "$opaque"
+          done
+
+      - name: Build non-counting degradation manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          specs = [
+              ("deg_01", "Schubert — Das Rosenband, D.280", "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl", "LOW_CONTRAST", "LOW_CONTRAST_BLEND_GRAY_42_PERCENT_V1", "deg_01-low-contrast.png"),
+              ("deg_02", "Robert Schumann — Dein Angesicht, Op.127 No.2", "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl", "ROTATION", "ROTATE_CLOCKWISE_2_25_DEG_V1", "deg_02-rotation.png"),
+              ("deg_03", "Brahms — Geistliches Wiegenlied, Op.91 No.2", "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl", "SKEW", "HORIZONTAL_SHEAR_3_DEG_V1", "deg_03-skew.png"),
+              ("deg_04", "Fanny Hensel — Verlust", "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl", "PERSPECTIVE_DISTORTION", "FOUR_CORNER_PERSPECTIVE_V1", "deg_04-perspective.png"),
+              ("deg_05", "Clara Schumann — Lorelei", "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl", "LOW_QUALITY_SCAN", "DOWNSAMPLE_42_BLUR_065_UPSCALE_V1", "deg_05-low-quality.png"),
+          ]
+          source = Path('/tmp/tgdeg/source')
+          clean = Path('/tmp/tgdeg/clean')
+          degraded = Path('/tmp/tgdeg/degraded')
+          records = []
+          for pid, title, source_path, condition, transform, out_name in specs:
+              sb = (source / f'{pid}.mxl').read_bytes()
+              cb = (clean / f'{pid}-clean.png').read_bytes()
+              db = (degraded / out_name).read_bytes()
+              records.append({
+                  "pilotId": pid,
+                  "title": title,
+                  "sourcePath": source_path,
+                  "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": sha256(sb).hexdigest(), "byteSize": len(sb)},
+                  "cleanRender": {"mediaType": "image/png", "sha256": sha256(cb).hexdigest(), "byteSize": len(cb)},
+                  "degradedRender": {"mediaType": "image/png", "sha256": sha256(db).hexdigest(), "byteSize": len(db), "background": "#FFFFFF", "alphaChannel": False},
+                  "scanCondition": condition,
+                  "degradationTransform": transform,
+                  "rightsStatus": "CLEAR_CC0",
+                  "teacherVerificationStatus": "DRAFT",
+                  "evaluationEligibility": "REVIEW_REQUIRED",
+                  "countTowardTeacherGoldMinimum": False,
+              })
+          manifest = {
+              "manifestVersion": "scoremosaic-teacher-gold-degradation-pilot-v1",
+              "dataset": "OpenScore Lieder Corpus — deterministic degraded review derivatives",
+              "sourceRepository": "OpenScore/Lieder",
+              "sourceCommitSha": "38c5db510224d9facdc4b08d741fc788cfb58ea8",
+              "license": "CC0-1.0",
+              "licenseSha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+              "renderer": {
+                  "name": "MuseScore",
+                  "versionOutput": Path('/tmp/musescore-version.txt').read_text(encoding='utf-8', errors='replace').strip(),
+                  "releaseTag": "v3.6.2",
+                  "appImageSha256": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290",
+                  "imageResolutionDpi": 150,
+              },
+              "degradationTool": {
+                  "name": "ImageMagick",
+                  "versionOutput": Path('/tmp/imagemagick-version.txt').read_text(encoding='utf-8', errors='replace').splitlines()[0].strip(),
+                  "deterministicProfiles": True,
+              },
+              "pilotCount": len(records),
+              "records": records,
+              "boundaries": {
+                  "researchEvaluationOnly": True,
+                  "derivedFromAlreadyVerifiedSymbolicPairs": True,
+                  "teacherVerifiedDegradedImages": False,
+                  "automaticFixtureAdmission": False,
+                  "automaticTrainingAuthorization": False,
+                  "productionDecisionAuthority": False,
+              },
+          }
+          out = Path('/tmp/tgdeg/teacher-gold-degradation-pilot-manifest.json')
+          out.write_text(json.dumps(manifest, ensure_ascii=True, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(out.read_text(encoding='utf-8'))
+          PY
+
+      - name: Upload temporary degradation teacher-review packet
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: teacher-gold-degradation-review-pilot-01
+          path: |
+            /tmp/tgdeg/teacher-gold-degradation-pilot-manifest.json
+            /tmp/tgdeg/source/*.mxl
+            /tmp/tgdeg/clean/*-clean.png
+            /tmp/tgdeg/degraded/*.png
+            /tmp/tgdeg/source/LICENSE.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary renderer and corpus bytes
+        if: always()
+        shell: bash
+        run: |
+          rm -rf /tmp/MuseScore-3.6.2.AppImage /tmp/squashfs-root /tmp/tgdeg
