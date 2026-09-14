@@ -1,0 +1,116 @@
+{
+  "evidenceVersion": "scoremosaic-musescore-system-direction-compat-v1",
+  "scope": "MusicXML 4.0 direction@system compatibility for five first-page review mismatches",
+  "source": {
+    "dataset": "OpenScore Lieder Corpus",
+    "repository": "OpenScore/Lieder",
+    "commitSha": "38c5db510224d9facdc4b08d741fc788cfb58ea8",
+    "license": "CC0-1.0"
+  },
+  "discoveryEvidence": {
+    "workflowRunId": 34896691389,
+    "workflowHeadSha": "93c6e65ce55a40cfb345a51b54fa0d3f4dbe071b",
+    "artifactId": 10368512469,
+    "artifactName": "teacher-gold-musescore-465-direction-compat-v1",
+    "artifactZipSha256": "0d59c41abe7667112edc48a20384e799021117556646da0d3e1b3e53849e1718",
+    "artifactSizeBytes": 2342697,
+    "artifactRetentionDays": 14,
+    "workflowConclusion": "success"
+  },
+  "renderers": {
+    "museScore362": {
+      "versionOutput": "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34",
+      "releaseTag": "v3.6.2",
+      "appImageSha256": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290"
+    },
+    "museScore465": {
+      "versionOutput": "MuseScore: Music Score Editor; Version 4.6.5; Build 653f38d",
+      "releaseTag": "v4.6.5",
+      "appImageSha256": "193daa0ea18bcfa90a47145a842275b8069b7b2b8d153e562b15fab5fe50fcaf"
+    }
+  },
+  "records": [
+    {
+      "reviewId": "TG019",
+      "sourcePath": "scores/Bridge,_Frank/3_Tagore_Songs,_H.164/1_Day_After_Day/lc30890405.mxl",
+      "symbolicSha256": "14d5aee5695d8feeff97529c3ded8906166627b09f8a98405b96d40e4d8f689a",
+      "targetDirections": [
+        {"part": "P1", "measure": "1", "placement": "above", "system": "only-top", "text": "Lento ma non troppo"},
+        {"part": "P2", "measure": "1", "placement": "above", "system": "also-top", "text": "Lento ma non troppo"}
+      ],
+      "museScore362Result": "NONCOMPLIANT_ALSO_TOP_CURRENT_PART_COPY_MISSING",
+      "museScore465Result": "COMPLIANT_FOR_TARGETED_FIRST_PAGE_DIRECTION",
+      "compatibilityDecision": "FIXED_IN_4_6_5",
+      "evidenceNote": "MuseScore 4.6.5 renders the direction at the top part/system and at the P2 current part, matching the combined only-top/also-top semantics observed in the pinned MusicXML."
+    },
+    {
+      "reviewId": "TG036",
+      "sourcePath": "scores/Donaudy,_Stefano/36_Arie_di_Stile_Antico/10_Spirate_pur,_spirate/lc29420288.mxl",
+      "symbolicSha256": "c0bdea67ca14b56a2a5735f77a07c5f574015b60d16dbd300fc8f4256da63b20",
+      "targetDirections": [
+        {"part": "P2", "measure": "5", "placement": "below", "system": "only-top", "text": "poco rall."}
+      ],
+      "museScore362Result": "NONCOMPLIANT_ONLY_TOP_REMAINS_IN_PIANO_REGION",
+      "museScore465Result": "NONCOMPLIANT_ONLY_TOP_REMAINS_IN_PIANO_REGION",
+      "compatibilityDecision": "ONLY_TOP_NONCOMPLIANT_4_6_5",
+      "evidenceNote": "MuseScore 4.6.5 still renders poco rall. in the piano region instead of only on the top part of the system."
+    },
+    {
+      "reviewId": "TG066",
+      "sourcePath": "scores/Ives,_Charles/114_Songs/108_Songs_My_Mother_Taught_Me/lc31740920.mxl",
+      "symbolicSha256": "958088b065c2ac0eeb70a8528926cee3ca71f56f4033d41972c397987ff1163b",
+      "targetDirections": [
+        {"part": "P1", "measure": "11", "placement": "above", "system": "only-top", "text": "più rit."},
+        {"part": "P2", "measure": "11", "placement": "below", "system": "only-top", "text": "più rit."},
+        {"part": "P2", "measure": "15", "placement": "above", "system": "only-top", "text": "poco accel."}
+      ],
+      "museScore362Result": "NONCOMPLIANT_ONLY_TOP_DUPLICATE_OR_MISPLACED_CURRENT_PART_DIRECTIONS",
+      "museScore465Result": "NONCOMPLIANT_ONLY_TOP_DUPLICATES_REMAIN",
+      "compatibilityDecision": "ONLY_TOP_NONCOMPLIANT_4_6_5",
+      "evidenceNote": "MuseScore 4.6.5 retains extra current-part copies for the targeted only-top directions rather than normalizing them to the top part only."
+    },
+    {
+      "reviewId": "TG081",
+      "sourcePath": "scores/Mahler,_Gustav/Des_Knaben_Wunderhorn/7_Rheinlegendchen/lc29746856.mxl",
+      "symbolicSha256": "2e53f18fcd85df59371a368488a4c054c14e8783007b1769216ecc26c3fb7b2d",
+      "targetDirections": [
+        {"part": "P1", "measure": "2", "placement": "above", "system": "only-top", "text": "rit."},
+        {"part": "P2", "measure": "2", "placement": "above", "system": "only-top", "text": "rit."}
+      ],
+      "museScore362Result": "NONCOMPLIANT_ONLY_TOP_DUPLICATE_IN_PIANO",
+      "museScore465Result": "NONCOMPLIANT_ONLY_TOP_DUPLICATE_IN_PIANO",
+      "compatibilityDecision": "ONLY_TOP_NONCOMPLIANT_4_6_5",
+      "evidenceNote": "The top-system rit. and the extra piano-region rit. remain visible in MuseScore 4.6.5."
+    },
+    {
+      "reviewId": "TG083",
+      "sourcePath": "scores/Massenet,_Jules/_/Élégie/lc29026391.mxl",
+      "symbolicSha256": "aecaa4a063e2d8bd0fbdd31b50140953add80fa21a4c532bea1abc78d5c6d618",
+      "targetDirections": [
+        {"part": "P2", "measure": "2", "placement": "above", "system": "only-top", "text": "rit."}
+      ],
+      "museScore362Result": "NONCOMPLIANT_ONLY_TOP_RENDERED_ONLY_IN_PIANO",
+      "museScore465Result": "PARTIAL_IMPROVEMENT_TOP_COPY_ADDED_BUT_CURRENT_PART_COPY_REMAINS",
+      "compatibilityDecision": "ONLY_TOP_NONCOMPLIANT_4_6_5",
+      "evidenceNote": "MuseScore 4.6.5 adds a top-system copy but still retains the piano-region copy, so the result remains noncompliant with only-top semantics."
+    }
+  ],
+  "conclusion": {
+    "rootCauseClass": "RENDERER_IMPORT_COMPATIBILITY",
+    "xmlCorruptionDetected": false,
+    "userPlaybackSystemImplicated": false,
+    "museScore362SuitableAsDirectionSystemFidelityOracle": false,
+    "museScore465SuitableAsDirectionSystemFidelityOracle": false,
+    "museScore465TargetedCasesFullyFixed": 1,
+    "museScore465TargetedCasesStillNoncompliant": 4,
+    "recommendedGate": "If MusicXML contains direction@system values only-top or also-top, validate the XML semantics independently of rendered PNG and mark renderer fidelity separately."
+  },
+  "boundaries": {
+    "teacherGoldRegistryMutation": false,
+    "teacherGoldCountMutation": false,
+    "modelTrainingAuthorizationMutation": false,
+    "stage7EngineOrQuorumMutation": false,
+    "automaticCorrectionOrMergeMutation": false,
+    "productionDecisionAuthorityMutation": false
+  }
+}
