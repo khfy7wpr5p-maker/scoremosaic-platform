@@ -157,9 +157,9 @@ The repository has a **verified fixture-only GitHub Pages deployment** built det
 
 `docs/live-ui-api-security-architecture-v1.md` defines a future same-origin authenticated model using server-managed sessions, Authentik/OIDC, exact-origin and CSRF checks, server resource authorization, idempotency/reconciliation, audit and rollback. Runtime activation remains false.
 
-### 5.4 Teacher Review API and security harness
+### 5.4 Teacher Review API Security Harness v1
 
-`docs/teacher-review-api-contract-v1.md` defines bounded read/revision-proposal contracts without registering HTTP routes. `docs/teacher-review-api-harness-v1.md` proves the mutation composition in-process against deterministic collaborators:
+`docs/teacher-review-api-contract-v1.md` defines bounded read/revision-proposal contracts without registering HTTP routes. **Teacher Review API Security Harness v1**, documented in `docs/teacher-review-api-harness-v1.md`, proves the mutation composition in-process against deterministic collaborators:
 
 ```text
 non-authoritative intent
@@ -172,7 +172,7 @@ non-authoritative intent
   -> safe audit result
 ```
 
-No live HTTP route, Authentik runtime, browser network, provider credential or production persistence is activated.
+No HTTP listener, live Authentik runtime, browser network, provider credential or production persistence is activated. Stage 9 remains architecture-only for provider operation, with real provisioning deferred behind a separate operational gate.
 
 ## 6. Score Discovery boundary
 
@@ -242,7 +242,7 @@ First-party code is noncommercial source-available; third-party engines/packages
 | SM-POLY-02→11 evidence chain | Research integration complete through v2 vector | No Stage 7 authority change. |
 | UI Architecture Phase 1 | Repository baseline; high-fidelity pending | No live activation. |
 | Web Preview v1 | Public fixture-only preview verified | No production API/data authority. |
-| Teacher Review API/harness | Repository baseline complete | Routes/runtime/persistence locked. |
+| Teacher Review API Security Harness v1 | Repository baseline complete | Routes/runtime/persistence locked. |
 | Downstream music applications | Architecture-only | Live integration locked. |
 
 ## 11. Authority invariants
