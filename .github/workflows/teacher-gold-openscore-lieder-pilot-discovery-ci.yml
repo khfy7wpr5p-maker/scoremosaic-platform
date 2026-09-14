@@ -68,7 +68,7 @@ jobs:
               ("osl_01", "Schubert — Das Rosenband, D.280", "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl"),
               ("osl_02", "Robert Schumann — Dein Angesicht, Op.127 No.2", "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl"),
               ("osl_03", "Brahms — Geistliches Wiegenlied, Op.91 No.2", "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl"),
-              ("osl_04", "Fanny Hensel — Verlust", "scores/Hensel,_Fanny_(Mendelssohn)/3_Lieder/2_Verlust/lc6013106.mxl"),
+              ("osl_04", "Fanny Hensel — Verlust", "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl"),
               ("osl_05", "Clara Schumann — Lorelei", "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl"),
           ]
           root = Path("/tmp/openscore/source")
@@ -131,7 +131,7 @@ jobs:
               ("osl_01", "Schubert — Das Rosenband, D.280", "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl"),
               ("osl_02", "Robert Schumann — Dein Angesicht, Op.127 No.2", "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl"),
               ("osl_03", "Brahms — Geistliches Wiegenlied, Op.91 No.2", "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl"),
-              ("osl_04", "Fanny Hensel — Verlust", "scores/Hensel,_Fanny_(Mendelssohn)/3_Lieder/2_Verlust/lc6013106.mxl"),
+              ("osl_04", "Fanny Hensel — Verlust", "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl"),
               ("osl_05", "Clara Schumann — Lorelei", "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl"),
           ]
 
