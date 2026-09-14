@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-teacher-gold-degradation-pilot-v1",
+  "dataset": "OpenScore Lieder Corpus — deterministic degraded review derivatives",
+  "sourceRepository": "OpenScore/Lieder",
+  "sourceCommitSha": "38c5db510224d9facdc4b08d741fc788cfb58ea8",
+  "license": "CC0-1.0",
+  "licenseSha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+  "renderer": {
+    "name": "MuseScore",
+    "canonicalVersion": "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34",
+    "releaseTag": "v3.6.2",
+    "appImageSha256": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290",
+    "imageResolutionDpi": 150
+  },
+  "degradationTool": {
+    "name": "ImageMagick",
+    "versionOutput": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+    "deterministicProfiles": true
+  },
+  "discoveryEvidence": {
+    "workflowRunId": 34891983599,
+    "workflowHeadSha": "6c0bf942abbbda2db62bd0628b8796e9adf7d270",
+    "artifactId": 10367261196,
+    "artifactZipSha256": "f2362cb798a368829d08eed621659b3d08400de30276e2438e6d4dbafbbfcd15",
+    "artifactSizeBytes": 1382326,
+    "artifactRetentionDays": 14
+  },
+  "pilotCount": 5,
+  "records": [
+    {
+      "pilotId": "deg_01",
+      "title": "Schubert — Das Rosenband, D.280",
+      "sourcePath": "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "a6798bffeae124d256acbd21d998baa215887126676739c2c5d19e7651d64c75", "byteSize": 6678},
+      "cleanRender": {"mediaType": "image/png", "sha256": "a53100b07bfce2ec24e7d9453c03718bbaa9644fe995e3cf0fc80327e0fa25af", "byteSize": 90402},
+      "degradedRender": {"mediaType": "image/png", "sha256": "6a1bfd9ea0a8d9543089992735f22994d0eef9677e7cb51610450d37f78f4a7e", "byteSize": 89605, "alphaChannel": false},
+      "scanCondition": "LOW_CONTRAST",
+      "degradationTransform": "LOW_CONTRAST_BLEND_GRAY_42_PERCENT_V1",
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "deg_02",
+      "title": "Robert Schumann — Dein Angesicht, Op.127 No.2",
+      "sourcePath": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "e9610dd969b6e556f42b086e3d122842f19644373aee699fe8c74262a1fcbff4", "byteSize": 7979},
+      "cleanRender": {"mediaType": "image/png", "sha256": "67ddc8973a703ee25358741dc11d4a5a9580376a5b0d8251c3d52fab14c81a72", "byteSize": 112466},
+      "degradedRender": {"mediaType": "image/png", "sha256": "29e71ca7f63ba05ec9bba4175826b6e7961f891cb42df74971ddf5d4627778d9", "byteSize": 250481, "alphaChannel": false},
+      "scanCondition": "ROTATION",
+      "degradationTransform": "ROTATE_CLOCKWISE_2_25_DEG_V1",
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "deg_03",
+      "title": "Brahms — Geistliches Wiegenlied, Op.91 No.2",
+      "sourcePath": "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "8ef00c7ac76c56b74c7183417bf8ea04068bb33a251dd5dbfe8e08f47797b250", "byteSize": 26218},
+      "cleanRender": {"mediaType": "image/png", "sha256": "66649a454b3dfc8bf5c39127cd8d70ea5097dca3f8457c499b874fb571f35a9b", "byteSize": 118304},
+      "degradedRender": {"mediaType": "image/png", "sha256": "e0b9e48476fbbf799bde6847eab016d635e9ac4a2211db8b3c4e626e90fc4ec1", "byteSize": 158811, "alphaChannel": false},
+      "scanCondition": "SKEW",
+      "degradationTransform": "HORIZONTAL_SHEAR_3_DEG_V1",
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "deg_04",
+      "title": "Fanny Hensel — Verlust",
+      "sourcePath": "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "eeb985968e1a8398f92b0aeac65e098692a9c71a62a3f458e2e9eec8d4f90f11", "byteSize": 8897},
+      "cleanRender": {"mediaType": "image/png", "sha256": "b24364900ff675014f31531958d48c8cf6cd4a34c66b2ce12daa5d76e449447e", "byteSize": 97577},
+      "degradedRender": {"mediaType": "image/png", "sha256": "5621b996696cf9636b89fd7328fff7e639544e056618d79b6952e79b406f9df5", "byteSize": 170115, "alphaChannel": false},
+      "scanCondition": "PERSPECTIVE_DISTORTION",
+      "degradationTransform": "FOUR_CORNER_PERSPECTIVE_V1",
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "deg_05",
+      "title": "Clara Schumann — Lorelei",
+      "sourcePath": "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "504dd02b4061e16d91750af5808a80abaa0cab04b955cb0b8f4b38cdd539eeac", "byteSize": 18612},
+      "cleanRender": {"mediaType": "image/png", "sha256": "5a248a1cc8325a6f4a3a6974d56fd7e9c95a8770d696e9c6b32b2928c374cbd5", "byteSize": 71258},
+      "degradedRender": {"mediaType": "image/png", "sha256": "2079af0602a86d63aeda2fe9bde924c7b0c5d51b69d510b1d2410965d4cae2bc", "byteSize": 181937, "alphaChannel": false},
+      "scanCondition": "LOW_QUALITY_SCAN",
+      "degradationTransform": "DOWNSAMPLE_42_BLUR_065_UPSCALE_V1",
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    }
+  ],
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "derivedFromAlreadyVerifiedSymbolicPairs": true,
+    "teacherVerifiedDegradedImages": false,
+    "automaticFixtureAdmission": false,
+    "automaticTrainingAuthorization": false,
+    "productionDecisionAuthority": false
+  }
+}
