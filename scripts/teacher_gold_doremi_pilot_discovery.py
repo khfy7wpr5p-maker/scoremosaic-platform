@@ -25,11 +25,13 @@ def _clean(value: str) -> str:
     return value
 
 
-def _image_score_key(path: str) -> str:
+def _image_score_stem(path: str) -> str:
     stem = PurePosixPath(path).stem
-    # DoReMi page images end in -001, -002, ...; remove only that page suffix.
-    stem = re.sub(r"[-_ ]\d+$", "", stem)
-    return _clean(stem)
+    return re.sub(r"[-_ ]\d+$", "", stem)
+
+
+def _image_score_key(path: str) -> str:
+    return _clean(_image_score_stem(path))
 
 
 def _musicxml_name_key(path: str) -> str:
@@ -67,6 +69,12 @@ def _pair_scores(pngs: list[str], musicxml: list[str]) -> tuple[list[tuple[str, 
     return pairs, unmatched, ambiguous
 
 
+def _is_repertoire_pair(pair: tuple[str, str, str]) -> bool:
+    """Prefer named repertoire over DoReMi notation-feature exercise fixtures."""
+    _, png_path, _ = pair
+    return " - " in _image_score_stem(png_path)
+
+
 def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
     with ZipFile(zip_path) as archive:
         members = [info.filename for info in archive.infolist() if not info.is_dir()]
@@ -82,6 +90,7 @@ def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
         ]
 
         pairs, unmatched, ambiguous = _pair_scores(pngs, musicxml)
+        repertoire_pairs = [pair for pair in pairs if _is_repertoire_pair(pair)]
         first_pages = _first_page_by_score(pngs)
 
         diagnostics = {
@@ -90,6 +99,7 @@ def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
             "musicXmlCount": len(musicxml),
             "imageScoreCount": len(first_pages),
             "exactUniquePairCount": len(pairs),
+            "repertoirePairCount": len(repertoire_pairs),
             "unmatchedScoreKeys": unmatched,
             "ambiguousScoreKeys": ambiguous,
             "topLevel": sorted(
@@ -100,7 +110,7 @@ def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
         }
 
         records: list[dict[str, object]] = []
-        for key, png_path, xml_path in pairs[:limit]:
+        for key, png_path, xml_path in repertoire_pairs[:limit]:
             png_bytes = archive.read(png_path)
             xml_bytes = archive.read(xml_path)
             records.append(
@@ -130,6 +140,7 @@ def build_manifest(zip_path: str, limit: int) -> dict[str, object]:
     return {
         "manifestVersion": "scoremosaic-teacher-gold-doremi-pilot-discovery-v1",
         "dataset": "DoReMi v1",
+        "selectionPolicy": "NAMED_REPERTOIRE_FIRST_PAGE_V1",
         "releaseUrl": RELEASE_URL,
         "requestedPilotCount": limit,
         "discoveredPilotCount": len(records),
@@ -159,7 +170,7 @@ def main() -> int:
         handle.write(payload)
     print(payload, end="")
     if manifest["discoveredPilotCount"] < args.limit:
-        raise SystemExit("insufficient exact PNG/MusicXML pilot pairs discovered")
+        raise SystemExit("insufficient exact repertoire PNG/MusicXML pilot pairs discovered")
     return 0
 
 
