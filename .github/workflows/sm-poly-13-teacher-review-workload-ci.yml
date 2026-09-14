@@ -1,0 +1,109 @@
+name: SM-POLY-13 Teacher Review Workload CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/sm-poly-13-teacher-review-workload"
+    paths:
+      - ".github/workflows/sm-poly-13-teacher-review-workload-ci.yml"
+      - "contracts/polyphonic-teacher-workload-evidence-v1.schema.json"
+      - "contracts/polyphonic-engine-semantic-observation-v1.schema.json"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/teacher_workload.py"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/contracts.py"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/_contracts.py"
+      - "services/teacher-review-service/tests/test_teacher_workload.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphonic_metrics.py"
+      - "services/ensemble-service/tests/test_polyphonic_metrics.py"
+      - "docs/sm-poly-13-teacher-review-workload.md"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/architecture-research-evidence-current.md"
+      - "docs/roadmap.md"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sm-poly-13-teacher-review-workload-ci.yml"
+      - "contracts/polyphonic-teacher-workload-evidence-v1.schema.json"
+      - "contracts/polyphonic-engine-semantic-observation-v1.schema.json"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/teacher_workload.py"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/contracts.py"
+      - "services/teacher-review-service/src/scoremosaic_teacher_review/_contracts.py"
+      - "services/teacher-review-service/tests/test_teacher_workload.py"
+      - "services/ensemble-service/src/scoremosaic_ensemble/polyphonic_metrics.py"
+      - "services/ensemble-service/tests/test_polyphonic_metrics.py"
+      - "docs/sm-poly-13-teacher-review-workload.md"
+      - "contracts/architecture-current-state-v1.json"
+      - "docs/architecture-research-evidence-current.md"
+      - "docs/roadmap.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sm-poly-13-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-teacher-review-workload:
+    name: Validate SM-POLY-13 workload evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate immutable action pins
+        run: python scripts/validate_github_actions_pins.py
+
+      - name: Validate SM-POLY-13 JSON contract
+        run: python -m json.tool contracts/polyphonic-teacher-workload-evidence-v1.schema.json > /dev/null
+
+      - name: Compile Teacher Review and Ensemble sources
+        run: |
+          python -m compileall -q services/teacher-review-service/src
+          python -m compileall -q services/ensemble-service/src
+
+      - name: Run SM-POLY-13 regressions
+        run: python -m unittest services/teacher-review-service/tests/test_teacher_workload.py -v
+
+      - name: Re-run SM-POLY-04 metric regressions
+        run: python -m unittest services/ensemble-service/tests/test_polyphonic_metrics.py -v
+
+      - name: Re-run Stage 8 contract foundation
+        run: python -m unittest services/teacher-review-service/tests/test_stage8_contract_foundation.py -v
+
+      - name: Re-run durable revision-store lineage tests
+        run: python -m unittest services/teacher-review-service/tests/test_stage8_durable_revision_store.py -v
+
+      - name: Re-run architecture authority invariants
+        run: python -m unittest tests.test_architecture_consistency -v
+
+      - name: Verify research-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=services/teacher-review-service/src python - <<'PY'
+          from scoremosaic_teacher_review.teacher_workload import (
+              EVIDENCE_SCHEMA_VERSION,
+              TEACHER_EDIT_METHOD,
+          )
+
+          assert EVIDENCE_SCHEMA_VERSION == "scoremosaic-polyphonic-teacher-workload-evidence-v1"
+          assert TEACHER_EDIT_METHOD == "TEACHER_REVISION_COMMAND_COUNT_V1"
+          PY
+
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Check repository diff formatting
+        run: git diff --check

@@ -5,7 +5,7 @@ Current research/evaluation addendum: `docs/architecture-research-evidence-curre
 
 ## Scope
 
-This audit compares current Stage 5-11 authority truth plus merged unnumbered integration/research workstreams through main commit `dfd8b8607607383fd1e250ce704e97af84a5101b` against the documents that present current architecture or roadmap state:
+This audit compares current Stage 5-11 authority truth plus unnumbered integration/research workstreams through the verified main base `b26e6c512edc88f9215bfe1b97199d309adf9f7c` and the SM-POLY-13 repository package against the documents that present current architecture or roadmap state:
 
 - `README.md`
 - `docs/architecture.md`
@@ -13,6 +13,7 @@ This audit compares current Stage 5-11 authority truth plus merged unnumbered in
 - `docs/architecture-stage8-current.md`
 - `docs/architecture-stage9-11-current.md`
 - `docs/architecture-research-evidence-current.md`
+- `docs/sm-poly-13-teacher-review-workload.md`
 - `docs/st-omr-architecture-contract-v1.md`
 - `docs/teacher-review-score-editor-architecture-contract.md`
 - `docs/roadmap.md`
@@ -50,61 +51,60 @@ Resolved by preserving the Audiveris/HOMR/Clarity `>=2` Canonical candidate cont
 
 Resolved by `docs/architecture-stage9-11-current.md`.
 
-## New drift found in the 2026-09-14 audit
-
 ### A-008 — post-baseline research evidence chain absent from current architecture summary
 
-**Severity:** high planning/documentation risk  
-**Before:** the current-state contract and main architecture still emphasized the older Stage 11-F baseline even though SM-POLY-02/03/04/05/06/07/08/09/11 had merged.
-
-**Resolution:**
-
-- add `docs/architecture-research-evidence-current.md`;
-- add machine-readable `polyphonicResearchEvidence` to `contracts/architecture-current-state-v1.json`;
-- synchronize `docs/architecture.md`, `docs/architecture-stage5-7-current.md` and `docs/roadmap.md`;
-- keep Stage 7 production engine set/quorum and all production authority unchanged.
-
-The synchronized state distinguishes evidence-infrastructure readiness from real evidence readiness:
-
-```text
-teacherGoldHarnessReady=true
-teacherGoldRegistrySufficientlyPopulated=false
-minimumResearchBenchmarkReady=false
-stOmrShadowEvidenceContractReady=true
-realWorldShadowBenchmarkComplete=false
-directCrossArtifactJoinValidated=false
-selectivePredictionAuthorized=false
-```
+Resolved by adding the research/evaluation addendum and machine-readable `polyphonicResearchEvidence`, while preserving Stage 7 authority.
 
 ### A-009 — Real Score Intake / H7-D / Score Discovery integrations missing from machine-readable current-state summary
 
-**Severity:** medium-high architecture drift risk  
-**Before:** merged repository capabilities existed in contracts/code/docs but were not represented in the central architecture-current-state contract.
-
-**Resolution:** the current-state contract now records three explicit unnumbered workstreams:
-
-- Real Score Intake v1/v1.1 → pinned Score Editor Core projection;
-- H7-C/H7-D ST-Orchestration non-authoritative preview evidence;
-- SD-4B disconnected Score Discovery consumer/handoff boundary.
-
-All activation locks remain explicit: no live upload, no automatic correction, no H7-E production inference, no direct browser engine call, no live Score Discovery Gateway networking, no production import.
+Resolved by recording those unnumbered workstreams and their explicit activation locks.
 
 ### A-010 — roadmap did not identify the actual post-SM-POLY-11 next gate
 
-**Severity:** high planning risk  
-**Before:** the roadmap still prioritized broad ST-OMR training/evaluation but did not record the named next research owner already declared by SM-POLY-04 and SM-POLY-11.
+Resolved by naming SM-POLY-13 and method `TEACHER_REVISION_COMMAND_COUNT_V1` without inventing SM-POLY-10/12 or later package numbers.
 
-**Resolution:** roadmap priority now begins with:
+## New SM-POLY-13 consistency finding
+
+### A-011 — teacher-workload vocabulary existed but no deterministic derivation contract existed
+
+**Severity:** high research-validity risk  
+**Before:** SM-POLY-04 could represent teacher-edit counts, but the repository had no exact, tamper-checked method for deriving those values from Teacher Review history. Treating revision count, unique event count, changed-measure count or inferred page count as equivalent would have produced ambiguous metrics.
+
+**Resolution:** SM-POLY-13 adds a separately versioned read-only evidence contract and extractor with these fixed rules:
 
 ```text
-1. SM-POLY-13 Teacher Review workload instrumentation
-2. populate/qualify real Teacher-Gold evidence
-3. versioned direct cross-artifact join
-4. selective prediction / abstention research
-5. versioned ST-OMR promotion decision gate
+method = TEACHER_REVISION_COMMAND_COUNT_V1
+one validated TeacherScoreRevision/ScoreEditCommand pair = one edit
+empty history != proven zero edits
+measure denominator must bind edited Canonical SHA
+page denominator is optional and never inferred from command location
+duplicate/replayed/tampered lineage = reject
 ```
 
-`TEACHER_REVISION_COMMAND_COUNT_V1` is the fixed next method. No number is invented for the cross-artifact join or selective-prediction packages. Repository searches found no current SM-POLY-10 or SM-POLY-12 definition.
+SM-POLY-13 validates exact command SHA, revision SHA, audit SHA, parent/audit chain, command↔revision scope and duplicate/replay invariants. Its SM-POLY-04 adapter requires exact fixture + Canonical binding and both denominators before populating the older all-or-nothing `teacherEdits` field.
+
+The synchronized research locks remain:
+
+```text
+teacherWorkloadEvidenceReady=true
+teacherGoldRegistrySufficientlyPopulated=false
+minimumResearchBenchmarkReady=false
+realWorldShadowBenchmarkComplete=false
+directCrossArtifactJoinValidated=false
+selectivePredictionAuthorized=false
+productionDecisionAuthorityGranted=false
+```
+
+The next priority is now:
+
+```text
+POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE
+  -> versioned direct cross-artifact join
+  -> selective prediction / abstention research
+  -> versioned ST-OMR promotion decision gate
+```
+
+No package number is assigned to the latter work until its own contract/PR exists.
 
 ## Current consistency rules
 
@@ -118,25 +118,27 @@ Current architecture must preserve these rules:
 6. SM-POLY research packages remain descriptive/research-only unless a later gate explicitly changes authority.
 7. Convergence Evidence Vector v2 does not claim direct cross-artifact identity equivalence.
 8. Teacher-Gold harness readiness must not be reported as corpus/benchmark readiness.
-9. H7-D authenticated staging is not H7-E production authorization.
-10. Real Score Intake/Core projection does not grant live upload/persistence/automatic correction authority.
-11. Score Discovery handoff remains `discovery-handoff-only` and must pass Safe Intake.
-12. Production provider/network/database/object-storage/identity/secrets/public API/public traffic locks remain false.
-13. Teacher Review production write/approval persistence/publication execution locks remain false.
-14. Browser networking/persistence/production reads/server write/playback remain false except the separately verified static fixture-preview traffic itself.
-15. Downstream music applications cannot become upstream score authority.
-16. Missing research package numbers cannot be inferred or assigned by documentation.
+9. SM-POLY-13 workload evidence must come from exact immutable revision/command lineage; page workload cannot be guessed.
+10. H7-D authenticated staging is not H7-E production authorization.
+11. Real Score Intake/Core projection does not grant live upload/persistence/automatic correction authority.
+12. Score Discovery handoff remains `discovery-handoff-only` and must pass Safe Intake.
+13. Production provider/network/database/object-storage/identity/secrets/public API/public traffic locks remain false.
+14. Teacher Review production write/approval persistence/publication execution locks remain false.
+15. Browser networking/persistence/production reads/server write/playback remain false except the separately verified static fixture-preview traffic itself.
+16. Downstream music applications cannot become upstream score authority.
+17. Missing research package numbers cannot be inferred or assigned by documentation.
 
 ## Result
 
 ```text
-Historical current-document contradictions previously resolved: 7
-New architecture/documentation drift found in this audit: 3
-New drift resolved on docs/architecture-sync-2026-09-14: 3
+Historical current-document contradictions previously resolved: 10
+New SM-POLY-13 research-validity drift found: 1
+New SM-POLY-13 drift resolved on feature/sm-poly-13-teacher-review-workload: 1
 Known unresolved current-document contradiction after this sync: 0
 Stage 7 authority change: 0
+Teacher Review authority change: 0
 Production activation performed: 0
 Security boundary weakened: 0
 ```
 
-Executable CI evidence is still required before the branch is merge-ready. The architecture update itself is documentation/state synchronization only and must not be interpreted as runtime authorization.
+Executable CI evidence is required before the branch is merge-ready. The SM-POLY-13 package is a read-only research/evaluation derivation and must not be interpreted as runtime authorization.

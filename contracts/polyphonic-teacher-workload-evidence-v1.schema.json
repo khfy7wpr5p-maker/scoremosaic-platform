@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-teacher-workload-evidence-v1.schema.json",
+  "title": "ScoreMosaic SM-POLY-13 Teacher Workload Evidence v1",
+  "description": "Research-only evidence derived from an exact immutable TeacherScoreRevision/ScoreEditCommand chain. It does not grant Teacher Review, approval, publication, model-training, ranking, correction, or production authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceId",
+    "fixtureId",
+    "method",
+    "scope",
+    "lineage",
+    "denominators",
+    "workload",
+    "boundaries",
+    "evidenceSha256"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-polyphonic-teacher-workload-evidence-v1"},
+    "evidenceId": {"type": "string", "pattern": "^teacher_workload_[0-9a-f]{24}$"},
+    "fixtureId": {"type": "string", "pattern": "^poly_fixture_[A-Za-z0-9_-]{8,96}$"},
+    "method": {"const": "TEACHER_REVISION_COMMAND_COUNT_V1"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "lineage": {"$ref": "#/$defs/lineage"},
+    "denominators": {"$ref": "#/$defs/denominators"},
+    "workload": {"$ref": "#/$defs/workload"},
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "evidenceSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
+    "jobId": {"type": "string", "pattern": "^job_[A-Za-z0-9_-]{8,80}$"},
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 1}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobId",
+        "reviewerId",
+        "reviewReportId",
+        "reviewReportSha256",
+        "baseCanonicalSha256"
+      ],
+      "properties": {
+        "jobId": {"$ref": "#/$defs/jobId"},
+        "reviewerId": {"$ref": "#/$defs/id"},
+        "reviewReportId": {"$ref": "#/$defs/id"},
+        "reviewReportSha256": {"$ref": "#/$defs/sha256"},
+        "baseCanonicalSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revisionCount",
+        "headRevisionId",
+        "headRevisionSha256",
+        "revisionSha256s",
+        "commandSha256s",
+        "editedMeasureIds"
+      ],
+      "properties": {
+        "revisionCount": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "headRevisionId": {"type": "string", "pattern": "^rev_[0-9a-f]{32}$"},
+        "headRevisionSha256": {"$ref": "#/$defs/sha256"},
+        "revisionSha256s": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000000,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "commandSha256s": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000000,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "editedMeasureIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000000,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "requiredDenominator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "count", "sourceArtifactSha256"],
+      "properties": {
+        "available": {"const": true},
+        "count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "sourceArtifactSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "optionalDenominator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "count", "sourceArtifactSha256"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "count": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000000},
+        "sourceArtifactSha256": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "denominators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measure", "page"],
+      "properties": {
+        "measure": {"$ref": "#/$defs/requiredDenominator"},
+        "page": {"$ref": "#/$defs/optionalDenominator"}
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["editCount", "editsPerMeasure", "editsPerPage"],
+      "properties": {
+        "editCount": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "editsPerMeasure": {"$ref": "#/$defs/rational"},
+        "editsPerPage": {
+          "oneOf": [
+            {"$ref": "#/$defs/rational"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "researchEvaluationOnly",
+        "readOnly",
+        "modelTrainingSideEffect",
+        "engineRanking",
+        "winnerSelection",
+        "automaticCorrection",
+        "teacherApproval",
+        "publicationAuthority",
+        "productionDecisionAuthority"
+      ],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "readOnly": {"const": true},
+        "modelTrainingSideEffect": {"const": false},
+        "engineRanking": {"const": false},
+        "winnerSelection": {"const": false},
+        "automaticCorrection": {"const": false},
+        "teacherApproval": {"const": false},
+        "publicationAuthority": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  }
+}

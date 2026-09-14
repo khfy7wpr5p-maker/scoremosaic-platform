@@ -21,7 +21,8 @@ Every capability is gated. Code presence, model accuracy, a green test, a succes
 | ST-Orchestration H7-C | ✅ Local preview integration | Non-authoritative `string-seat-ranking-v0` evidence only. |
 | ST-Orchestration H7-D | ✅ Authenticated staging integration | Server-side authenticated staging evidence; production/H7-E disabled. |
 | Score Discovery SD-4B | ✅ Disconnected consumer boundary | Eligible handoff is `discovery-handoff-only`; Safe Intake still required; live Gateway off. |
-| SM-POLY-02→11 research chain | ✅ Research evidence infrastructure through Convergence Vector v2 | No Stage 7 quorum/authority change. |
+| SM-POLY-02→13 research chain | ✅ Research evidence infrastructure through Teacher Review workload evidence | No Stage 7 quorum/authority change. |
+| SM-POLY-13 Teacher workload | ✅ Repository evidence package | `TEACHER_REVISION_COMMAND_COUNT_V1`; read-only exact revision/command lineage; page evidence may remain unavailable. |
 | Teacher-Gold corpus | 🟡 Harness ready, corpus not minimum-ready | >=500 eligible verified fixtures + required coverage still needed. |
 | ST-OMR real-world shadow benchmark | 🟡 Contract/evidence plumbing ready, benchmark incomplete | No production promotion. |
 | UI Architecture Phase 1 | ✅ Repository pre-Figma baseline | High-fidelity Figma still pending. |
@@ -46,7 +47,7 @@ Safe Intake
   -> Stage 10 disconnected product UI
   -> Stage 11 typed local application integration
   -> unnumbered UI/API/security/integration workstreams
-  -> research evidence chain SM-POLY-02→11
+  -> research evidence chain SM-POLY-02→13
   -> [LIVE / EXTERNAL / PROMOTION GATES]
 ```
 
@@ -54,7 +55,7 @@ UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. Web Prev
 
 ## Current research/evaluation architecture
 
-The polyphonic OMR evidence chain currently stops at SM-POLY-11:
+The polyphonic OMR evidence chain now includes SM-POLY-13:
 
 ```text
 SM-POLY-02 taxonomy + benchmark schema
@@ -66,9 +67,12 @@ SM-POLY-02 taxonomy + benchmark schema
   -> SM-POLY-08 reliability/calibration evidence
   -> SM-POLY-09 ST-OMR shadow evidence
   -> SM-POLY-11 Convergence Evidence Vector v2
+  -> SM-POLY-13 Teacher Review workload evidence
 ```
 
-This is evidence infrastructure, not production decision authority. Current locks remain:
+SM-POLY-13 implements `TEACHER_REVISION_COMMAND_COUNT_V1` as a read-only research derivation from exact immutable TeacherScoreRevision/ScoreEditCommand lineage. One validated revision-command pair is one edit. Duplicate/replayed/tampered or scope-mismatched evidence fails closed. Measure denominators must be bound to the edited Canonical SHA; page denominators are never guessed.
+
+This remains evidence infrastructure, not production decision authority. Current locks remain:
 
 ```text
 production engines = audiveris / homr / clarity
@@ -84,44 +88,29 @@ No repository evidence supports an aggregate winner score or automatic MusicXML 
 
 ## Where development stopped
 
-The last merged main change is **SM-POLY-11 — Convergence Evidence Vector v2** (`dfd8b8607607383fd1e250ce704e97af84a5101b`, 2026-08-30).
+The verified main baseline before the SM-POLY-13 branch is the architecture-sync merge `b26e6c512edc88f9215bfe1b97199d309adf9f7c` (2026-09-14). The current repository package advances the research layer through **SM-POLY-13 — Teacher Review Workload Evidence** without changing production authority.
 
-That work completed the reference-only integration of Stage 7 result identity with immutable artifact sets from semantic metrics, visual evidence, source quality, complexity, reliability and ST-OMR shadow evidence. It explicitly stopped before:
+SM-POLY-13 now supplies:
 
-- a validated direct cross-artifact fixture/source join;
-- selective-prediction or abstention thresholds;
-- any ST-OMR production promotion;
-- Teacher Review workload/edit-cost instrumentation.
-
-SM-POLY-04 and SM-POLY-11 both reserve the next named research owner as **SM-POLY-13**, method `TEACHER_REVISION_COMMAND_COUNT_V1`.
+- versioned workload evidence contract;
+- exact revision and audit hash validation;
+- exact command hash validation through the existing Stage 8 validator;
+- complete parent/audit lineage checks;
+- duplicate/replay and unreferenced-command rejection;
+- exact rational edits/measure;
+- edits/page only when explicit page denominator evidence exists;
+- a separately tested SM-POLY-04 projection adapter;
+- dedicated CI and authority regression coverage.
 
 There is no current repository definition for SM-POLY-10 or SM-POLY-12; missing numbers must not be guessed or retroactively assigned.
 
 ## Next development — priority order
 
-### 1. SM-POLY-13 — Teacher Review workload instrumentation
+### 1. POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE
 
-**Recommended immediate next repository work.**
+**Recommended immediate next repository/evaluation work after SM-POLY-13.**
 
-Goal: turn immutable Teacher Review history into deterministic evaluation evidence without changing Teacher Review authority.
-
-Required scope:
-
-- consume only validated immutable TeacherScoreRevision / ScoreEditCommand lineage;
-- define exact counting semantics for `TEACHER_REVISION_COMMAND_COUNT_V1`;
-- derive teacher edits per measure and per page where denominator evidence is valid;
-- preserve unavailable evidence as unavailable;
-- bind exact source/revision/fixture provenance;
-- reject duplicate/replayed/malformed command evidence;
-- populate the already-versioned SM-POLY-04 teacher-edit fields through a separately tested adapter;
-- no model training side effect;
-- no winner selection, automatic correction, approval or publication authority.
-
-Acceptance evidence should include deterministic fixtures, tamper tests, duplicate/replay tests, denominator edge cases, revision-lineage mismatch tests and dedicated CI.
-
-### 2. Populate and qualify real Teacher-Gold evidence
-
-Goal: move SM-POLY-03 from a correct empty/not-ready harness to a useful research benchmark.
+Goal: move SM-POLY-03 from a correct harness-only/NOT_READY state to a useful real benchmark without weakening provenance or licensing rules.
 
 Minimum gate remains:
 
@@ -136,7 +125,9 @@ Target remains 1000. No synthetic/private/unverified item may be counted as veri
 
 Priority corpus coverage should include polyphonic piano/keyboard, guitar notation where relevant, multi-voice rhythm, ties, tuplets, dotted rhythms, chords, staff/voice ambiguity, degraded scans and representative clean digital scores.
 
-### 3. Versioned direct cross-artifact join
+SM-POLY-13 workload evidence should be attached only where exact Teacher Review lineage and exact Canonical/fixture bindings are provable. Missing teacher/page evidence remains unavailable.
+
+### 2. Versioned direct cross-artifact join
 
 Goal: replace SM-POLY-11’s intentionally opaque artifact-set context with a new versioned evidence binding that proves exact identity relationships where they actually exist.
 
@@ -146,12 +137,13 @@ Required:
 - upstream payload validation, not SHA-label inference;
 - explicit one-to-one/one-to-many semantics;
 - duplicate/conflicting identity rejection;
+- include SM-POLY-13 workload only when exact Canonical/fixture lineage is proven;
 - no reinterpretation of SM-POLY-11 v2 semantics;
 - package number remains **unassigned** until its own contract/PR is created.
 
-### 4. Selective prediction / abstention research
+### 3. Selective prediction / abstention research
 
-Goal: determine whether reliability, source quality, complexity and semantic evidence can support safe abstention.
+Goal: determine whether reliability, source quality, complexity, semantic and teacher-workload evidence can support safe abstention.
 
 Required before any threshold has operational meaning:
 
@@ -165,9 +157,9 @@ Required before any threshold has operational meaning:
 
 The package number is intentionally unassigned.
 
-### 5. Versioned ST-OMR promotion decision gate
+### 4. Versioned ST-OMR promotion decision gate
 
-Only after Steps 1-4 and sufficient real-world evidence should ScoreMosaic consider changing the Stage 7 engine contract.
+Only after the preceding evidence gates and sufficient real-world evidence should ScoreMosaic consider changing the Stage 7 engine contract.
 
 Required evidence:
 

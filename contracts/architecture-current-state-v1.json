@@ -3,8 +3,8 @@
   "asOfStage": "11-F",
   "sourceOfTruth": true,
   "repositoryStateAsOf": {
-    "mainCommit": "dfd8b8607607383fd1e250ce704e97af84a5101b",
-    "date": "2026-08-30",
+    "mainCommit": "b26e6c512edc88f9215bfe1b97199d309adf9f7c",
+    "date": "2026-09-14",
     "researchEvidenceAddendum": "docs/architecture-research-evidence-current.md"
   },
   "stageStatus": {
@@ -185,7 +185,7 @@
     "generalAccuracyClaim": false
   },
   "polyphonicResearchEvidence": {
-    "status": "SM_POLY_11_RESEARCH_EVIDENCE_CONTEXT_COMPLETE_AUTHORITY_UNCHANGED",
+    "status": "SM_POLY_13_TEACHER_WORKLOAD_EVIDENCE_READY_AUTHORITY_UNCHANGED",
     "implementedPackages": [
       "SM-POLY-02",
       "SM-POLY-03",
@@ -195,7 +195,8 @@
       "SM-POLY-07",
       "SM-POLY-08",
       "SM-POLY-09",
-      "SM-POLY-11"
+      "SM-POLY-11",
+      "SM-POLY-13"
     ],
     "teacherGoldHarnessReady": true,
     "teacherGoldRegistrySufficientlyPopulated": false,
@@ -207,13 +208,16 @@
     "reliabilityCalibrationEvidenceReady": true,
     "stOmrShadowEvidenceContractReady": true,
     "convergenceEvidenceVectorV2Ready": true,
+    "teacherWorkloadEvidenceReady": true,
+    "teacherWorkloadMethod": "TEACHER_REVISION_COMMAND_COUNT_V1",
+    "teacherWorkloadPageEvidenceMayRemainUnavailable": true,
     "directCrossArtifactJoinValidated": false,
     "selectivePredictionAuthorized": false,
     "productionDecisionAuthorityGranted": false,
     "stage7QuorumChanged": false,
     "automaticMergeOrCorrectionEnabled": false,
-    "nextPlannedPackage": "SM-POLY-13",
-    "nextPlannedMethod": "TEACHER_REVISION_COMMAND_COUNT_V1"
+    "nextPlannedPackage": null,
+    "nextPlannedWork": "POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE"
   },
   "teacherReview": {
     "repositoryRevisionApprovalPublicationPreparationComplete": true,
@@ -230,6 +234,7 @@
     "realScoreCoreProjectionReady": true,
     "stOrchestrationLocalPreviewReady": true,
     "stOrchestrationAuthenticatedStagingPreviewReady": true,
+    "teacherWorkloadResearchEvidenceReady": true,
     "liveTeacherReviewApiActivated": false,
     "productionWriteActivated": false,
     "productionApprovalPersistenceActivated": false,
@@ -293,13 +298,13 @@
   },
   "nextDevelopment": {
     "priorityOrder": [
-      "SM-POLY-13_TEACHER_REVIEW_WORKLOAD_INSTRUMENTATION",
       "POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE",
       "VERSIONED_DIRECT_CROSS_ARTIFACT_JOIN",
       "SELECTIVE_PREDICTION_ABSTENTION_RESEARCH",
       "VERSIONED_ST_OMR_PROMOTION_DECISION_GATE"
     ],
     "smPoly13Method": "TEACHER_REVISION_COMMAND_COUNT_V1",
+    "smPoly13RepositoryReady": true,
     "crossArtifactJoinPackageNumberAssigned": false,
     "selectivePredictionPackageNumberAssigned": false,
     "h7ESeparateHumanGate": true,
