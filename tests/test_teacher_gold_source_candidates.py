@@ -35,19 +35,26 @@ class TeacherGoldSourceCandidateTests(unittest.TestCase):
     def test_report_never_promotes_candidates_to_teacher_gold(self) -> None:
         report = build_report(CATALOGUE_PATH)
         self.assertEqual(report["candidateCount"], 3)
+        self.assertEqual(report["clearCc0CandidateCount"], 2)
+        self.assertEqual(report["licenseReviewRequiredCandidateCount"], 1)
         self.assertEqual(report["teacherVerifiedCandidateCount"], 0)
         self.assertEqual(report["countedTowardTeacherGoldMinimum"], 0)
         self.assertFalse(report["fixtureAdmissionAuthorized"])
         self.assertFalse(report["productionDecisionAuthority"])
 
-    def test_only_explicitly_clear_candidate_is_cc0_at_catalogue_stage(self) -> None:
+    def test_rights_states_are_explicit_at_catalogue_stage(self) -> None:
         candidates = validate_catalogue(self.catalogue)
         states = {item["candidateId"]: item["licenseState"] for item in candidates}
         self.assertEqual(
             states["tg_source_openscore_lieder_staendchen_d889"], "CLEAR_CC0"
         )
+        self.assertEqual(states["tg_source_ossq_omr_2026"], "CLEAR_CC0")
         self.assertEqual(states["tg_source_doremi_v1"], "REVIEW_REQUIRED")
-        self.assertEqual(states["tg_source_ossq_omr_2026"], "REVIEW_REQUIRED")
+
+    def test_ossq_scanned_evidence_remains_conditional(self) -> None:
+        candidates = validate_catalogue(self.catalogue)
+        by_id = {item["candidateId"]: item for item in candidates}
+        self.assertTrue(by_id["tg_source_ossq_omr_2026"]["scannedEvidenceConditional"])
 
     def test_candidate_cannot_claim_teacher_verification(self) -> None:
         mutated = copy.deepcopy(self.catalogue)
