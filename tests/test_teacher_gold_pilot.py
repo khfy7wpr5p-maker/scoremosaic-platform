@@ -54,7 +54,7 @@ class TeacherGoldPilotTests(unittest.TestCase):
         self.assertEqual(report["teacherVerifiedCount"], 0)
         self.assertEqual(report["evaluationEligibleCount"], 0)
         self.assertEqual(report["countedTowardTeacherGoldMinimum"], 0)
-        self.assertEqual(report["verifiedRegistryFixtureCount"], 5)
+        self.assertEqual(report["verifiedRegistryFixtureCount"], 10)
         self.assertEqual(report["readiness"], "NOT_READY")
         self.assertIs(report["temporaryCorpusArchivePersisted"], False)
         self.assertIs(report["productionDecisionAuthority"], False)
@@ -97,7 +97,7 @@ class TeacherGoldPilotTests(unittest.TestCase):
     def test_independent_verified_registry_does_not_make_pilot_counting(self) -> None:
         pilot, registry = self._payloads()
         report = self._validate_mutation(pilot, registry)
-        self.assertEqual(report["verifiedRegistryFixtureCount"], 5)
+        self.assertEqual(report["verifiedRegistryFixtureCount"], 10)
         self.assertEqual(report["countedTowardTeacherGoldMinimum"], 0)
         self.assertEqual(report["teacherVerifiedCount"], 0)
 

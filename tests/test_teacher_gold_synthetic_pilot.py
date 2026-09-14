@@ -131,7 +131,7 @@ class TeacherGoldSyntheticPilotTests(unittest.TestCase):
 
     def test_pilot_remains_non_counting_after_separate_teacher_admission(self) -> None:
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(len(registry["fixtureRecords"]), 5)
+        self.assertEqual(len(registry["fixtureRecords"]), 10)
         self.assertTrue(all(not record["countTowardTeacherGoldMinimum"] for record in self.manifest["records"]))
         self.assertTrue(all(record["teacherVerificationStatus"] == "DRAFT" for record in self.manifest["records"]))
         self.assertEqual(registry["minimumVerifiedFixtures"], 500)
