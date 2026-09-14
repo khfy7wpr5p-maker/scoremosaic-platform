@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.local/contracts/polyphonic-teacher-gold-storage-manifest-v1.schema.json",
+  "title": "ScoreMosaic Polyphonic Teacher-Gold External Storage Manifest v1",
+  "description": "Research-only logical binding from the public Teacher-Gold benchmark to external Google Drive storage without publishing Drive folder identifiers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "benchmarkId",
+    "provider",
+    "rootFolderRef",
+    "folders",
+    "boundaries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "scoremosaic-polyphonic-teacher-gold-storage-manifest-v1"
+    },
+    "benchmarkId": {
+      "const": "scoremosaic-polyphonic-teacher-gold-v1"
+    },
+    "provider": {
+      "const": "GOOGLE_DRIVE"
+    },
+    "rootFolderRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "name"
+      ],
+      "properties": {
+        "mode": {
+          "const": "ENVIRONMENT_VARIABLE"
+        },
+        "name": {
+          "const": "SCOREMOSAIC_TEACHER_GOLD_DRIVE_ROOT_ID"
+        }
+      }
+    },
+    "folders": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry",
+        "imslp",
+        "openscore",
+        "mutopia",
+        "kernscores",
+        "mei",
+        "cpdl",
+        "teacherVerified",
+        "benchmarkOutputs"
+      ],
+      "properties": {
+        "registry": {"const": "00_registry"},
+        "imslp": {"const": "01_imslp"},
+        "openscore": {"const": "02_openscore"},
+        "mutopia": {"const": "03_mutopia"},
+        "kernscores": {"const": "04_kernscores"},
+        "mei": {"const": "05_mei"},
+        "cpdl": {"const": "06_cpdl"},
+        "teacherVerified": {"const": "07_teacher_verified"},
+        "benchmarkOutputs": {"const": "08_benchmark_outputs"}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "researchEvaluationOnly",
+        "externalAssetsRemainExternal",
+        "noDriveFolderIdsInRepository",
+        "githubIsNotCorpusBlobStore",
+        "automaticDownload",
+        "automaticUpload",
+        "productionDecisionAuthority"
+      ],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "externalAssetsRemainExternal": {"const": true},
+        "noDriveFolderIdsInRepository": {"const": true},
+        "githubIsNotCorpusBlobStore": {"const": true},
+        "automaticDownload": {"const": false},
+        "automaticUpload": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  }
+}
