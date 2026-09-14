@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-teacher-gold-openscore-lieder-pilot-v1",
+  "dataset": "OpenScore Lieder Corpus",
+  "sourceRepository": "OpenScore/Lieder",
+  "sourceCommitSha": "38c5db510224d9facdc4b08d741fc788cfb58ea8",
+  "license": "CC0-1.0",
+  "licenseSha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+  "renderer": {
+    "name": "MuseScore",
+    "versionOutput": "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34",
+    "releaseTag": "v3.6.2",
+    "appImageSha256": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290",
+    "imageResolutionDpi": 150
+  },
+  "reviewImageProcessing": {
+    "tool": "ImageMagick",
+    "versionOutput": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+    "background": "#FFFFFF",
+    "alphaRemoved": true,
+    "validationMethod": "OPAQUE_NONEMPTY_PAGE_V1"
+  },
+  "discoveryEvidence": {
+    "workflowRunId": 34887250970,
+    "workflowHeadSha": "b61798e43752233d2de80b8249a2f2b2899c6b2c",
+    "artifactId": 10365755626,
+    "artifactZipSha256": "220ffffeea22d9f7b1c817ca8043b53ff025b1fd8de8adae8768c3b0ed1fe620",
+    "artifactRetentionDays": 14,
+    "artifactSizeBytes": 545558
+  },
+  "pilotCount": 5,
+  "records": [
+    {
+      "pilotId": "osl_01",
+      "title": "Schubert — Das Rosenband, D.280",
+      "sourcePath": "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "a6798bffeae124d256acbd21d998baa215887126676739c2c5d19e7651d64c75", "byteSize": 6678},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "b6c7b641891fe718449f46a953b4d74dcdf005749c89cc28956cf46e3993d63e", "byteSize": 90402, "background": "#FFFFFF", "alphaChannel": false},
+      "structuralObservation": {"scorePartCount": 2, "maxStavesPerPart": 2, "noteElementCount": 500, "restElementCount": 16, "hasChordElements": true, "hasTieOrTied": true, "hasSlur": true, "hasTuplet": false, "hasGrace": true, "hasAccidental": true, "voiceValues": ["1", "2", "3", "5", "6"], "timeNumerators": ["2"], "timeDenominators": ["2"], "keyFifths": ["-4"]},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "osl_02",
+      "title": "Robert Schumann — Dein Angesicht, Op.127 No.2",
+      "sourcePath": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "e9610dd969b6e556f42b086e3d122842f19644373aee699fe8c74262a1fcbff4", "byteSize": 7979},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "cfe8ed7e0996ab19d727e79d013cf15008ad22c6dcf61b93b71023cbccfbee06", "byteSize": 112466, "background": "#FFFFFF", "alphaChannel": false},
+      "structuralObservation": {"scorePartCount": 2, "maxStavesPerPart": 2, "noteElementCount": 631, "restElementCount": 18, "hasChordElements": true, "hasTieOrTied": true, "hasSlur": true, "hasTuplet": false, "hasGrace": false, "hasAccidental": true, "voiceValues": ["1", "2", "3", "5", "6"], "timeNumerators": ["2"], "timeDenominators": ["4"], "keyFifths": ["-3"]},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "osl_03",
+      "title": "Brahms — Geistliches Wiegenlied, Op.91 No.2",
+      "sourcePath": "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "8ef00c7ac76c56b74c7183417bf8ea04068bb33a251dd5dbfe8e08f47797b250", "byteSize": 26218},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "d6030170efd440a5c248385a02d46de89baac3b5214e0cf8bc28efd73f189bfb", "byteSize": 118304, "background": "#FFFFFF", "alphaChannel": false},
+      "structuralObservation": {"scorePartCount": 3, "maxStavesPerPart": 2, "noteElementCount": 2517, "restElementCount": 340, "hasChordElements": true, "hasTieOrTied": true, "hasSlur": true, "hasTuplet": true, "hasGrace": false, "hasAccidental": true, "voiceValues": ["1", "2", "5", "6"], "timeNumerators": ["3", "6"], "timeDenominators": ["4", "8"], "keyFifths": ["-1", "-4"]},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "osl_04",
+      "title": "Fanny Hensel — Verlust",
+      "sourcePath": "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "eeb985968e1a8398f92b0aeac65e098692a9c71a62a3f458e2e9eec8d4f90f11", "byteSize": 8897},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "9aaf65b083f6a2c4a312331251900fd1aabb95c00b5c9e624c5b36424f808627", "byteSize": 97577, "background": "#FFFFFF", "alphaChannel": false},
+      "structuralObservation": {"scorePartCount": 2, "maxStavesPerPart": 2, "noteElementCount": 720, "restElementCount": 43, "hasChordElements": true, "hasTieOrTied": true, "hasSlur": true, "hasTuplet": false, "hasGrace": false, "hasAccidental": true, "voiceValues": ["1", "2", "5", "6"], "timeNumerators": ["4"], "timeDenominators": ["4"], "keyFifths": ["-1"]},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "osl_05",
+      "title": "Clara Schumann — Lorelei",
+      "sourcePath": "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml", "sha256": "504dd02b4061e16d91750af5808a80abaa0cab04b955cb0b8f4b38cdd539eeac", "byteSize": 18612},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "b08adaa8bb7782c87bc978a4ced6620653d39914eb85aa45ec83880eaf7246e0", "byteSize": 71258, "background": "#FFFFFF", "alphaChannel": false},
+      "structuralObservation": {"scorePartCount": 2, "maxStavesPerPart": 2, "noteElementCount": 2627, "restElementCount": 252, "hasChordElements": true, "hasTieOrTied": true, "hasSlur": true, "hasTuplet": true, "hasGrace": true, "hasAccidental": true, "voiceValues": ["1", "2", "4", "5", "6", "7", "8"], "timeNumerators": ["12"], "timeDenominators": ["8"], "keyFifths": ["-2"]},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    }
+  ],
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "teacherVerified": false,
+    "automaticFixtureAdmission": false,
+    "automaticTrainingAuthorization": false,
+    "productionDecisionAuthority": false
+  }
+}

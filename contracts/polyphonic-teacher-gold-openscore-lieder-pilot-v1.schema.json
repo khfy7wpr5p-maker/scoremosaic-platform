@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoremosaic.dev/contracts/polyphonic-teacher-gold-openscore-lieder-pilot-v1.schema.json",
+  "title": "ScoreMosaic Teacher-Gold OpenScore Lieder Pilot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license", "licenseSha256", "renderer", "reviewImageProcessing", "discoveryEvidence", "pilotCount", "records", "boundaries"],
+  "properties": {
+    "schemaVersion": {"const": "scoremosaic-polyphonic-teacher-gold-openscore-lieder-pilot-v1"},
+    "dataset": {"const": "OpenScore Lieder Corpus"},
+    "sourceRepository": {"const": "OpenScore/Lieder"},
+    "sourceCommitSha": {"const": "38c5db510224d9facdc4b08d741fc788cfb58ea8"},
+    "license": {"const": "CC0-1.0"},
+    "licenseSha256": {"const": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"},
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "versionOutput", "releaseTag", "appImageSha256", "imageResolutionDpi"],
+      "properties": {
+        "name": {"const": "MuseScore"},
+        "versionOutput": {"const": "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34"},
+        "releaseTag": {"const": "v3.6.2"},
+        "appImageSha256": {"const": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290"},
+        "imageResolutionDpi": {"const": 150}
+      }
+    },
+    "reviewImageProcessing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "versionOutput", "background", "alphaRemoved", "validationMethod"],
+      "properties": {
+        "tool": {"const": "ImageMagick"},
+        "versionOutput": {"const": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org"},
+        "background": {"const": "#FFFFFF"},
+        "alphaRemoved": {"const": true},
+        "validationMethod": {"const": "OPAQUE_NONEMPTY_PAGE_V1"}
+      }
+    },
+    "discoveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflowRunId", "workflowHeadSha", "artifactId", "artifactZipSha256", "artifactRetentionDays", "artifactSizeBytes"],
+      "properties": {
+        "workflowRunId": {"const": 34887250970},
+        "workflowHeadSha": {"const": "b61798e43752233d2de80b8249a2f2b2899c6b2c"},
+        "artifactId": {"const": 10365755626},
+        "artifactZipSha256": {"const": "220ffffeea22d9f7b1c817ca8043b53ff025b1fd8de8adae8768c3b0ed1fe620"},
+        "artifactRetentionDays": {"const": 14},
+        "artifactSizeBytes": {"const": 545558}
+      }
+    },
+    "pilotCount": {"const": 5},
+    "records": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pilotId", "title", "sourcePath", "symbolicGold", "renderedEvidence", "structuralObservation", "rightsStatus", "teacherVerificationStatus", "evaluationEligibility", "countTowardTeacherGoldMinimum"],
+        "properties": {
+          "pilotId": {"type": "string", "pattern": "^osl_0[1-5]$"},
+          "title": {"type": "string", "minLength": 3, "maxLength": 200},
+          "sourcePath": {"type": "string", "pattern": "^scores/.+\\.mxl$", "maxLength": 350},
+          "symbolicGold": {"$ref": "#/$defs/musicXmlArchiveArtifact"},
+          "renderedEvidence": {"$ref": "#/$defs/pngArtifact"},
+          "structuralObservation": {"$ref": "#/$defs/structuralObservation"},
+          "rightsStatus": {"const": "CLEAR_CC0"},
+          "teacherVerificationStatus": {"const": "DRAFT"},
+          "evaluationEligibility": {"const": "REVIEW_REQUIRED"},
+          "countTowardTeacherGoldMinimum": {"const": false}
+        }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["researchEvaluationOnly", "teacherVerified", "automaticFixtureAdmission", "automaticTrainingAuthorization", "productionDecisionAuthority"],
+      "properties": {
+        "researchEvaluationOnly": {"const": true},
+        "teacherVerified": {"const": false},
+        "automaticFixtureAdmission": {"const": false},
+        "automaticTrainingAuthorization": {"const": false},
+        "productionDecisionAuthority": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "musicXmlArchiveArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "sha256", "byteSize"],
+      "properties": {
+        "mediaType": {"const": "application/vnd.recordare.musicxml"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 20000000}
+      }
+    },
+    "pngArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "page", "sha256", "byteSize", "background", "alphaChannel"],
+      "properties": {
+        "mediaType": {"const": "image/png"},
+        "page": {"const": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 20000000},
+        "background": {"const": "#FFFFFF"},
+        "alphaChannel": {"const": false}
+      }
+    },
+    "structuralObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scorePartCount", "maxStavesPerPart", "noteElementCount", "restElementCount", "hasChordElements", "hasTieOrTied", "hasSlur", "hasTuplet", "hasGrace", "hasAccidental", "voiceValues", "timeNumerators", "timeDenominators", "keyFifths"],
+      "properties": {
+        "scorePartCount": {"type": "integer", "minimum": 1, "maximum": 64},
+        "maxStavesPerPart": {"type": "integer", "minimum": 1, "maximum": 16},
+        "noteElementCount": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "restElementCount": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "hasChordElements": {"type": "boolean"},
+        "hasTieOrTied": {"type": "boolean"},
+        "hasSlur": {"type": "boolean"},
+        "hasTuplet": {"type": "boolean"},
+        "hasGrace": {"type": "boolean"},
+        "hasAccidental": {"type": "boolean"},
+        "voiceValues": {"type": "array", "uniqueItems": true, "maxItems": 64, "items": {"type": "string", "pattern": "^[0-9]{1,3}$"}},
+        "timeNumerators": {"type": "array", "uniqueItems": true, "maxItems": 16, "items": {"type": "string", "pattern": "^[0-9+]{1,16}$"}},
+        "timeDenominators": {"type": "array", "uniqueItems": true, "maxItems": 16, "items": {"type": "string", "pattern": "^[0-9]{1,4}$"}},
+        "keyFifths": {"type": "array", "uniqueItems": true, "maxItems": 16, "items": {"type": "string", "pattern": "^-?[0-9]{1,2}$"}}
+      }
+    }
+  }
+}
