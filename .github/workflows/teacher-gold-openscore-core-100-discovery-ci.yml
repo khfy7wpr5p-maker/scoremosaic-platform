@@ -1,0 +1,301 @@
+name: Teacher-Gold OpenScore Core 100 Review Discovery CI
+
+on:
+  push:
+    branches:
+      - "teacher-gold/openscore-core-100-review"
+    paths:
+      - ".github/workflows/teacher-gold-openscore-core-100-discovery-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-review-pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install renderer runtime and image tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            imagemagick libegl1 libgl1 libopengl0 libjack-jackd2-0 \
+            libxcb-xinerama0 libxkbcommon-x11-0 xvfb
+          convert -version | head -n 1 | tee /tmp/imagemagick-version.txt
+
+      - name: Download pinned MuseScore 3.6.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --output /tmp/MuseScore-3.6.2.AppImage \
+            https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2.548021370-x86_64.AppImage
+          echo "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290  /tmp/MuseScore-3.6.2.AppImage" | sha256sum --check --strict
+          chmod +x /tmp/MuseScore-3.6.2.AppImage
+          cd /tmp
+          ./MuseScore-3.6.2.AppImage --appimage-extract >/dev/null
+          xvfb-run -a /tmp/squashfs-root/AppRun --long-version | tee /tmp/musescore-version.txt
+          grep -F "3.6.2" /tmp/musescore-version.txt
+
+      - name: Select and download diverse pinned OpenScore candidates
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/tg100/candidates /tmp/tg100/review
+          python - <<'PY'
+          from collections import defaultdict, deque
+          from pathlib import Path
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+          import hashlib, json, os
+
+          commit = "38c5db510224d9facdc4b08d741fc788cfb58ea8"
+          api = f"https://api.github.com/repos/OpenScore/Lieder/git/trees/{commit}?recursive=1"
+          req = Request(api, headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}", "Accept": "application/vnd.github+json"})
+          tree = json.load(urlopen(req, timeout=120))["tree"]
+
+          already_used = {
+              "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl",
+              "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl",
+              "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl",
+              "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl",
+              "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl",
+          }
+          groups = defaultdict(list)
+          for item in tree:
+              path = item.get("path", "")
+              size = int(item.get("size") or 0)
+              if not path.startswith("scores/") or not path.lower().endswith(".mxl"):
+                  continue
+              if path in already_used or size < 2500 or size > 350000:
+                  continue
+              parts = path.split("/")
+              if len(parts) < 4:
+                  continue
+              groups[parts[1]].append((path, size))
+          for values in groups.values():
+              values.sort(key=lambda x: x[0].casefold())
+
+          # Deterministic composer round-robin prevents the pack being dominated by one composer.
+          composers = sorted(groups, key=str.casefold)
+          queues = {k: deque(groups[k]) for k in composers}
+          selected = []
+          while len(selected) < 140:
+              progressed = False
+              for composer in composers:
+                  q = queues[composer]
+                  if q:
+                      selected.append((composer, *q.popleft()))
+                      progressed = True
+                      if len(selected) == 140:
+                          break
+              if not progressed:
+                  break
+          if len(selected) < 110:
+              raise SystemExit(f"insufficient candidates: {len(selected)}")
+
+          root = Path('/tmp/tg100/candidates')
+          metadata = []
+          for n, (composer, path, tree_size) in enumerate(selected, 1):
+              cid = f"cand_{n:03d}"
+              raw = f"https://raw.githubusercontent.com/OpenScore/Lieder/{commit}/{quote(path, safe='/,_()-.')}"
+              data = urlopen(raw, timeout=90).read()
+              if len(data) < 100:
+                  continue
+              out = root / f"{cid}.mxl"
+              out.write_bytes(data)
+              parts = path.split('/')
+              work = parts[-2].replace('_', ' ')
+              metadata.append({
+                  "candidateId": cid,
+                  "composer": composer.replace('_', ' '),
+                  "work": work,
+                  "sourcePath": path,
+                  "treeSize": tree_size,
+                  "byteSize": len(data),
+                  "sha256": hashlib.sha256(data).hexdigest(),
+              })
+          (Path('/tmp/tg100') / 'candidate-metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
+
+          lic = urlopen(f"https://raw.githubusercontent.com/OpenScore/Lieder/{commit}/LICENSE.txt", timeout=60).read()
+          if hashlib.sha256(lic).hexdigest() != "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499":
+              raise SystemExit('license hash mismatch')
+          (Path('/tmp/tg100') / 'LICENSE.txt').write_bytes(lic)
+          print(f"downloaded candidates={len(metadata)} composers={len(set(x['composer'] for x in metadata))}")
+          PY
+
+      - name: Render first 100 successful review pairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          success=0
+          : > /tmp/tg100/success-ids.txt
+          for src in /tmp/tg100/candidates/cand_*.mxl; do
+            cid="$(basename "$src" .mxl)"
+            tmp="/tmp/tg100/render-${cid}"
+            mkdir -p "$tmp"
+            rm -f "$tmp"/*.png
+            if ! xvfb-run -a /tmp/squashfs-root/AppRun -s -m -F -r 150 -o "$tmp/out.png" "$src" >/tmp/tg100/${cid}.render.log 2>&1; then
+              rm -rf "$tmp"
+              continue
+            fi
+            if test -s "$tmp/out-1.png"; then
+              rendered="$tmp/out-1.png"
+            elif test -s "$tmp/out.png"; then
+              rendered="$tmp/out.png"
+            else
+              mapfile -t candidates < <(find "$tmp" -maxdepth 1 -type f -name '*.png' -printf '%p\n' | sort -V)
+              if test "${#candidates[@]}" -lt 1; then
+                rm -rf "$tmp"
+                continue
+              fi
+              rendered="${candidates[0]}"
+            fi
+            next=$((success+1))
+            rid=$(printf 'TG%03d' "$next")
+            outdir="/tmp/tg100/review/$rid"
+            mkdir -p "$outdir"
+            cp "$src" "$outdir/$rid.mxl"
+            convert "$rendered" -background white -alpha remove -alpha off "$outdir/$rid.png"
+            opaque="$(convert "$outdir/$rid.png" -format '%[opaque]' info: | tr '[:upper:]' '[:lower:]')"
+            mean="$(convert "$outdir/$rid.png" -colorspace Gray -format '%[fx:mean]' info:)"
+            sd="$(convert "$outdir/$rid.png" -colorspace Gray -format '%[fx:standard_deviation]' info:)"
+            if test "$opaque" != "true" || ! awk -v m="$mean" -v s="$sd" 'BEGIN { exit !(m > 0.20 && m < 0.9995 && s > 0.01) }'; then
+              rm -rf "$outdir" "$tmp"
+              continue
+            fi
+            printf '%s\t%s\n' "$rid" "$cid" >> /tmp/tg100/success-ids.txt
+            success=$next
+            rm -rf "$tmp"
+            if test "$success" -eq 100; then
+              break
+            fi
+          done
+          test "$success" -eq 100
+          echo "rendered_successfully=$success"
+
+      - name: Build review manifest and CSV index
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import csv, io, json, zipfile, xml.etree.ElementTree as ET
+
+          root = Path('/tmp/tg100')
+          candidates = {x['candidateId']: x for x in json.loads((root/'candidate-metadata.json').read_text(encoding='utf-8'))}
+          pairs = [line.strip().split('\t') for line in (root/'success-ids.txt').read_text().splitlines() if line.strip()]
+          if len(pairs) != 100:
+              raise SystemExit(f'expected 100 successful pairs, got {len(pairs)}')
+
+          def score_stats(mxl_bytes):
+              try:
+                  with zipfile.ZipFile(io.BytesIO(mxl_bytes)) as zf:
+                      xml_names = [n for n in zf.namelist() if n.lower().endswith(('.xml','.musicxml')) and not n.startswith('META-INF/')]
+                      if not xml_names: return {}
+                      xml = zf.read(sorted(xml_names, key=len)[0])
+                  r = ET.fromstring(xml)
+                  local = lambda t: t.rsplit('}',1)[-1]
+                  tags = [local(e.tag) for e in r.iter()]
+                  voices = sorted({(e.text or '').strip() for e in r.iter() if local(e.tag)=='voice' and (e.text or '').strip()})
+                  return {
+                      'noteElements': tags.count('note'), 'restElements': tags.count('rest'),
+                      'hasChord': 'chord' in tags, 'hasTuplet': 'tuplet' in tags,
+                      'hasGrace': 'grace' in tags, 'hasSlur': 'slur' in tags,
+                      'hasTie': ('tie' in tags or 'tied' in tags), 'voices': voices,
+                  }
+              except Exception:
+                  return {}
+
+          records = []
+          csv_rows = []
+          for rid, cid in pairs:
+              meta = candidates[cid]
+              d = root/'review'/rid
+              mxl = (d/f'{rid}.mxl').read_bytes()
+              png = (d/f'{rid}.png').read_bytes()
+              stats = score_stats(mxl)
+              rec = {
+                  'reviewId': rid,
+                  'composer': meta['composer'],
+                  'work': meta['work'],
+                  'sourcePath': meta['sourcePath'],
+                  'symbolicSha256': sha256(mxl).hexdigest(),
+                  'renderedPngSha256': sha256(png).hexdigest(),
+                  'symbolicByteSize': len(mxl),
+                  'renderedPngByteSize': len(png),
+                  'structuralObservation': stats,
+                  'rightsStatus': 'CLEAR_CC0',
+                  'teacherVerificationStatus': 'DRAFT',
+                  'evaluationEligibility': 'REVIEW_REQUIRED',
+                  'countTowardTeacherGoldMinimum': False,
+              }
+              records.append(rec)
+              csv_rows.append([rid, meta['composer'], meta['work'], meta['sourcePath'], rec['symbolicSha256'], rec['renderedPngSha256']])
+
+          manifest = {
+              'manifestVersion': 'scoremosaic-teacher-gold-openscore-core-100-review-v1',
+              'dataset': 'OpenScore Lieder Corpus',
+              'sourceRepository': 'OpenScore/Lieder',
+              'sourceCommitSha': '38c5db510224d9facdc4b08d741fc788cfb58ea8',
+              'license': 'CC0-1.0',
+              'licenseSha256': 'a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499',
+              'renderer': {
+                  'name': 'MuseScore', 'releaseTag': 'v3.6.2',
+                  'appImageSha256': 'c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290',
+                  'imageResolutionDpi': 150,
+              },
+              'selectionPolicy': 'DETERMINISTIC_COMPOSER_ROUND_ROBIN_FIRST_100_SUCCESSFUL_RENDER_V1',
+              'pairCount': 100,
+              'records': records,
+              'boundaries': {
+                  'researchEvaluationOnly': True,
+                  'teacherVerified': False,
+                  'automaticFixtureAdmission': False,
+                  'automaticTrainingAuthorization': False,
+                  'productionDecisionAuthority': False,
+              },
+          }
+          (root/'review-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+          with (root/'INDEX.csv').open('w', encoding='utf-8', newline='') as f:
+              w=csv.writer(f); w.writerow(['review_id','composer','work','source_path','mxl_sha256','png_sha256']); w.writerows(csv_rows)
+          (root/'README.txt').write_text(
+              'ScoreMosaic Teacher-Gold 100 Review Pack\n\nEach TGxxx folder contains one MXL and its first-page PNG render.\nCompare notation identity; do not judge engraving aesthetics.\nReturn VERIFIED / REVIEW_REQUIRED / REJECTED per item, or approve all only if all were actually reviewed.\nNo item counts toward Teacher-Gold until a separate admission change.\n',
+              encoding='utf-8')
+          print('records=', len(records), 'composers=', len(set(r['composer'] for r in records)))
+          PY
+
+      - name: Upload 100-pair teacher review pack
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: teacher-gold-openscore-core-100-review-v1
+          path: |
+            /tmp/tg100/review/
+            /tmp/tg100/review-manifest.json
+            /tmp/tg100/INDEX.csv
+            /tmp/tg100/README.txt
+            /tmp/tg100/LICENSE.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary corpus and renderer bytes
+        if: always()
+        shell: bash
+        run: |
+          rm -rf /tmp/tg100 /tmp/MuseScore-3.6.2.AppImage /tmp/squashfs-root
