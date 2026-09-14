@@ -2,9 +2,9 @@
 
 Status: **authoritative research/evaluation addendum; no production authority change**  
 Current architecture state contract: `contracts/architecture-current-state-v1.json`  
-As of repository main: `dfd8b8607607383fd1e250ce704e97af84a5101b` (2026-08-30)
+Verified main base before SM-POLY-13 branch: `b26e6c512edc88f9215bfe1b97199d309adf9f7c` (2026-09-14)
 
-This addendum records repository work merged after the Stage 5-11 architecture baseline that materially changes research/evaluation capability or safe integration seams without changing Stage 7 production authority, Teacher Review authority, or production activation.
+This addendum records repository work that materially changes research/evaluation capability or safe integration seams without changing Stage 7 production authority, Teacher Review authority, or production activation.
 
 ## 1. Authority baseline remains unchanged
 
@@ -20,7 +20,7 @@ At least two Canonical candidates are still required for Stage 7 comparison. ST-
 
 ## 2. Polyphonic OMR research evidence chain
 
-The merged research chain is:
+The implemented research chain is:
 
 ```text
 SM-POLY-02  polyphonic taxonomy + Teacher-Gold fixture schema
@@ -32,6 +32,7 @@ SM-POLY-02  polyphonic taxonomy + Teacher-Gold fixture schema
   -> SM-POLY-08  engine reliability/calibration evidence
   -> SM-POLY-09  ST-OMR shadow evidence
   -> SM-POLY-11  Convergence Evidence Vector v2
+  -> SM-POLY-13  Teacher Review workload evidence
 ```
 
 These packages are research-only. They create versioned, deterministic, provenance-bound evidence and preserve unavailable evidence as unavailable instead of inventing values.
@@ -52,13 +53,13 @@ The minimum research threshold remains 500 eligible verified fixtures with requi
 
 SM-POLY-04 records parse, structure, pitch, duration, onset, voice, staff, tie, tuplet, measure, relation and structural-distance evidence independently per engine. It intentionally has no single aggregate accuracy score and no winner selection.
 
-Teacher-edit metrics are versioned but currently unavailable. The declared future method is:
+Teacher-edit fields use the versioned method:
 
 ```text
 TEACHER_REVISION_COMMAND_COUNT_V1
 ```
 
-SM-POLY-13 is the planned owner for extracting this Teacher Review workload evidence.
+SM-POLY-13 now owns deterministic extraction of this Teacher Review workload evidence from immutable revision/command lineage.
 
 ### 2.3 Visual/source/complexity evidence
 
@@ -102,9 +103,33 @@ winner=null
 
 A future direct cross-artifact join must validate upstream payload identities at the relevant fixture/source/Teacher-Gold granularity and introduce a separately versioned binding method.
 
-The central current-state research locks are therefore explicit:
+### 2.7 Teacher Review workload evidence
+
+SM-POLY-13 introduces:
+
+- `contracts/polyphonic-teacher-workload-evidence-v1.schema.json`;
+- `services/teacher-review-service/src/scoremosaic_teacher_review/teacher_workload.py`;
+- `docs/sm-poly-13-teacher-review-workload.md`;
+- dedicated regression and CI coverage.
+
+The v1 counting rule is exact and deliberately simple:
 
 ```text
+one validated TeacherScoreRevision / ScoreEditCommand pair = one teacher edit
+```
+
+The extractor verifies command hashes, revision hashes, audit hashes, exact parent/audit lineage, scope continuity, duplicate/replay rejection and exact command↔revision binding. It does not infer order from timestamps.
+
+Measure workload is only emitted when the measure denominator is bound to the edited Canonical SHA. Page workload is optional because current `ScoreEditCommand.location` has no page identity; no page count is guessed.
+
+SM-POLY-04 projection additionally requires an exact fixture match, exact Canonical SHA match, an empty teacher-edit slot and both measure/page denominator evidence. Measure-only evidence remains valid SM-POLY-13 evidence but is not forced into SM-POLY-04 v1.
+
+Current research state therefore includes:
+
+```text
+teacherWorkloadEvidenceReady=true
+teacherWorkloadMethod=TEACHER_REVISION_COMMAND_COUNT_V1
+teacherWorkloadPageEvidenceMayRemainUnavailable=true
 directCrossArtifactJoinValidated=false
 selectivePredictionAuthorized=false
 automaticMergeOrCorrectionEnabled=false
@@ -165,6 +190,7 @@ The repository now proves, at contract/test/integration level:
 - descriptive reliability evidence;
 - ST-OMR shadow-evidence contracts;
 - Convergence Evidence Vector v2 reference-only evidence integration;
+- deterministic read-only Teacher Review workload extraction with exact revision/command lineage;
 - Real Score Intake v1/v1.1 into the pinned Teacher Review Core runtime;
 - local and authenticated-staging ST-Orchestration preview evidence;
 - disconnected Score Discovery consumer/handoff policy.
@@ -173,13 +199,12 @@ It still does **not** prove broad real-world OMR accuracy, a populated Teacher-G
 
 ## 7. Next development sequence
 
-The safest evidence-first order is:
+SM-POLY-13 is now repository-ready. The safest evidence-first order after it is:
 
-1. **SM-POLY-13 — Teacher Review workload instrumentation.** Extract deterministic edit-count evidence from immutable TeacherScoreRevision/ScoreEditCommand lineage using `TEACHER_REVISION_COMMAND_COUNT_V1`; populate edits/measure and edits/page without changing teacher authority.
-2. **Populate and qualify real Teacher-Gold evidence.** Move SM-POLY-03 from harness-only/NOT_READY toward the >=500 minimum with notation-category, scan-quality, licensing and provenance coverage; do not fabricate readiness.
-3. **Versioned direct cross-artifact join.** Bind Stage 7, semantic, visual, source-quality, complexity, reliability and shadow evidence only where exact fixture/source identities are validated. Do not retrofit this claim into SM-POLY-11 v2.
-4. **Selective prediction / abstention research.** Evaluate whether calibrated evidence can support abstention thresholds. Keep thresholds research-only until held-out Teacher-Gold evidence and no-regression gates are satisfied.
-5. **ST-OMR promotion decision gate.** Only after real Teacher-Gold, real-world shadow, category-stratified no-regression, deterministic musical validation and rollback evidence exist should a versioned Stage 7 migration be considered.
-6. **H7-E / live infrastructure gates remain separate.** Production orchestration, live Teacher Review API, provider provisioning and publication require explicit operational authorization and must not be coupled to research-evidence completion.
+1. **POPULATE_AND_QUALIFY_REAL_TEACHER_GOLD_EVIDENCE.** Move SM-POLY-03 from harness-only/NOT_READY toward the >=500 minimum with notation-category, scan-quality, licensing and provenance coverage; do not fabricate readiness.
+2. **Versioned direct cross-artifact join.** Bind Stage 7, semantic, visual, source-quality, complexity, reliability, shadow and workload evidence only where exact fixture/source identities are validated. Do not retrofit this claim into SM-POLY-11 v2.
+3. **Selective prediction / abstention research.** Evaluate whether calibrated evidence can support abstention thresholds. Keep thresholds research-only until held-out Teacher-Gold evidence and no-regression gates are satisfied.
+4. **ST-OMR promotion decision gate.** Only after real Teacher-Gold, real-world shadow, category-stratified no-regression, deterministic musical validation and rollback evidence exist should a versioned Stage 7 migration be considered.
+5. **H7-E / live infrastructure gates remain separate.** Production orchestration, live Teacher Review API, provider provisioning and publication require explicit operational authorization and must not be coupled to research-evidence completion.
 
 No package number is assigned here to the future cross-artifact join or selective-prediction work. Repository numbering must be introduced by its own explicit contract/PR rather than inferred from missing labels.
