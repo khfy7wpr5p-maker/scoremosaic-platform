@@ -24,12 +24,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install MuseScore 3.6.2 runtime libraries
+      - name: Install MuseScore 3.6.2 runtime and review-image libraries
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
+            imagemagick \
             libegl1 \
             libgl1 \
             libopengl0 \
@@ -37,6 +38,8 @@ jobs:
             libxcb-xinerama0 \
             libxkbcommon-x11-0 \
             xvfb
+          convert -version | tee /tmp/imagemagick-version.txt
+          grep -F "ImageMagick" /tmp/imagemagick-version.txt
 
       - name: Download pinned MuseScore 3.6.2 AppImage
         shell: bash
@@ -82,7 +85,7 @@ jobs:
               print(pilot_id, len(data), path)
           PY
 
-      - name: Render and canonicalize deterministic first-page PNGs
+      - name: Render and flatten deterministic first-page PNGs onto white
         shell: bash
         run: |
           set -euo pipefail
@@ -108,8 +111,20 @@ jobs:
               rendered="${candidates[0]}"
             fi
 
-            cp "$rendered" "/tmp/ossq/render/${id}-first.png"
-            test -s "/tmp/ossq/render/${id}-first.png"
+            final="/tmp/ossq/render/${id}-first.png"
+            convert "$rendered" \
+              -background white \
+              -alpha remove \
+              -alpha off \
+              "$final"
+            test -s "$final"
+
+            opaque="$(convert "$final" -format '%[opaque]' info: | tr '[:upper:]' '[:lower:]')"
+            test "$opaque" = "true"
+            mean="$(convert "$final" -colorspace Gray -format '%[fx:mean]' info:)"
+            awk -v m="$mean" 'BEGIN { exit !(m > 0.20 && m < 0.999) }'
+            identify "$final"
+            printf '%s mean=%s opaque=%s\n' "$id" "$mean" "$opaque"
           done
           ls -lh /tmp/ossq/render/*-first.png
 
@@ -126,6 +141,7 @@ jobs:
           appimage = Path("/tmp/MuseScore-3.6.2.AppImage")
           app_sha = sha256(appimage.read_bytes()).hexdigest()
           version = Path("/tmp/musescore-version.txt").read_text(encoding="utf-8", errors="replace").strip()
+          imagemagick_version = Path("/tmp/imagemagick-version.txt").read_text(encoding="utf-8", errors="replace").splitlines()[0].strip()
           specs = [
               ("ossq_7313978", "Andrée — String Quartet in A major", "scores/Andrée,_Elfrida/String_Quartet_in_A_major/sq7313978.musicxml"),
               ("ossq_13744399", "Arriaga — String Quartet No.1 in D minor", "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.1_in_D_minor/sq13744399.musicxml"),
@@ -153,6 +169,8 @@ jobs:
                       "page": 1,
                       "sha256": sha256(ib).hexdigest(),
                       "byteSize": len(ib),
+                      "background": "#FFFFFF",
+                      "alphaChannel": False,
                   },
                   "rightsStatus": "CLEAR_CC0",
                   "teacherVerificationStatus": "DRAFT",
@@ -160,7 +178,7 @@ jobs:
                   "countTowardTeacherGoldMinimum": False,
               })
           manifest = {
-              "manifestVersion": "scoremosaic-teacher-gold-ossq-synthetic-pilot-v1",
+              "manifestVersion": "scoremosaic-teacher-gold-ossq-synthetic-pilot-v2",
               "dataset": "OSSQ-OMR",
               "sourceRepository": "MALerLab/ossq-omr",
               "sourceCommitSha": commit,
@@ -171,6 +189,13 @@ jobs:
                   "releaseTag": "v3.6.2",
                   "appImageSha256": app_sha,
                   "imageResolutionDpi": 150,
+              },
+              "reviewImageProcessing": {
+                  "tool": "ImageMagick",
+                  "versionOutput": imagemagick_version,
+                  "background": "#FFFFFF",
+                  "alphaRemoved": True,
+                  "validationMethod": "OPAQUE_NONEMPTY_PAGE_V1",
               },
               "pilotCount": len(records),
               "records": records,
@@ -190,7 +215,7 @@ jobs:
       - name: Upload review packet only
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: teacher-gold-ossq-synthetic-review-pilot-v1
+          name: teacher-gold-ossq-synthetic-review-pilot-v2-white
           path: |
             /tmp/ossq/ossq-synthetic-pilot-manifest.json
             /tmp/ossq/source/*.musicxml
