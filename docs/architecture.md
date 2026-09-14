@@ -223,7 +223,7 @@ Coolify private-staging preflight is repository-ready but provider connection is
 
 The policy is defined by `LICENSE`, `LICENSE-SCOPE.md`, `NOTICE`, `COMMERCIAL-LICENSE.md`, `TRADEMARKS.md`, `CONTRIBUTOR-LICENSE-AGREEMENT.md`, and `docs/licensing-governance.md`.
 
-First-party code is noncommercial source-available; third-party engines/packages/model assets keep their own licenses. Unresolved copyleft/model-asset/SBOM obligations remain independent production locks.
+First-party code is noncommercial source-available; third-party engines/packages/model assets keep their own licenses. Unresolved copyleft/model-asset/SBOM obligations remain independent production locks. These are **licensing activation locks** in addition to the accuracy, security and infrastructure gates.
 
 ## 10. Current status map
 
