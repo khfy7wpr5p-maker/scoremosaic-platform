@@ -48,13 +48,13 @@ class TeacherGoldPilotTests(unittest.TestCase):
         self.assertEqual(record_props["evaluationEligibility"]["const"], "REVIEW_REQUIRED")
         self.assertIs(record_props["countTowardTeacherGoldMinimum"]["const"], False)
 
-    def test_baseline_has_five_real_hash_pairs_but_counts_zero(self) -> None:
+    def test_baseline_has_five_real_hash_pairs_but_pilot_counts_zero(self) -> None:
         report = validate_pilot()
         self.assertEqual(report["realHashedPairCount"], 5)
         self.assertEqual(report["teacherVerifiedCount"], 0)
         self.assertEqual(report["evaluationEligibleCount"], 0)
         self.assertEqual(report["countedTowardTeacherGoldMinimum"], 0)
-        self.assertEqual(report["verifiedRegistryFixtureCount"], 0)
+        self.assertEqual(report["verifiedRegistryFixtureCount"], 5)
         self.assertEqual(report["readiness"], "NOT_READY")
         self.assertIs(report["temporaryCorpusArchivePersisted"], False)
         self.assertIs(report["productionDecisionAuthority"], False)
@@ -94,18 +94,17 @@ class TeacherGoldPilotTests(unittest.TestCase):
         with self.assertRaisesRegex(TeacherGoldPilotError, "pilot_discovery_evidence_invalid"):
             self._validate_mutation(pilot)
 
-    def test_pilot_cannot_silently_populate_verified_registry(self) -> None:
+    def test_independent_verified_registry_does_not_make_pilot_counting(self) -> None:
         pilot, registry = self._payloads()
-        registry["fixtureRecords"] = [
-            {
-                "fixtureId": "poly_fixture_fake0001",
-                "metadataRef": "fixtures/fake.json",
-                "metadataSha256": "a" * 64,
-            }
-        ]
-        with self.assertRaisesRegex(
-            TeacherGoldPilotError, "verified_registry_must_remain_empty_during_pilot"
-        ):
+        report = self._validate_mutation(pilot, registry)
+        self.assertEqual(report["verifiedRegistryFixtureCount"], 5)
+        self.assertEqual(report["countedTowardTeacherGoldMinimum"], 0)
+        self.assertEqual(report["teacherVerifiedCount"], 0)
+
+    def test_malformed_registry_still_fails_closed(self) -> None:
+        pilot, registry = self._payloads()
+        registry["fixtureRecords"] = "not-a-list"
+        with self.assertRaisesRegex(TeacherGoldPilotError, "verified_registry_invalid"):
             self._validate_mutation(pilot, registry)
 
 

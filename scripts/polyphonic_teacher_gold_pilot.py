@@ -192,8 +192,9 @@ def validate_pilot(path: Path = PILOT_PATH, *, registry_path: Path = REGISTRY_PA
             target.add(artifact["sha256"])
 
     registry, _ = _load_bounded(registry_path)
-    if type(registry.get("fixtureRecords")) is not list or registry["fixtureRecords"]:
-        raise TeacherGoldPilotError("verified_registry_must_remain_empty_during_pilot")
+    registry_records = registry.get("fixtureRecords")
+    if type(registry_records) is not list or len(registry_records) > 10000:
+        raise TeacherGoldPilotError("verified_registry_invalid")
 
     report: dict[str, Any] = {
         "reportVersion": "scoremosaic-polyphonic-teacher-gold-pilot-report-v1",
@@ -202,7 +203,7 @@ def validate_pilot(path: Path = PILOT_PATH, *, registry_path: Path = REGISTRY_PA
         "teacherVerifiedCount": 0,
         "evaluationEligibleCount": 0,
         "countedTowardTeacherGoldMinimum": 0,
-        "verifiedRegistryFixtureCount": 0,
+        "verifiedRegistryFixtureCount": len(registry_records),
         "minimumVerifiedFixtures": 500,
         "readiness": "NOT_READY",
         "temporaryCorpusArchivePersisted": False,

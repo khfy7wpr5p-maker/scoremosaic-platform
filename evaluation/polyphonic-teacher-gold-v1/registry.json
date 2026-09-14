@@ -4,7 +4,33 @@
   "fixtureSchemaVersion": "scoremosaic-polyphonic-benchmark-fixture-v1",
   "minimumVerifiedFixtures": 500,
   "targetVerifiedFixtures": 1000,
-  "fixtureRecords": [],
+  "fixtureRecords": [
+    {
+      "fixtureId": "poly_fixture_ossq_13744399_p1",
+      "metadataRef": "fixtures/poly_fixture_ossq_13744399_p1.json",
+      "metadataSha256": "30ef2979b60f8dd903b12b8dab29e424ce7eb68fbee8675252f7d5d9091393d4"
+    },
+    {
+      "fixtureId": "poly_fixture_ossq_7313978_p1",
+      "metadataRef": "fixtures/poly_fixture_ossq_7313978_p1.json",
+      "metadataSha256": "c35479caeaf7992738649b75f6c86e95fffc1f6b9797f88d1fb52569c5baecf0"
+    },
+    {
+      "fixtureId": "poly_fixture_ossq_7383977_p1",
+      "metadataRef": "fixtures/poly_fixture_ossq_7383977_p1.json",
+      "metadataSha256": "87a8da8e1529b256f2a8990f923f95af1949377a7135efe81adf5f641e60a923"
+    },
+    {
+      "fixtureId": "poly_fixture_ossq_8071278_p1",
+      "metadataRef": "fixtures/poly_fixture_ossq_8071278_p1.json",
+      "metadataSha256": "bf03f19a0468c4cf8e9e5a3b8021e17bd7cf03ce9868cf77eb52771b8fea48df"
+    },
+    {
+      "fixtureId": "poly_fixture_ossq_8454356_p1",
+      "metadataRef": "fixtures/poly_fixture_ossq_8454356_p1.json",
+      "metadataSha256": "d84f10d4832dbdaa6fbd5d2a94749984be39f09470013931599b59ce5b92a055"
+    }
+  ],
   "boundaries": {
     "researchEvaluationOnly": true,
     "privateAssetsRemainExternal": true,

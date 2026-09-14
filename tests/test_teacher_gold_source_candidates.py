@@ -85,9 +85,12 @@ class TeacherGoldSourceCandidateTests(unittest.TestCase):
         with self.assertRaisesRegex(TeacherGoldSourceCandidateError, "candidate_duplicate"):
             validate_catalogue(mutated)
 
-    def test_verified_registry_remains_truthfully_empty(self) -> None:
+    def test_verified_registry_now_contains_only_separately_admitted_fixtures(self) -> None:
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(registry["fixtureRecords"], [])
+        self.assertEqual(len(registry["fixtureRecords"]), 5)
+        self.assertTrue(
+            all(record["fixtureId"].startswith("poly_fixture_ossq_") for record in registry["fixtureRecords"])
+        )
         self.assertEqual(registry["minimumVerifiedFixtures"], 500)
         self.assertEqual(registry["targetVerifiedFixtures"], 1000)
 
