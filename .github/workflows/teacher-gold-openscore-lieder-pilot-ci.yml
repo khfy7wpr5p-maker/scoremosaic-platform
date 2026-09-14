@@ -8,8 +8,10 @@ on:
       - ".github/workflows/teacher-gold-openscore-lieder-pilot-ci.yml"
       - "contracts/polyphonic-teacher-gold-openscore-lieder-pilot-v1.schema.json"
       - "evaluation/polyphonic-teacher-gold-v1/pilots/openscore-lieder-v1.json"
+      - "evaluation/polyphonic-teacher-gold-v1/fixtures/poly_fixture_openscore_osl_*_p1.json"
       - "scripts/polyphonic_teacher_gold_openscore_lieder_pilot.py"
       - "tests/test_teacher_gold_openscore_lieder_pilot.py"
+      - "tests/test_teacher_gold_openscore_lieder_admission.py"
       - "docs/teacher-gold-openscore-lieder-pilot.md"
       - "evaluation/polyphonic-teacher-gold-v1/registry.json"
   pull_request:
@@ -19,8 +21,10 @@ on:
       - ".github/workflows/teacher-gold-openscore-lieder-pilot-ci.yml"
       - "contracts/polyphonic-teacher-gold-openscore-lieder-pilot-v1.schema.json"
       - "evaluation/polyphonic-teacher-gold-v1/pilots/openscore-lieder-v1.json"
+      - "evaluation/polyphonic-teacher-gold-v1/fixtures/poly_fixture_openscore_osl_*_p1.json"
       - "scripts/polyphonic_teacher_gold_openscore_lieder_pilot.py"
       - "tests/test_teacher_gold_openscore_lieder_pilot.py"
+      - "tests/test_teacher_gold_openscore_lieder_admission.py"
       - "docs/teacher-gold-openscore-lieder-pilot.md"
       - "evaluation/polyphonic-teacher-gold-v1/registry.json"
   workflow_dispatch:
@@ -34,7 +38,7 @@ concurrency:
 
 jobs:
   validate-openscore-lieder-pilot:
-    name: Validate non-counting OpenScore Lieder Teacher-Gold pilot
+    name: Validate OpenScore Lieder Teacher-Gold pilot and admission bindings
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -57,6 +61,9 @@ jobs:
 
       - name: Run OpenScore Lieder pilot safety regressions
         run: python -m unittest tests.test_teacher_gold_openscore_lieder_pilot -v
+
+      - name: Run OpenScore Lieder admission binding regressions
+        run: python -m unittest tests.test_teacher_gold_openscore_lieder_admission -v
 
       - name: Re-run Teacher-Gold harness
         run: python scripts/polyphonic_teacher_gold_harness.py
