@@ -1,9 +1,10 @@
 # ScoreMosaic Stage 5-7 Current Architecture
 
-Status: **authoritative current-activation addendum for Stage 5-7**, synchronized through Stage 11-F  
-Current architecture state contract: `contracts/architecture-current-state-v1.json`
+Status: **authoritative current-activation addendum for Stage 5-7**, synchronized through Stage 11-F plus the merged research/evidence workstreams through SM-POLY-11  
+Current architecture state contract: `contracts/architecture-current-state-v1.json`  
+Research/evaluation addendum: `docs/architecture-research-evidence-current.md`
 
-This document remains authoritative for Stage 5-7 behavior. Later-stage status is summarized only to prevent stale boundary statements; detailed Stage 8 and Stage 9-11 truth lives in their current addenda.
+This document remains authoritative for Stage 5-7 production behavior. Later-stage and research status is summarized only to prevent stale boundary statements; detailed Stage 8 and Stage 9-11 truth lives in their current addenda, while post-baseline research evidence lives in the research/evaluation addendum.
 
 ## Current trust chain through Stage 7
 
@@ -92,6 +93,33 @@ Clarity
 
 ST-OMR is not currently part of this quorum. Any future ST-OMR-primary or ST-OMR-only path requires a versioned migration instead of silently weakening the `>=2` Stage 7 rule. Required evidence includes shadow comparison, teacher-gold evaluation, category-stratified no-regression results, calibrated abstention, deterministic musical validation and rollback. Existing engines may later be retired from production only after those gates pass; they may remain offline benchmark/reference engines.
 
+## Research/evaluation evidence beside Stage 7
+
+The repository now also contains a research-only polyphonic evidence chain:
+
+```text
+SM-POLY-02 taxonomy + benchmark schema
+  -> SM-POLY-03 Teacher-Gold registry/harness
+  -> SM-POLY-04 per-engine semantic metrics
+  -> SM-POLY-05 visual/BBox evidence
+  -> SM-POLY-06 source-quality evidence
+  -> SM-POLY-07 polyphony-complexity evidence
+  -> SM-POLY-08 reliability/calibration evidence
+  -> SM-POLY-09 ST-OMR shadow evidence
+  -> SM-POLY-11 Convergence Evidence Vector v2
+```
+
+This chain is intentionally **beside** the Stage 7 production path, not inside its authority path.
+
+- SM-POLY-03 provides a deterministic readiness harness, but the real Teacher-Gold corpus is not sufficiently populated; `teacherGoldEvaluationComplete=false` remains correct.
+- SM-POLY-09 provides shadow-evidence contracts and provenance, but a broad real-world ST-OMR shadow benchmark is not complete.
+- SM-POLY-11 references immutable evidence artifact sets beside an exact Stage 7 result SHA. It does not assert cross-artifact fixture identity, rank engines, select a winner, create an aggregate confidence score, or mutate Stage 7 evidence.
+- `directCrossArtifactJoinValidated=false` and `selectivePredictionAuthorized=false` remain explicit current-state locks.
+
+The next explicitly planned research package is **SM-POLY-13**, which owns Teacher Review workload instrumentation using `TEACHER_REVISION_COMMAND_COUNT_V1`. This is evidence extraction only; it does not change teacher authority.
+
+See `docs/architecture-research-evidence-current.md` for the complete current research map and next sequence.
+
 ## Candidate Safety composition
 
 The effective Stage 7 safety composition is:
@@ -102,7 +130,7 @@ The effective Stage 7 safety composition is:
 4. Stage 7 persistence/handoff re-verification;
 5. Canonical structural and musical bounds.
 
-Current Stage 6 candidate contracts do not contain page-coordinate/bbox evidence, so Stage 7 marks localization evidence unavailable rather than inventing it.
+Current Stage 6 candidate contracts do not contain page-coordinate/bbox evidence, so Stage 7 marks localization evidence unavailable rather than inventing it. SM-POLY-05 carries visual/BBox evidence as a separate research sidecar and does not silently extend the Stage 6/7 production candidate contract.
 
 ## Durable-state and rollback boundary
 
@@ -119,17 +147,24 @@ Current repository evidence proves controlled-staging execution and hermetic Sta
 - public API routes;
 - production Gateway-to-Ensemble transport;
 - production provider-backed persistence;
-- production traffic readiness.
+- production traffic readiness;
+- broad real-world OMR accuracy;
+- a minimum-ready Teacher-Gold corpus;
+- ST-OMR production promotion;
+- selective-prediction/abstention production safety.
 
-Those capabilities remain locked behind later production gates.
+Those capabilities remain locked behind later evidence or production gates.
 
-## Later stages now completed in repository scope
+## Later stages and unnumbered integrations now completed in repository scope
 
 The former “future Stage 8” boundary is no longer current. Repository-only work has since completed:
 
 - **Stage 8:** immutable Teacher Review, including `TeacherScoreRevision`, approval and non-executing publication-handoff preparation;
 - **Stage 9:** production-foundation contracts, with external provisioning still deferred;
 - **Stage 10:** disconnected product UI experience;
-- **Stage 11:** typed local UI/application contracts and integration, with live API still locked.
+- **Stage 11:** typed local UI/application contracts and integration, with live API still locked;
+- **Real Score Intake v1/v1.1:** verified Stage 7/Canonical binding into the pinned Teacher Review Core runtime, without production persistence or automatic correction;
+- **H7-C/H7-D ST-Orchestration preview:** local and authenticated-staging evidence paths, non-authoritative and production-disabled;
+- **SD-4B Score Discovery consumer:** disconnected bounded discovery handoff policy; live Gateway networking and production import remain disabled.
 
-See `docs/architecture-stage8-current.md` and `docs/architecture-stage9-11-current.md`.
+See `docs/architecture-stage8-current.md`, `docs/architecture-stage9-11-current.md`, and `docs/architecture-research-evidence-current.md`.

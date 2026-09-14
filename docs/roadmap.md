@@ -1,33 +1,37 @@
 # ScoreMosaic Roadmap
 
-Current architecture state contract: `contracts/architecture-current-state-v1.json`
+Current architecture state contract: `contracts/architecture-current-state-v1.json`  
+Current research/evaluation addendum: `docs/architecture-research-evidence-current.md`
 
-Every capability is gated. Code presence, model accuracy, a successful UI demo, a completed Figma prototype or a green local test never grants broader production authority by implication.
+Every capability is gated. Code presence, model accuracy, a green test, a successful UI demo or a staging transport does not grant broader authority by implication.
 
 ## Current secure-development status
 
-| Area | Status | Security meaning |
+| Area | Status | Security / authority meaning |
 |---|---|---|
-| Safe Intake B.1-B.6 | ✅ Complete foundation | Untrusted PDF/JPEG/PNG intake is fail-closed before later processing. |
-| Controlled staging dispatch/execution — Stage 5 | ✅ Complete | Authenticated bounded private staging dispatch/execution exists; production/public activation does not. |
-| Candidate ingestion/persistence — Stage 6 | ✅ Complete | Audiveris/HOMR/Clarity candidates are authenticated, bounded and immutable; candidates are not truth. |
-| Canonical/Ensemble convergence — Stage 7 | ✅ Complete | Deterministic Canonical admission + neutral comparison; >=2 Canonical candidates required. |
-| Teacher Review/publication preparation — Stage 8 | ✅ Complete repository scope | Immutable revision/validation/approval/publication-handoff lineage exists; external publication execution locked. |
-| Production foundation — Stage 9 | ✅ Complete repository scope | Hetzner/Coolify/PostgreSQL/Object Storage/Auth/RBAC/Secrets architecture documented; real provisioning deferred. |
-| Product UI experience — Stage 10 | ✅ Complete repository scope | Disconnected fixture-backed product UI; no production backend authority. |
-| Typed UI/application integration — Stage 11 | ✅ Complete repository scope | Closed typed reads/edit-intent/state model/local integration; live API locked. |
-| UI Architecture Phase 1 | ✅ Repository pre-Figma baseline complete | Unnumbered product-design workstream; Figma application/high-fidelity still pending. |
-| Web Preview v1 | ✅ Public fixture preview verified | Deterministic CSP-locked GitHub Pages preview is deployed; browser API, persistence, real data and production authority remain off. |
-| Live UI↔API Security Architecture | ✅ Complete repository baseline | OIDC/session, server authorization, CSRF/origin/CSP, idempotency, audit and rollback contracts complete; runtime off. |
-| Teacher Review API Contract v1 | ✅ Complete repository baseline | Exact read + bounded revision-proposal API contracts bridge browser intent to Stage 8 authority; no routes registered. |
-| Teacher Review API Security Harness v1 | ✅ Complete repository baseline | Disconnected authenticated mutation adapter composes API intent to Stage 8-G with server-derived authority, idempotency/reconciliation and safe audit/error mapping; no HTTP/runtime activation. |
-| Downstream Music Application Integration | 🟡 Architecture-only seam | Validated/approved MusicXML may later feed bounded derivative services; GuitarTab live integration off. |
-| ST-OMR architecture/development track | 🟡 Isolated | Not in Gateway/Stage 7 quorum; no production authority. |
-| Production infrastructure | 🔒 Not activated | No paid/provider resources, production DB/object store, credentials, DNS/TLS or public traffic activated by repo stages. |
-| Public Web Preview | ✅ Fixture-only GitHub Pages active | Public URL and preview traffic are verified; this grants no live API, persistence, real-data or production authority. |
-| Live Teacher Review API | 🔒 Not activated | Security/API contracts and disconnected harness exist, but HTTP routes, live auth, browser network and production persistence remain gated. |
-| Publication execution | 🔒 Not activated | Stage 8-O stops at non-executing publisher-bound handoff. |
-| Playback | 🔒 Not activated | Review timeline/presentation state exists; no real audio/MIDI/SoundFont runtime. |
+| Safe Intake B.1-B.6 | ✅ Complete foundation | Untrusted PDF/JPEG/PNG input is fail-closed before later processing. |
+| Stage 5 controlled staging | ✅ Complete | Authenticated bounded private dispatch/execution; not production/public activation. |
+| Stage 6 candidate persistence | ✅ Complete | Audiveris/HOMR/Clarity candidates are authenticated and immutable; candidates are not truth. |
+| Stage 7 Canonical/Ensemble | ✅ Complete | Deterministic Canonical admission and neutral comparison; >=2 Canonical candidates required. |
+| Stage 8 Teacher Review | ✅ Repository scope complete | Immutable revision/validation/approval/publication-handoff lineage; publication execution locked. |
+| Stage 9 production foundation | ✅ Repository scope complete | Provider/security/storage architecture documented; real provisioning deferred. |
+| Stage 10 product UI | ✅ Repository scope complete | Disconnected fixture-backed product UI. |
+| Stage 11 typed application layer | ✅ Repository scope complete | Typed local reads/edit intents/state; live API locked. |
+| Real Score Intake v1/v1.1 | ✅ Repository integration complete | Verified Stage 7/Canonical evidence projects into pinned Score Editor Core; no production persistence/automatic correction. |
+| ST-Orchestration H7-C | ✅ Local preview integration | Non-authoritative `string-seat-ranking-v0` evidence only. |
+| ST-Orchestration H7-D | ✅ Authenticated staging integration | Server-side authenticated staging evidence; production/H7-E disabled. |
+| Score Discovery SD-4B | ✅ Disconnected consumer boundary | Eligible handoff is `discovery-handoff-only`; Safe Intake still required; live Gateway off. |
+| SM-POLY-02→11 research chain | ✅ Research evidence infrastructure through Convergence Vector v2 | No Stage 7 quorum/authority change. |
+| Teacher-Gold corpus | 🟡 Harness ready, corpus not minimum-ready | >=500 eligible verified fixtures + required coverage still needed. |
+| ST-OMR real-world shadow benchmark | 🟡 Contract/evidence plumbing ready, benchmark incomplete | No production promotion. |
+| UI Architecture Phase 1 | ✅ Repository pre-Figma baseline | High-fidelity Figma still pending. |
+| Web Preview v1 | ✅ Public fixture-only Pages preview verified | No live API, persistence, real data or production authority. |
+| Live UI↔API security architecture | ✅ Repository baseline | Runtime/auth/browser network off. |
+| Teacher Review API Security Harness v1 | ✅ Repository baseline | HTTP routes/live identity/production persistence off. |
+| Downstream Music Application Integration | 🟡 Architecture-only | Guitar TAB live integration off. |
+| Production infrastructure | 🔒 Not activated | No provider resources/production DB/object store/credentials/DNS/TLS/public API. |
+| Publication execution | 🔒 Not activated | Stage 8 stops at non-executing handoff. |
+| Playback | 🔒 Not activated | No production audio/MIDI runtime. |
 
 ## Current architecture sequence
 
@@ -35,328 +39,207 @@ Every capability is gated. Code presence, model accuracy, a successful UI demo, 
 Safe Intake
   -> Stage 5 controlled execution
   -> Stage 6 candidate persistence
-  -> Stage 7 Canonical + Ensemble evidence
-  -> Stage 8 immutable Teacher Review + approval/publication preparation
+  -> Stage 7 Canonical + Ensemble
+  -> Real Score Intake where applicable
+  -> Stage 8 Teacher Review + validation + approval/publication preparation
   -> Stage 9 production architecture contracts
   -> Stage 10 disconnected product UI
-  -> Stage 11 typed local UI/application integration
-  -> UI Architecture Phase 1  [unnumbered]
-  -> Web Preview v1  [unnumbered, public fixture-only Pages preview]
-  -> Live UI↔API Security Architecture  [unnumbered, repository only]
-  -> Teacher Review API Contract v1  [unnumbered, repository only]
-  -> Teacher Review API Security Harness v1  [unnumbered, repository only]
-  -> High-fidelity Figma / prototype
-  -> [LIVE/EXTERNAL GATES]
+  -> Stage 11 typed local application integration
+  -> unnumbered UI/API/security/integration workstreams
+  -> research evidence chain SM-POLY-02→11
+  -> [LIVE / EXTERNAL / PROMOTION GATES]
 ```
 
-UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. Web Preview v1, Live UI↔API Security, Teacher Review API and the disconnected API Security Harness are likewise unnumbered and do not imply a Stage 12 assignment.
+UI Architecture Phase 1 does not consume or reserve Stage 12 numbering. Web Preview, Live UI↔API Security, Teacher Review API/harness, Real Score Intake integration, H7-C/H7-D, Score Discovery and research packages likewise do not imply a Stage 12 assignment.
 
-## Approved repository workstream — UI Architecture Phase 1
+## Current research/evaluation architecture
 
-Goal: finish the complete product/UI architecture before high-fidelity Figma.
-
-Repository-side architecture is complete through brand rules, Design System foundations, core components, music-domain components and product interaction patterns. Figma application and high-fidelity work remain separate.
-
-Fixed UI boundaries:
-
-- browser is not authority;
-- renderer is not musical truth;
-- local edit intent is not ScoreEditCommand;
-- validation pass is not approval;
-- save/edit is not approval;
-- approval is not publication;
-- real upload/auth/server write/playback/publication remain locked;
-- future visual modernization starts in Figma/Design System/UI before changing lower authority layers.
-
-## Completed public fixture preview — Web Preview v1
-
-Goal: make the current Stage 10/11 disconnected product UI inspectable as one deterministic browser-ready static artifact without activating backend or production behavior.
-
-Safe build path:
+The polyphonic OMR evidence chain currently stops at SM-POLY-11:
 
 ```text
-Stage 10 UI + fixture
-  + Stage 11 local typed application scripts
-  -> deterministic preview builder
-  -> visible NON-PRODUCTION / FIXTURE DATA marker
-  -> CSP-locked standalone static files
-  -> CI security regressions
-  -> downloadable Actions artifact
-  -> GitHub Pages deployment
-  -> [PUBLIC FIXTURE-ONLY PREVIEW]
+SM-POLY-02 taxonomy + benchmark schema
+  -> SM-POLY-03 Teacher-Gold registry/harness
+  -> SM-POLY-04 per-engine semantic metrics
+  -> SM-POLY-05 visual/BBox evidence
+  -> SM-POLY-06 source-quality evidence
+  -> SM-POLY-07 polyphony-complexity evidence
+  -> SM-POLY-08 reliability/calibration evidence
+  -> SM-POLY-09 ST-OMR shadow evidence
+  -> SM-POLY-11 Convergence Evidence Vector v2
 ```
 
-The preview retains `connect-src 'none'`, contains no browser persistence/network API, and cannot upload, authenticate, create ScoreEditCommand/TeacherScoreRevision, approve, publish, or persist production state.
-
-GitHub Pages deployment and the public preview URL are verified. Netlify, Coolify Preview, live browser/API traffic and production public traffic remain behind separate operational gates.
-
-## Current evidence gaps
-
-The repository regression baseline is not a broad OMR accuracy benchmark. The current-engine fixed dataset contains one deliberately small score case; the ST-OMR fixed evaluation contains three repository-owned synthetic fixtures and explicitly sets `realOmrAccuracyMeasured=false` and `generalAccuracyClaim=false`.
-
-Before an OMR accuracy or production-readiness claim, the project still requires:
-
-- representative teacher-gold data across notation categories and scan quality;
-- real-world shadow evaluation and category-stratified no-regression evidence;
-- calibrated abstention and document-level musical correctness criteria;
-- real provider provisioning, backup/restore, observability, rollback and live security validation.
-
-## Completed repository security baseline — Live UI↔API Security
-
-Goal: define how the completed Stage 10/11 UI contract model may later connect to real server data without giving the browser authority.
-
-Repository baseline now defines:
-
-- Authentik OIDC/OAuth2 Authorization Code + PKCE target model;
-- state/nonce/redirect/issuer/audience/signature/token validation requirements;
-- server-managed session boundary with provider tokens excluded from application JavaScript;
-- tenant/resource authorization on every protected request;
-- exact versioned `/api/v1` read mappings;
-- CSRF/origin/CORS requirements;
-- current `connect-src 'none'` and future maximum same-origin `connect-src 'self'` transition rule;
-- exact-current revision and server-resolved old-value mutation guards;
-- idempotency/reconciliation rules;
-- privacy-safe errors/audit evidence;
-- rate-limit and rollback/kill-switch requirements.
-
-Activation effect: none. HTTP/runtime/auth/browser-network/production flags remain false.
-
-## Completed repository API baseline — Teacher Review API Contract v1
-
-Goal: define the public API seam without exposing Stage 8-G internal authority envelopes to the browser.
-
-Safe request path:
+This is evidence infrastructure, not production decision authority. Current locks remain:
 
 ```text
-browser non-authoritative intent
-  -> session / CSRF / exact-origin gate
-  -> server resource authorization
-  -> fresh durable-head + snapshot check
-  -> server stable-target and old-value resolution
-  -> server authorization grant + command identity
-  -> internal Stage 8-G write envelope
-  -> immutable draft TeacherScoreRevision
-  -> bounded public result
+production engines = audiveris / homr / clarity
+stage7 minimum Canonical candidates = 2
+stOmrIntegratedIntoGateway = false
+teacherGoldEvaluationComplete = false
+realWorldShadowBenchmarkComplete = false
+directCrossArtifactJoinValidated = false
+selectivePredictionAuthorized = false
 ```
 
-The public v1 mutation surface reserves only:
+No repository evidence supports an aggregate winner score or automatic MusicXML merge/correction.
+
+## Where development stopped
+
+The last merged main change is **SM-POLY-11 — Convergence Evidence Vector v2** (`dfd8b8607607383fd1e250ce704e97af84a5101b`, 2026-08-30).
+
+That work completed the reference-only integration of Stage 7 result identity with immutable artifact sets from semantic metrics, visual evidence, source quality, complexity, reliability and ST-OMR shadow evidence. It explicitly stopped before:
+
+- a validated direct cross-artifact fixture/source join;
+- selective-prediction or abstention thresholds;
+- any ST-OMR production promotion;
+- Teacher Review workload/edit-cost instrumentation.
+
+SM-POLY-04 and SM-POLY-11 both reserve the next named research owner as **SM-POLY-13**, method `TEACHER_REVISION_COMMAND_COUNT_V1`.
+
+There is no current repository definition for SM-POLY-10 or SM-POLY-12; missing numbers must not be guessed or retroactively assigned.
+
+## Next development — priority order
+
+### 1. SM-POLY-13 — Teacher Review workload instrumentation
+
+**Recommended immediate next repository work.**
+
+Goal: turn immutable Teacher Review history into deterministic evaluation evidence without changing Teacher Review authority.
+
+Required scope:
+
+- consume only validated immutable TeacherScoreRevision / ScoreEditCommand lineage;
+- define exact counting semantics for `TEACHER_REVISION_COMMAND_COUNT_V1`;
+- derive teacher edits per measure and per page where denominator evidence is valid;
+- preserve unavailable evidence as unavailable;
+- bind exact source/revision/fixture provenance;
+- reject duplicate/replayed/malformed command evidence;
+- populate the already-versioned SM-POLY-04 teacher-edit fields through a separately tested adapter;
+- no model training side effect;
+- no winner selection, automatic correction, approval or publication authority.
+
+Acceptance evidence should include deterministic fixtures, tamper tests, duplicate/replay tests, denominator edge cases, revision-lineage mismatch tests and dedicated CI.
+
+### 2. Populate and qualify real Teacher-Gold evidence
+
+Goal: move SM-POLY-03 from a correct empty/not-ready harness to a useful research benchmark.
+
+Minimum gate remains:
 
 ```text
-POST /api/v1/documents/{document_id}/revision-proposals
+>= 500 eligible verified fixtures
++ required notation-category coverage
++ required scan-quality coverage
++ verified provenance/license eligibility
 ```
 
-The first browser operation surface remains the four Stage 11 operations:
+Target remains 1000. No synthetic/private/unverified item may be counted as verified merely to cross a threshold.
 
-```text
-set_pitch
-set_effective_duration
-set_dots
-remove_event
-```
+Priority corpus coverage should include polyphonic piano/keyboard, guitar notation where relevant, multi-voice rhythm, ties, tuplets, dotted rhythms, chords, staff/voice ambiguity, degraded scans and representative clean digital scores.
 
-Stage 8's broader internal closed vocabulary is not implicitly exposed.
+### 3. Versioned direct cross-artifact join
 
-No approval/publication endpoints are defined here. No HTTP route is registered and no live network/server write/production persistence is activated.
-
-## Completed repository execution harness — Teacher Review API Security Harness v1
-
-Goal: prove the mutation-side API/security composition against deterministic non-production collaborators before external runtime provisioning.
-
-Implemented repository path:
-
-```text
-non-authoritative edit intent
-  -> session test double
-  -> CSRF + exact Origin
-  -> document/resource authorization
-  -> closed bounded API parser
-  -> operation authorization
-  -> server-scoped idempotency/reconciliation ledger
-  -> exact current durable head + projection/snapshot binding
-  -> server-resolved staff/voice/onset + oldValueSha256
-  -> server-issued revision:propose grant
-  -> server-created ScoreEditCommand
-  -> internal teacher-review-write-request-v1
-  -> exact Stage 8-G mutation boundary
-  -> immutable draft revision
-  -> safe audit evidence
-  -> bounded public response
-```
-
-Verified behavior includes malformed/hostile request gating, forbidden authority fields, cross-tenant non-disclosure, stale projection/snapshot/target rejection, exact idempotent replay, same-key/different-digest conflict, ambiguous-write quarantine and audit-failure reconciliation behavior.
-
-This workstream does not register HTTP routes, open a listener, connect Authentik, use provider credentials, activate browser networking or production persistence. Activation effect: none.
-
-## Approved architecture-only extension — downstream music applications
-
-Goal: preserve a safe seam for future sibling music applications without coupling them into OMR or Teacher Review authority.
-
-Safe sequence:
-
-```text
-approved / validated Teacher Review artifact
-  -> exact corrected MusicXML hash + revision identity
-  -> typed downstream application contract
-  -> dedicated adapter
-  -> downstream application
-```
-
-First reserved target: `MusicXML-to-GuitarTab-Engine`.
-
-Its future role is guitar arrangement/fingering derivation. It must not consume raw OMR candidates for production output, mutate Canonical Score, create TeacherScoreRevision, approve, publish or be called directly by the browser.
-
-## Next safe workstreams
-
-### A. Architecture consistency and governance
-
-Goal: keep machine-readable architecture state, current docs and CI synchronized.
+Goal: replace SM-POLY-11’s intentionally opaque artifact-set context with a new versioned evidence binding that proves exact identity relationships where they actually exist.
 
 Required:
 
-- architecture-current-state contract;
-- cross-document consistency tests;
-- stale/current document classification;
-- UI/preview/security/API/harness/downstream integration drift guards;
-- no current document may overclaim production activation.
+- exact fixture/source/page/measure/engine/Teacher-Gold identities as applicable;
+- upstream payload validation, not SHA-label inference;
+- explicit one-to-one/one-to-many semantics;
+- duplicate/conflicting identity rejection;
+- no reinterpretation of SM-POLY-11 v2 semantics;
+- package number remains **unassigned** until its own contract/PR is created.
 
-Activation effect: none.
+### 4. Selective prediction / abstention research
 
-### B. ST-OMR specialist training and evaluation
+Goal: determine whether reliability, source quality, complexity and semantic evidence can support safe abstention.
 
-Goal: improve ScoreMosaic-native OMR without weakening current Stage 7 safety.
+Required before any threshold has operational meaning:
 
-Safe sequence:
+- held-out Teacher-Gold evidence;
+- category/scan/complexity stratification;
+- coverage-risk curves;
+- calibration error and failure-mode analysis;
+- explicit false-confidence penalties;
+- conservative abstention behavior;
+- no production threshold until a separate authorization gate.
 
-```text
-specialist training
-  -> fixed validation
-  -> untouched final evaluation
-  -> end-to-end semantic evaluation
-  -> ST-OMR shadow integration contract
-  -> shadow runtime evidence
-  -> optional primary promotion
-  -> optional sole-OMR migration
-```
+The package number is intentionally unassigned.
 
-Required before any ST-OMR production promotion:
+### 5. Versioned ST-OMR promotion decision gate
 
-- exact model/dataset provenance;
-- teacher-gold evaluation;
-- notation-category and scan-quality stratification;
+Only after Steps 1-4 and sufficient real-world evidence should ScoreMosaic consider changing the Stage 7 engine contract.
+
+Required evidence:
+
+- exact model/dataset/training provenance;
+- minimum-ready Teacher-Gold benchmark;
+- real-world shadow evaluation;
+- category-stratified no-regression evidence against current engines;
 - document-level MusicXML semantic correctness;
-- meter/rhythm/pitch/voice/structure exactness;
-- calibrated abstention/uncertainty;
-- deterministic Duration/Meter/Pitch/Voice validation;
-- adversarial/corrupt input tests;
-- rollback and previous-model retention;
-- no-regression evidence against current baseline.
+- meter/rhythm/pitch/voice/structure validation;
+- calibrated abstention;
+- adversarial/corrupt-input behavior;
+- rollback and previous-model retention.
 
-Current Audiveris/HOMR/Clarity production-candidate contracts remain unchanged until a versioned migration passes these gates.
+Promotion must be a versioned migration. Existing Audiveris/HOMR/Clarity authority cannot disappear by implication.
+
+## Parallel but separate gates
 
 ### C. Disconnected authenticated-API adapter / security test harness — ✅ complete repository baseline
 
-Goal: implement the security/API contracts against deterministic non-production collaborators without enabling browser networking or production identity/persistence.
+**Teacher Review API Security Harness v1** is complete at repository baseline and remains disconnected from live HTTP, production identity and production persistence. The next infrastructure step is D and requires external operational authority.
 
-Completed evidence:
+### H7-E — production orchestration
 
-- contract-faithful bounded mutation request/response adapter;
-- server-side principal/resource-scope test doubles only;
-- CSRF/origin/idempotency/stale-snapshot negative tests;
-- server construction of ScoreEditCommand from non-authoritative intent;
-- exact Stage 8-G boundary composition;
-- reconciliation behavior for ambiguous mutations;
-- safe error/audit mapping;
-- no HTTP listener/public route;
-- no provider credentials or production persistence.
+H7-D staging success does not authorize H7-E. H7-E requires a separate human gate, broader reliability/generalization evidence, production deployment provenance, secrets, replay control, monitoring and rollback.
 
-Activation effect: none. The next infrastructure step is D and requires external operational authority.
+### External production provisioning
 
-### D. External production provisioning
+Provider activation requires explicit operational authority for Hetzner/Coolify resources, production PostgreSQL/object storage, Authentik, secrets, DNS/TLS, monitoring, backup/restore and spend.
 
-Goal: instantiate the Stage 9 design with real provider evidence.
+### Production Teacher Review activation
 
-Human/external inputs required before this work can cross the boundary:
+Requires real identity/session/RBAC, durable exact-parent revision persistence, authorized read/write scope, artifact persistence, audit/recovery and anti-rollback evidence. The repository API harness alone is not production activation.
 
-- Hetzner project/account and spend authority;
-- final compute sizing after ST-OMR inference benchmark;
-- production domain decision before public traffic;
-- real PostgreSQL/Object Storage resources;
-- Authentik deployment;
-- Infisical capability/license decision;
-- real machine identities/secrets;
-- monitoring/rollback/backup/restore evidence.
+### Publication execution
 
-No repository contract may invent these facts.
+Requires exact publisher destination, credentials, idempotency/recovery, published-artifact persistence and explicit execution authority. Approval and publication remain separate transitions.
 
-### E. Production Teacher Review activation
+### Live downstream music application integration
 
-Goal: wire Stage 8 server-side revision/approval foundations to an authenticated production UI/API.
+Requires versioned request/response contracts, exact approved source revision and corrected MusicXML hash binding, service authentication, timeout/retry/idempotency/failure isolation, stale-source invalidation, provenance and rollback/disable behavior.
 
-Requires C + D plus:
+MusicXML-to-GuitarTab-Engine must additionally carry tuning/fret/capo/instrument context and playability/alternative/abstention evidence.
 
-- real production session/RBAC evidence;
-- production durable exact-parent revision persistence;
-- authorized read/write resource scope;
-- corrected MusicXML production artifact persistence;
-- human approval persistence;
-- operational audit trail;
-- failure/recovery and anti-rollback evidence.
+### Live Score Discovery networking/import
 
-### F. Publication execution
-
-Goal: execute Stage 8-O publisher-bound handoff against one exact authorized destination.
-
-Requires:
-
-- exact publisher identity/destination;
-- explicit publication execution authority;
-- provider credentials;
-- production persistence semantics;
-- published-artifact/audit record;
-- replay/idempotency/recovery evidence.
-
-Publication remains a separate side effect from approval.
-
-### G. Live downstream music-application integration
-
-Goal: connect one exact approved/validated ScoreMosaic artifact to a separately authorized downstream service.
-
-Requires:
-
-- versioned typed request/response contract;
-- exact source revision + corrected MusicXML hash binding;
-- service authentication/authorization;
-- timeout/retry/idempotency/failure isolation;
-- deterministic or version-bound result provenance;
-- stale-source invalidation;
-- audit evidence;
-- rollback/disable boundary.
-
-For MusicXML-to-GuitarTab-Engine, tuning/fret/capo/instrument context and guitar playability/alternative/abstention evidence must also be explicit.
+SD-4B is disconnected. Any live Gateway call/import must preserve server-side sanitization, `discovery-handoff-only` authority, mandatory Safe Intake and rollback/disable behavior.
 
 ## Fixed architectural principles
 
-1. AI and OMR output are evidence, not authoritative musical truth.
-2. Deterministic validation/composition owns final structural decisions wherever possible.
-3. Source/candidate/revision/approval/publication artifacts remain immutable lineage.
+1. AI/OMR/model output is evidence, not authoritative musical truth.
+2. Deterministic validation owns structural admission wherever possible.
+3. Source/candidate/revision/approval/publication artifacts preserve immutable lineage.
 4. Unknown/ambiguous music is surfaced or abstained, never silently guessed.
 5. Browser state is not server authority.
 6. Teacher approval is explicit and exact-identity bound.
 7. Publication is separate from approval.
-8. Production activation requires concrete provider/runtime evidence and a dedicated gate.
-9. ST-OMR training success alone never authorizes removal of the current OMR engines.
-10. UI modernization must preserve typed-contract/adapter/server authority layering.
-11. Downstream music applications never become upstream ScoreMosaic musical authority.
+8. Research evidence is not production authority.
+9. ST-OMR training success alone never authorizes removal of current engines.
+10. Downstream applications never become upstream score authority.
+11. Production activation requires concrete provider/runtime evidence and a dedicated gate.
 
 ## Current stop boundaries
 
-Repository-only work may continue while all live/production activation locks remain false. Stop for explicit operational authority before:
+Repository-only work may continue while authority locks remain intact. Stop for explicit operational authorization before:
 
-- paid resource creation;
-- real credential generation/bootstrap;
+- paid provider resource creation;
+- real production credential/bootstrap operations;
 - DNS/TLS changes;
-- new public preview/site traffic beyond the verified fixture-only Pages deployment;
+- production/public API traffic beyond the verified fixture-only preview;
 - production data writes;
+- H7-E production inference;
 - production publication execution;
 - live downstream music-service activation;
+- live Score Discovery import/network activation;
 - destructive provider operations.
