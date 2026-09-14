@@ -4,7 +4,7 @@
   "title": "ScoreMosaic Teacher-Gold Synthetic Pilot v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license", "renderer", "pilotCount", "records", "boundaries"],
+  "required": ["schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license", "renderer", "discoveryEvidence", "pilotCount", "records", "boundaries"],
   "properties": {
     "schemaVersion": {"const": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v1"},
     "dataset": {"const": "OSSQ-OMR"},
@@ -21,6 +21,18 @@
         "releaseTag": {"const": "v3.6.2"},
         "appImageSha256": {"$ref": "#/$defs/sha256"},
         "imageResolutionDpi": {"const": 150}
+      }
+    },
+    "discoveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflowRunId", "workflowHeadSha", "artifactId", "artifactZipSha256", "artifactRetentionDays"],
+      "properties": {
+        "workflowRunId": {"const": 34880978800},
+        "workflowHeadSha": {"const": "e8dbcba04711e17dabdf7a158685f469d44d8f4e"},
+        "artifactId": {"const": 10362957231},
+        "artifactZipSha256": {"$ref": "#/$defs/sha256"},
+        "artifactRetentionDays": {"const": 14}
       }
     },
     "pilotCount": {"const": 5},
