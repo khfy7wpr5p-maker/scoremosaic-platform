@@ -4,10 +4,13 @@ on:
   push:
     branches:
       - "feature/teacher-gold-ossq-pilot"
+      - "fix/teacher-gold-white-review-pngs"
     paths:
       - ".github/workflows/teacher-gold-ossq-synthetic-pilot-ci.yml"
       - "contracts/polyphonic-teacher-gold-synthetic-pilot-v1.schema.json"
+      - "contracts/polyphonic-teacher-gold-synthetic-pilot-v2.schema.json"
       - "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v1.json"
+      - "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v2.json"
       - "scripts/polyphonic_teacher_gold_synthetic_pilot.py"
       - "tests/test_teacher_gold_synthetic_pilot.py"
       - "docs/teacher-gold-ossq-synthetic-pilot.md"
@@ -18,7 +21,9 @@ on:
     paths:
       - ".github/workflows/teacher-gold-ossq-synthetic-pilot-ci.yml"
       - "contracts/polyphonic-teacher-gold-synthetic-pilot-v1.schema.json"
+      - "contracts/polyphonic-teacher-gold-synthetic-pilot-v2.schema.json"
       - "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v1.json"
+      - "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v2.json"
       - "scripts/polyphonic_teacher_gold_synthetic_pilot.py"
       - "tests/test_teacher_gold_synthetic_pilot.py"
       - "docs/teacher-gold-ossq-synthetic-pilot.md"
@@ -34,7 +39,7 @@ concurrency:
 
 jobs:
   validate-ossq-synthetic-pilot:
-    name: Validate non-counting OSSQ synthetic Teacher-Gold pilot
+    name: Validate non-counting OSSQ synthetic Teacher-Gold pilot v2
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -52,10 +57,10 @@ jobs:
       - name: Validate immutable GitHub Actions pins
         run: python scripts/validate_github_actions_pins.py
 
-      - name: Validate OSSQ synthetic pilot manifest
+      - name: Validate active OSSQ synthetic pilot v2 manifest
         run: python scripts/polyphonic_teacher_gold_synthetic_pilot.py
 
-      - name: Run OSSQ synthetic pilot safety regressions
+      - name: Run OSSQ synthetic pilot v2 safety regressions
         run: python -m unittest tests.test_teacher_gold_synthetic_pilot -v
 
       - name: Re-run Teacher-Gold harness
