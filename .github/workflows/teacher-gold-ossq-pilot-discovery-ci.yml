@@ -1,0 +1,175 @@
+name: Teacher-Gold OSSQ Synthetic Pilot Discovery CI
+
+on:
+  push:
+    paths:
+      - ".github/workflows/teacher-gold-ossq-pilot-discovery-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover-five-ossq-pairs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Download pinned MuseScore 3.6.2 AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --output /tmp/MuseScore-3.6.2.AppImage \
+            https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2.548021370-x86_64.AppImage
+          test -s /tmp/MuseScore-3.6.2.AppImage
+          sha256sum /tmp/MuseScore-3.6.2.AppImage | tee /tmp/musescore-appimage.sha256
+          chmod +x /tmp/MuseScore-3.6.2.AppImage
+          cd /tmp
+          ./MuseScore-3.6.2.AppImage --appimage-extract >/dev/null
+          test -x /tmp/squashfs-root/AppRun
+          QT_QPA_PLATFORM=offscreen /tmp/squashfs-root/AppRun --long-version | tee /tmp/musescore-version.txt
+          grep -F "3.6.2" /tmp/musescore-version.txt
+
+      - name: Download five pinned CC0 OSSQ MusicXML sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ossq/source /tmp/ossq/render
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import quote
+          from urllib.request import urlopen
+
+          commit = "7a17e45cddc0b7064fc3a179b62caeb57595e993"
+          records = [
+              ("ossq_7313978", "Andrée — String Quartet in A major", "scores/Andrée,_Elfrida/String_Quartet_in_A_major/sq7313978.musicxml"),
+              ("ossq_13744399", "Arriaga — String Quartet No.1 in D minor", "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.1_in_D_minor/sq13744399.musicxml"),
+              ("ossq_7383977", "Arriaga — String Quartet No.3 in E-flat Major", "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.3_in_E-flat_Major/sq7383977.musicxml"),
+              ("ossq_8071278", "Beethoven — String Quartet No.1, Op.18 No.1", "scores/Beethoven,_Ludwig_van/String_Quartet_No.1,_Op.18_No.1/sq8071278.musicxml"),
+              ("ossq_8454356", "Boccherini — String Quartet in A major, G.213 (Op.39)", "scores/Boccherini,_Luigi/String_Quartet_in_A_major,_G.213_(Op.39)/sq8454356.musicxml"),
+          ]
+          root = Path("/tmp/ossq/source")
+          for pilot_id, title, path in records:
+              url = f"https://raw.githubusercontent.com/MALerLab/ossq-omr/{commit}/{quote(path, safe='/,_()-.')}"
+              data = urlopen(url, timeout=60).read()
+              if not data:
+                  raise SystemExit(f"empty source: {pilot_id}")
+              (root / f"{pilot_id}.musicxml").write_bytes(data)
+              print(pilot_id, len(data), path)
+          PY
+
+      - name: Render deterministic first-page PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for src in /tmp/ossq/source/*.musicxml; do
+            id="$(basename "$src" .musicxml)"
+            QT_QPA_PLATFORM=offscreen /tmp/squashfs-root/AppRun \
+              -s -m -F -r 150 \
+              -o "/tmp/ossq/render/${id}.png" \
+              "$src"
+            first="/tmp/ossq/render/${id}-1.png"
+            test -s "$first"
+          done
+          ls -lh /tmp/ossq/render/*-1.png
+
+      - name: Build non-counting review manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          commit = "7a17e45cddc0b7064fc3a179b62caeb57595e993"
+          appimage = Path("/tmp/MuseScore-3.6.2.AppImage")
+          app_sha = sha256(appimage.read_bytes()).hexdigest()
+          version = Path("/tmp/musescore-version.txt").read_text(encoding="utf-8", errors="replace").strip()
+          specs = [
+              ("ossq_7313978", "Andrée — String Quartet in A major", "scores/Andrée,_Elfrida/String_Quartet_in_A_major/sq7313978.musicxml"),
+              ("ossq_13744399", "Arriaga — String Quartet No.1 in D minor", "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.1_in_D_minor/sq13744399.musicxml"),
+              ("ossq_7383977", "Arriaga — String Quartet No.3 in E-flat Major", "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.3_in_E-flat_Major/sq7383977.musicxml"),
+              ("ossq_8071278", "Beethoven — String Quartet No.1, Op.18 No.1", "scores/Beethoven,_Ludwig_van/String_Quartet_No.1,_Op.18_No.1/sq8071278.musicxml"),
+              ("ossq_8454356", "Boccherini — String Quartet in A major, G.213 (Op.39)", "scores/Boccherini,_Luigi/String_Quartet_in_A_major,_G.213_(Op.39)/sq8454356.musicxml"),
+          ]
+          records = []
+          for pilot_id, title, source_path in specs:
+              source = Path(f"/tmp/ossq/source/{pilot_id}.musicxml")
+              image = Path(f"/tmp/ossq/render/{pilot_id}-1.png")
+              sb = source.read_bytes()
+              ib = image.read_bytes()
+              records.append({
+                  "pilotId": pilot_id,
+                  "title": title,
+                  "sourcePath": source_path,
+                  "symbolicGold": {
+                      "mediaType": "application/vnd.recordare.musicxml+xml",
+                      "sha256": sha256(sb).hexdigest(),
+                      "byteSize": len(sb),
+                  },
+                  "renderedEvidence": {
+                      "mediaType": "image/png",
+                      "page": 1,
+                      "sha256": sha256(ib).hexdigest(),
+                      "byteSize": len(ib),
+                  },
+                  "rightsStatus": "CLEAR_CC0",
+                  "teacherVerificationStatus": "DRAFT",
+                  "evaluationEligibility": "REVIEW_REQUIRED",
+                  "countTowardTeacherGoldMinimum": False,
+              })
+          manifest = {
+              "manifestVersion": "scoremosaic-teacher-gold-ossq-synthetic-pilot-v1",
+              "dataset": "OSSQ-OMR",
+              "sourceRepository": "MALerLab/ossq-omr",
+              "sourceCommitSha": commit,
+              "license": "CC0-1.0",
+              "renderer": {
+                  "name": "MuseScore",
+                  "versionOutput": version,
+                  "releaseTag": "v3.6.2",
+                  "appImageSha256": app_sha,
+                  "imageResolutionDpi": 150,
+              },
+              "pilotCount": len(records),
+              "records": records,
+              "boundaries": {
+                  "researchEvaluationOnly": True,
+                  "teacherVerified": False,
+                  "automaticFixtureAdmission": False,
+                  "automaticTrainingAuthorization": False,
+                  "productionDecisionAuthority": False,
+              },
+          }
+          out = Path("/tmp/ossq/ossq-synthetic-pilot-manifest.json")
+          out.write_text(json.dumps(manifest, ensure_ascii=True, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          print(out.read_text(encoding="utf-8"))
+          PY
+
+      - name: Upload review packet only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: teacher-gold-ossq-synthetic-review-pilot-v1
+          path: |
+            /tmp/ossq/ossq-synthetic-pilot-manifest.json
+            /tmp/ossq/source/*.musicxml
+            /tmp/ossq/render/*-1.png
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary renderer and corpus bytes
+        if: always()
+        shell: bash
+        run: |
+          rm -rf /tmp/MuseScore-3.6.2.AppImage /tmp/squashfs-root /tmp/ossq
