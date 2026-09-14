@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the non-counting OSSQ synthetic Teacher-Gold pilot."""
+"""Validate the active non-counting OSSQ synthetic Teacher-Gold review pilot."""
 
 from __future__ import annotations
 
@@ -13,56 +13,97 @@ from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON_BYTES = 256 * 1024
-SCHEMA_VERSION = "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v1"
+SCHEMA_VERSION = "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v2"
 SOURCE_COMMIT = "7a17e45cddc0b7064fc3a179b62caeb57595e993"
 RENDERER_SHA = "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290"
 RENDERER_VERSION = "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34"
-ARTIFACT_SHA = "1b7c75ebefbf2af0bf043721ee96c42d58d1e69149f1b0ae4809f2ac839ed36f"
+IMAGE_PROCESSING = {
+    "tool": "ImageMagick",
+    "versionOutput": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+    "background": "#FFFFFF",
+    "alphaRemoved": True,
+    "validationMethod": "OPAQUE_NONEMPTY_PAGE_V1",
+}
+DISCOVERY_EVIDENCE = {
+    "workflowRunId": 34883487564,
+    "workflowHeadSha": "97cdded35aa401ae74f7959d21ddfcf1546ab7b9",
+    "artifactId": 10363841418,
+    "artifactZipSha256": "7815fe6c144e1b85e13c994879ff78aa57c78846be2a8f1f504cb22ea95b6b7d",
+    "artifactRetentionDays": 14,
+}
+SUPERSEDES = {
+    "schemaVersion": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v1",
+    "manifestPath": "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v1.json",
+    "artifactId": 10362957231,
+    "reason": "TRANSPARENT_REVIEW_RENDER_UNREADABLE_ON_DARK_PREVIEW",
+    "reviewUseAuthorized": False,
+}
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 EXPECTED = {
-    "ossq_7313978": (
-        "Andrée — String Quartet in A major",
-        "scores/Andrée,_Elfrida/String_Quartet_in_A_major/sq7313978.musicxml",
-        "a12b23404b4d8d4516e084721298b923a3c1f5621fd84e479b351eee179e7649", 4423395,
-        "5c192dcd3c1460b3f7bdb02a824dcefc1f45344ae1bf6461d28480022e6c0958", 188546,
-    ),
     "ossq_13744399": (
         "Arriaga — String Quartet No.1 in D minor",
         "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.1_in_D_minor/sq13744399.musicxml",
         "e24a5d843693a538896bbbece71130c6a2da66ced35779c4f5295e4893b9fd48", 5742094,
-        "aaad0862b69b54909ced34bb6513b69b56b5d03038086d907f3e06c9d39c8b67", 177136,
+        "858c16667d609d81cce0a9e472688a795c80654c55e8faea003f2b5ae21fcc1e", 118631,
+    ),
+    "ossq_7313978": (
+        "Andrée — String Quartet in A major",
+        "scores/Andrée,_Elfrida/String_Quartet_in_A_major/sq7313978.musicxml",
+        "a12b23404b4d8d4516e084721298b923a3c1f5621fd84e479b351eee179e7649", 4423395,
+        "c5230e2949dc8906d9f4c6b17b4a85cbdd2a1caaae8e20de5b1d272c4714e937", 126771,
     ),
     "ossq_7383977": (
         "Arriaga — String Quartet No.3 in E-flat Major",
         "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.3_in_E-flat_Major/sq7383977.musicxml",
         "ae821554999bfc0cb70ad4651106f50b9879e227d44daedc97c0e48e8ddf8ea2", 6759894,
-        "095fe471b012bf7d909f30c348ec48b123219bf64ff48d2049d827103549f6a4", 172542,
+        "c210c4fbd0423790f0833bdc26e3e5c0f0498af0c4f46077a61155c1025f01e8", 117048,
     ),
     "ossq_8071278": (
         "Beethoven — String Quartet No.1, Op.18 No.1",
         "scores/Beethoven,_Ludwig_van/String_Quartet_No.1,_Op.18_No.1/sq8071278.musicxml",
         "6350ea0668db7e4773423293df62507987442dc4b313ca0a38e61de92f5a4631", 6632551,
-        "b87ea167199099d26f303f69d9590874faa22199fceaca18f07ef72693f1547d", 159664,
+        "d62c2578911b9d9685c841a4a6d1c78dc4a25d9c2075fef619fa9b21e979f76c", 109716,
     ),
     "ossq_8454356": (
         "Boccherini — String Quartet in A major, G.213 (Op.39)",
         "scores/Boccherini,_Luigi/String_Quartet_in_A_major,_G.213_(Op.39)/sq8454356.musicxml",
         "bd04cdd017a1e098e358cf9515253c7d7adf473f06e9087e642e55a820636243", 3447637,
-        "f62f0f98380494336fd89854890c7444b9af29e555a9244879e7fbe2cb6e4499", 201595,
+        "f0e748d4adaa67ee5ea26e7cc9b9c111755715b4fff30705959687a529a20235", 136398,
     ),
 }
 
-ROOT_KEYS = {"schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license", "renderer", "discoveryEvidence", "pilotCount", "records", "boundaries"}
-RECORD_KEYS = {"pilotId", "title", "sourcePath", "symbolicGold", "renderedEvidence", "rightsStatus", "teacherVerificationStatus", "evaluationEligibility", "countTowardTeacherGoldMinimum"}
-BOUNDARIES = {"researchEvaluationOnly": True, "teacherVerified": False, "automaticFixtureAdmission": False, "automaticTrainingAuthorization": False, "productionDecisionAuthority": False}
+ROOT_KEYS = {
+    "schemaVersion", "dataset", "sourceRepository", "sourceCommitSha", "license",
+    "renderer", "reviewImageProcessing", "discoveryEvidence", "supersedes",
+    "pilotCount", "records", "boundaries",
+}
+RECORD_KEYS = {
+    "pilotId", "title", "sourcePath", "symbolicGold", "renderedEvidence",
+    "rightsStatus", "teacherVerificationStatus", "evaluationEligibility",
+    "countTowardTeacherGoldMinimum",
+}
+BOUNDARIES = {
+    "researchEvaluationOnly": True,
+    "teacherVerified": False,
+    "automaticFixtureAdmission": False,
+    "automaticTrainingAuthorization": False,
+    "productionDecisionAuthority": False,
+}
+
 
 class TeacherGoldSyntheticPilotError(ValueError):
     pass
 
 
 def _canonical_json(value: Any) -> bytes:
-    return json.dumps(value, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")).encode("ascii")
+    return json.dumps(
+        value,
+        ensure_ascii=True,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
 
 
 def _load(path: Path) -> tuple[dict[str, Any], str]:
@@ -100,13 +141,43 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     ):
         raise TeacherGoldSyntheticPilotError("manifest_contract_invalid")
 
-    renderer = _exact_dict(manifest["renderer"], {"name", "versionOutput", "releaseTag", "appImageSha256", "imageResolutionDpi"}, "renderer_schema_invalid")
-    if renderer != {"name": "MuseScore", "versionOutput": RENDERER_VERSION, "releaseTag": "v3.6.2", "appImageSha256": RENDERER_SHA, "imageResolutionDpi": 150}:
+    renderer = _exact_dict(
+        manifest["renderer"],
+        {"name", "versionOutput", "releaseTag", "appImageSha256", "imageResolutionDpi"},
+        "renderer_schema_invalid",
+    )
+    if renderer != {
+        "name": "MuseScore",
+        "versionOutput": RENDERER_VERSION,
+        "releaseTag": "v3.6.2",
+        "appImageSha256": RENDERER_SHA,
+        "imageResolutionDpi": 150,
+    }:
         raise TeacherGoldSyntheticPilotError("renderer_lineage_invalid")
 
-    evidence = _exact_dict(manifest["discoveryEvidence"], {"workflowRunId", "workflowHeadSha", "artifactId", "artifactZipSha256", "artifactRetentionDays"}, "discovery_evidence_schema_invalid")
-    if evidence != {"workflowRunId": 34880978800, "workflowHeadSha": "e8dbcba04711e17dabdf7a158685f469d44d8f4e", "artifactId": 10362957231, "artifactZipSha256": ARTIFACT_SHA, "artifactRetentionDays": 14}:
+    processing = _exact_dict(
+        manifest["reviewImageProcessing"],
+        {"tool", "versionOutput", "background", "alphaRemoved", "validationMethod"},
+        "review_image_processing_schema_invalid",
+    )
+    if processing != IMAGE_PROCESSING:
+        raise TeacherGoldSyntheticPilotError("review_image_processing_invalid")
+
+    evidence = _exact_dict(
+        manifest["discoveryEvidence"],
+        {"workflowRunId", "workflowHeadSha", "artifactId", "artifactZipSha256", "artifactRetentionDays"},
+        "discovery_evidence_schema_invalid",
+    )
+    if evidence != DISCOVERY_EVIDENCE:
         raise TeacherGoldSyntheticPilotError("discovery_lineage_invalid")
+
+    supersedes = _exact_dict(
+        manifest["supersedes"],
+        {"schemaVersion", "manifestPath", "artifactId", "reason", "reviewUseAuthorized"},
+        "supersedes_schema_invalid",
+    )
+    if supersedes != SUPERSEDES:
+        raise TeacherGoldSyntheticPilotError("supersedes_invalid")
 
     records = manifest["records"]
     if type(records) is not list or len(records) != 5:
@@ -123,13 +194,32 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[Mapping[str, Any]]:
         if pilot_id not in EXPECTED:
             raise TeacherGoldSyntheticPilotError("record_id_invalid")
         title, source_path, xml_sha, xml_size, png_sha, png_size = EXPECTED[pilot_id]
-        symbolic = _exact_dict(record["symbolicGold"], {"mediaType", "sha256", "byteSize"}, "symbolic_schema_invalid")
-        rendered = _exact_dict(record["renderedEvidence"], {"mediaType", "page", "sha256", "byteSize"}, "rendered_schema_invalid")
+        symbolic = _exact_dict(
+            record["symbolicGold"],
+            {"mediaType", "sha256", "byteSize"},
+            "symbolic_schema_invalid",
+        )
+        rendered = _exact_dict(
+            record["renderedEvidence"],
+            {"mediaType", "page", "sha256", "byteSize", "background", "alphaChannel"},
+            "rendered_schema_invalid",
+        )
         if (
             record["title"] != title
             or record["sourcePath"] != source_path
-            or symbolic != {"mediaType": "application/vnd.recordare.musicxml+xml", "sha256": xml_sha, "byteSize": xml_size}
-            or rendered != {"mediaType": "image/png", "page": 1, "sha256": png_sha, "byteSize": png_size}
+            or symbolic != {
+                "mediaType": "application/vnd.recordare.musicxml+xml",
+                "sha256": xml_sha,
+                "byteSize": xml_size,
+            }
+            or rendered != {
+                "mediaType": "image/png",
+                "page": 1,
+                "sha256": png_sha,
+                "byteSize": png_size,
+                "background": "#FFFFFF",
+                "alphaChannel": False,
+            }
             or record["rightsStatus"] != "CLEAR_CC0"
             or record["teacherVerificationStatus"] != "DRAFT"
             or record["evaluationEligibility"] != "REVIEW_REQUIRED"
@@ -148,13 +238,15 @@ def build_report(path: Path) -> dict[str, Any]:
     manifest, digest = _load(path)
     records = validate_manifest(manifest)
     payload = {
-        "reportVersion": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-report-v1",
+        "reportVersion": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-report-v2",
         "manifestSha256": digest,
         "hashedPairCount": len(records),
         "rightsClearPairCount": len(records),
+        "opaqueWhiteReviewPairCount": len(records),
         "teacherVerifiedPairCount": 0,
         "countedTowardTeacherGoldMinimum": 0,
         "readiness": "NOT_READY",
+        "supersededV1ReviewArtifactAuthorized": False,
         "fixtureAdmissionAuthorized": False,
         "automaticTrainingAuthorization": False,
         "productionDecisionAuthority": False,
@@ -165,7 +257,11 @@ def build_report(path: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--manifest", type=Path, default=ROOT / "evaluation" / "polyphonic-teacher-gold-v1" / "pilots" / "ossq-synthetic-v1.json")
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=ROOT / "evaluation" / "polyphonic-teacher-gold-v1" / "pilots" / "ossq-synthetic-v2.json",
+    )
     args = parser.parse_args(argv)
     try:
         report = build_report(args.manifest)

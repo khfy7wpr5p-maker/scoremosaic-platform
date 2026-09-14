@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v2",
+  "dataset": "OSSQ-OMR",
+  "sourceRepository": "MALerLab/ossq-omr",
+  "sourceCommitSha": "7a17e45cddc0b7064fc3a179b62caeb57595e993",
+  "license": "CC0-1.0",
+  "renderer": {
+    "name": "MuseScore",
+    "versionOutput": "MuseScore: Music Score Editor; Version 3.6.2; Build 3224f34",
+    "releaseTag": "v3.6.2",
+    "appImageSha256": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290",
+    "imageResolutionDpi": 150
+  },
+  "reviewImageProcessing": {
+    "tool": "ImageMagick",
+    "versionOutput": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+    "background": "#FFFFFF",
+    "alphaRemoved": true,
+    "validationMethod": "OPAQUE_NONEMPTY_PAGE_V1"
+  },
+  "discoveryEvidence": {
+    "workflowRunId": 34883487564,
+    "workflowHeadSha": "97cdded35aa401ae74f7959d21ddfcf1546ab7b9",
+    "artifactId": 10363841418,
+    "artifactZipSha256": "7815fe6c144e1b85e13c994879ff78aa57c78846be2a8f1f504cb22ea95b6b7d",
+    "artifactRetentionDays": 14
+  },
+  "supersedes": {
+    "schemaVersion": "scoremosaic-polyphonic-teacher-gold-synthetic-pilot-v1",
+    "manifestPath": "evaluation/polyphonic-teacher-gold-v1/pilots/ossq-synthetic-v1.json",
+    "artifactId": 10362957231,
+    "reason": "TRANSPARENT_REVIEW_RENDER_UNREADABLE_ON_DARK_PREVIEW",
+    "reviewUseAuthorized": false
+  },
+  "pilotCount": 5,
+  "records": [
+    {
+      "pilotId": "ossq_13744399",
+      "title": "Arriaga — String Quartet No.1 in D minor",
+      "sourcePath": "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.1_in_D_minor/sq13744399.musicxml",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml+xml", "sha256": "e24a5d843693a538896bbbece71130c6a2da66ced35779c4f5295e4893b9fd48", "byteSize": 5742094},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "858c16667d609d81cce0a9e472688a795c80654c55e8faea003f2b5ae21fcc1e", "byteSize": 118631, "background": "#FFFFFF", "alphaChannel": false},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "ossq_7313978",
+      "title": "Andrée — String Quartet in A major",
+      "sourcePath": "scores/Andrée,_Elfrida/String_Quartet_in_A_major/sq7313978.musicxml",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml+xml", "sha256": "a12b23404b4d8d4516e084721298b923a3c1f5621fd84e479b351eee179e7649", "byteSize": 4423395},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "c5230e2949dc8906d9f4c6b17b4a85cbdd2a1caaae8e20de5b1d272c4714e937", "byteSize": 126771, "background": "#FFFFFF", "alphaChannel": false},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "ossq_7383977",
+      "title": "Arriaga — String Quartet No.3 in E-flat Major",
+      "sourcePath": "scores/Arriaga,_Juan_Crisóstomo_de/String_Quartet_No.3_in_E-flat_Major/sq7383977.musicxml",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml+xml", "sha256": "ae821554999bfc0cb70ad4651106f50b9879e227d44daedc97c0e48e8ddf8ea2", "byteSize": 6759894},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "c210c4fbd0423790f0833bdc26e3e5c0f0498af0c4f46077a61155c1025f01e8", "byteSize": 117048, "background": "#FFFFFF", "alphaChannel": false},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "ossq_8071278",
+      "title": "Beethoven — String Quartet No.1, Op.18 No.1",
+      "sourcePath": "scores/Beethoven,_Ludwig_van/String_Quartet_No.1,_Op.18_No.1/sq8071278.musicxml",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml+xml", "sha256": "6350ea0668db7e4773423293df62507987442dc4b313ca0a38e61de92f5a4631", "byteSize": 6632551},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "d62c2578911b9d9685c841a4a6d1c78dc4a25d9c2075fef619fa9b21e979f76c", "byteSize": 109716, "background": "#FFFFFF", "alphaChannel": false},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    },
+    {
+      "pilotId": "ossq_8454356",
+      "title": "Boccherini — String Quartet in A major, G.213 (Op.39)",
+      "sourcePath": "scores/Boccherini,_Luigi/String_Quartet_in_A_major,_G.213_(Op.39)/sq8454356.musicxml",
+      "symbolicGold": {"mediaType": "application/vnd.recordare.musicxml+xml", "sha256": "bd04cdd017a1e098e358cf9515253c7d7adf473f06e9087e642e55a820636243", "byteSize": 3447637},
+      "renderedEvidence": {"mediaType": "image/png", "page": 1, "sha256": "f0e748d4adaa67ee5ea26e7cc9b9c111755715b4fff30705959687a529a20235", "byteSize": 136398, "background": "#FFFFFF", "alphaChannel": false},
+      "rightsStatus": "CLEAR_CC0",
+      "teacherVerificationStatus": "DRAFT",
+      "evaluationEligibility": "REVIEW_REQUIRED",
+      "countTowardTeacherGoldMinimum": false
+    }
+  ],
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "teacherVerified": false,
+    "automaticFixtureAdmission": false,
+    "automaticTrainingAuthorization": false,
+    "productionDecisionAuthority": false
+  }
+}
