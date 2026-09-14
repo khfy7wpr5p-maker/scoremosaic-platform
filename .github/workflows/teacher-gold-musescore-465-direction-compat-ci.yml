@@ -142,7 +142,11 @@ jobs:
             work="$outroot/$rid-work"
             mkdir -p "$work"
             rm -f "$work"/*.png
-            xvfb-run -a "$app" -s -m -F -r 150 -o "$work/out.png" "$src"
+            if test "$version" = "v362"; then
+              xvfb-run -a "$app" -s -m -F -r 150 -o "$work/out.png" "$src"
+            else
+              xvfb-run -a "$app" -F -r 150 -o "$work/out.png" "$src"
+            fi
             if test -s "$work/out-1.png"; then
               rendered="$work/out-1.png"
             elif test -s "$work/out.png"; then
