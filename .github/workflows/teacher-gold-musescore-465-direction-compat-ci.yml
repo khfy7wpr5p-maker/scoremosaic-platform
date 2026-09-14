@@ -1,0 +1,223 @@
+name: Teacher-Gold MuseScore 4.6.5 Direction Compatibility CI
+
+on:
+  push:
+    branches:
+      - "teacher-gold/musescore-465-system-direction-compat"
+    paths:
+      - ".github/workflows/teacher-gold-musescore-465-direction-compat-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-system-direction-rendering:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            imagemagick libegl1 libgl1 libopengl0 libjack-jackd2-0 \
+            libxcb-xinerama0 libxkbcommon-x11-0 xvfb libasound2t64 \
+            libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxss1
+
+      - name: Download pinned MuseScore 3.6.2 and 4.6.5 AppImages
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -o /tmp/ms362.AppImage \
+            https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2.548021370-x86_64.AppImage
+          echo "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290  /tmp/ms362.AppImage" | sha256sum --check --strict
+
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -o /tmp/ms465.AppImage \
+            https://github.com/musescore/MuseScore/releases/download/v4.6.5/MuseScore-Studio-4.6.5.253511702-x86_64.AppImage
+          echo "193daa0ea18bcfa90a47145a842275b8069b7b2b8d153e562b15fab5fe50fcaf  /tmp/ms465.AppImage" | sha256sum --check --strict
+
+          chmod +x /tmp/ms362.AppImage /tmp/ms465.AppImage
+          mkdir -p /tmp/ms362 /tmp/ms465
+          (cd /tmp/ms362 && /tmp/ms362.AppImage --appimage-extract >/dev/null)
+          (cd /tmp/ms465 && /tmp/ms465.AppImage --appimage-extract >/dev/null)
+          xvfb-run -a /tmp/ms362/squashfs-root/AppRun --long-version | tee /tmp/ms362-version.txt
+          xvfb-run -a /tmp/ms465/squashfs-root/AppRun --long-version | tee /tmp/ms465-version.txt
+          grep -F "3.6.2" /tmp/ms362-version.txt
+          grep -F "4.6.5" /tmp/ms465-version.txt
+
+      - name: Download five pinned OpenScore MXL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/compat/source /tmp/compat/v362 /tmp/compat/v465 /tmp/compat/compare
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import quote
+          from urllib.request import urlopen
+          import hashlib, json
+
+          commit = "38c5db510224d9facdc4b08d741fc788cfb58ea8"
+          specs = [
+              ("TG019", "scores/Bridge,_Frank/3_Tagore_Songs,_H.164/1_Day_After_Day/lc30890405.mxl", "14d5aee5695d8feeff97529c3ded8906166627b09f8a98405b96d40e4d8f689a"),
+              ("TG036", "scores/Donaudy,_Stefano/36_Arie_di_Stile_Antico/10_Spirate_pur,_spirate/lc29420288.mxl", "c0bdea67ca14b56a2a5735f77a07c5f574015b60d16dbd300fc8f4256da63b20"),
+              ("TG066", "scores/Ives,_Charles/114_Songs/108_Songs_My_Mother_Taught_Me/lc31740920.mxl", "958088b065c2ac0eeb70a8528926cee3ca71f56f4033d41972c397987ff1163b"),
+              ("TG081", "scores/Mahler,_Gustav/Des_Knaben_Wunderhorn/7_Rheinlegendchen/lc29746856.mxl", "2e53f18fcd85df59371a368488a4c054c14e8783007b1769216ecc26c3fb7b2d"),
+              ("TG083", "scores/Massenet,_Jules/_/Élégie/lc29026391.mxl", "aecaa4a063e2d8bd0fbdd31b50140953add80fa21a4c532bea1abc78d5c6d618"),
+          ]
+          root = Path('/tmp/compat/source')
+          records = []
+          for rid, path, expected in specs:
+              url = f"https://raw.githubusercontent.com/OpenScore/Lieder/{commit}/{quote(path, safe='/,_()-.Éé')}"
+              data = urlopen(url, timeout=90).read()
+              actual = hashlib.sha256(data).hexdigest()
+              if actual != expected:
+                  raise SystemExit(f"{rid} hash mismatch: {actual}")
+              (root / f"{rid}.mxl").write_bytes(data)
+              records.append({"reviewId": rid, "sourcePath": path, "sha256": actual})
+          Path('/tmp/compat/source-manifest.json').write_text(json.dumps(records, indent=2), encoding='utf-8')
+          PY
+
+      - name: Extract targeted MusicXML direction semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import io, json, zipfile, xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          targets = {
+              'TG019': {'1': ['Lento ma non troppo']},
+              'TG036': {'5': ['poco rall.']},
+              'TG066': {'11': ['più rit.'], '15': ['poco accel.']},
+              'TG081': {'2': ['rit.']},
+              'TG083': {'2': ['rit.']},
+          }
+          out = []
+          for rid, measures in targets.items():
+              data = (Path('/tmp/compat/source') / f'{rid}.mxl').read_bytes()
+              with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                  names = [n for n in zf.namelist() if n.lower().endswith(('.xml','.musicxml')) and not n.startswith('META-INF/')]
+                  xml = zf.read(sorted(names, key=len)[0])
+              root = ET.fromstring(xml)
+              ns = '' if not root.tag.startswith('{') else root.tag.split('}')[0] + '}'
+              for part in root.findall(f'{ns}part'):
+                  pid = part.attrib.get('id')
+                  for measure in part.findall(f'{ns}measure'):
+                      num = measure.attrib.get('number')
+                      if num not in measures:
+                          continue
+                      for direction in measure.findall(f'{ns}direction'):
+                          words = [''.join(w.itertext()).strip() for w in direction.findall(f'.//{ns}words')]
+                          text = ' '.join(w for w in words if w)
+                          if not text:
+                              continue
+                          if any(token in text for token in measures[num]):
+                              out.append({
+                                  'reviewId': rid,
+                                  'part': pid,
+                                  'measure': num,
+                                  'placement': direction.attrib.get('placement'),
+                                  'system': direction.attrib.get('system'),
+                                  'text': text,
+                              })
+          Path('/tmp/compat/direction-semantics.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(Path('/tmp/compat/direction-semantics.json').read_text(encoding='utf-8'))
+          PY
+
+      - name: Render first page in MuseScore 3.6.2 and 4.6.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          render_one() {
+            version="$1"; app="$2"; src="$3"; rid="$4"; outroot="$5"
+            work="$outroot/$rid-work"
+            mkdir -p "$work"
+            rm -f "$work"/*.png
+            xvfb-run -a "$app" -s -m -F -r 150 -o "$work/out.png" "$src"
+            if test -s "$work/out-1.png"; then
+              rendered="$work/out-1.png"
+            elif test -s "$work/out.png"; then
+              rendered="$work/out.png"
+            else
+              mapfile -t candidates < <(find "$work" -maxdepth 1 -type f -name '*.png' -printf '%p\n' | sort -V)
+              test "${#candidates[@]}" -ge 1
+              rendered="${candidates[0]}"
+            fi
+            convert "$rendered" -background white -alpha remove -alpha off "$outroot/${rid}-${version}.png"
+            test -s "$outroot/${rid}-${version}.png"
+          }
+
+          for src in /tmp/compat/source/TG*.mxl; do
+            rid="$(basename "$src" .mxl)"
+            render_one v362 /tmp/ms362/squashfs-root/AppRun "$src" "$rid" /tmp/compat/v362
+            render_one v465 /tmp/ms465/squashfs-root/AppRun "$src" "$rid" /tmp/compat/v465
+            h1=$(identify -format '%h' "/tmp/compat/v362/${rid}-v362.png")
+            h2=$(identify -format '%h' "/tmp/compat/v465/${rid}-v465.png")
+            target=$(( h1 < h2 ? h1 : h2 ))
+            convert "/tmp/compat/v362/${rid}-v362.png" -resize "x${target}" /tmp/compat/compare/left.png
+            convert "/tmp/compat/v465/${rid}-v465.png" -resize "x${target}" /tmp/compat/compare/right.png
+            convert /tmp/compat/compare/left.png /tmp/compat/compare/right.png +append "/tmp/compat/compare/${rid}-v362-v465.png"
+            rm -f /tmp/compat/compare/left.png /tmp/compat/compare/right.png
+          done
+
+      - name: Record renderer evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          import json
+          records=[]
+          for rid in ['TG019','TG036','TG066','TG081','TG083']:
+              a=Path(f'/tmp/compat/v362/{rid}-v362.png')
+              b=Path(f'/tmp/compat/v465/{rid}-v465.png')
+              c=Path(f'/tmp/compat/compare/{rid}-v362-v465.png')
+              records.append({
+                  'reviewId': rid,
+                  'museScore362PngSha256': sha256(a.read_bytes()).hexdigest(),
+                  'museScore465PngSha256': sha256(b.read_bytes()).hexdigest(),
+                  'sideBySideSha256': sha256(c.read_bytes()).hexdigest(),
+              })
+          evidence={
+              'evidenceVersion':'scoremosaic-musescore-system-direction-compat-v1',
+              'sourceCommitSha':'38c5db510224d9facdc4b08d741fc788cfb58ea8',
+              'museScore362': {'appImageSha256':'c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290','version':Path('/tmp/ms362-version.txt').read_text(errors='replace').strip()},
+              'museScore465': {'appImageSha256':'193daa0ea18bcfa90a47145a842275b8069b7b2b8d153e562b15fab5fe50fcaf','version':Path('/tmp/ms465-version.txt').read_text(errors='replace').strip()},
+              'records':records,
+              'teacherGoldRegistryMutation':False,
+              'trainingAuthorizationMutation':False,
+              'productionAuthorityMutation':False,
+          }
+          Path('/tmp/compat/renderer-evidence.json').write_text(json.dumps(evidence, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+          PY
+
+      - name: Upload compatibility evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: teacher-gold-musescore-465-direction-compat-v1
+          path: |
+            /tmp/compat/source/*.mxl
+            /tmp/compat/v362/*-v362.png
+            /tmp/compat/v465/*-v465.png
+            /tmp/compat/compare/*-v362-v465.png
+            /tmp/compat/source-manifest.json
+            /tmp/compat/direction-semantics.json
+            /tmp/compat/renderer-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary bytes
+        if: always()
+        shell: bash
+        run: |
+          rm -rf /tmp/compat /tmp/ms362 /tmp/ms465 /tmp/ms362.AppImage /tmp/ms465.AppImage
