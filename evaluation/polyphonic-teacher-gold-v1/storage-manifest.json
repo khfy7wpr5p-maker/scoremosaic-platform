@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-teacher-gold-storage-manifest-v1",
+  "benchmarkId": "scoremosaic-polyphonic-teacher-gold-v1",
+  "provider": "GOOGLE_DRIVE",
+  "rootFolderRef": {
+    "mode": "ENVIRONMENT_VARIABLE",
+    "name": "SCOREMOSAIC_TEACHER_GOLD_DRIVE_ROOT_ID"
+  },
+  "folders": {
+    "registry": "00_registry",
+    "imslp": "01_imslp",
+    "openscore": "02_openscore",
+    "mutopia": "03_mutopia",
+    "kernscores": "04_kernscores",
+    "mei": "05_mei",
+    "cpdl": "06_cpdl",
+    "teacherVerified": "07_teacher_verified",
+    "benchmarkOutputs": "08_benchmark_outputs"
+  },
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "externalAssetsRemainExternal": true,
+    "noDriveFolderIdsInRepository": true,
+    "githubIsNotCorpusBlobStore": true,
+    "automaticDownload": false,
+    "automaticUpload": false,
+    "productionDecisionAuthority": false
+  }
+}
