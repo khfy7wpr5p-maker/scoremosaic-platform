@@ -1,0 +1,351 @@
+name: Teacher-Gold Reference Batch 100 Discovery CI
+
+on:
+  push:
+    branches:
+      - "teacher-gold/reference-batch-100-v1"
+    paths:
+      - ".github/workflows/teacher-gold-reference-batch-100-discovery-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-reference-batch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      LIEDER_COMMIT: "38c5db510224d9facdc4b08d741fc788cfb58ea8"
+      MUSESCORE_SHA256: "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290"
+      LICENSE_SHA256: "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    steps:
+      - name: Check out ScoreMosaic
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned renderer runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            imagemagick libegl1 libgl1 libopengl0 libjack-jackd2-0 \
+            libxcb-xinerama0 libxkbcommon-x11-0 xvfb
+          convert -version | head -n 1 | tee /tmp/imagemagick-version.txt
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --output /tmp/MuseScore-3.6.2.AppImage \
+            https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2.548021370-x86_64.AppImage
+          echo "${MUSESCORE_SHA256}  /tmp/MuseScore-3.6.2.AppImage" | sha256sum -c -
+          chmod +x /tmp/MuseScore-3.6.2.AppImage
+          cd /tmp
+          ./MuseScore-3.6.2.AppImage --appimage-extract >/dev/null
+          xvfb-run -a /tmp/squashfs-root/AppRun --long-version | tee /tmp/musescore-version.txt
+          grep -F "3.6.2" /tmp/musescore-version.txt
+
+      - name: Discover deterministic OpenScore Lieder candidate paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/reference/source /tmp/reference/render /tmp/reference/review /tmp/lieder
+          git -C /tmp/lieder init -q
+          git -C /tmp/lieder remote add origin https://github.com/OpenScore/Lieder.git
+          git -C /tmp/lieder -c protocol.version=2 fetch -q --depth=1 --filter=blob:none origin "${LIEDER_COMMIT}"
+          git -C /tmp/lieder ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '\.mxl$' \
+            | LC_ALL=C sort > /tmp/reference/all-mxl-paths.txt
+          test "$(wc -l < /tmp/reference/all-mxl-paths.txt)" -ge 100
+          curl --fail --location --retry 3 \
+            --output /tmp/reference/LICENSE.txt \
+            "https://raw.githubusercontent.com/OpenScore/Lieder/${LIEDER_COMMIT}/LICENSE.txt"
+          echo "${LICENSE_SHA256}  /tmp/reference/LICENSE.txt" | sha256sum -c -
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+
+          excluded = {
+              "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl",
+              "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl",
+              "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl",
+              "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl",
+              "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl",
+          }
+          paths = [p for p in Path('/tmp/reference/all-mxl-paths.txt').read_text(encoding='utf-8').splitlines() if p and p not in excluded]
+          ranked = sorted(paths, key=lambda p: (sha256(p.encode('utf-8')).hexdigest(), p))
+          # Oversample so renderer-specific failures do not prevent a 100-item batch.
+          chosen = ranked[:180]
+          Path('/tmp/reference/candidates.txt').write_text('\n'.join(chosen) + '\n', encoding='utf-8')
+          print(f"candidate_pool={len(paths)} oversample={len(chosen)}")
+          PY
+
+      - name: Materialize candidates and render first-page evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/reference/success.tsv
+          success=0
+          candidate=0
+          while IFS= read -r path; do
+            candidate=$((candidate + 1))
+            tmp="/tmp/reference/source/candidate_$(printf '%03d' "$candidate").mxl"
+            if ! git -C /tmp/lieder show "${LIEDER_COMMIT}:${path}" > "$tmp"; then
+              rm -f "$tmp"
+              continue
+            fi
+            test -s "$tmp" || { rm -f "$tmp"; continue; }
+            rm -f /tmp/reference/render/candidate_*.png
+            if ! timeout 90s xvfb-run -a /tmp/squashfs-root/AppRun \
+              -s -m -F -r 150 -o /tmp/reference/render/candidate.png "$tmp" >/tmp/reference/render.log 2>&1; then
+              rm -f "$tmp"
+              continue
+            fi
+            rendered=""
+            for probe in /tmp/reference/render/candidate-1.png /tmp/reference/render/candidate.png; do
+              if test -s "$probe"; then rendered="$probe"; break; fi
+            done
+            if test -z "$rendered"; then
+              rendered="$(find /tmp/reference/render -maxdepth 1 -type f -name 'candidate*.png' | LC_ALL=C sort | head -n 1 || true)"
+            fi
+            test -n "$rendered" && test -s "$rendered" || { rm -f "$tmp"; continue; }
+            flat="/tmp/reference/render/candidate-flat.png"
+            convert "$rendered" -background white -alpha remove -alpha off "$flat"
+            opaque="$(convert "$flat" -format '%[opaque]' info: | tr '[:upper:]' '[:lower:]')"
+            mean="$(convert "$flat" -colorspace Gray -format '%[fx:mean]' info:)"
+            if test "$opaque" != "true" || ! awk -v m="$mean" 'BEGIN { exit !(m > 0.15 && m < 0.9995) }'; then
+              rm -f "$tmp" "$flat"
+              continue
+            fi
+            success=$((success + 1))
+            id="ref_$(printf '%03d' "$success")"
+            mv "$tmp" "/tmp/reference/source/${id}.mxl"
+            mv "$flat" "/tmp/reference/render/${id}-first.png"
+            printf '%s\t%s\n' "$id" "$path" >> /tmp/reference/success.tsv
+            rm -f /tmp/reference/render/candidate*.png
+            if test "$success" -eq 100; then break; fi
+          done < /tmp/reference/candidates.txt
+          test "$success" -eq 100
+          echo "rendered_reference_pairs=$success"
+
+      - name: Validate all 100 pairs and select 10-percent coverage audit sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+          from hashlib import sha256
+          import io
+          import json
+          from pathlib import Path
+          import shutil
+          import xml.etree.ElementTree as ET
+          import zipfile
+
+          ROOT = Path('/tmp/reference')
+          SOURCE = ROOT / 'source'
+          RENDER = ROOT / 'render'
+          REVIEW = ROOT / 'review'
+          REVIEW.mkdir(exist_ok=True)
+
+          def local(tag: str) -> str:
+              return tag.rsplit('}', 1)[-1]
+
+          def read_score_xml(data: bytes) -> bytes:
+              with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                  names = [n for n in zf.namelist() if n.lower().endswith(('.xml', '.musicxml')) and not n.startswith('META-INF/')]
+                  if not names:
+                      raise ValueError('mxl_without_score_xml')
+                  return zf.read(sorted(names, key=lambda n: (len(n), n))[0])
+
+          def observe(data: bytes) -> dict:
+              root = ET.fromstring(read_score_xml(data))
+              if local(root.tag) not in {'score-partwise', 'score-timewise'}:
+                  raise ValueError('unexpected_score_root')
+              tags = []
+              texts: dict[str, set[str]] = {}
+              direction_system: set[str] = set()
+              max_staves = 1
+              for e in root.iter():
+                  t = local(e.tag)
+                  tags.append(t)
+                  if e.text and e.text.strip():
+                      texts.setdefault(t, set()).add(e.text.strip())
+                  if t == 'staves' and e.text and e.text.strip().isdigit():
+                      max_staves = max(max_staves, int(e.text.strip()))
+                  if t == 'direction' and 'system' in e.attrib:
+                      direction_system.add(e.attrib['system'])
+              score_parts = tags.count('score-part')
+              notes = tags.count('note')
+              measures = tags.count('measure')
+              if score_parts < 1 or notes < 1 or measures < 1:
+                  raise ValueError('structurally_empty_score')
+              return {
+                  'scorePartCount': score_parts,
+                  'maxStavesPerPart': max_staves,
+                  'measureElementCount': measures,
+                  'noteElementCount': notes,
+                  'restElementCount': tags.count('rest'),
+                  'hasChordElements': 'chord' in tags,
+                  'hasTieOrTied': ('tie' in tags or 'tied' in tags),
+                  'hasSlur': 'slur' in tags,
+                  'hasTuplet': 'tuplet' in tags,
+                  'hasGrace': 'grace' in tags,
+                  'hasAccidental': 'accidental' in tags,
+                  'voiceValues': sorted(texts.get('voice', set())),
+                  'timeNumerators': sorted(texts.get('beats', set())),
+                  'timeDenominators': sorted(texts.get('beat-type', set())),
+                  'keyFifths': sorted(texts.get('fifths', set())),
+                  'directionSystemValues': sorted(direction_system),
+              }
+
+          path_map = {}
+          for line in (ROOT / 'success.tsv').read_text(encoding='utf-8').splitlines():
+              rid, path = line.split('\t', 1)
+              path_map[rid] = path
+          if len(path_map) != 100:
+              raise SystemExit('expected exactly 100 successful pairs')
+
+          records = []
+          seen_hashes = set()
+          for rid in sorted(path_map):
+              src = SOURCE / f'{rid}.mxl'
+              img = RENDER / f'{rid}-first.png'
+              sb, ib = src.read_bytes(), img.read_bytes()
+              sx, px = sha256(sb).hexdigest(), sha256(ib).hexdigest()
+              if sx in seen_hashes or px in seen_hashes:
+                  raise SystemExit('duplicate artifact hash')
+              seen_hashes.update((sx, px))
+              obs = observe(sb)
+              records.append({
+                  'referenceId': rid,
+                  'sourcePath': path_map[rid],
+                  'symbolicGold': {'mediaType': 'application/vnd.recordare.musicxml', 'sha256': sx, 'byteSize': len(sb)},
+                  'renderedInput': {'mediaType': 'image/png', 'page': 1, 'sha256': px, 'byteSize': len(ib), 'background': '#FFFFFF', 'alphaChannel': False},
+                  'structuralObservation': obs,
+                  'rightsStatus': 'CLEAR_CC0',
+                  'automatedPrevalidation': 'PASS',
+                  'teacherReviewStatus': 'DRAFT',
+                  'countTowardTeacherGoldMinimum': False,
+                  'trainingAuthorization': 'NOT_AUTHORIZED',
+              })
+
+          def tokens(record: dict) -> set[str]:
+              o = record['structuralObservation']
+              out = {
+                  f"parts:{min(o['scorePartCount'], 4)}",
+                  f"staves:{min(o['maxStavesPerPart'], 3)}",
+                  f"voices:{min(len(o['voiceValues']), 8)}",
+                  f"chord:{int(o['hasChordElements'])}",
+                  f"tie:{int(o['hasTieOrTied'])}",
+                  f"slur:{int(o['hasSlur'])}",
+                  f"tuplet:{int(o['hasTuplet'])}",
+                  f"grace:{int(o['hasGrace'])}",
+                  f"accidental:{int(o['hasAccidental'])}",
+              }
+              out |= {f"time:{a}/{b}" for a in o['timeNumerators'] for b in o['timeDenominators']}
+              out |= {f"key:{k}" for k in o['keyFifths']}
+              out |= {f"direction-system:{v}" for v in o['directionSystemValues']}
+              return out
+
+          selected = []
+          covered: set[str] = set()
+          remaining = records.copy()
+          while len(selected) < 10:
+              ranked = sorted(
+                  remaining,
+                  key=lambda r: (
+                      -len(tokens(r) - covered),
+                      sha256(r['sourcePath'].encode('utf-8')).hexdigest(),
+                      r['referenceId'],
+                  ),
+              )
+              pick = ranked[0]
+              selected.append(pick)
+              covered |= tokens(pick)
+              remaining.remove(pick)
+          audit_ids = [r['referenceId'] for r in selected]
+          for rid in audit_ids:
+              shutil.copy2(SOURCE / f'{rid}.mxl', REVIEW / f'{rid}.mxl')
+              shutil.copy2(RENDER / f'{rid}-first.png', REVIEW / f'{rid}-first.png')
+
+          manifest = {
+              'schemaVersion': 'scoremosaic-polyphonic-reference-batch-discovery-v1',
+              'batchId': 'openscore-lieder-reference-100-v1',
+              'dataset': 'OpenScore Lieder Corpus',
+              'sourceRepository': 'OpenScore/Lieder',
+              'sourceCommitSha': '38c5db510224d9facdc4b08d741fc788cfb58ea8',
+              'license': 'CC0-1.0',
+              'licenseSha256': sha256((ROOT / 'LICENSE.txt').read_bytes()).hexdigest(),
+              'renderer': {
+                  'name': 'MuseScore',
+                  'releaseTag': 'v3.6.2',
+                  'appImageSha256': 'c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290',
+                  'versionOutput': Path('/tmp/musescore-version.txt').read_text(encoding='utf-8', errors='replace').strip(),
+                  'imageResolutionDpi': 150,
+              },
+              'imageProcessing': {
+                  'tool': 'ImageMagick',
+                  'versionOutput': Path('/tmp/imagemagick-version.txt').read_text(encoding='utf-8', errors='replace').strip(),
+                  'background': '#FFFFFF',
+                  'alphaRemoved': True,
+                  'validationMethod': 'OPAQUE_NONEMPTY_PAGE_V1',
+              },
+              'selectionPolicy': {
+                  'sourcePathRanking': 'SHA256_PATH_ASC_V1',
+                  'admittedTeacherGoldPathsExcluded': True,
+                  'requestedPairCount': 100,
+                  'oversampleCandidateCount': 180,
+                  'successfulPairCount': 100,
+              },
+              'auditPolicy': {
+                  'method': 'GREEDY_STRUCTURAL_TOKEN_COVERAGE_V1',
+                  'sampleCount': 10,
+                  'sampleRate': 0.10,
+                  'auditReferenceIds': audit_ids,
+                  'teacherDecisionRequiredForAnyFutureFixtureAdmission': True,
+              },
+              'records': records,
+              'boundaries': {
+                  'researchEvaluationOnly': True,
+                  'referenceBatchIsNotTeacherGold': True,
+                  'automaticTeacherVerification': False,
+                  'automaticFixtureAdmission': False,
+                  'automaticTrainingAuthorization': False,
+                  'automaticMusicXmlRepair': False,
+                  'stage7AuthorityChange': False,
+                  'productionDecisionAuthority': False,
+              },
+          }
+          out = ROOT / 'reference-batch-100-discovery.json'
+          out.write_text(json.dumps(manifest, ensure_ascii=True, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({
+              'successfulPairCount': 100,
+              'auditSampleCount': len(audit_ids),
+              'auditReferenceIds': audit_ids,
+              'manifestSha256': sha256(out.read_bytes()).hexdigest(),
+              'uniqueFeatureTokensCoveredByAudit': len(covered),
+          }, sort_keys=True))
+          PY
+
+      - name: Upload bounded review packet
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: teacher-gold-reference-batch-100-v1
+          path: |
+            /tmp/reference/reference-batch-100-discovery.json
+            /tmp/reference/review/*.mxl
+            /tmp/reference/review/*-first.png
+            /tmp/reference/LICENSE.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary corpus and renderer bytes
+        if: always()
+        shell: bash
+        run: |
+          rm -rf /tmp/MuseScore-3.6.2.AppImage /tmp/squashfs-root /tmp/reference /tmp/lieder
