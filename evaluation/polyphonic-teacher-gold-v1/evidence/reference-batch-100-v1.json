@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "scoremosaic-polyphonic-reference-batch-evidence-v1",
+  "batchId": "openscore-lieder-reference-100-v1",
+  "dataset": "OpenScore Lieder Corpus",
+  "sourceRepository": "OpenScore/Lieder",
+  "sourceCommitSha": "38c5db510224d9facdc4b08d741fc788cfb58ea8",
+  "license": "CC0-1.0",
+  "licenseSha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+  "renderer": {
+    "name": "MuseScore",
+    "releaseTag": "v3.6.2",
+    "appImageSha256": "c59a41ee88bc7c565a939b9c73498ac0451bbd86574e95cb6e359302c1465290",
+    "imageResolutionDpi": 150
+  },
+  "selectionPolicy": {
+    "sourcePathRanking": "SHA256_PATH_ASC_V1",
+    "admittedTeacherGoldPathsExcluded": true,
+    "requestedPairCount": 100,
+    "oversampleCandidateCount": 180,
+    "successfulPairCount": 100
+  },
+  "discoveryEvidence": {
+    "workflowRunId": 34939313877,
+    "workflowHeadSha": "9a6fbac69d7e5ddfe1cfc9148ef1575ec115943c",
+    "artifactId": 10384459686,
+    "artifactName": "teacher-gold-reference-batch-100-v1",
+    "artifactZipSha256": "f7ab7c508f4ec5717394a9230e1f8badf05dfe06fb6d6d1d07b985665e8bb6bf",
+    "artifactSizeBytes": 1138061,
+    "artifactExpiresAt": "2026-09-29T07:00:51Z",
+    "discoveryManifestSha256": "4afd456a763a7eacc0c02bc62202dd507b4d4f15324f7c2b16beeba3fdef0bc8",
+    "discoveryManifestBytes": 153299
+  },
+  "auditPolicy": {
+    "method": "GREEDY_STRUCTURAL_TOKEN_COVERAGE_V1",
+    "sampleCount": 10,
+    "sampleRate": 0.10,
+    "auditReferenceIds": [
+      "ref_075",
+      "ref_059",
+      "ref_005",
+      "ref_004",
+      "ref_007",
+      "ref_020",
+      "ref_027",
+      "ref_008",
+      "ref_032",
+      "ref_065"
+    ],
+    "teacherDecisionRequiredForAnyFutureFixtureAdmission": true,
+    "teacherReviewStatus": "PENDING"
+  },
+  "coverageSummary": {
+    "scorePartCountDistribution": {
+      "1": 4,
+      "2": 86,
+      "3": 3,
+      "4": 4,
+      "5": 2,
+      "6": 1
+    },
+    "maxStavesPerPartDistribution": {
+      "1": 7,
+      "2": 93
+    },
+    "featurePairCounts": {
+      "hasChordElements": 93,
+      "hasTieOrTied": 89,
+      "hasSlur": 99,
+      "hasTuplet": 37,
+      "hasGrace": 54,
+      "hasAccidental": 99
+    },
+    "directionSystemCoverage": {
+      "only-top": 92,
+      "absent": 8,
+      "also-top": 0,
+      "none": 0,
+      "invalid": 0
+    },
+    "noteElementCount": {
+      "minimum": 132,
+      "median": 819,
+      "maximum": 6149
+    }
+  },
+  "technicalRenderSanity": {
+    "sampleCount": 10,
+    "status": "PASS_NON_AUTHORITY",
+    "scope": "review-sample blank/corrupt/render-sanity inspection only",
+    "teacherVerification": false
+  },
+  "teacherGoldState": {
+    "verifiedFixtureCountBefore": 10,
+    "verifiedFixtureCountAfter": 10,
+    "minimumVerifiedFixtures": 500,
+    "targetVerifiedFixtures": 1000,
+    "readiness": "NOT_READY"
+  },
+  "boundaries": {
+    "researchEvaluationOnly": true,
+    "referenceBatchIsNotTeacherGold": true,
+    "automaticTeacherVerification": false,
+    "automaticFixtureAdmission": false,
+    "automaticTrainingAuthorization": false,
+    "automaticMusicXmlRepair": false,
+    "automaticCorrectionOrMerge": false,
+    "stage7EngineOrQuorumChange": false,
+    "productionDecisionAuthority": false
+  }
+}
